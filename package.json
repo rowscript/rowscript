@@ -1,7 +1,7 @@
 {
-  "name": "rowscript",
-  "version": "0.1.0",
+  "name": "rowscript-project",
   "description": "RowScript programming language",
+  "private": true,
   "main": "index.js",
   "bin": {
     "rows": "cli/index.js"
@@ -18,5 +18,8 @@
   "bugs": {
     "url": "https://github.com/rowscript/rowscript/issues"
   },
-  "homepage": "https://github.com/rowscript/rowscript#readme"
+  "homepage": "https://github.com/rowscript/rowscript#readme",
+  "devDependencies": {
+    "lerna": "^4.0.0"
+  }
 }

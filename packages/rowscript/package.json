@@ -1,0 +1,37 @@
+{
+  "name": "rowscript",
+  "version": "0.1.0",
+  "description": "RowScript CLI",
+  "keywords": [
+    "cli",
+    "language"
+  ],
+  "author": "anqurvanillapy <anqurvanillapy@gmail.com>",
+  "homepage": "https://github.com/rowscript/rowscript/tree/main/packages/rowscript#readme",
+  "license": "MIT",
+  "main": "lib/rowscript.js",
+  "bin": {
+    "rowscript": "bin/rowscript"
+  },
+  "directories": {
+    "lib": "lib",
+    "test": "__tests__"
+  },
+  "files": [
+    "bin",
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rowscript/rowscript.git"
+  },
+  "scripts": {
+    "test": "echo \"Error: run tests from root\" && exit 1"
+  },
+  "dependencies": {
+    "yargs": "^17.0.1"
+  },
+  "bugs": {
+    "url": "https://github.com/rowscript/rowscript/issues"
+  }
+}

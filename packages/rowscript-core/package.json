@@ -1,0 +1,29 @@
+{
+  "name": "rowscript-core",
+  "version": "0.1.0",
+  "description": "RowScript core components",
+  "keywords": [
+    "language"
+  ],
+  "author": "RowScript developers",
+  "homepage": "https://github.com/rowscript/rowscript/tree/main/packages/rowscript-core#readme",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "__tests__"
+  },
+  "files": [
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rowscript/rowscript.git"
+  },
+  "scripts": {
+    "test": "echo \"Error: run tests from root\" && exit 1"
+  },
+  "bugs": {
+    "url": "https://github.com/rowscript/rowscript/issues"
+  }
+}
