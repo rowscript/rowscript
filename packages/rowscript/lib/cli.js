@@ -5,7 +5,7 @@ import rowscript from './rowscript'
 
 export default cli
 
-function cli (cwd) {
+function cli(cwd) {
   const parser = factory(null, cwd)
 
   parser.alias('h', 'help')

@@ -2,6 +2,6 @@
 
 export default rowscript
 
-function rowscript () {
+function rowscript() {
   // TODO
 }
