@@ -1,7 +1,7 @@
 'use strict'
 
-const DirL = 'L'
-const DirR = 'R'
+export const DirL = 'L'
+export const DirR = 'R'
 
 export class Var {
   constructor(name) {
