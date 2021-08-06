@@ -25,5 +25,8 @@
   },
   "bugs": {
     "url": "https://github.com/rowscript/rowscript/issues"
+  },
+  "dependencies": {
+    "uuid": "^8.3.2"
   }
 }
