@@ -10,7 +10,11 @@ function commaSep(rule) {
 export default grammar({
   name: 'rowscript',
 
+  extras: $ => [$.comment, /[\s\t\r\n\uFEFF\u2060\u200B\u00A0]/],
+
   precedences: $ => [['declaration', 'literal']],
+
+  word: $ => $.identifier,
 
   rules: {
     program: $ => repeat($.declaration),
@@ -18,6 +22,7 @@ export default grammar({
     declaration: $ =>
       choice(
         $.functionDeclaration,
+        $.classDeclaration,
         $.lexicalDeclaration,
         $.typeAliasDeclaration
       ),
@@ -31,6 +36,38 @@ export default grammar({
           $.declarationSignature,
           field('field', $.statementBlock)
         )
+      ),
+
+    classDeclaration: $ =>
+      prec(
+        'declaration',
+        seq(
+          'class',
+          field('name', $.identifier),
+          optional($.classHeritage),
+          field('body', $.classBody)
+        )
+      ),
+
+    classHeritage: $ => seq('extends', field('base', $.identifier)),
+
+    classBody: $ =>
+      seq(
+        '{',
+        repeat(
+          choice(
+            field('member', $.methodDefinition),
+            field('member', $.fieldDefinition)
+          )
+        ),
+        '}'
+      ),
+
+    methodDefinition: $ =>
+      seq(
+        field('name', $._propertyName),
+        field('parameters', $.declarationSignature),
+        field('body', $.statementBlock)
       ),
 
     lexicalDeclaration: $ => seq('const', commaSep($.variableDeclarator), ';'),
@@ -67,6 +104,20 @@ export default grammar({
         $.returnExpression,
         $.throwExpression
       ),
+
+    expression: $ =>
+      choice(
+        $.primaryExpression,
+        $.assignmentExpression,
+        $.augmentedAssignmentExpression,
+        $.unaryExpression,
+        $.binaryExpression,
+        $.ternaryExpression,
+        $.updateExpression,
+        $.newExpression
+      ),
+
+    _propertyName: $ => choice($.identifier, $.string, $.number),
 
     identifier: $ => {
       return token(seq(ALPHA, repeat(ALNUM)))
