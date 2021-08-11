@@ -1,0 +1,16 @@
+type Functor = <A> -> {
+  fmap: <B> -> (A -> B) -> Functor<A> -> Functor<B>,
+  // fill: <B> -> A -> Functor<B> -> Functor<A>,
+  ...
+}
+
+type Applicative = <A> -> Functor<A> .. {
+  pure: A -> Applicative<A>,
+  fapp: <B> -> Applicative<A -> B> -> Applicative<B>,
+  ...
+}
+
+type Monad = <A> => {
+  bind: <B> => Monad<A> => (A => Monad<B>) => Monad<B>,
+  ...
+}

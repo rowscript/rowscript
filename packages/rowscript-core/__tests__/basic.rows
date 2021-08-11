@@ -1,7 +1,7 @@
 // Typing a la utf8.
 //const f : ∀ {t z} → Π z → Π ((x ▹ t) ⨀ z) =
-//  r => {x: makeT()} .. r
+//  r => {x: makeT()} .. r;
 
 // Typing a la ascii.
-const g : <T Z> => object<Z> => object<{x : T} .. Z> =
-  r => {x: makeT()} .. r
+const g : <T Z> -> object<Z> -> object<{x : T} .. Z> =
+  r => {x: makeT()} .. r;

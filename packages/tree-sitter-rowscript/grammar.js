@@ -96,26 +96,80 @@ export default grammar({
       choice(
         $.lexicalDeclaration,
 
-        $.ifExpression,
-        $.switchExpression, // pattern matching
-        $.tryExpression, // checked exceptions
-        $.doExpression, // do-notation
+        $.ifStatement,
+        $.switchStatement, // pattern matching
+        $.tryStatement, // checked exceptions
+        $.doStatement, // do-notation
 
-        $.returnExpression,
-        $.throwExpression
+        $.returnStatement,
+        $.throwStatement
       ),
+
+    ifStatement: $ =>
+      prec.right(
+        seq(
+          'if',
+          field('cond', $.parenthesizedExpression),
+          field('then', $.statementBlock),
+          optional(field('else', $.elseClause))
+        )
+      ),
+
+    elseClause: $ => seq('else', $.statementBlock),
+
+    switchStatement: $ =>
+      seq(
+        'switch',
+        field('value', $.parenthesizedExpression, field('body', $.switchBody))
+      ),
+
+    switchBody: $ =>
+      seq('{', repeat(choice($.switchCase, $.switchDefault)), '}'),
+
+    switchCase: $ =>
+      seq('case', field('value', $.expression, ':', repeat($.statement))),
+
+    switchDefault: $ => seq('default', ':', repeat($.statement)),
+
+    tryStatement: $ =>
+      seq(
+        'try',
+        field('body', $.statementBlock),
+        // TODO: Multiple catch clauses.
+        optional(field('handlers', $.catchClause))
+      ),
+
+    catchClause: $ =>
+      seq(
+        'catch',
+        seq('(', field('parameter', $.identifier), ')'),
+        field('body', $.statementBlock)
+      ),
+
+    doStatement: $ =>
+      seq(
+        'do',
+        field('body', $.statementBlock),
+        'while',
+        field('lift', $.parenthesizedExpression),
+        ';'
+      ),
+
+    // TODO
+    // returnStatement:$=>,
 
     expression: $ =>
       choice(
-        $.primaryExpression,
-        $.assignmentExpression,
-        $.augmentedAssignmentExpression,
-        $.unaryExpression,
-        $.binaryExpression,
-        $.ternaryExpression,
-        $.updateExpression,
-        $.newExpression
+        $.primaryStatement,
+        $.assignmentStatement,
+        $.augmentedAssignmentStatement,
+        $.unaryStatement,
+        $.binaryStatement,
+        $.ternaryStatement,
+        $.newStatement
       ),
+
+    parenthesizedExpression: $ => seq('(', $.expression, ')'),
 
     _propertyName: $ => choice($.identifier, $.string, $.number),
 
