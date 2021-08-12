@@ -1,0 +1,56 @@
+// How to design setters?
+//
+// 1. I believe it's good to avoid mutability everywhere
+// 1. Methods are also hard to design, because I prefer the operator `(.)` to be
+// typed as `A B => A -> (A -> B) -> B`, but there would be no concepts of
+// methods, since they are flattened like some normal C functions...
+// 1. If we have methods, it would be intuitive to support single dispatch on
+// the `this` argument, but if not, it's good for a design with multiple
+// dispatch, maybe I could check out designs from Julia...
+
+const o: {_id: number, getID: {_id: number, ...} -> unit -> string} = {
+  _id: 42,
+  getID(): string {
+    return "foo-" + this._id.toString();
+  }
+}
+
+const id: string = o.getID();
+
+class Foo {
+  _id: number;
+  _name: string;
+
+  constructor(id: number, name: string) {
+    this._id = id;
+    this._name = name;
+  }
+
+  getID(): string {
+    return "foo-" + this._id.toString();
+  }
+}
+
+// `Foo` is actually of type:
+//
+// ```
+// {
+//   _id: number,
+//   _name: string,
+//   getID: {_id: number, ...} -> unit -> string
+// }
+// ```
+//
+// And there would be a constructor for `Foo`, of type:
+//
+// ```
+// (number, string) -> {
+//   _id: number,
+//   _name: string,
+//   getID: {_id: number, ...} -> unit -> string
+// }
+// ```
+//
+// A `new` expression would call the corresponding constructor.
+const foo: Foo = new Foo(42);
+const fooId: string = foo.getID();

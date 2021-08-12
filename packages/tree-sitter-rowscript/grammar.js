@@ -12,7 +12,20 @@ export default grammar({
 
   extras: $ => [$.comment, /[\s\t\r\n\uFEFF\u2060\u200B\u00A0]/],
 
-  precedences: $ => [['declaration', 'literal']],
+  precedences: $ => [
+    [
+      'unary',
+      'binary_exp',
+      'binary_times',
+      'binary_plus',
+      'binary_ordering',
+      'binary_and',
+      'binary_or',
+      'ternary'
+    ],
+    ['declaration', 'literal'],
+    ['member', 'new', 'call', $.expression]
+  ],
 
   word: $ => $.identifier,
 
@@ -159,20 +172,107 @@ export default grammar({
         ';'
       ),
 
+    // TODO: Statement is actually some kind of a `let` expression, so it must
+    // end with `returnStatement` or `throwStatement` which makes rest of the
+    // code unreachable.
     returnStatement: $ => seq('return', optional($.expression), ';'),
 
     throwStatement: $ => seq('throw', $.expression, ';'),
 
     expression: $ =>
       choice(
-        $.primaryStatement,
-        $.assignmentStatement,
-        $.augmentedAssignmentStatement,
-        $.unaryStatement,
-        $.binaryStatement,
-        $.ternaryStatement,
-        $.newStatement
+        $.primaryExpression,
+        $.unaryExpression,
+        $.binaryExpression,
+        $.ternaryExpression,
+        $.newExpression
       ),
+
+    primaryExpression: $ =>
+      choice(
+        $.subscriptExpression,
+        $.memberExpression,
+        $.parenthesizedExpression,
+        $.identifier,
+        $.this,
+        // TODO: Design of `super`.
+        $.number,
+        $.string,
+        $.templateString,
+        $.regex,
+        $.false,
+        $.true,
+        $.object,
+        $.array,
+        $.arrowFunction,
+        $.class,
+        $.callExpression
+      ),
+
+    unaryExpression: $ =>
+      choice(
+        ...[
+          ['!', 'unary'],
+          ['~', 'unary'],
+          ['-', 'unary'],
+          ['+', 'unary']
+        ].map(([operator, precedence]) =>
+          prec.fieldDefinition(
+            precedence,
+            seq(field('operator', operator), field('argument', $.expression))
+          )
+        )
+      ),
+
+    binaryExpression: $ =>
+      choice(
+        ...[
+          ['**', 'binary_exp'],
+          ['*', 'binary_times'],
+          ['/', 'binary_times'],
+          ['%', 'binary_times'],
+          ['>>', 'binary_times'],
+          ['>>>', 'binary_times'],
+          ['<<', 'binary_times'],
+          ['+', 'binary_plus'],
+          ['-', 'binary_plus'],
+          ['<', 'binary_ordering'],
+          ['<=', 'binary_ordering'],
+          ['==', 'binary_ordering'],
+          ['!=', 'binary_ordering'],
+          ['>=', 'binary_ordering'],
+          ['>', 'binary_ordering'],
+          ['&&', 'binary_and'],
+          ['&', 'binary_and'],
+          ['||', 'binary_or'],
+          ['|', 'binary_or'],
+          ['^', 'binary_or']
+        ]
+      ),
+
+    ternaryExpression: $ =>
+      prec.right(
+        'ternary',
+        seq(
+          field('cond', $.expression),
+          '?',
+          field('then', $.expression),
+          ':',
+          field('else', $.expression)
+        )
+      ),
+
+    new_expression: $ =>
+      prec.right(
+        'new',
+        seq(
+          'new',
+          field('constructor', $.identifier),
+          field('arguments', $.arguments)
+        )
+      ),
+
+    arguments: $ => seq('(', optional(commaSep($.expression)), ')'),
 
     parenthesizedExpression: $ => seq('(', $.expression, ')'),
 

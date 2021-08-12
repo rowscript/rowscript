@@ -1,16 +1,21 @@
-type Functor = <A> -> {
-  fmap: <B> -> (A -> B) -> Functor<A> -> Functor<B>,
-  // fill: <B> -> A -> Functor<B> -> Functor<A>,
+type Functor = A => {
+  fmap: B => (A -> B) -> Functor<A> -> Functor<B>,
+  // fill: B => A -> Functor<B> -> Functor<A>,
   ...
 }
 
-type Applicative = <A> -> Functor<A> .. {
+type Applicative = A => Functor<A> .. {
   pure: A -> Applicative<A>,
-  fapp: <B> -> Applicative<A -> B> -> Applicative<B>,
+  fapp: B => Applicative<A -> B> -> Applicative<B>,
   ...
 }
 
-type Monad = <A> => {
-  bind: <B> => Monad<A> => (A => Monad<B>) => Monad<B>,
+type Monad = A => Applicative<A> .. {
+  bind: B => Monad<A> -> (A -> Monad<B>) -> Monad<B>,
+  ...
+}
+
+type NumM = {
+  bind: NumM -> (number -> NumM) -> NumM,
   ...
 }
