@@ -135,14 +135,18 @@ export default grammar({
       seq(
         'try',
         field('body', $.statementBlock),
-        // TODO: Multiple catch clauses.
-        optional(field('handlers', $.catchClause))
+        repeat(field('handlers', $.catchClause))
       ),
 
     catchClause: $ =>
       seq(
         'catch',
-        seq('(', field('parameter', $.identifier), ')'),
+        seq(
+          '(',
+          field('parameter', $.identifier),
+          optional(seq(':', field('type', $.typeExpression))),
+          ')'
+        ),
         field('body', $.statementBlock)
       ),
 
@@ -155,8 +159,9 @@ export default grammar({
         ';'
       ),
 
-    // TODO
-    // returnStatement:$=>,
+    returnStatement: $ => seq('return', optional($.expression), ';'),
+
+    throwStatement: $ => seq('throw', $.expression, ';'),
 
     expression: $ =>
       choice(
