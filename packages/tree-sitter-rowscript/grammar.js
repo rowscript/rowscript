@@ -7,6 +7,8 @@ function commaSep(rule) {
   return seq(rule, repeat(seq(',', rule)))
 }
 
+// TODO:
+// 1. Support `??` (nullish coalescing) and `?.` (optional chaining) operators?
 export default grammar({
   name: 'rowscript',
 
@@ -205,8 +207,18 @@ export default grammar({
         $.object,
         $.array,
         $.arrowFunction,
-        $.class,
         $.callExpression
+      ),
+
+    subscriptExpression: $ =>
+      prec.right(
+        'member',
+        seq(
+          field('object', $.expression),
+          '[',
+          field('index', $.expression),
+          ']'
+        )
       ),
 
     unaryExpression: $ =>
@@ -262,7 +274,7 @@ export default grammar({
         )
       ),
 
-    new_expression: $ =>
+    newExpression: $ =>
       prec.right(
         'new',
         seq(
@@ -278,8 +290,9 @@ export default grammar({
 
     _propertyName: $ => choice($.identifier, $.string, $.number),
 
-    identifier: $ => {
-      return token(seq(ALPHA, repeat(ALNUM)))
-    }
+    identifier: $ => token(seq(ALPHA, repeat(ALNUM))),
+
+    comment: $ =>
+      token(choice(seq('//', /.*/), seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/')))
   }
 })

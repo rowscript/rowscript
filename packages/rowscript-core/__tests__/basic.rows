@@ -3,5 +3,7 @@
 //  r => {x: makeT()} .. r;
 
 // Typing a la ascii.
-const g : <T Z> -> object<Z> -> object<{x : T} .. Z> =
+//
+// TODO: Find a good way to separate type variables and row variables.
+const g : T Z => object<Z> -> object<{x : T} .. Z> =
   r => {x: makeT()} .. r;
