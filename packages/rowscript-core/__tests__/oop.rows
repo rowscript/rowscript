@@ -52,5 +52,18 @@ class Foo {
 // ```
 //
 // A `new` expression would call the corresponding constructor.
-const foo: Foo = new Foo(42);
+const foo: Foo = new Foo(42, "foo");
 const fooId: string = foo.getID();
+
+class Bar extends Foo {
+  _desc: string;
+
+  constructor(id: number, name: string, desc: string) {
+    this._desc = desc;
+    super(id, name)
+  }
+
+  getDesc(): string {
+    return this._desc
+  }
+}

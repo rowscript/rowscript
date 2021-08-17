@@ -259,7 +259,16 @@ export default grammar({
           ['||', 'binary_or'],
           ['|', 'binary_or'],
           ['^', 'binary_or']
-        ]
+        ].map(([operator, precedence]) =>
+          prec.left(
+            precedence,
+            seq(
+              field('left', $.expression),
+              field('operator', operator),
+              field('right', $.expression)
+            )
+          )
+        )
       ),
 
     ternaryExpression: $ =>
@@ -291,6 +300,11 @@ export default grammar({
     _propertyName: $ => choice($.identifier, $.string, $.number),
 
     identifier: $ => token(seq(ALPHA, repeat(ALNUM))),
+
+    this: $ => 'this',
+    super: $ => 'super',
+    true: $ => 'true',
+    false: $ => 'false',
 
     comment: $ =>
       token(choice(seq('//', /.*/), seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/')))
