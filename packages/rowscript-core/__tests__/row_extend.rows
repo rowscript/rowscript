@@ -1,0 +1,37 @@
+// Dynamic row extend
+// In case of TS this would not be possible
+//
+// interface Z {
+//   x: number
+//   z: number
+// }
+// let svar = {x: 4040};
+//
+// svar.z = 1515;
+//
+// function takeZ(x: Z) {
+//    x.z
+// }
+//
+// takeZ(svar); // error !
+//
+
+
+const svar : {x: number, ...} = {x : 4040};
+
+const nvar = svar .. {z: 1515};
+
+const takeZ = {z: number, ...} -> number = (r) => r.z
+
+takeZ(nvar)
+
+// if we have in-place mutability design, it would be simply like
+// and which I'd prefer (since it can be interpreted as syntactic sugar for row extend or concatenation)
+
+mut svar : {x: number, ...} = {x : 4040};
+
+svar.z = 1515; // sugar of `svar = svar .. {z: 1515};`
+
+const takeZ = {z: number, ...} -> number = (r) => r.z
+
+takeZ(nvar)
