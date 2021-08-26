@@ -9,7 +9,7 @@ function commaSep(rule) {
 
 // TODO:
 // 1. Support `??` (nullish coalescing) and `?.` (optional chaining) operators?
-export default grammar({
+module.exports = grammar({
   name: 'rowscript',
 
   extras: $ => [$.comment, /[\s\t\r\n\uFEFF\u2060\u200B\u00A0]/],
@@ -84,6 +84,9 @@ export default grammar({
         field('parameters', $.declarationSignature),
         field('body', $.statementBlock)
       ),
+
+    fieldDefinition: $ =>
+      seq(field('property', $._propertyName), optional($._initializer)),
 
     lexicalDeclaration: $ => seq('const', commaSep($.variableDeclarator), ';'),
 
@@ -181,6 +184,30 @@ export default grammar({
 
     throwStatement: $ => seq('throw', $.expression, ';'),
 
+    typeExpression: $ =>
+      seq(
+        optional(repeat1($.identifier), '=>'),
+        $.typeTerm,
+        repeat(seq('->', $.typeTerm))
+      ),
+
+    // TODO: Records, variants, and perhaps arrays.
+    typeTerm: $ =>
+      choice(
+        $.recordType,
+        $.variantType,
+        $.stringType,
+        $.numberType,
+        $.booleanType,
+        $.bigintType,
+        $.identifier
+      ),
+
+    stringType: $ => 'string',
+    numberType: $ => 'number',
+    booleanType: $ => 'boolean',
+    bigintType: $ => 'bigint',
+
     expression: $ =>
       choice(
         $.primaryExpression,
@@ -221,17 +248,11 @@ export default grammar({
       ),
 
     unaryExpression: $ =>
-      choice(
-        ...[
-          ['!', 'unary'],
-          ['~', 'unary'],
-          ['-', 'unary'],
-          ['+', 'unary']
-        ].map(([operator, precedence]) =>
-          prec.fieldDefinition(
-            precedence,
-            seq(field('operator', operator), field('argument', $.expression))
-          )
+      prec.left(
+        'unary',
+        seq(
+          field('operator', choice('!', '~', '-', '+')),
+          field('argument', $.expression)
         )
       ),
 
@@ -320,6 +341,12 @@ export default grammar({
         choice(field('parameter', $.identifier), $.declarationSignature),
         '=>',
         field('body', choice($.expression, $.statementBlock))
+      ),
+
+    callExpression: $ =>
+      prec(
+        'call',
+        seq(field('function', $.expression), field('arguments', $.arguments))
       ),
 
     identifier: $ => token(seq(ALPHA, repeat(ALNUM))),
