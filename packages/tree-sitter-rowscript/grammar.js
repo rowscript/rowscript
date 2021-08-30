@@ -25,8 +25,9 @@ module.exports = grammar({
       'binary_or',
       'ternary'
     ],
+    ['member', 'new', 'call', $.expression],
     ['declaration', 'literal'],
-    ['member', 'new', 'call', $.expression]
+    [$.primaryExpression, $.statementBlock, 'object']
   ],
 
   word: $ => $.identifier,
@@ -106,7 +107,8 @@ module.exports = grammar({
     declarationSignature: $ =>
       seq('(', optional(seq(commaSep($.formalParameter))), ')'),
 
-    formalParameter: $ => seq($.identifier, optional(seq(':', typeExpression))),
+    formalParameter: $ =>
+      seq($.identifier, optional(seq(':', $.typeExpression))),
 
     statementBlock: $ => prec.right(seq('{', repeat($.statement), '}')),
 
@@ -186,12 +188,12 @@ module.exports = grammar({
 
     typeExpression: $ =>
       seq(
-        optional(repeat1($.identifier), '=>'),
+        optional(seq(repeat1($.identifier), '=>')),
         $.typeTerm,
         repeat(seq('->', $.typeTerm))
       ),
 
-    // TODO: Records, variants, and perhaps arrays.
+    // TODO: Perhaps arrays?
     typeTerm: $ =>
       choice(
         $.recordType,
@@ -201,6 +203,30 @@ module.exports = grammar({
         $.booleanType,
         $.bigintType,
         $.identifier
+      ),
+
+    recordType: $ =>
+      seq(
+        '{',
+        optional(
+          choice(
+            '...',
+            seq(
+              commaSep($.identifier, ':', $.typeExpression),
+              optional(seq(',', '...'))
+            )
+          )
+        ),
+        '}'
+      ),
+
+    variantType: $ =>
+      choice(
+        seq('`|', optional('...')),
+        seq(
+          commaSep(seq('`', $.identifier), ':', $.typeExpression),
+          optional(seq('|', '...'))
+        )
       ),
 
     stringType: $ => 'string',
@@ -244,6 +270,16 @@ module.exports = grammar({
           '[',
           field('index', $.expression),
           ']'
+        )
+      ),
+
+    memberExpression: $ =>
+      prec(
+        'member',
+        seq(
+          field('object', choice($.expression, $.primaryExpression)),
+          '.',
+          field('property', $.identifier)
         )
       ),
 
