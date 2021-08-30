@@ -105,10 +105,9 @@ module.exports = grammar({
       ),
 
     declarationSignature: $ =>
-      seq('(', optional(seq(commaSep($.formalParameter))), ')'),
+      seq('(', optional(commaSep($.formalParameter)), ')'),
 
-    formalParameter: $ =>
-      seq($.identifier, optional(seq(':', $.typeExpression))),
+    formalParameter: $ => seq($.identifier, seq(':', $.typeExpression)),
 
     statementBlock: $ => prec.right(seq('{', repeat($.statement), '}')),
 
@@ -221,11 +220,13 @@ module.exports = grammar({
       ),
 
     variantType: $ =>
-      choice(
-        seq('`|', optional('...')),
-        seq(
-          commaSep(seq('`', $.identifier), ':', $.typeExpression),
-          optional(seq('|', '...'))
+      prec.left(
+        choice(
+          seq('`|', optional('...')),
+          seq(
+            commaSep(seq('`', $.identifier), ':', $.typeExpression),
+            optional(seq('|', '...'))
+          )
         )
       ),
 
@@ -373,10 +374,12 @@ module.exports = grammar({
     array: $ => seq('[', commaSep(optional($.expression)), ']'),
 
     arrowFunction: $ =>
-      seq(
-        choice(field('parameter', $.identifier), $.declarationSignature),
-        '=>',
-        field('body', choice($.expression, $.statementBlock))
+      prec.right(
+        seq(
+          choice(field('parameter', $.identifier), $.declarationSignature),
+          '=>',
+          field('body', choice($.expression, $.statementBlock))
+        )
       ),
 
     callExpression: $ =>
