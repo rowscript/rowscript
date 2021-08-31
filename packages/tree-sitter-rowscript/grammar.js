@@ -7,8 +7,6 @@ function commaSep(rule) {
   return seq(rule, repeat(seq(',', rule)))
 }
 
-// TODO:
-// 1. Support `??` (nullish coalescing) and `?.` (optional chaining) operators?
 module.exports = grammar({
   name: 'rowscript',
 
@@ -36,12 +34,7 @@ module.exports = grammar({
     program: $ => repeat($.declaration),
 
     declaration: $ =>
-      choice(
-        $.functionDeclaration,
-        $.classDeclaration,
-        $.lexicalDeclaration,
-        $.typeAliasDeclaration
-      ),
+      choice($.functionDeclaration, $.classDeclaration, $.typeAliasDeclaration),
 
     functionDeclaration: $ =>
       prec.right(
@@ -89,7 +82,8 @@ module.exports = grammar({
     fieldDefinition: $ =>
       seq(field('property', $._propertyName), optional($._initializer)),
 
-    lexicalDeclaration: $ => seq('const', commaSep($.variableDeclarator), ';'),
+    lexicalDeclaration: $ =>
+      seq('const', commaSep($.variableDeclarator), ';', $.statement),
 
     variableDeclarator: $ => seq(field('name', $.identifier), $._initializer),
 
@@ -109,7 +103,7 @@ module.exports = grammar({
 
     formalParameter: $ => seq($.identifier, seq(':', $.typeExpression)),
 
-    statementBlock: $ => prec.right(seq('{', repeat($.statement), '}')),
+    statementBlock: $ => prec.right(seq('{', optional($.statement), '}')),
 
     statement: $ =>
       choice(
@@ -178,9 +172,6 @@ module.exports = grammar({
         ';'
       ),
 
-    // TODO: Statement is actually some kind of a `let` expression, so it must
-    // end with `returnStatement` or `throwStatement` which makes rest of the
-    // code unreachable.
     returnStatement: $ => seq('return', optional($.expression), ';'),
 
     throwStatement: $ => seq('throw', $.expression, ';'),
@@ -192,11 +183,13 @@ module.exports = grammar({
         repeat(seq('->', $.typeTerm))
       ),
 
-    // TODO: Perhaps arrays?
     typeTerm: $ =>
       choice(
         $.recordType,
         $.variantType,
+        $.arrayType,
+        // "Wow we got tuple type!" no it's just a sugar for records.
+        $.tupleType,
         $.stringType,
         $.numberType,
         $.booleanType,
@@ -205,18 +198,19 @@ module.exports = grammar({
       ),
 
     recordType: $ =>
-      seq(
-        '{',
-        optional(
+      choice(
+        '{}',
+        seq(
+          '{',
           choice(
             '...',
             seq(
               commaSep($.identifier, ':', $.typeExpression),
               optional(seq(',', '...'))
             )
-          )
-        ),
-        '}'
+          ),
+          '}'
+        )
       ),
 
     variantType: $ =>
@@ -229,6 +223,10 @@ module.exports = grammar({
           )
         )
       ),
+
+    arrayType: $ => seq('[', $.typeExpression, ']'),
+
+    tupleType: $ => choice('()', seq('(', commaSep($.typeExpression), ')')),
 
     stringType: $ => 'string',
     numberType: $ => 'number',
