@@ -1,7 +1,7 @@
 {
-  "name": "tree-sitter-rowscript",
+  "name": "@rowscript/tree-sitter",
   "version": "0.1.0",
-  "description": "RowScript grammar for tree-sitter",
+  "description": "Tree-sitter grammar for RowScript",
   "keywords": [
     "parser"
   ],
@@ -14,7 +14,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rowscript/rowscript.git"
+    "url": "git+https://github.com/rowscript/rowscript.git",
+    "directory": "packages/tree-sitter-rowscript"
   },
   "scripts": {
     "generate": "tree-sitter generate",

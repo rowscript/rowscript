@@ -6,10 +6,10 @@
     "cli",
     "language"
   ],
-  "author": "anqurvanillapy <anqurvanillapy@gmail.com>",
+  "author": "RowScript developers",
   "homepage": "https://github.com/rowscript/rowscript/tree/main/packages/rowscript#readme",
   "license": "MIT",
-  "main": "lib/rowscript.js",
+  "main": "lib/cli.js",
   "bin": {
     "rowscript": "bin/rowscript"
   },
@@ -23,7 +23,8 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rowscript/rowscript.git"
+    "url": "git+https://github.com/rowscript/rowscript.git",
+    "directory": "packages/rowscript"
   },
   "scripts": {
     "test": "echo \"Error: run tests from root\" && exit 1"

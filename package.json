@@ -1,11 +1,10 @@
 {
-  "name": "rowscript-project",
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/*"
+  ],
   "description": "RowScript programming language",
   "private": true,
-  "main": "index.js",
-  "bin": {
-    "rows": "cli/index.js"
-  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "format": "prettier --write \"packages/**/*.js\""
@@ -21,7 +20,6 @@
   },
   "homepage": "https://github.com/rowscript/rowscript#readme",
   "devDependencies": {
-    "lerna": "^4.0.0",
     "prettier": "^2.3.2"
   }
 }

@@ -1,5 +1,5 @@
 {
-  "name": "rowscript-core",
+  "name": "@rowscript/core",
   "version": "0.1.0",
   "description": "RowScript core components",
   "keywords": [
@@ -18,7 +18,8 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rowscript/rowscript.git"
+    "url": "git+https://github.com/rowscript/rowscript.git",
+    "directory": "packages/core"
   },
   "scripts": {
     "test": "echo \"Error: run tests from root\" && exit 1"
