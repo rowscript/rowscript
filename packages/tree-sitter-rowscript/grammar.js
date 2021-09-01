@@ -94,7 +94,7 @@ module.exports = grammar({
         'type',
         field('name', $.identifier),
         '=',
-        field('target', $.typeExpression),
+        field('target', $.typeScheme),
         ';'
       ),
 
@@ -172,16 +172,14 @@ module.exports = grammar({
         ';'
       ),
 
-    returnStatement: $ => seq('return', optional($.expression), ';'),
+    returnStatement: $ => seq('return', optional($.expression)),
 
-    throwStatement: $ => seq('throw', $.expression, ';'),
+    throwStatement: $ => seq('throw', $.expression),
 
-    typeExpression: $ =>
-      seq(
-        optional(seq(repeat1($.identifier), '=>')),
-        $.typeTerm,
-        repeat(seq('->', $.typeTerm))
-      ),
+    typeScheme: $ =>
+      seq(optional(seq(repeat1($.identifier), '=>')), $.typeExpression),
+
+    typeExpression: $ => seq($.typeTerm, repeat(seq('->', $.typeTerm))),
 
     typeTerm: $ =>
       choice(
