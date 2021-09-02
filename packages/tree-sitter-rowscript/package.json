@@ -2,6 +2,7 @@
   "name": "@rowscript/tree-sitter",
   "version": "0.1.0",
   "description": "Tree-sitter grammar for RowScript",
+  "type": "module",
   "keywords": [
     "parser"
   ],
