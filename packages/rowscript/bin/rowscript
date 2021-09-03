@@ -2,4 +2,22 @@
 
 'use strict'
 
-require('../lib/cli').default().parse(process.argv.slice(2))
+require('yargs/yargs')()
+  .alias('h', 'help')
+  .alias('v', 'version')
+  .usage(
+    '$0',
+    'RowScript programming language',
+    y => {
+      y.options({
+        f: {
+          alias: 'file',
+          demandOption: true,
+          describe: 'input file',
+          type: 'string'
+        }
+      })
+    },
+    require('@rowscript/core').run
+  )
+  .parse(require('yargs/helpers').hideBin(process.argv))

@@ -1,9 +1,11 @@
 'use strict'
 
-import Parser from 'tree-sitter'
-import RowScript from '@rowscript/tree-sitter'
+const Parser = require('tree-sitter')
+const RowScript = require('@rowscript/tree-sitter')
 
-export default args => {
+module.exports = { run }
+
+function run(args) {
   console.log(args)
   const parser = new Parser()
   parser.setLanguage(RowScript)
