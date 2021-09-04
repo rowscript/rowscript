@@ -1,5 +1,3 @@
-'use strict'
-
 export class Type {}
 
 export class TVar extends Type {

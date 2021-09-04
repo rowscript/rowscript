@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
-'use strict'
+import yargs from 'yargs'
+import { hideBin } from 'yargs/helpers'
+import { run } from '@rowscript/core'
 
-require('yargs/yargs')()
+yargs()
   .alias('h', 'help')
   .alias('v', 'version')
   .usage(
@@ -18,6 +20,6 @@ require('yargs/yargs')()
         }
       })
     },
-    require('@rowscript/core').run
+    run
   )
-  .parse(require('yargs/helpers').hideBin(process.argv))
+  .parse(hideBin(process.argv))
