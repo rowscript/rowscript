@@ -2,7 +2,7 @@
 
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
-import { run } from '@rowscript/core'
+import { runCli } from '@rowscript/core'
 
 yargs()
   .alias('h', 'help')
@@ -20,6 +20,6 @@ yargs()
         }
       })
     },
-    run
+    runCli
   )
   .parse(hideBin(process.argv))
