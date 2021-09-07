@@ -1,12 +1,10 @@
-import { readFile } from 'fs/promises'
-import { parseString } from './internal/syntax/concreteSyntax.js'
-import * as presyntax from './internal/syntax/presyntax.js'
+import { ConcreteSyntax } from './internal/syntax/concreteSyntax.js'
+import { Presyntax } from './internal/syntax/presyntax.js'
 
 export const runCli = async args => {
   try {
-    const data = await readFile(args.file)
-    const concreteTree = parseString(data.toString())
-    const preTree = presyntax.of(concreteTree)
+    const concreteTree = await new ConcreteSyntax(args.file).parseFile()
+    const preTree = new Presyntax().of(concreteTree)
     console.log(preTree)
   } catch (err) {
     console.error(err)
