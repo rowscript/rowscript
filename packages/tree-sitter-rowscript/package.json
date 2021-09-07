@@ -9,18 +9,14 @@
   "homepage": "https://github.com/rowscript/rowscript/tree/main/packages/tree-sitter-rowscript#readme",
   "license": "MIT",
   "main": "bindings/node",
-  "directories": {
-    "test": "__tests__"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/rowscript/rowscript.git",
     "directory": "packages/tree-sitter-rowscript"
   },
   "scripts": {
-    "generate": "tree-sitter generate",
-    "build": "node-gyp build",
-    "prebuild": "node-gyp configure"
+    "build": "node-gyp configure && node-gyp build",
+    "prebuild": "tree-sitter generate"
   },
   "bugs": {
     "url": "https://github.com/rowscript/rowscript/issues"
