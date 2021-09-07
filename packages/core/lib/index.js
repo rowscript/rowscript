@@ -1,14 +1,13 @@
 import { readFile } from 'fs/promises'
-import Parser from 'tree-sitter'
-import RowScript from '@rowscript/tree-sitter'
+import { parseString } from './internal/syntax/concreteSyntax.js'
+import * as presyntax from './internal/syntax/presyntax.js'
 
 export const runCli = async args => {
   try {
-    const data = (await readFile(args.file)).toString()
-    const parser = new Parser()
-    parser.setLanguage(RowScript)
-    const tree = parser.parse(data)
-    console.log(tree)
+    const data = await readFile(args.file)
+    const concreteTree = parseString(data.toString())
+    const preTree = presyntax.of(concreteTree)
+    console.log(preTree)
   } catch (err) {
     console.error(err)
   }
