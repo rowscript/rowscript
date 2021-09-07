@@ -8,29 +8,6 @@
 // the `this` argument, but if not, it's good for a design with multiple
 // dispatch, maybe I could check out designs from Julia...
 
-const o: {_id: number, getID: {_id: number, ...} -> unit -> string} = {
-  _id: 42,
-  getID(): string {
-    return "foo-" + this._id.toString();
-  }
-}
-
-const id: string = o.getID();
-
-class Foo {
-  _id: number;
-  _name: string;
-
-  constructor(id: number, name: string) {
-    this._id = id;
-    this._name = name;
-  }
-
-  getID(): string {
-    return "foo-" + this._id.toString();
-  }
-}
-
 // `Foo` is actually of type:
 //
 // ```
@@ -52,12 +29,18 @@ class Foo {
 // ```
 //
 // A `new` expression would call the corresponding constructor.
-const foo: Foo = new Foo(42, "foo");
-const fooId: string = foo.getID();
+class Foo {
+  constructor(id: number, name: string) {
+    this._id = id;
+    this._name = name;
+  }
+
+  getID(): string {
+    return "foo-" + this._id.toString();
+  }
+}
 
 class Bar extends Foo {
-  _desc: string;
-
   constructor(id: number, name: string, desc: string) {
     this._desc = desc;
     super(id, name)
@@ -66,4 +49,18 @@ class Bar extends Foo {
   getDesc(): string {
     return this._desc
   }
+}
+
+function main() {
+  const o: {_id: number, getID: {_id: number, ...} -> unit -> string} = {
+    _id: 42,
+    getID(): string {
+      return "foo-" + this._id.toString();
+    }
+  }
+
+  const id: string = o.getID();
+
+  const foo: Foo = new Foo(42, "foo");
+  const fooId: string = foo.getID();
 }

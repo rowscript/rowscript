@@ -24,7 +24,7 @@ export class ConcreteSyntax {
 
   _collectErrs(tree) {
     const errs = []
-    const nodes = [tree]
+    let nodes = [tree]
 
     while (nodes.length > 0) {
       const node = nodes.pop()
@@ -39,13 +39,11 @@ export class ConcreteSyntax {
         errs.push(new SyntaxErr(this.file, node, 'Syntax error (missing)'))
       }
 
-      for (const child of node.children) {
-        nodes.push(child)
-      }
+      nodes = nodes.concat(node.children)
     }
 
     if (errs.length > 0) {
-      return errs
+      return errs.reverse()
     }
 
     return null
