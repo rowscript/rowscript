@@ -11,7 +11,7 @@ export class ConcreteSyntax {
 
   parseString(text) {
     const tree = this.parser.parse(text)
-    const errs = this.collectErrs(tree.rootNode)
+    const errs = this._collectErrs(tree.rootNode)
     if (errs) {
       throw errs.map(s => s.toString()).join('\n')
     }
@@ -22,7 +22,7 @@ export class ConcreteSyntax {
     return this.parseString((await readFile(this.file)).toString())
   }
 
-  collectErrs(tree) {
+  _collectErrs(tree) {
     const errs = []
     const nodes = [tree]
 
