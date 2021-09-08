@@ -10,9 +10,9 @@
   "author": "RowScript developers",
   "homepage": "https://github.com/rowscript/rowscript/tree/main/packages/rowscript#readme",
   "license": "MIT",
-  "main": "rowscript.js",
+  "main": "./rows.js",
   "bin": {
-    "rowscript": "rowscript.js"
+    "rows": "./rows.js"
   },
   "repository": {
     "type": "git",
