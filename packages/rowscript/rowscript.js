@@ -2,24 +2,20 @@
 
 import yargs from 'yargs'
 import { hideBin } from 'yargs/helpers'
-import { runCli } from '@rowscript/core'
+import { compileFile } from '@rowscript/core'
 
 yargs()
   .alias('h', 'help')
   .alias('v', 'version')
   .usage(
-    '$0',
+    '$0 [file]',
     'RowScript programming language',
     y => {
-      y.options({
-        f: {
-          alias: 'file',
-          demandOption: true,
-          describe: 'input file',
-          type: 'string'
-        }
+      y.positional('file', {
+        describe: 'input file',
+        type: 'string'
       })
     },
-    runCli
+    ({ file }) => compileFile(file)
   )
   .parse(hideBin(process.argv))

@@ -3,7 +3,7 @@ import Parser from 'tree-sitter'
 import RowScript from '@rowscript/tree-sitter'
 
 export class ConcreteSyntax {
-  constructor(file = '<stdin>') {
+  constructor(file = '/dev/stdin') {
     this.file = file
     this.parser = new Parser()
     this.parser.setLanguage(RowScript)

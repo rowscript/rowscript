@@ -1,9 +1,13 @@
 import * as presyntax from './presyntaxData.js'
 
 export class Presyntax {
-  of(concreteTree) {
-    const root = concreteTree.rootNode
-    console.log(root)
+  constructor(concreteTree) {
+    this._root = concreteTree.rootNode
+    this._preTree = this._transform()
+  }
+
+  _transform() {
+    console.log(this._root)
     return new presyntax.Var('x')
   }
 }
