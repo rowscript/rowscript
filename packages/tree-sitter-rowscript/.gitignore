@@ -1,6 +1,0 @@
-# Tree-sitter generated files.
-bindings/
-src/
-build/
-binding.gyp
-Cargo.toml

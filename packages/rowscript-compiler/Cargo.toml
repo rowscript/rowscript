@@ -1,0 +1,12 @@
+[package]
+name = "rowscript-compiler"
+version = "0.1.0"
+edition = "2018"
+authors = ["RowScript developers"]
+license = "MIT"
+description = "RowScript compiler"
+readme = "README.md"
+categories = ["development-tools"]
+repository = "https://github.com/rowscript/rowscript"
+
+[dependencies]

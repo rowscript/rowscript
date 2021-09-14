@@ -1,9 +1,0 @@
-// Typing a la utf8.
-//const f : ∀ {t z} → Π z → Π ((x ▹ t) ⨀ z) =
-//  r => {x: makeT()} .. r;
-
-// Typing a la ascii.
-//
-// TODO: Find a good way to separate type variables and row variables.
-const g : T Z => object<Z> -> object<{x : T} .. Z> =
-  r => {x: makeT()} .. r;
