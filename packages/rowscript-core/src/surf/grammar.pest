@@ -190,3 +190,37 @@ ternary_expression = { expression ~ "?" ~ expression ~ ":" ~ expression }
 new_expression = { "new" ~ identifier ~ arguments }
 
 arguments = { "(" ~ (expression ~ ("," ~ expression)*)? ~ ")" }
+
+type_scheme = { (identifier ~ ("," ~ identifier)* ~ "=>")? ~ type_expression }
+
+type_expression = { type_term ~ ("->" ~ type_term)* }
+
+type_term =
+  { record_type
+  | variant_type
+  | array_type
+  | tuple_type // sugar for records
+  | "string"
+  | "number"
+  | "boolean"
+  | "bigint"
+  | identifier
+  }
+
+record_type =
+  { "{}"
+  | "{" ~ ("..." | record_field ~ ("," ~ record_field)* ~ ("," ~ "...")? )
+  }
+
+record_field = { identifier ~ ":" ~ type_expression }
+
+variant_type =
+  { "`|" ~ "..."?
+  | variant_field ~ ("," ~ variant_field)* ~ ("|" ~ "...")?
+  }
+
+variant_field = { "`" ~ identifier ~ ":" ~ type_expression }
+
+array_type = { "[" ~ type_expression ~ "]" }
+
+tuple_type = { "()" | "(" ~ type_expression ~ ("," ~ type_expression)* ~ ")" }
