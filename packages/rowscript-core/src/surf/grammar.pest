@@ -1,0 +1,192 @@
+UNICODE_WHITE = _{ "\u{FEFF}" | "\u{2060}" | "\u{200B}" | "\u{00A0}" }
+RESERVED_CHAR =
+ _{ '\x00'..'\x1F'
+  | WHITE_SPACE
+  | ":" | ";" | "`" | "\"" | "'" | "@" | "#" | "." | ","
+  | "|" | "^" | "&" | "<" | "=" | ">" | "+" | "-" | "*" | "/"
+  | "\\" | "%" | "?" | "!" | "~" | "(" | ")" | "[" | "]" | "{" | "}"
+  | UNICODE_WHITE
+  }
+RESERVED_CHAR_WITH_NUM = _{ RESERVED_CHAR | '0'..'9' }
+UNICODE_CHAR =
+ _{ "\\u" ~ ('0'..'9' | 'a' ..'f' | 'A'..'F'){4}
+  | "\\u{" ~ ('0'..'9' | 'a'..'f' | 'A' ..'F')+ ~ "}"
+  }
+ALPHA = _{ !RESERVED_CHAR | UNICODE_CHAR  }
+ALNUM = _{ !RESERVED_CHAR_WITH_NUM | UNICODE_CHAR }
+
+LINE_COMMENT = _{ "//" ~ (!NEWLINE ~ ANY)* }
+BLOCK_COMMENT =
+ _{ "/*"
+  ~ (!"*" ~ ANY)*
+  ~ "*"+
+  ~ ((!("/" | "*") ~ ANY) ~ (!"*" ~ ANY)* ~ "*"+)*
+  ~ "/"
+  }
+COMMENT =
+ _{ LINE_COMMENT
+  | BLOCK_COMMENT
+  }
+
+EXTRAS =
+ _{ WHITE_SPACE
+  | NEWLINE
+  | UNICODE_WHITE
+  | COMMENT
+  }
+
+program = { EXTRAS* ~ declaration* ~ EXTRAS* }
+
+declaration =
+  { function_declaration
+  | class_declaration
+  | type_alias_declaration
+  }
+
+function_declaration =
+  { "function" ~ identifier ~ declaration_signature ~ statement_block
+  }
+
+class_declaration = { "class" ~ identifier ~ class_heritage? ~ class_body }
+
+class_heritage = { "extends" ~ identifier }
+
+class_body = { "{" ~ (method_definition | field_definition)*  ~ "}" }
+
+method_definition = { property_name ~ declaration_signature ~ statement_block }
+
+field_definition = { property_name ~ initializer? }
+
+property_name = { identifier | string | number }
+
+initializer = { "=" ~ expression }
+
+type_alias_declaration = { "type" ~ identifier ~ "=" ~ type_scheme ~ ";" }
+
+declaration_signature =
+  { "(" ~ (formal_parameter ~ ("," ~ formal_parameter)*)? ~ ")"
+  }
+
+formal_parameter = { identifier ~ ":" ~ type_expression }
+
+statement_block = { "{" ~ statement? ~ "}" }
+
+statement =
+ { lexical_declaration
+ | if_statement
+ | switch_statement // pattern matching
+ | try_statement // checked exceptions
+ | do_statement // do-notation
+ | return_statement
+ | throw_statement
+ }
+
+lexical_declaration =
+  { "const"
+  ~ (variable_declarator ~ ("," ~ variable_declarator)*)
+  ~ ";"
+  ~ statement
+  }
+
+variable_declarator = { identifier ~ initializer }
+
+if_statement =
+  { "if" ~ parenthesized_expression ~ statement_block ~ else_clause? }
+
+else_clause = { "else" ~ statement_block }
+
+switch_statement = { "switch" ~ parenthesized_expression ~ switch_body }
+
+switch_body = { "{" ~ (switch_case | switch_default)* ~ "}" }
+
+switch_case = { "case" ~ expression ~ ":" ~ statement* }
+
+switch_default = { "default" ~ ":" ~ statement* }
+
+try_statement = { "try" ~ statement_block ~ catch_clause* }
+
+catch_clause =
+  { "catch"
+  ~ "("
+  ~ identifier
+  ~ (":" ~ type_expression)?
+  ~ ")"
+  ~ statement_block
+  }
+
+do_statement =
+  { "do" ~ statement_block ~ "while" ~ parenthesized_expression ~ ";"
+  }
+
+return_statement = { "return" ~ expression? }
+
+throw_statement = { "throw" ~ expression? }
+
+expression =
+  { primary_expression
+  | unary_expression
+  | binary_expression
+  | ternary_expression
+  | new_expression
+  }
+
+primary_expression =
+  { subscript_expression
+  | member_expression
+  | parenthesized_expression
+  | identifier
+  | "this"
+  | "super"
+  | number
+  | string
+  | regex
+  | "false"
+  | "true"
+  | object
+  | array
+  | arrow_function
+  | call_expression
+  }
+
+subscript_expression = { expression ~ "[" ~ expression ~ "]" }
+
+member_expression = { (expression | primary_expression) ~ "." ~ identifier }
+
+parenthesized_expression = { "(" ~ expression ~ ")" }
+
+identifier = { ALPHA ~ ALNUM* }
+
+object = { "{" ~ (object_body ~ ("," ~ object_body)*)? ~ "}" }
+
+object_body = { pair | method_definition | identifier }
+
+pair = { property_name ~ ":" ~ expression }
+
+array = { "[" ~ (expression ~ ("," ~ expression)*)? ~ "]" }
+
+arrow_function =
+  { (identifier | declaration_signature )
+  ~ "=>"
+  ~ (expression | statement_block)
+  }
+
+call_expression = { expression ~ arguments }
+
+unary_expression = { ("!" | "~" | "-" | "+") ~ expression }
+
+binary_expression =
+  { expression
+  ~ ( "**" | "*" | "/" | "%"
+    | ">>" | ">>>" | "<<"
+    | "+" | "-"
+    | "<" | "<=" | "==" | "!=" | ">=" | ">"
+    | "&&" | "&" | "||" | "|" | "^"
+    )
+  ~ expression
+  }
+
+ternary_expression = { expression ~ "?" ~ expression ~ ":" ~ expression }
+
+new_expression = { "new" ~ identifier ~ arguments }
+
+arguments = { "(" ~ (expression ~ ("," ~ expression)*)? ~ ")" }

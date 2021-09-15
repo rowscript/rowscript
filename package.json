@@ -1,0 +1,22 @@
+{
+  "name": "rowscript",
+  "version": "0.1.0",
+  "description": "RowScript binary release",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rowscript/rowscript.git"
+  },
+  "keywords": [
+    "language"
+  ],
+  "author": "RowScript developers",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rowscript/rowscript/issues"
+  },
+  "homepage": "https://github.com/rowscript/rowscript#readme"
+}
