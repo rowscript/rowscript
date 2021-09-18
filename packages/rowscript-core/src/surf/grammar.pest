@@ -156,6 +156,69 @@ parenthesized_expression = { "(" ~ expression ~ ")" }
 
 identifier = { ALPHA ~ ALNUM* }
 
+number =
+  { hex_literal
+  | binary_literal
+  | octal_literal
+  | DECIMAL_NUMBER
+  | binary_literal
+  }
+
+hex_literal =
+ _{ ("0x" | "0X")
+  ~ ASCII_HEX_DIGIT ~ ("_"? ~ ASCII_HEX_DIGIT)*
+  }
+
+binary_literal =
+ _{ ("0b" | "0B")
+  ~ ASCII_BIN_DIGIT ~ ("_"? ~ ASCII_BIN_DIGIT)*
+  }
+
+octal_literal =
+ _{ ("0o" | "0O")
+  ~ ASCII_OCT_DIGIT ~ ("_"? ~ ASCII_OCT_DIGIT)*
+  }
+
+bigint_literal =
+ _{ (hex_literal | binary_literal | octal_literal | DECIMAL_NUMBER)
+  ~ "n"
+  }
+
+string =
+  { "\"" ~ (unescaped_double_string_fragment | escape_sequence)* ~ "\""
+  | "'" ~ (unescaped_single_string_fragment | escape_sequence)* ~ "'"
+  }
+
+unescaped_double_string_fragment = _{ !("\"" | "\\")+ }
+
+unescaped_single_string_fragment = _{ !("'" | "\\")+ }
+
+escape_sequence =
+  { "\\"
+  ~ ( !("x" | "u" | '0'..'7')
+    | ('0'..'7'){1,3}
+    | "x" ~ ('0'..'9' | 'a'..'f' | 'A'..'F'){2}
+    | "u" ~ ('0'..'9' | 'a'..'f' | 'A'..'F'){4}
+    | "u" ~ "{" ~ ('0'..'9' | 'a'..'f' | 'A'..'F')+ ~ "}"
+    )
+  }
+
+regex =
+ _{ "/"
+  ~ regex_pattern
+  ~ "/"
+  ~ regex_flags?
+  }
+
+regex_pattern =
+ _{ ( "[" ~ ("\\" ~ ANY | !("]" | NEWLINE | "\\"))* ~ "]"
+    | "\\" ~ ANY
+    | !("/" | "\\" | "[" | NEWLINE)
+    )+
+  }
+
+regex_flags = _{ ('a'..'z')+ }
+
 object = { "{" ~ (object_body ~ ("," ~ object_body)*)? ~ "}" }
 
 object_body = { pair | method_definition | identifier }
