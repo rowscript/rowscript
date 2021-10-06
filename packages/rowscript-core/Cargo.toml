@@ -10,3 +10,5 @@ categories = ["development-tools"]
 repository = "https://github.com/rowscript/rowscript"
 
 [dependencies]
+pest = "2.1.3"
+pest_derive = "2.1.0"

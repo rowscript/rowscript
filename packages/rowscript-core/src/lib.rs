@@ -1,3 +1,5 @@
+pub mod surf;
+
 #[cfg(test)]
 mod tests {
     #[test]
