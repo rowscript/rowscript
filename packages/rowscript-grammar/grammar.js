@@ -41,8 +41,10 @@ module.exports = grammar({
         'declaration',
         seq(
           'function',
+          optional(seq('<', $.typeExpression, '>')),
           field('name', $.identifier),
           $.declarationSignature,
+          optional(seq(':', $.typeExpression)),
           field('field', $.statementBlock)
         )
       ),
@@ -53,12 +55,18 @@ module.exports = grammar({
         seq(
           'class',
           field('name', $.identifier),
+          optional(seq('<', $.typeExpression, '>')),
           optional($.classHeritage),
           field('body', $.classBody)
         )
       ),
 
-    classHeritage: $ => seq('extends', field('base', $.identifier)),
+    classHeritage: $ =>
+      seq(
+        'extends',
+        field('base', $.identifier),
+        optional(seq('<', $.typeExpression, '>'))
+      ),
 
     classBody: $ =>
       seq(

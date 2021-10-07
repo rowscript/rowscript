@@ -42,11 +42,11 @@ pub fn parse(src: String) -> Result<(), String> {
         Some(tree) => {
             let node = tree.root_node();
 
+            dbg!(node.to_sexp());
+
             if node.has_error() {
                 return Err(ErrInfo::new_string(&node, "syntax error"));
             }
-
-            println!("{}", node.to_sexp());
 
             Ok(())
         }

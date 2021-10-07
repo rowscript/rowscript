@@ -23,4 +23,6 @@ fn main() {
         .include(&src_dir)
         .file(src_dir.join("parser.c"))
         .compile("rowscript-grammar");
+
+    println!("cargo:rerun-if-changed={}", src_dir.to_str().unwrap());
 }
