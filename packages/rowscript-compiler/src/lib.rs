@@ -1,18 +1,15 @@
 use tree_sitter::{Language, Parser};
 
-// pub mod surf;
-
 extern "C" {
     fn tree_sitter_rowscript() -> Language;
 }
 
-pub fn parse() {
+pub fn build(src: String) {
     let mut parser = Parser::new();
     let lang = unsafe { tree_sitter_rowscript() };
     parser.set_language(lang).unwrap();
 
-    let source_code = "function foo(){}";
-    let tree = parser.parse(source_code, None).unwrap();
+    let tree = parser.parse(src, None).unwrap();
     let root_node = tree.root_node();
 
     println!("{}", root_node.kind());
@@ -20,10 +17,10 @@ pub fn parse() {
 
 #[cfg(test)]
 mod tests {
-    use crate::parse;
+    use crate::build;
 
     #[test]
     fn it_works() {
-        parse();
+        build("function foo(){}".to_string());
     }
 }
