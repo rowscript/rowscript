@@ -1,0 +1,31 @@
+{
+  "name": "@rowscript/grammar",
+  "version": "0.1.0",
+  "description": "Tree-sitter grammar for RowScript",
+  "keywords": [
+    "parser"
+  ],
+  "author": "RowScript developers",
+  "homepage": "https://github.com/rowscript/rowscript/tree/main/packages/rowscript-grammar#readme",
+  "license": "MIT",
+  "main": "bindings/node",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rowscript/rowscript.git",
+    "directory": "packages/rowscript-grammar"
+  },
+  "scripts": {
+    "build": "node-gyp configure && node-gyp build",
+    "prebuild": "tree-sitter generate"
+  },
+  "bugs": {
+    "url": "https://github.com/rowscript/rowscript/issues"
+  },
+  "devDependencies": {
+    "node-gyp": "^8.1.0",
+    "tree-sitter-cli": "^0.20.0"
+  },
+  "dependencies": {
+    "nan": "^2.14.2"
+  }
+}

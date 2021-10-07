@@ -17,6 +17,7 @@ clap = { version = "3.0.0-beta.4", optional = true }
 
 [workspace]
 members = [
+    "packages/rowscript-compiler",
     "packages/rowscript-core",
-    "packages/rowscript-compiler"
+    "packages/rowscript-grammar"
 ]
