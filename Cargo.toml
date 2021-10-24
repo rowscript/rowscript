@@ -13,7 +13,7 @@ repository = "https://github.com/rowscript/rowscript"
 maintenance = { status = "Early stage" }
 
 [dependencies]
-clap = "3.0.0-beta.4"
+clap = "3.0.0-beta.5"
 rowscript-compiler = { path = "packages/rowscript-compiler" }
 
 [workspace]

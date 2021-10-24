@@ -4,4 +4,3 @@ bindings/
 src/
 build/
 binding.gyp
-Cargo.toml

@@ -1,18 +1,18 @@
 use rowscript_compiler as compiler;
 
-use clap::{AppSettings, Clap};
+use clap::Parser;
 
 use std::io::Read;
 use std::{fs, io};
 
-#[derive(Clap)]
-#[clap(setting = AppSettings::ColoredHelp, about = "RowScript programming language")]
+#[derive(Parser)]
+#[clap(about = "RowScript programming language")]
 struct Cli {
     #[clap(subcommand)]
     sub: Cmd,
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 enum Cmd {
     #[clap(about = "Build source files")]
     Build(Build),
@@ -21,13 +21,13 @@ enum Cmd {
     Fmt(Fmt),
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 struct Build {
     #[clap(required = true, index = 1, about = "Input source file")]
     file: String,
 }
 
-#[derive(Clap)]
+#[derive(Parser)]
 struct Fmt {
     #[clap(required = true, index = 1, about = "Input source file")]
     file: String,
