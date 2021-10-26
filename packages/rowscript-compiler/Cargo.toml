@@ -11,6 +11,7 @@ repository = "https://github.com/rowscript/rowscript"
 
 [dependencies]
 tree-sitter = "0.20.0"
+rowscript-core = { path = "../rowscript-core" }
 
 [build-dependencies]
 cc = "*"

@@ -3,7 +3,7 @@ use crate::basis::data::Ident;
 enum Type {
     Var(Ident),
     Arr(Vec<Type>),
-    Forall(Ident, Type),
+    Forall(Ident, Box<Type>),
     Prod(Vec<Type>),
     Coprod(Vec<Type>),
 }
@@ -11,15 +11,15 @@ enum Type {
 enum Term {
     Var(Ident),
 
-    Abs(Vec<(Ident, Type)>, Term),
+    Abs(Vec<(Ident, Type)>, Box<Term>),
     App(Vec<Term>),
 
-    TAbs(Vec<Ident>, Term),
+    TAbs(Vec<Ident>, Box<Term>),
     TApp(Vec<Term>),
 
     Cat(Vec<Term>),
-    Prj(Term, i32),
+    Prj(Box<Term>, i32),
 
-    Inj(Term, i32),
-    Case(Term, Vec<Term>),
+    Inj(Box<Term>, i32),
+    Case(Box<Term>, Vec<Term>),
 }

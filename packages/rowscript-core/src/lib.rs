@@ -1,3 +1,4 @@
 mod basis;
-mod presyntax;
+
+pub mod presyntax;
 mod syntax;

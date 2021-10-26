@@ -10,4 +10,4 @@ categories = ["development-tools"]
 repository = "https://github.com/rowscript/rowscript"
 
 [dependencies]
-tree-sitter = { version = "0.20.0", optional = true }
+tree-sitter = "0.20.0"

@@ -1,4 +1,4 @@
-use tree_sitter::{Language, Node, Parser};
+use tree_sitter::{Language, Node, Parser, Tree};
 
 use std::fmt::{Display, Formatter};
 
@@ -33,7 +33,7 @@ impl Display for ErrInfo {
     }
 }
 
-pub fn parse(src: String) -> Result<(), String> {
+pub fn parse(src: String) -> Result<Tree, String> {
     let mut parser = Parser::new();
     let lang = unsafe { tree_sitter_rowscript() };
     parser.set_language(lang).unwrap();
@@ -41,14 +41,11 @@ pub fn parse(src: String) -> Result<(), String> {
     match parser.parse(src, None) {
         Some(tree) => {
             let node = tree.root_node();
-
-            dbg!(node.to_sexp());
-
             if node.has_error() {
+                // TODO: Better error diagnostics.
                 return Err(ErrInfo::new_string(&node, "syntax error"));
             }
-
-            Ok(())
+            Ok(tree)
         }
         None => Err("parse error".to_string()),
     }
