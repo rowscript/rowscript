@@ -1,9 +1,10 @@
-use rowscript_core::presyntax::Term;
+use crate::surf::Surf;
 
 mod parsing;
+mod surf;
 
 pub fn build(src: String) -> Result<(), String> {
-    parsing::parse(src).map(Term::new).map(|t| {
+    parsing::parse(src).map(|s| s.to_presyntax()).map(|t| {
         dbg!(t);
     })
 }

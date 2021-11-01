@@ -1,36 +1,12 @@
-use rowscript_core::basis::data::Surf;
+use crate::parsing::diag::ErrInfo;
+use crate::surf::Surf;
 use std::fmt::{Display, Formatter};
 use tree_sitter::{Language, Node, Parser, Tree};
 
+mod diag;
+
 extern "C" {
     fn tree_sitter_rowscript() -> Language;
-}
-
-struct ErrInfo {
-    line: usize,
-    col: usize,
-    msg: &'static str,
-}
-
-impl ErrInfo {
-    fn new(node: &Node, msg: &'static str) -> ErrInfo {
-        let pt = node.start_position();
-        ErrInfo {
-            line: pt.row + 1,
-            col: pt.column + 1,
-            msg,
-        }
-    }
-
-    fn new_string(node: &Node, msg: &'static str) -> String {
-        Self::new(node, msg).to_string()
-    }
-}
-
-impl Display for ErrInfo {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}: {}", self.line, self.col, self.msg)
-    }
 }
 
 pub fn parse(src: String) -> Result<Surf, String> {
