@@ -41,7 +41,7 @@ module.exports = grammar({
         'declaration',
         seq(
           'function',
-          optional(seq('<', $.typeExpression, '>')),
+          optional($.typeSchemeBinders),
           field('name', $.identifier),
           $.declarationSignature,
           optional(seq(':', $.typeExpression)),
@@ -55,7 +55,7 @@ module.exports = grammar({
         seq(
           'class',
           field('name', $.identifier),
-          optional(seq('<', $.typeExpression, '>')),
+          optional($.typeSchemeBinders),
           optional($.classHeritage),
           field('body', $.classBody)
         )
@@ -65,7 +65,7 @@ module.exports = grammar({
       seq(
         'extends',
         field('base', $.identifier),
-        optional(seq('<', $.typeExpression, '>'))
+        optional($.typeSchemeBinders)
       ),
 
     classBody: $ =>
@@ -141,14 +141,20 @@ module.exports = grammar({
     switchStatement: $ =>
       seq(
         'switch',
-        field('value', $.parenthesizedExpression, field('body', $.switchBody))
+        field('value', $.parenthesizedExpression),
+        field('body', $.switchBody)
       ),
 
     switchBody: $ =>
       seq('{', repeat(choice($.switchCase, $.switchDefault)), '}'),
 
     switchCase: $ =>
-      seq('case', field('value', $.expression, ':', repeat($.statement))),
+      seq(
+        'case',
+        field('value', $.expression),
+        ':',
+        field('body', repeat($.statement))
+      ),
 
     switchDefault: $ => seq('default', ':', repeat($.statement)),
 
@@ -183,6 +189,8 @@ module.exports = grammar({
     returnStatement: $ => seq('return', optional($.expression)),
 
     throwStatement: $ => seq('throw', $.expression),
+
+    typeSchemeBinders: $ => seq('<', optional(commaSep($.identifier)), '>'),
 
     typeScheme: $ =>
       seq(optional(seq(repeat1($.identifier), '=>')), $.typeExpression),
@@ -234,10 +242,10 @@ module.exports = grammar({
 
     tupleType: $ => choice('()', seq('(', commaSep($.typeExpression), ')')),
 
-    stringType: $ => 'string',
-    numberType: $ => 'number',
-    booleanType: $ => 'boolean',
-    bigintType: $ => 'bigint',
+    stringType: () => 'string',
+    numberType: () => 'number',
+    booleanType: () => 'boolean',
+    bigintType: () => 'bigint',
 
     expression: $ =>
       choice(
@@ -392,14 +400,14 @@ module.exports = grammar({
         seq(field('function', $.expression), field('arguments', $.arguments))
       ),
 
-    identifier: $ => token(seq(ALPHA, repeat(ALNUM))),
+    identifier: () => token(seq(ALPHA, repeat(ALNUM))),
 
-    this: $ => 'this',
-    super: $ => 'super',
-    true: $ => 'true',
-    false: $ => 'false',
+    this: () => 'this',
+    super: () => 'super',
+    true: () => 'true',
+    false: () => 'false',
 
-    number: $ => {
+    number: () => {
       const hexLiteral = seq(choice('0x', '0X'), /[\da-fA-F](_?[\da-fA-F])*/)
 
       const decimalDigits = /\d(_?\d)*/
@@ -467,11 +475,11 @@ module.exports = grammar({
         )
       ),
 
-    unescapedDoubleStringFragment: $ => token.immediate(prec(1, /[^"\\]+/)),
+    unescapedDoubleStringFragment: () => token.immediate(prec(1, /[^"\\]+/)),
 
-    unescapedSingleStringFragment: $ => token.immediate(prec(1, /[^'\\]+/)),
+    unescapedSingleStringFragment: () => token.immediate(prec(1, /[^'\\]+/)),
 
-    escapeSequence: $ =>
+    escapeSequence: () =>
       token.immediate(
         seq(
           '\\',
@@ -493,7 +501,7 @@ module.exports = grammar({
         optional(field('flags', $.regexFlags))
       ),
 
-    regexPattern: $ =>
+    regexPattern: () =>
       token.immediate(
         prec(
           -1,
@@ -507,9 +515,9 @@ module.exports = grammar({
         )
       ),
 
-    regexFlags: $ => token.immediate(/[a-z]+/),
+    regexFlags: () => token.immediate(/[a-z]+/),
 
-    comment: $ =>
+    comment: () =>
       token(choice(seq('//', /.*/), seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/')))
   }
 })
