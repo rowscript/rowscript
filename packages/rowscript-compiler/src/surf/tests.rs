@@ -1,23 +1,23 @@
-use crate::parsing::parse;
+use crate::surf::Surf;
 
 #[test]
 fn it_parses_empty_function() {
-    parse("function foo(){}".into()).unwrap();
+    Surf::new("function foo(){}".into()).unwrap();
 }
 
 #[test]
 fn it_parses_annotated_function() {
-    parse("function foo(n: int): int { return 42 }".into()).unwrap();
+    Surf::new("function foo(n: int): int { return 42 }".into()).unwrap();
 }
 
 #[test]
 fn it_cannot_parse_no_return_function() {
-    parse("function foo(): int { return 42; }".into()).unwrap_err();
+    Surf::new("function foo(): int { return 42; }".into()).unwrap_err();
 }
 
 #[test]
 fn it_parses_class_declaration() {
-    parse(
+    Surf::new(
         "
 class Derived<A> extends Base<B> {
   constructor() {
