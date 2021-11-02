@@ -1,6 +1,7 @@
 use crate::surf::diag::ErrInfo;
 use rowscript_core::basis::data::Ident;
 use rowscript_core::presyntax::data::Term::{Let, Unit, Var};
+use rowscript_core::presyntax::data::Type::Arr;
 use rowscript_core::presyntax::data::{QualifiedType, Scheme, Term, Type};
 use tree_sitter::{Language, Node, Parser, Tree};
 
@@ -68,32 +69,34 @@ impl Surf {
     fn fn_decl(&self, node: Node) -> Term {
         let name = node.child_by_field_name("name").unwrap();
 
-        let mut scheme = Scheme {
-            type_vars: vec![],
-            row_vars: vec![],
-            qualified: QualifiedType {
-                preds: vec![],
-                typ: Type::Unit,
-            },
-        };
-
-        if let Some(s) = node.child_by_field_name("scheme") {
-            // TODO: Determine type/row variables.
-            scheme.type_vars = s
-                .named_children(&mut s.walk())
-                .map(|n| Ident {
-                    pt: n.start_position(),
-                    text: self.text(&n),
-                })
-                .collect();
-        }
-
         Let(
             Ident {
                 pt: name.start_position(),
                 text: self.text(&name),
             },
-            scheme,
+            Scheme {
+                type_vars: node
+                    .child_by_field_name("scheme")
+                    .map(|n| {
+                        n.named_children(&mut n.walk())
+                            .map(|n| Ident {
+                                pt: n.start_position(),
+                                text: self.text(&n),
+                            })
+                            .collect()
+                    })
+                    .unwrap_or(Default::default()),
+                // TODO: Determine type/row variables.
+                row_vars: vec![],
+                qualified: QualifiedType {
+                    preds: vec![],
+                    typ: Arr(vec![
+                        self.decl_sig(node.child_by_field_name("sig").unwrap()),
+                        node.child_by_field_name("ret")
+                            .map_or(Type::Unit, |n| self.type_expr(n)),
+                    ]),
+                },
+            },
             // TODO
             Box::new(Var(Ident {
                 pt: node.start_position(),
@@ -104,6 +107,11 @@ impl Surf {
     }
 
     fn decl_sig(&self, node: Node) -> Type {
+        // TODO
+        unimplemented!()
+    }
+
+    fn type_expr(&self, node: Node) -> Type {
         // TODO
         unimplemented!()
     }

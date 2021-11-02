@@ -44,7 +44,7 @@ module.exports = grammar({
           field('name', $.identifier),
           field('scheme', optional($.typeSchemeBinders)),
           field('sig', $.declarationSignature),
-          field('returnType', optional(seq(':', $.typeExpression))),
+          field('ret', optional(seq(':', $.typeExpression))),
           field('field', $.statementBlock)
         )
       ),
