@@ -43,41 +43,21 @@ impl Surf {
         self.src[node.start_byte()..node.end_byte()].into()
     }
 
-    pub fn to_presyntax(&self) -> Result<Term, String> {
+    pub fn to_presyntax(&self) -> Term {
         self.program(self.tree.root_node())
     }
 
-    fn program(&self, node: Node) -> Result<Term, String> {
-        if node.kind() != "program" {
-            return Err(format!(
-                "syntax error on `program` node at {}",
-                node.start_position()
-            ));
-        }
-
+    fn program(&self, node: Node) -> Term {
         node.children(&mut node.walk())
             .map(|n| self.declaration(n))
             .reduce(|a, b| match a {
-                Ok(x) => match x {
-                    Let(name, typ, exp, _) => match b {
-                        Ok(y) => Ok(Let(name, typ, exp, Box::from(y))),
-                        Err(_) => b,
-                    },
-                    _ => unreachable!(),
-                },
-                Err(_) => a,
+                Let(name, typ, exp, _) => Let(name, typ, exp, Box::from(b)),
+                _ => unreachable!(),
             })
-            .unwrap_or(Ok(Unit))
+            .unwrap_or(Unit)
     }
 
-    fn declaration(&self, node: Node) -> Result<Term, String> {
-        if node.kind() != "declaration" {
-            return Err(format!(
-                "syntax error on `declaration` node at {}",
-                node.start_position()
-            ));
-        }
-
+    fn declaration(&self, node: Node) -> Term {
         let decl = node.child(0).unwrap();
         match decl.kind() {
             "functionDeclaration" => self.fn_decl(decl),
@@ -85,28 +65,46 @@ impl Surf {
         }
     }
 
-    fn fn_decl(&self, node: Node) -> Result<Term, String> {
+    fn fn_decl(&self, node: Node) -> Term {
         let name = node.child_by_field_name("name").unwrap();
 
-        Ok(Let(
+        let mut scheme = Scheme {
+            type_vars: vec![],
+            row_vars: vec![],
+            qualified: QualifiedType {
+                preds: vec![],
+                typ: Type::Unit,
+            },
+        };
+
+        if let Some(s) = node.child_by_field_name("scheme") {
+            // TODO: Determine type/row variables.
+            scheme.type_vars = s
+                .named_children(&mut s.walk())
+                .map(|n| Ident {
+                    pt: n.start_position(),
+                    text: self.text(&n),
+                })
+                .collect();
+        }
+
+        Let(
             Ident {
                 pt: name.start_position(),
                 text: self.text(&name),
             },
+            scheme,
             // TODO
-            Scheme {
-                type_vars: vec![],
-                row_vars: vec![],
-                qualified: QualifiedType {
-                    preds: vec![],
-                    typ: Type::Unit,
-                },
-            },
             Box::new(Var(Ident {
                 pt: node.start_position(),
                 text: "x".into(),
             })),
             Box::from(Unit),
-        ))
+        )
+    }
+
+    fn decl_sig(&self, node: Node) -> Type {
+        // TODO
+        unimplemented!()
     }
 }

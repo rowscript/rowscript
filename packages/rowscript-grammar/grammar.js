@@ -41,10 +41,10 @@ module.exports = grammar({
         'declaration',
         seq(
           'function',
-          optional($.typeSchemeBinders),
           field('name', $.identifier),
-          $.declarationSignature,
-          optional(seq(':', $.typeExpression)),
+          field('scheme', optional($.typeSchemeBinders)),
+          field('sig', $.declarationSignature),
+          field('returnType', optional(seq(':', $.typeExpression))),
           field('field', $.statementBlock)
         )
       ),

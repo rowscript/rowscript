@@ -23,6 +23,10 @@ pub enum Type {
     Row(Label, Box<Type>),
 
     Unit,
+    String,
+    Number,
+    Boolean,
+    BigInt,
 }
 
 #[derive(Debug)]
