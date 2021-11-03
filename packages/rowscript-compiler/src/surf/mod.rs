@@ -68,6 +68,7 @@ impl Surf {
 
     fn fn_decl(&self, node: Node) -> Term {
         let name = node.child_by_field_name("name").unwrap();
+        let (arg_type, arg_idents) = self.decl_sig(node.child_by_field_name("sig").unwrap());
 
         Let(
             Ident {
@@ -91,27 +92,54 @@ impl Surf {
                 qualified: QualifiedType {
                     preds: vec![],
                     typ: Arr(vec![
-                        self.decl_sig(node.child_by_field_name("sig").unwrap()),
+                        arg_type,
                         node.child_by_field_name("ret")
                             .map_or(Type::Unit, |n| self.type_expr(n)),
                     ]),
                 },
             },
             // TODO
-            Box::new(Var(Ident {
-                pt: node.start_position(),
-                text: "x".into(),
-            })),
+            Box::from(self.stmt_blk(node.child_by_field_name("body").unwrap())),
             Box::from(Unit),
         )
     }
 
-    fn decl_sig(&self, node: Node) -> Type {
+    fn decl_sig(&self, node: Node) -> (Type, Vec<Ident>) {
+        match node.named_child_count() {
+            0 => (Type::Unit, Default::default()),
+            1 => {
+                let arg = node.named_child(0).unwrap();
+                (
+                    self.type_expr(arg),
+                    vec![Ident {
+                        pt: arg.start_position(),
+                        text: self.text(&arg),
+                    }],
+                )
+            }
+            _ => {
+                let mut types = vec![];
+                let mut args = vec![];
+                node.named_children(&mut node.walk()).for_each(|n| {
+                    let id = n.child(0).unwrap();
+                    let typ = n.child(2).unwrap();
+                    args.push(Ident {
+                        pt: id.start_position(),
+                        text: self.text(&id),
+                    });
+                    types.push(self.type_expr(typ));
+                });
+                (Type::Tuple(types), args)
+            }
+        }
+    }
+
+    fn type_expr(&self, node: Node) -> Type {
         // TODO
         unimplemented!()
     }
 
-    fn type_expr(&self, node: Node) -> Type {
+    fn stmt_blk(&self, node: Node) -> Term {
         // TODO
         unimplemented!()
     }

@@ -45,7 +45,7 @@ module.exports = grammar({
           field('scheme', optional($.typeSchemeBinders)),
           field('sig', $.declarationSignature),
           field('ret', optional(seq(':', $.typeExpression))),
-          field('field', $.statementBlock)
+          field('body', $.statementBlock)
         )
       ),
 
@@ -109,7 +109,7 @@ module.exports = grammar({
     declarationSignature: $ =>
       seq('(', optional(commaSep($.formalParameter)), ')'),
 
-    formalParameter: $ => seq($.identifier, seq(':', $.typeExpression)),
+    formalParameter: $ => seq($.identifier, ':', $.typeExpression),
 
     statementBlock: $ => prec.right(seq('{', optional($.statement), '}')),
 

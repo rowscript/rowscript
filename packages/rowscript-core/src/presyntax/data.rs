@@ -22,6 +22,8 @@ pub enum Type {
     Sigma(Vec<Row>),
     Row(Label, Box<Type>),
 
+    Tuple(Vec<Type>),
+
     Unit,
     String,
     Number,
