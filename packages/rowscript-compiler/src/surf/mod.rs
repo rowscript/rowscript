@@ -44,6 +44,13 @@ impl Surf {
         self.src[node.start_byte()..node.end_byte()].into()
     }
 
+    fn ident(&self, node: &Node) -> Ident {
+        Ident {
+            pt: node.start_position(),
+            text: self.text(node),
+        }
+    }
+
     pub fn to_presyntax(&self) -> Term {
         self.program(self.tree.root_node())
     }
@@ -71,19 +78,13 @@ impl Surf {
         let (arg_type, arg_idents) = self.decl_sig(node.child_by_field_name("sig").unwrap());
 
         Let(
-            Ident {
-                pt: name.start_position(),
-                text: self.text(&name),
-            },
+            self.ident(&name),
             Scheme {
                 type_vars: node
                     .child_by_field_name("scheme")
                     .map(|n| {
                         n.named_children(&mut n.walk())
-                            .map(|n| Ident {
-                                pt: n.start_position(),
-                                text: self.text(&n),
-                            })
+                            .map(|n| self.ident(&n))
                             .collect()
                     })
                     .unwrap_or(Default::default()),
@@ -109,13 +110,7 @@ impl Surf {
             0 => (Type::Unit, Default::default()),
             1 => {
                 let arg = node.named_child(0).unwrap();
-                (
-                    self.type_expr(arg),
-                    vec![Ident {
-                        pt: arg.start_position(),
-                        text: self.text(&arg),
-                    }],
-                )
+                (self.type_expr(arg), vec![self.ident(&arg)])
             }
             _ => {
                 let mut types = vec![];
@@ -123,10 +118,7 @@ impl Surf {
                 node.named_children(&mut node.walk()).for_each(|n| {
                     let id = n.child(0).unwrap();
                     let typ = n.child(2).unwrap();
-                    args.push(Ident {
-                        pt: id.start_position(),
-                        text: self.text(&id),
-                    });
+                    args.push(self.ident(&id));
                     types.push(self.type_expr(typ));
                 });
                 (Type::Tuple(types), args)
