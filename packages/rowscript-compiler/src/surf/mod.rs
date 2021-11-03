@@ -100,7 +100,7 @@ impl Surf {
                 },
             },
             // TODO
-            Box::from(self.stmt_blk(node.child_by_field_name("body").unwrap())),
+            Box::from(self.stmt_blk(node.child_by_field_name("body").unwrap(), arg_idents)),
             Box::from(Unit),
         )
     }
@@ -127,11 +127,21 @@ impl Surf {
     }
 
     fn type_expr(&self, node: Node) -> Type {
+        match node.named_child_count() {
+            1 => self.type_term(node.named_child(0).unwrap()),
+            _ => Arr(node
+                .named_children(&mut node.walk())
+                .map(|n| self.type_term(n))
+                .collect::<Vec<Type>>()),
+        }
+    }
+
+    fn type_term(&self, node: Node) -> Type {
         // TODO
         unimplemented!()
     }
 
-    fn stmt_blk(&self, node: Node) -> Term {
+    fn stmt_blk(&self, node: Node, idents: Vec<Ident>) -> Term {
         // TODO
         unimplemented!()
     }

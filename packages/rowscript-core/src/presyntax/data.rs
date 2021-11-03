@@ -22,6 +22,7 @@ pub enum Type {
     Sigma(Vec<Row>),
     Row(Label, Box<Type>),
 
+    /// Sugar for records.
     Tuple(Vec<Type>),
 
     Unit,

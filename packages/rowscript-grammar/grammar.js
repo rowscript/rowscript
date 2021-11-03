@@ -193,7 +193,7 @@ module.exports = grammar({
     typeSchemeBinders: $ => seq('<', optional(commaSep($.identifier)), '>'),
 
     typeScheme: $ =>
-      seq(optional(seq(repeat1($.identifier), '=>')), $.typeExpression),
+      seq(optional($.typeSchemeBinders), $.typeExpression),
 
     typeExpression: $ => seq($.typeTerm, repeat(seq('->', $.typeTerm))),
 
