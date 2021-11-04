@@ -219,7 +219,7 @@ module.exports = grammar({
           choice(
             '...',
             seq(
-              commaSep($.identifier, ':', $.typeExpression),
+              commaSep(seq($.identifier, ':', $.typeExpression)),
               optional(seq(',', '...'))
             )
           ),

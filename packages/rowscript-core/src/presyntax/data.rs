@@ -10,22 +10,26 @@ pub enum Dir {
 
 #[derive(Debug)]
 pub struct Row {
-    label: Label,
-    typ: Type,
+    pub label: Label,
+    pub typ: Type,
 }
 
 #[derive(Debug)]
 pub enum Type {
     Var(Ident),
-    Arr(Vec<Type>),
-    Pi(Vec<Row>),
-    Sigma(Vec<Row>),
+    Arrow(Vec<Type>),
+    Record(Vec<Row>, bool),
+    Variant(Vec<Row>, bool),
     Row(Label, Box<Type>),
+
+    Array(Box<Type>),
 
     /// Sugar for records.
     Tuple(Vec<Type>),
 
+    /// Sugar for empty records/tuples.
     Unit,
+
     String,
     Number,
     Boolean,
