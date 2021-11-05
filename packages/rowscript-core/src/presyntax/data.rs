@@ -30,9 +30,9 @@ pub enum Type {
     /// Sugar for empty records/tuples.
     Unit,
 
-    String,
-    Number,
-    Boolean,
+    Str,
+    Num,
+    Bool,
     BigInt,
 }
 
@@ -62,7 +62,7 @@ pub enum Term {
     Abs(Vec<Ident>, Box<Term>),
     App(Vec<Term>),
 
-    Let(Ident, Scheme, Box<Term>, Box<Term>),
+    Let(Ident, Option<Scheme>, Box<Term>, Box<Term>),
 
     Rec(Label, Box<Term>),
     Sel(Box<Term>, Label),
@@ -74,4 +74,8 @@ pub enum Term {
     Case(Vec<Term>),
 
     Unit,
+    Str(String),
+    Num(String),
+    Bool(bool),
+    BigInt(String),
 }

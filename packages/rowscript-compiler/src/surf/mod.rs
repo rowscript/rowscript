@@ -1,6 +1,6 @@
 use crate::surf::diag::ErrInfo;
 use rowscript_core::basis::data::Ident;
-use rowscript_core::presyntax::data::Term::{Abs, Let, Unit, Var};
+use rowscript_core::presyntax::data::Term::{Abs, Bool, Let, Num, Str, Unit, Var};
 use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, Term, Type};
 use tree_sitter::{Language, Node, Parser, Tree};
 
@@ -20,7 +20,7 @@ macro_rules! row_type {
             1 => $e(Row::Var($self.ident($node.named_child(0).unwrap()))),
             _ => {
                 let mut rows = vec![];
-                for i in 0..$node.named_child_count() / 2 {
+                for i in (0..$node.named_child_count()).step_by(2) {
                     let ident = $node.named_child(i).unwrap();
                     let typ = $node.named_child(i + 1).unwrap();
                     rows.push(($self.ident(ident), $self.type_expr(typ)));
@@ -96,7 +96,7 @@ impl Surf {
 
         Let(
             self.ident(name),
-            Scheme {
+            Some(Scheme {
                 type_vars: node
                     .child_by_field_name("scheme")
                     .map(|n| {
@@ -115,7 +115,7 @@ impl Surf {
                             .map_or(Type::Unit, |n| self.type_expr(n)),
                     ]),
                 },
-            },
+            }),
             Box::from(self.stmt_blk(node.child_by_field_name("body").unwrap(), arg_idents)),
             Box::from(Unit),
         )
@@ -162,9 +162,9 @@ impl Surf {
             "variantType" => self.variant_type(tm),
             "arrayType" => self.array_type(tm),
             "tupleType" => self.tuple_type(tm),
-            "stringType" => Type::String,
-            "numberType" => Type::Number,
-            "booleanType" => Type::Boolean,
+            "stringType" => Type::Str,
+            "numberType" => Type::Num,
+            "booleanType" => Type::Bool,
             "bigintType" => Type::BigInt,
             "identifier" => Type::Var(self.ident(tm)),
             _ => unreachable!(),
@@ -245,6 +245,86 @@ impl Surf {
     }
 
     fn expr(&self, node: Node) -> Term {
+        let e = node.child(0).unwrap();
+        match e.kind() {
+            "primaryExpression" => self.primary_expr(e),
+            "unaryExpression" => self.unary_expr(e),
+            "binaryExpression" => self.binary_expr(e),
+            "ternaryExpression" => self.ternary_expr(e),
+            "nweExpression" => self.new_expr(e),
+            _ => unreachable!(),
+        }
+    }
+
+    fn primary_expr(&self, node: Node) -> Term {
+        let e = node.child(0).unwrap();
+        match e.kind() {
+            "subscriptExpression" => self.subs_expr(e),
+            "memberExpression" => self.member_expr(e),
+            "parenthesizedExpression" => self.expr(e.named_child(0).unwrap()),
+            "identifier" => Var(self.ident(e)),
+            // TODO
+            "this" => unimplemented!(),
+            // TODO
+            "super" => unimplemented!(),
+            "number" => Num(self.text(&e)),
+            "string" | "regex" => Str(self.text(&e)),
+            "false" => Bool(false),
+            "true" => Bool(true),
+            "object" => self.obj_expr(e),
+            "array" => self.array_expr(e),
+            "arrowFunction" => self.arrow_expr(e),
+            "callExpression" => self.call_expr(e),
+            _ => unreachable!(),
+        }
+    }
+
+    fn subs_expr(&self, node: Node) -> Term {
+        // TODO
+        unimplemented!()
+    }
+
+    fn member_expr(&self, node: Node) -> Term {
+        // TODO
+        unimplemented!()
+    }
+
+    fn obj_expr(&self, node: Node) -> Term {
+        // TODO
+        unimplemented!()
+    }
+
+    fn array_expr(&self, node: Node) -> Term {
+        // TODO
+        unimplemented!()
+    }
+
+    fn arrow_expr(&self, node: Node) -> Term {
+        // TODO
+        unimplemented!()
+    }
+
+    fn call_expr(&self, node: Node) -> Term {
+        // TODO
+        unimplemented!()
+    }
+
+    fn unary_expr(&self, node: Node) -> Term {
+        // TODO
+        unimplemented!()
+    }
+
+    fn binary_expr(&self, node: Node) -> Term {
+        // TODO
+        unimplemented!()
+    }
+
+    fn ternary_expr(&self, node: Node) -> Term {
+        // TODO
+        unimplemented!()
+    }
+
+    fn new_expr(&self, node: Node) -> Term {
         // TODO
         unimplemented!()
     }

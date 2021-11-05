@@ -97,7 +97,12 @@ module.exports = grammar({
     lexicalDeclaration: $ =>
       seq('let', commaSep($.variableDeclarator), ';', $.statement),
 
-    variableDeclarator: $ => seq(field('name', $.identifier), $._initializer),
+    variableDeclarator: $ =>
+      seq(
+        field('name', $.identifier),
+        optional(seq(':', $.typeExpression)),
+        $._initializer
+      ),
 
     _initializer: $ => seq('=', field('value', $.expression)),
 
