@@ -1,6 +1,6 @@
 use crate::surf::diag::ErrInfo;
 use rowscript_core::basis::data::Ident;
-use rowscript_core::presyntax::data::Term::{Abs, Bool, Let, Num, Str, Unit, Var};
+use rowscript_core::presyntax::data::Term::{Abs, App, Bool, If, Let, Num, Str, Unit, Var};
 use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, Term, Type};
 use tree_sitter::{Language, Node, Parser, Tree};
 
@@ -211,13 +211,38 @@ impl Surf {
     }
 
     fn lex_decl(&self, node: Node) -> Term {
-        // TODO
-        unimplemented!()
+        let stmt = self.stmt(node.named_children(&mut node.walk()).last().unwrap());
+        (0..node.named_child_count() - 1)
+            .map(|i| node.named_child(i).unwrap())
+            .map(|n| self.var_decl(n))
+            .rfold(stmt, |acc, a| match a {
+                Let(name, typ, exp, _) => Let(name, typ, exp, Box::from(acc)),
+                _ => unreachable!(),
+            })
+    }
+
+    fn var_decl(&self, node: Node) -> Term {
+        let name = self.ident(node.child_by_field_name("name").unwrap());
+        let typ = node
+            .child_by_field_name("type")
+            .map(|n| Scheme::new_schemeless(self.type_expr(n)));
+        let val = self.expr(node.child_by_field_name("value").unwrap());
+        Let(name, typ, Box::from(val), Box::from(Unit))
     }
 
     fn if_stmt(&self, node: Node) -> Term {
-        // TODO
-        unimplemented!()
+        let cond = node
+            .child_by_field_name("cond")
+            .unwrap()
+            .named_child(0)
+            .unwrap();
+        let then = node.child_by_field_name("then").unwrap();
+        let el = node.child_by_field_name("else").unwrap();
+        If(
+            Box::from(self.expr(cond)),
+            Box::from(self.stmt_blk(then, vec![])),
+            Box::from(self.stmt_blk(el, vec![])),
+        )
     }
 
     fn switch_stmt(&self, node: Node) -> Term {

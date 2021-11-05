@@ -55,6 +55,16 @@ pub struct Scheme {
     pub qualified: QualifiedType,
 }
 
+impl Scheme {
+    pub fn new_schemeless(typ: Type) -> Scheme {
+        Scheme {
+            type_vars: vec![],
+            row_vars: vec![],
+            qualified: QualifiedType { preds: vec![], typ },
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Term {
     Var(Ident),
@@ -78,4 +88,7 @@ pub enum Term {
     Num(String),
     Bool(bool),
     BigInt(String),
+
+    /// Eliminator for booleans.
+    If(Box<Term>, Box<Term>, Box<Term>),
 }

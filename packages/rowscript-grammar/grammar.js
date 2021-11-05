@@ -48,7 +48,7 @@ module.exports = grammar({
           field('name', $.identifier),
           field('scheme', optional($.typeSchemeBinders)),
           field('sig', $.declarationSignature),
-          field('ret', optional(seq(':', $.typeExpression))),
+          optional(seq(':', field('ret', $.typeExpression))),
           field('body', $.statementBlock)
         )
       ),
@@ -100,7 +100,7 @@ module.exports = grammar({
     variableDeclarator: $ =>
       seq(
         field('name', $.identifier),
-        optional(seq(':', $.typeExpression)),
+        optional(seq(':', field('type', $.typeExpression))),
         $._initializer
       ),
 
@@ -141,11 +141,10 @@ module.exports = grammar({
           'if',
           field('cond', $.parenthesizedExpression),
           field('then', $.statementBlock),
-          optional(field('else', $.elseClause))
+          'else',
+          field('else', $.statementBlock),
         )
       ),
-
-    elseClause: $ => seq('else', $.statementBlock),
 
     switchStatement: $ =>
       seq(
