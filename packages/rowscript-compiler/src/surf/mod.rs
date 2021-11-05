@@ -1,6 +1,6 @@
 use crate::surf::diag::ErrInfo;
 use rowscript_core::basis::data::Ident;
-use rowscript_core::presyntax::data::Term::{Let, Unit, Var};
+use rowscript_core::presyntax::data::Term::{Abs, Let, Unit, Var};
 use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, Term, Type};
 use tree_sitter::{Language, Node, Parser, Tree};
 
@@ -11,6 +11,24 @@ mod tests;
 
 extern "C" {
     fn tree_sitter_rowscript() -> Language;
+}
+
+macro_rules! row_type {
+    ($self:ident,$e:expr,$node:ident) => {
+        match $node.named_child_count() {
+            0 => $e(Row::Labeled(vec![])),
+            1 => $e(Row::Var($self.ident($node.named_child(0).unwrap()))),
+            _ => {
+                let mut rows = vec![];
+                for i in 0..$node.named_child_count() / 2 {
+                    let ident = $node.named_child(i).unwrap();
+                    let typ = $node.named_child(i + 1).unwrap();
+                    rows.push(($self.ident(ident), $self.type_expr(typ)));
+                }
+                $e(Row::Labeled(rows))
+            }
+        }
+    };
 }
 
 /// Surface syntax.
@@ -98,7 +116,6 @@ impl Surf {
                     ]),
                 },
             },
-            // TODO
             Box::from(self.stmt_blk(node.child_by_field_name("body").unwrap(), arg_idents)),
             Box::from(Unit),
         )
@@ -155,37 +172,79 @@ impl Surf {
     }
 
     fn record_type(&self, node: Node) -> Type {
-        if node.child(0).unwrap().kind() == "{}" {
-            return Type::Record(Row::Labeled(vec![]));
-        }
-        if node.named_child_count() == 1 {
-            return Type::Record(Row::Var(self.ident(node.named_child(0).unwrap())));
-        }
-        let mut rows = vec![];
-        for i in 0..node.named_child_count() / 2 {
-            let ident = node.named_child(i).unwrap();
-            let typ = node.named_child(i + 1).unwrap();
-            rows.push((self.ident(ident), self.type_expr(typ)));
-        }
-        Type::Record(Row::Labeled(rows))
+        row_type!(self, Type::Record, node)
     }
 
     fn variant_type(&self, node: Node) -> Type {
-        // TODO
-        unimplemented!()
+        row_type!(self, Type::Variant, node)
     }
 
     fn array_type(&self, node: Node) -> Type {
-        // TODO
-        unimplemented!()
+        Type::Array(Box::from(self.type_expr(node.named_child(0).unwrap())))
     }
 
     fn tuple_type(&self, node: Node) -> Type {
+        Type::Tuple(
+            node.named_children(&mut node.walk())
+                .map(|n| self.type_expr(n))
+                .collect(),
+        )
+    }
+
+    fn stmt_blk(&self, node: Node, idents: Vec<Ident>) -> Term {
+        node.named_child(0)
+            .map_or_else(|| Abs(idents, Box::from(Unit)), |n| self.stmt(n))
+    }
+
+    fn stmt(&self, node: Node) -> Term {
+        let s = node.child(0).unwrap();
+        match s.kind() {
+            "lexicalDeclaration" => self.lex_decl(s),
+            "ifStatement" => self.if_stmt(s),
+            "switchStatement" => self.switch_stmt(s),
+            "tryStatement" => self.try_stmt(s),
+            "doStatement" => self.do_stmt(s),
+            "returnStatement" => self.ret_stmt(s),
+            "throwStatement" => self.throw_stmt(s),
+            _ => unreachable!(),
+        }
+    }
+
+    fn lex_decl(&self, node: Node) -> Term {
         // TODO
         unimplemented!()
     }
 
-    fn stmt_blk(&self, node: Node, idents: Vec<Ident>) -> Term {
+    fn if_stmt(&self, node: Node) -> Term {
+        // TODO
+        unimplemented!()
+    }
+
+    fn switch_stmt(&self, node: Node) -> Term {
+        // TODO
+        unimplemented!()
+    }
+
+    fn try_stmt(&self, node: Node) -> Term {
+        // TODO
+        unimplemented!()
+    }
+
+    fn do_stmt(&self, node: Node) -> Term {
+        // TODO
+        unimplemented!()
+    }
+
+    fn ret_stmt(&self, node: Node) -> Term {
+        node.named_child(0).map_or(Unit, |n| self.expr(n))
+    }
+
+    fn throw_stmt(&self, node: Node) -> Term {
+        // TODO
+        unimplemented!()
+    }
+
+    fn expr(&self, node: Node) -> Term {
         // TODO
         unimplemented!()
     }

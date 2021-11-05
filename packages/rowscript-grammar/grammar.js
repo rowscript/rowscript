@@ -223,7 +223,11 @@ module.exports = grammar({
 
     variantType: $ =>
       prec.left(
-        choice('`|', sep('|', seq('`', $.identifier, $.typeExpression)))
+        choice(
+          '`|',
+          seq('`', $.identifier),
+          sep('|', seq('`', $.identifier, $.typeExpression))
+        )
       ),
 
     arrayType: $ => seq('[', $.typeExpression, ']'),
