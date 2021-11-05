@@ -91,4 +91,7 @@ pub enum Term {
 
     /// Eliminator for booleans.
     If(Box<Term>, Box<Term>, Box<Term>),
+
+    /// Type alias.
+    TLet(Ident, Scheme, Box<Term>),
 }

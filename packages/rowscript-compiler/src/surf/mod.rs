@@ -1,6 +1,6 @@
 use crate::surf::diag::ErrInfo;
 use rowscript_core::basis::data::Ident;
-use rowscript_core::presyntax::data::Term::{Abs, App, Bool, If, Let, Num, Str, Unit, Var};
+use rowscript_core::presyntax::data::Term::{Abs, App, Bool, If, Let, Num, Str, TLet, Unit, Var};
 use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, Term, Type};
 use tree_sitter::{Language, Node, Parser, Tree};
 
@@ -77,6 +77,8 @@ impl Surf {
             .map(|n| self.decl(n))
             .reduce(|a, b| match a {
                 Let(name, typ, exp, _) => Let(name, typ, exp, Box::from(b)),
+                // FIXME: Where is my function `foo`??????
+                TLet(name, typ, _) => TLet(name, typ, Box::from(b)),
                 _ => unreachable!(),
             })
             .unwrap_or(Unit)
@@ -86,8 +88,17 @@ impl Surf {
         let decl = node.child(0).unwrap();
         match decl.kind() {
             "functionDeclaration" => self.fn_decl(decl),
-            _ => unimplemented!(),
+            // TODO
+            "classDeclaration" => unimplemented!(),
+            "typeAliasDeclaration" => self.typ_alias_decl(decl),
+            _ => unreachable!(),
         }
+    }
+
+    fn typ_alias_decl(&self, node: Node) -> Term {
+        let name = self.ident(node.child_by_field_name("name").unwrap());
+        let typ = self.type_scheme(node.child_by_field_name("target").unwrap());
+        TLet(name, typ, Box::from(Unit))
     }
 
     fn fn_decl(&self, node: Node) -> Term {
@@ -141,6 +152,26 @@ impl Surf {
                 });
                 (Type::Tuple(types), args)
             }
+        }
+    }
+
+    fn type_scheme(&self, node: Node) -> Scheme {
+        // TODO: Determine type/row variables.
+        let mut type_vars = vec![];
+        if node.child_count() == 2 {
+            let b = node.child(0).unwrap();
+            type_vars = b
+                .named_children(&mut b.walk())
+                .map(|n| self.ident(n))
+                .collect();
+        }
+        Scheme {
+            type_vars,
+            row_vars: vec![],
+            qualified: QualifiedType {
+                preds: vec![],
+                typ: self.type_expr(node.children(&mut node.walk()).last().unwrap()),
+            },
         }
     }
 
