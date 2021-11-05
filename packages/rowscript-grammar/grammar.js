@@ -7,6 +7,10 @@ function commaSep(rule) {
   return seq(rule, repeat(seq(',', rule)))
 }
 
+function sep(s, rule) {
+  return seq(rule, repeat(seq(s, rule)))
+}
+
 module.exports = grammar({
   name: 'rowscript',
 
@@ -91,7 +95,7 @@ module.exports = grammar({
       seq(field('property', $._propertyName), optional($._initializer)),
 
     lexicalDeclaration: $ =>
-      seq('const', commaSep($.variableDeclarator), ';', $.statement),
+      seq('let', commaSep($.variableDeclarator), ';', $.statement),
 
     variableDeclarator: $ => seq(field('name', $.identifier), $._initializer),
 
@@ -192,10 +196,9 @@ module.exports = grammar({
 
     typeSchemeBinders: $ => seq('<', optional(commaSep($.identifier)), '>'),
 
-    typeScheme: $ =>
-      seq(optional($.typeSchemeBinders), $.typeExpression),
+    typeScheme: $ => seq(optional($.typeSchemeBinders), $.typeExpression),
 
-    typeExpression: $ => seq($.typeTerm, repeat(seq('->', $.typeTerm))),
+    typeExpression: $ => prec.right(sep('->', $.typeTerm)),
 
     typeTerm: $ =>
       choice(
@@ -214,28 +217,13 @@ module.exports = grammar({
     recordType: $ =>
       choice(
         '{}',
-        seq(
-          '{',
-          choice(
-            '...',
-            seq(
-              commaSep(seq($.identifier, ':', $.typeExpression)),
-              optional(seq(',', '...'))
-            )
-          ),
-          '}'
-        )
+        seq('{', $.identifier, '}'),
+        seq('{', commaSep(seq($.identifier, ':', $.typeExpression)), '}')
       ),
 
     variantType: $ =>
       prec.left(
-        choice(
-          seq('`|', optional('...')),
-          seq(
-            commaSep(seq('`', $.identifier), ':', $.typeExpression),
-            optional(seq('|', '...'))
-          )
-        )
+        choice('`|', sep('|', seq('`', $.identifier, $.typeExpression)))
       ),
 
     arrayType: $ => seq('[', $.typeExpression, ']'),

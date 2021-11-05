@@ -9,17 +9,17 @@ pub enum Dir {
 }
 
 #[derive(Debug)]
-pub struct Row {
-    pub label: Label,
-    pub typ: Type,
+pub enum Row {
+    Var(Ident),
+    Labeled(Vec<(Label, Type)>),
 }
 
 #[derive(Debug)]
 pub enum Type {
     Var(Ident),
     Arrow(Vec<Type>),
-    Record(Vec<Row>, bool),
-    Variant(Vec<Row>, bool),
+    Record(Row),
+    Variant(Row),
     Row(Label, Box<Type>),
 
     Array(Box<Type>),

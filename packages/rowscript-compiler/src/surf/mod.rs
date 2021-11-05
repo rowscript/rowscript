@@ -156,25 +156,18 @@ impl Surf {
 
     fn record_type(&self, node: Node) -> Type {
         if node.child(0).unwrap().kind() == "{}" {
-            return Type::Record(vec![], false);
+            return Type::Record(Row::Labeled(vec![]));
         }
-        if node.child(1).unwrap().kind() == "..." {
-            return Type::Record(vec![], true);
+        if node.named_child_count() == 1 {
+            return Type::Record(Row::Var(self.ident(node.named_child(0).unwrap())));
         }
         let mut rows = vec![];
-        for i in 0..node.named_child_count() {
+        for i in 0..node.named_child_count() / 2 {
             let ident = node.named_child(i).unwrap();
             let typ = node.named_child(i + 1).unwrap();
-            rows.push(Row {
-                label: self.ident(ident),
-                typ: self.type_expr(typ),
-            });
+            rows.push((self.ident(ident), self.type_expr(typ)));
         }
-        // FIXME: No `...` in the original paper! What you doing man?
-        Type::Record(
-            rows,
-            node.child(node.child_count() - 2).unwrap().kind() == "...",
-        )
+        Type::Record(Row::Labeled(rows))
     }
 
     fn variant_type(&self, node: Node) -> Type {
