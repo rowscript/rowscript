@@ -88,8 +88,7 @@ impl Surf {
         let decl = node.child(0).unwrap();
         match decl.kind() {
             "functionDeclaration" => self.fn_decl(decl),
-            // TODO
-            "classDeclaration" => unimplemented!(),
+            "classDeclaration" => todo!(),
             "typeAliasDeclaration" => self.typ_alias_decl(decl),
             _ => unreachable!(),
         }
@@ -277,18 +276,15 @@ impl Surf {
     }
 
     fn switch_stmt(&self, node: Node) -> Term {
-        // TODO
-        unimplemented!()
+        todo!()
     }
 
     fn try_stmt(&self, node: Node) -> Term {
-        // TODO
-        unimplemented!()
+        todo!()
     }
 
     fn do_stmt(&self, node: Node) -> Term {
-        // TODO
-        unimplemented!()
+        todo!()
     }
 
     fn ret_stmt(&self, node: Node) -> Term {
@@ -296,8 +292,7 @@ impl Surf {
     }
 
     fn throw_stmt(&self, node: Node) -> Term {
-        // TODO
-        unimplemented!()
+        todo!()
     }
 
     fn expr(&self, node: Node) -> Term {
@@ -319,10 +314,8 @@ impl Surf {
             "memberExpression" => self.member_expr(e),
             "parenthesizedExpression" => self.expr(e.named_child(0).unwrap()),
             "identifier" => Var(self.ident(e)),
-            // TODO
-            "this" => unimplemented!(),
-            // TODO
-            "super" => unimplemented!(),
+            "this" => todo!(),
+            "super" => todo!(),
             "number" => Num(self.text(&e)),
             "string" | "regex" => Str(self.text(&e)),
             "false" => Bool(false),
@@ -336,52 +329,42 @@ impl Surf {
     }
 
     fn subs_expr(&self, node: Node) -> Term {
-        // TODO
-        unimplemented!()
+        todo!()
     }
 
     fn member_expr(&self, node: Node) -> Term {
-        // TODO
-        unimplemented!()
+        todo!()
     }
 
     fn obj_expr(&self, node: Node) -> Term {
-        // TODO
-        unimplemented!()
+        todo!()
     }
 
     fn array_expr(&self, node: Node) -> Term {
-        // TODO
-        unimplemented!()
+        todo!()
     }
 
     fn arrow_expr(&self, node: Node) -> Term {
-        // TODO
-        unimplemented!()
+        todo!()
     }
 
     fn call_expr(&self, node: Node) -> Term {
-        // TODO
-        unimplemented!()
+        todo!()
     }
 
     fn unary_expr(&self, node: Node) -> Term {
-        // TODO
-        unimplemented!()
+        todo!()
     }
 
     fn binary_expr(&self, node: Node) -> Term {
-        // TODO
-        unimplemented!()
+        todo!()
     }
 
     fn ternary_expr(&self, node: Node) -> Term {
-        // TODO
-        unimplemented!()
+        todo!()
     }
 
     fn new_expr(&self, node: Node) -> Term {
-        // TODO
-        unimplemented!()
+        todo!()
     }
 }

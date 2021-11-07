@@ -1,7 +1,7 @@
 use rowscript_compiler as compiler;
 
+use anyhow::Result;
 use clap::Parser;
-use anyhow::*;
 use std::io::Read;
 use std::{fs, io};
 
@@ -44,8 +44,7 @@ impl Build {
                     .map_err(|x| anyhow!("read stdin error: {}", x))?;
                 Ok(buf)
             }
-            _ => fs::read_to_string(f)
-                .map_err(|x| anyhow!("read file `{}` error: {}", f, x))
+            _ => fs::read_to_string(f).map_err(|x| anyhow!("read file `{}` error: {}", f, x)),
         }
     }
 
