@@ -65,7 +65,7 @@ fn main() {
     match Cli::parse().sub {
         Cmd::Build(cmd) => {
             if let Err(msg) = cmd.build_file_or_stdin().map(compiler::build) {
-                log::error!("{}:{}",  cmd.file(), msg);
+                log::error!("{}:{}", cmd.file(), msg);
             }
         }
         Cmd::Fmt(_) => todo!(),
