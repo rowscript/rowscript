@@ -72,6 +72,7 @@ pub enum Term {
     Abs(Vec<Ident>, Box<Term>),
     App(Vec<Term>),
 
+    // TODO: Don't use `Option` to flag the type inference. Let's use metavars.
     Let(Ident, Option<Scheme>, Box<Term>, Box<Term>),
 
     Rec(Label, Box<Term>),

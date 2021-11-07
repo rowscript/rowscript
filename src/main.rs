@@ -1,6 +1,6 @@
 use rowscript_compiler as compiler;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Parser;
 use std::io::Read;
 use std::{fs, io};
@@ -57,10 +57,12 @@ impl Build {
 }
 
 fn main() {
-    let env = env_logger::Env::new()
-        .filter("ROWSCRIPT_LOG")
-        .write_style("ROWSCRIPT_LOG_STYLE");
-    env_logger::init_from_env(env);
+    env_logger::init_from_env(
+        env_logger::Env::new()
+            .filter("ROWSCRIPT_LOG")
+            .write_style("ROWSCRIPT_LOG_STYLE"),
+    );
+
     match Cli::parse().sub {
         Cmd::Build(cmd) => {
             if let Err(msg) = cmd.build_file_or_stdin().map(compiler::build) {

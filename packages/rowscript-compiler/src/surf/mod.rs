@@ -1,6 +1,6 @@
 use crate::surf::diag::ErrInfo;
 use rowscript_core::basis::data::Ident;
-use rowscript_core::presyntax::data::Term::{Abs, App, Bool, If, Let, Num, Str, TLet, Unit, Var};
+use rowscript_core::presyntax::data::Term::{Abs, Bool, If, Let, Num, Str, TLet, Unit, Var};
 use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, Term, Type};
 use tree_sitter::{Language, Node, Parser, Tree};
 
@@ -75,13 +75,13 @@ impl Surf {
     fn prog(&self, node: Node) -> Term {
         node.children(&mut node.walk())
             .map(|n| self.decl(n))
-            .reduce(|a, b| match a {
-                Let(name, typ, exp, _) => Let(name, typ, exp, Box::from(b)),
-                // FIXME: Where is my function `foo`??????
-                TLet(name, typ, _) => TLet(name, typ, Box::from(b)),
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rfold(Unit, move |acc, a| match a {
+                Let(name, typ, exp, _) => Let(name, typ, exp, Box::from(acc)),
+                TLet(name, typ, _) => TLet(name, typ, Box::from(acc)),
                 _ => unreachable!(),
             })
-            .unwrap_or(Unit)
     }
 
     fn decl(&self, node: Node) -> Term {
