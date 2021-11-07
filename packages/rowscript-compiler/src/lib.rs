@@ -1,5 +1,4 @@
 use crate::surf::Surf;
-
 mod surf;
 
 pub fn build(src: String) -> Result<(), String> {
