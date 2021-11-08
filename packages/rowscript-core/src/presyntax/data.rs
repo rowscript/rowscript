@@ -94,5 +94,5 @@ pub enum Term {
     /// Type alias.
     TLet(Ident, Scheme, Box<Term>),
     /// Primitives
-    Prim(String),
+    Prim(Ident),
 }
