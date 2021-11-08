@@ -377,7 +377,7 @@ impl Surf {
     fn unary_expr(&self, node: Node) -> Term {
         let operator = node.child(0).unwrap();
         let argument = node.child(1).unwrap();
-        let operand = self.expr(argument);
+        let operand = self.expr(argument); // this
         match operator.kind() {
             "+" => {
                 return operand;
@@ -387,6 +387,8 @@ impl Surf {
                     Term::Prim(
                         vec!["builtin".to_string(), "unary".to_string()],
                         self.ident(operator),
+                        /// TODO: change this when Metavar is ready.
+                        Type::Num,
                     ),
                     operand,
                 ]);
