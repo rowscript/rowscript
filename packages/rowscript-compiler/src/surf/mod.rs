@@ -9,8 +9,8 @@ mod diag;
 #[cfg(test)]
 mod tests;
 
-use thiserror::Error;
 use crate::surf::SurfError::ParsingError;
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum SurfError {
