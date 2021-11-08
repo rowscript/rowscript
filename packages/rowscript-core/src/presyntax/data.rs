@@ -1,4 +1,6 @@
 use crate::basis::data::Ident;
+use crate::presyntax::data::Scheme::Scm;
+use tree_sitter::Point;
 
 type Label = Ident;
 
@@ -15,15 +17,20 @@ pub enum Row {
 }
 
 #[derive(Debug)]
-pub struct Scheme {
-    pub type_vars: Vec<Ident>,
-    pub row_vars: Vec<Ident>,
-    pub qualified: QualifiedType,
+pub enum Scheme {
+    Scm {
+        type_vars: Vec<Ident>,
+        row_vars: Vec<Ident>,
+        qualified: QualifiedType,
+    },
+
+    /// Meta-variable for unifying type holes.
+    Meta(Point),
 }
 
 impl Scheme {
     pub fn new_schemeless(typ: Type) -> Scheme {
-        Scheme {
+        Scm {
             type_vars: vec![],
             row_vars: vec![],
             qualified: QualifiedType { preds: vec![], typ },
@@ -33,8 +40,8 @@ impl Scheme {
 
 #[derive(Debug)]
 pub enum Pred {
-    Cont(Dir, Row, Row),
-    Comb(Row, Row, Row),
+    Cont { d: Dir, lhs: Row, rhs: Row },
+    Comb { lhs: Row, rhs: Row, result: Row },
 }
 
 #[derive(Debug)]
@@ -70,8 +77,7 @@ pub enum Term {
     Abs(Vec<Ident>, Box<Term>),
     App(Vec<Term>),
 
-    // TODO: Don't use `Option` to flag the type inference. Let's use metavars.
-    Let(Ident, Option<Scheme>, Box<Term>, Box<Term>),
+    Let(Ident, Scheme, Box<Term>, Box<Term>),
 
     Rec(Label, Box<Term>),
     Sel(Box<Term>, Label),

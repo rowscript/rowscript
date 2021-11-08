@@ -1,6 +1,7 @@
 use crate::surf::diag::ErrInfo;
 use crate::surf::SurfError::ParsingError;
 use rowscript_core::basis::data::Ident;
+use rowscript_core::presyntax::data::Scheme::{Meta, Scm};
 use rowscript_core::presyntax::data::Term::{
     Abs, App, Bool, If, Let, Num, Str, Subs, TLet, Unit, Var,
 };
@@ -126,7 +127,7 @@ impl Surf {
 
         Let(
             self.ident(name),
-            Some(Scheme {
+            Scm {
                 type_vars: node
                     .child_by_field_name("scheme")
                     .map(|n| {
@@ -145,7 +146,7 @@ impl Surf {
                             .map_or(Type::Unit, |n| self.type_expr(n)),
                     ]),
                 },
-            }),
+            },
             Box::from(self.stmt_blk(node.child_by_field_name("body").unwrap(), arg_idents)),
             Box::from(Unit),
         )
@@ -184,7 +185,7 @@ impl Surf {
                 .map(|n| self.ident(n))
                 .collect();
         }
-        Scheme {
+        Scm {
             type_vars,
             row_vars: vec![],
             qualified: QualifiedType {
@@ -272,12 +273,15 @@ impl Surf {
     }
 
     fn var_decl(&self, node: Node) -> Term {
-        let name = self.ident(node.child_by_field_name("name").unwrap());
-        let typ = node
-            .child_by_field_name("type")
-            .map(|n| Scheme::new_schemeless(self.type_expr(n)));
-        let val = self.expr(node.child_by_field_name("value").unwrap());
-        Let(name, typ, Box::from(val), Box::from(Unit))
+        Let(
+            self.ident(node.child_by_field_name("name").unwrap()),
+            node.child_by_field_name("type").map_or_else(
+                || Meta(node.start_position()),
+                |n| Scheme::new_schemeless(self.type_expr(n)),
+            ),
+            Box::from(self.expr(node.child_by_field_name("value").unwrap())),
+            Box::from(Unit),
+        )
     }
 
     fn if_stmt(&self, node: Node) -> Term {
