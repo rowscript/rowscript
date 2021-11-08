@@ -19,7 +19,9 @@ pub enum SurfError {
     #[error("General parsing error")]
     ParsingError(String),
     #[error("Syntax error")]
-    SyntaxError(ErrInfo),
+    SyntaxError {
+        info: ErrInfo
+    },
 }
 
 type SurfResult<T> = Result<T, SurfError>;
@@ -65,7 +67,8 @@ impl Surf {
                 let node = tree.root_node();
                 if node.has_error() {
                     // TODO: Better error diagnostics.
-                    return Err(SurfError::SyntaxError(ErrInfo::new(&node, "syntax error")));
+                    let info = ErrInfo::new(&node, "syntax error");
+                    return Err(SurfError::SyntaxError { info });
                 }
                 Ok(Surf { src, tree })
             })
