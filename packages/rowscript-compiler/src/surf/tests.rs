@@ -31,3 +31,17 @@ class Derived<A> extends Base<B> {
     )
     .unwrap();
 }
+
+#[test]
+fn it_converts_unary_expressions() {
+    let cases = [
+        "function foo(n: int): int { return +42 }",
+        "function foo(n: int): int { return -42 }",
+        "function foo(n: int): int { return !42 }",
+        "function foo(n: int): int { return ~42 }",
+    ];
+    for i in cases {
+        let surf = Surf::new(i.into()).unwrap();
+        surf.to_presyntax();
+    }
+}

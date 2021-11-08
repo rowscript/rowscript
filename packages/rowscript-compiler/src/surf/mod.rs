@@ -1,6 +1,8 @@
 use crate::surf::diag::ErrInfo;
 use rowscript_core::basis::data::Ident;
-use rowscript_core::presyntax::data::Term::{Abs, Bool, If, Let, Num, Str, Subs, TLet, Unit, Var};
+use rowscript_core::presyntax::data::Term::{
+    Abs, App, Bool, If, Let, Num, Str, Subs, TLet, Unit, Var,
+};
 use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, Term, Type};
 use tree_sitter::{Language, Node, Parser, Tree};
 
@@ -19,9 +21,7 @@ pub enum SurfError {
     #[error("General parsing error")]
     ParsingError(String),
     #[error("Syntax error")]
-    SyntaxError {
-        info: ErrInfo
-    },
+    SyntaxError { info: ErrInfo },
 }
 
 type SurfResult<T> = Result<T, SurfError>;
@@ -375,7 +375,18 @@ impl Surf {
     }
 
     fn unary_expr(&self, node: Node) -> Term {
-        todo!()
+        let operator = node.child(0).unwrap();
+        let argument = node.child(1).unwrap();
+        let operand = self.expr(argument);
+        match operator.kind() {
+            "+" => {
+                return operand;
+            }
+            "-" | "!" | "~" => {
+                return App(vec![Term::Prim(operator.kind().to_string()), operand]);
+            }
+            _ => unreachable!(),
+        }
     }
 
     fn binary_expr(&self, node: Node) -> Term {
