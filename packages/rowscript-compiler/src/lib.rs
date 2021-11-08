@@ -1,6 +1,7 @@
 use crate::surf::Surf;
-mod surf;
 use thiserror::Error;
+
+mod surf;
 
 #[derive(Debug, Error)]
 pub enum CompilerError {

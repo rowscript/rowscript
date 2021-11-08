@@ -1,16 +1,15 @@
 use crate::surf::diag::ErrInfo;
+use crate::surf::SurfError::ParsingError;
 use rowscript_core::basis::data::Ident;
 use rowscript_core::presyntax::data::Term::{Abs, Bool, If, Let, Num, Str, Subs, TLet, Unit, Var};
 use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, Term, Type};
+use thiserror::Error;
 use tree_sitter::{Language, Node, Parser, Tree};
 
 mod diag;
 
 #[cfg(test)]
 mod tests;
-
-use crate::surf::SurfError::ParsingError;
-use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum SurfError {
@@ -19,12 +18,10 @@ pub enum SurfError {
     #[error("General parsing error")]
     ParsingError(String),
     #[error("Syntax error")]
-    SyntaxError {
-        info: ErrInfo
-    },
+    SyntaxError { info: ErrInfo },
 }
 
-type SurfResult<T> = Result<T, SurfError>;
+type SurfM<T> = Result<T, SurfError>;
 
 extern "C" {
     fn tree_sitter_rowscript() -> Language;
@@ -52,11 +49,11 @@ macro_rules! row_type {
 #[derive(Debug)]
 pub struct Surf {
     src: String,
-    pub tree: Tree,
+    tree: Tree,
 }
 
 impl Surf {
-    pub fn new(src: String) -> SurfResult<Surf> {
+    pub fn new(src: String) -> SurfM<Surf> {
         let mut parser = Parser::new();
         let lang = unsafe { tree_sitter_rowscript() };
         parser.set_language(lang)?;
