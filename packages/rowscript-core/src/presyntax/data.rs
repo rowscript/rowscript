@@ -1,6 +1,6 @@
 use crate::basis::data::Ident;
 use crate::presyntax::data::Scheme::Scm;
-use tree_sitter::Point;
+use tree_sitter::{Node, Point};
 
 type Label = Ident;
 
@@ -99,6 +99,30 @@ pub enum Term {
     Subs(Box<Term>, Box<Term>),
     /// Type alias.
     TLet(Ident, Scheme, Box<Term>),
-    /// Primitives (e.g. `builtin::unary::-`)
-    Prim(Vec<String>, Ident, Type),
+    /// Reference to primitives.
+    PrimRef {
+        src: Ident,
+        dst: PrimName,
+        typ: Scheme,
+    },
+}
+
+#[derive(Debug)]
+pub struct PrimName(&'static str);
+
+const PRIM_ADD: PrimName = PrimName("primAdd");
+const PRIM_SUB: PrimName = PrimName("primSub");
+const PRIM_BNOT: PrimName = PrimName("primBNot");
+const PRIM_NOT: PrimName = PrimName("primNot");
+
+impl From<Node<'_>> for PrimName {
+    fn from(n: Node) -> Self {
+        match n.kind() {
+            "+" => PRIM_ADD,
+            "-" => PRIM_SUB,
+            "~" => PRIM_BNOT,
+            "!" => PRIM_NOT,
+            _ => unreachable!(),
+        }
+    }
 }

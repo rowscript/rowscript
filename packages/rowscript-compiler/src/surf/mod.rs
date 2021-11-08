@@ -1,11 +1,10 @@
 use crate::surf::diag::ErrInfo;
 use crate::surf::SurfError::ParsingError;
 use rowscript_core::basis::data::Ident;
-use rowscript_core::presyntax::data::Scheme::{Meta, Scm};
 use rowscript_core::presyntax::data::Term::{
-    Abs, App, Bool, If, Let, Num, Str, Subs, TLet, Unit, Var,
+    Abs, App, Bool, If, Let, Num, PrimRef, Str, Subs, TLet, Unit, Var,
 };
-use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, Term, Type};
+use rowscript_core::presyntax::data::{PrimName, QualifiedType, Row, Scheme, Term, Type};
 use thiserror::Error;
 use tree_sitter::{Language, Node, Parser, Tree};
 
@@ -127,7 +126,7 @@ impl Surf {
 
         Let(
             self.ident(name),
-            Scm {
+            Scheme::Scm {
                 type_vars: node
                     .child_by_field_name("scheme")
                     .map(|n| {
@@ -185,7 +184,7 @@ impl Surf {
                 .map(|n| self.ident(n))
                 .collect();
         }
-        Scm {
+        Scheme::Scm {
             type_vars,
             row_vars: vec![],
             qualified: QualifiedType {
@@ -276,7 +275,7 @@ impl Surf {
         Let(
             self.ident(node.child_by_field_name("name").unwrap()),
             node.child_by_field_name("type").map_or_else(
-                || Meta(node.start_position()),
+                || Scheme::Meta(node.start_position()),
                 |n| Scheme::new_schemeless(self.type_expr(n)),
             ),
             Box::from(self.expr(node.child_by_field_name("value").unwrap())),
@@ -379,25 +378,14 @@ impl Surf {
 
     fn unary_expr(&self, node: Node) -> Term {
         let operator = node.child(0).unwrap();
-        let argument = node.child(1).unwrap();
-        let operand = self.expr(argument); // this
-        match operator.kind() {
-            "+" => {
-                return operand;
-            }
-            "-" | "!" | "~" => {
-                return App(vec![
-                    Term::Prim(
-                        vec!["builtin".to_string(), "unary".to_string()],
-                        self.ident(operator),
-                        /// TODO: change this when Metavar is ready.
-                        Type::Num,
-                    ),
-                    operand,
-                ]);
-            }
-            _ => unreachable!(),
-        }
+        App(vec![
+            PrimRef {
+                src: self.ident(operator),
+                dst: PrimName::from(operator),
+                typ: Scheme::Meta(node.start_position()),
+            },
+            self.expr(node.child(1).unwrap()),
+        ])
     }
 
     fn binary_expr(&self, node: Node) -> Term {

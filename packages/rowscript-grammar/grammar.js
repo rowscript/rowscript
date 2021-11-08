@@ -14,7 +14,7 @@ function sep(s, rule) {
 module.exports = grammar({
   name: 'rowscript',
 
-  extras: $ => [$.comment, /[\s\t\r\n\uFEFF\u2060\u200B\u00A0]/],
+  extras: $ => [$._comment, /[\s\t\r\n\uFEFF\u2060\u200B\u00A0]/],
 
   precedences: $ => [
     [
@@ -142,7 +142,7 @@ module.exports = grammar({
           field('cond', $.parenthesizedExpression),
           field('then', $.statementBlock),
           'else',
-          field('else', $.statementBlock),
+          field('else', $.statementBlock)
         )
       ),
 
@@ -513,7 +513,8 @@ module.exports = grammar({
 
     regexFlags: () => token.immediate(/[a-z]+/),
 
-    comment: () =>
+    // TODO: Comment group should be attached for documentation. Ignored now for being lazy.
+    _comment: () =>
       token(choice(seq('//', /.*/), seq('/*', /[^*]*\*+([^/*][^*]*\*+)*/, '/')))
   }
 })
