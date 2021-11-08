@@ -75,7 +75,7 @@ pub enum Term {
     Var(Ident),
 
     Abs(Vec<Ident>, Box<Term>),
-    App(Vec<Term>),
+    App(Box<Term>, Box<Term>),
 
     Let(Ident, Scheme, Box<Term>, Box<Term>),
 
@@ -99,6 +99,8 @@ pub enum Term {
     Subs(Box<Term>, Box<Term>),
     /// Type alias.
     TLet(Ident, Scheme, Box<Term>),
+    /// Constructor for tuples.
+    Tuple(Vec<Term>),
     /// Reference to primitives.
     PrimRef {
         src: Ident,
@@ -115,6 +117,25 @@ const PRIM_SUB: PrimName = PrimName("primSub");
 const PRIM_BNOT: PrimName = PrimName("primBNot");
 const PRIM_NOT: PrimName = PrimName("primNot");
 
+const PRIM_EXP: PrimName = PrimName("primExp");
+const PRIM_TIME: PrimName = PrimName("primTime");
+const PRIM_DIV: PrimName = PrimName("primDiv");
+const PRIM_MOD: PrimName = PrimName("primMod");
+const PRIM_RSHIFT: PrimName = PrimName("primRShift");
+const PRIM_URSHIFT: PrimName = PrimName("primURShift");
+const PRIM_LSHIFT: PrimName = PrimName("primLShift");
+const PRIM_LT: PrimName = PrimName("primLt");
+const PRIM_LE: PrimName = PrimName("primLe");
+const PRIM_EQ: PrimName = PrimName("primEq");
+const PRIM_NE: PrimName = PrimName("primNe");
+const PRIM_GE: PrimName = PrimName("primGe");
+const PRIM_GT: PrimName = PrimName("primGt");
+const PRIM_AND: PrimName = PrimName("primAnd");
+const PRIM_BAND: PrimName = PrimName("primBAnd");
+const PRIM_OR: PrimName = PrimName("primOr");
+const PRIM_BOR: PrimName = PrimName("primBOr");
+const PRIM_XOR: PrimName = PrimName("primXor");
+
 impl From<Node<'_>> for PrimName {
     fn from(n: Node) -> Self {
         match n.kind() {
@@ -122,6 +143,26 @@ impl From<Node<'_>> for PrimName {
             "-" => PRIM_SUB,
             "~" => PRIM_BNOT,
             "!" => PRIM_NOT,
+
+            "**" => PRIM_EXP,
+            "*" => PRIM_TIME,
+            "/" => PRIM_DIV,
+            "%" => PRIM_MOD,
+            ">>" => PRIM_RSHIFT,
+            ">>>" => PRIM_URSHIFT,
+            "<<" => PRIM_LSHIFT,
+            "<" => PRIM_LT,
+            "<=" => PRIM_LE,
+            "==" => PRIM_EQ,
+            "!=" => PRIM_NE,
+            ">=" => PRIM_GE,
+            ">" => PRIM_GT,
+            "&&" => PRIM_AND,
+            "&" => PRIM_BAND,
+            "||" => PRIM_OR,
+            "|" => PRIM_BOR,
+            "^" => PRIM_XOR,
+
             _ => unreachable!(),
         }
     }

@@ -2,7 +2,7 @@ use crate::surf::diag::ErrInfo;
 use crate::surf::SurfError::ParsingError;
 use rowscript_core::basis::data::Ident;
 use rowscript_core::presyntax::data::Term::{
-    Abs, App, Bool, If, Let, Num, PrimRef, Str, Subs, TLet, Unit, Var,
+    Abs, App, Bool, If, Let, Num, PrimRef, Str, Subs, TLet, Tuple, Unit, Var,
 };
 use rowscript_core::presyntax::data::{PrimName, QualifiedType, Row, Scheme, Term, Type};
 use thiserror::Error;
@@ -84,8 +84,8 @@ impl Surf {
         }
     }
 
-    fn expr_from_fields<const L: usize>(&self, node: Node, fields: [&str; L]) -> [Box<Term>; L] {
-        fields.map(|name| Box::from(self.expr(node.child_by_field_name(name).unwrap())))
+    fn expr_from_fields<const L: usize>(&self, node: Node, fields: [&str; L]) -> [Term; L] {
+        fields.map(|name| self.expr(node.child_by_field_name(name).unwrap()))
     }
 
     pub fn to_presyntax(&self) -> Term {
@@ -352,7 +352,9 @@ impl Surf {
     }
 
     fn subs_expr(&self, node: Node) -> Term {
-        let [o, i] = self.expr_from_fields(node, ["object", "index"]);
+        let [o, i] = self
+            .expr_from_fields(node, ["object", "index"])
+            .map(Box::from);
         Subs(o, i)
     }
 
@@ -378,22 +380,33 @@ impl Surf {
 
     fn unary_expr(&self, node: Node) -> Term {
         let operator = node.child(0).unwrap();
-        App(vec![
-            PrimRef {
+        App(
+            Box::from(PrimRef {
                 src: self.ident(operator),
                 dst: PrimName::from(operator),
                 typ: Scheme::Meta(node.start_position()),
-            },
-            self.expr(node.child(1).unwrap()),
-        ])
+            }),
+            Box::from(self.expr(node.child(1).unwrap())),
+        )
     }
 
     fn binary_expr(&self, node: Node) -> Term {
-        todo!()
+        let [l, r] = self.expr_from_fields(node, ["left", "right"]);
+        let operator = node.child(1).unwrap();
+        App(
+            Box::from(PrimRef {
+                src: self.ident(operator),
+                dst: PrimName::from(operator),
+                typ: Scheme::Meta(node.start_position()),
+            }),
+            Box::new(Tuple(vec![l, r])),
+        )
     }
 
     fn ternary_expr(&self, node: Node) -> Term {
-        let [c, t, e] = self.expr_from_fields(node, ["cond", "then", "else"]);
+        let [c, t, e] = self
+            .expr_from_fields(node, ["cond", "then", "else"])
+            .map(Box::from);
         If(c, t, e)
     }
 
