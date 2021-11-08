@@ -57,9 +57,7 @@ impl Surf {
     pub fn new(src: String) -> SurfResult<Surf> {
         let mut parser = Parser::new();
         let lang = unsafe { tree_sitter_rowscript() };
-        parser
-            .set_language(lang)
-            .map_err(SurfError::LanguageError)?;
+        parser.set_language(lang)?;
         parser
             .parse(&src, None)
             .ok_or(ParsingError("Unexpected empty parsing tree".to_string()))
