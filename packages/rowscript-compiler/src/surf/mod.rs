@@ -1,7 +1,9 @@
 use crate::surf::diag::ErrInfo;
 use crate::surf::SurfError::ParsingError;
 use rowscript_core::basis::data::Ident;
-use rowscript_core::presyntax::data::Term::{Abs, Bool, If, Let, Num, Str, Subs, TLet, Unit, Var};
+use rowscript_core::presyntax::data::Term::{
+    Abs, App, Bool, If, Let, Num, Str, Subs, TLet, Unit, Var,
+};
 use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, Term, Type};
 use thiserror::Error;
 use tree_sitter::{Language, Node, Parser, Tree};
@@ -372,7 +374,26 @@ impl Surf {
     }
 
     fn unary_expr(&self, node: Node) -> Term {
-        todo!()
+        let operator = node.child(0).unwrap();
+        let argument = node.child(1).unwrap();
+        let operand = self.expr(argument); // this
+        match operator.kind() {
+            "+" => {
+                return operand;
+            }
+            "-" | "!" | "~" => {
+                return App(vec![
+                    Term::Prim(
+                        vec!["builtin".to_string(), "unary".to_string()],
+                        self.ident(operator),
+                        /// TODO: change this when Metavar is ready.
+                        Type::Num,
+                    ),
+                    operand,
+                ]);
+            }
+            _ => unreachable!(),
+        }
     }
 
     fn binary_expr(&self, node: Node) -> Term {
