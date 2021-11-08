@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 use tree_sitter::Node;
 
+#[derive(Debug)]
 pub struct ErrInfo {
     line: usize,
     col: usize,

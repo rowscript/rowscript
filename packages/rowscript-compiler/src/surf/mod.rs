@@ -9,6 +9,23 @@ mod diag;
 #[cfg(test)]
 mod tests;
 
+use crate::surf::SurfError::ParsingError;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum SurfError {
+    #[error("Tree-sitter backend language error")]
+    LanguageError(#[from] tree_sitter::LanguageError),
+    #[error("General parsing error")]
+    ParsingError(String),
+    #[error("Syntax error")]
+    SyntaxError {
+        info: ErrInfo
+    },
+}
+
+type SurfResult<T> = Result<T, SurfError>;
+
 extern "C" {
     fn tree_sitter_rowscript() -> Language;
 }
@@ -39,22 +56,22 @@ pub struct Surf {
 }
 
 impl Surf {
-    pub fn new(src: String) -> Result<Surf, String> {
+    pub fn new(src: String) -> SurfResult<Surf> {
         let mut parser = Parser::new();
         let lang = unsafe { tree_sitter_rowscript() };
-        parser.set_language(lang).unwrap();
-
-        match parser.parse(&src, None) {
-            Some(tree) => {
+        parser.set_language(lang)?;
+        parser
+            .parse(&src, None)
+            .ok_or(ParsingError("unexpected empty parsing tree".to_string()))
+            .and_then(|tree| {
                 let node = tree.root_node();
                 if node.has_error() {
                     // TODO: Better error diagnostics.
-                    return Err(ErrInfo::new_string(&node, "syntax error"));
+                    let info = ErrInfo::new(&node, "syntax error");
+                    return Err(SurfError::SyntaxError { info });
                 }
                 Ok(Surf { src, tree })
-            }
-            None => Err("parse error".to_string()),
-        }
+            })
     }
 
     fn text(&self, node: &Node) -> String {
