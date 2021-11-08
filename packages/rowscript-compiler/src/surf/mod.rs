@@ -18,7 +18,7 @@ pub enum SurfError {
     LanguageError(#[from] tree_sitter::LanguageError),
     #[error("General parsing error")]
     ParsingError(String),
-    #[error("Syntax Error")]
+    #[error("Syntax error")]
     SyntaxError(ErrInfo),
 }
 
@@ -60,7 +60,7 @@ impl Surf {
         parser.set_language(lang)?;
         parser
             .parse(&src, None)
-            .ok_or(ParsingError("Unexpected empty parsing tree".to_string()))
+            .ok_or(ParsingError("unexpected empty parsing tree".to_string()))
             .and_then(|tree| {
                 let node = tree.root_node();
                 if node.has_error() {
