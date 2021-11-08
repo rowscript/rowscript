@@ -15,25 +15,20 @@ pub enum Row {
 }
 
 #[derive(Debug)]
-pub enum Type {
-    Var(Ident),
-    Arrow(Vec<Type>),
-    Record(Row),
-    Variant(Row),
-    Row(Label, Box<Type>),
+pub struct Scheme {
+    pub type_vars: Vec<Ident>,
+    pub row_vars: Vec<Ident>,
+    pub qualified: QualifiedType,
+}
 
-    Array(Box<Type>),
-
-    /// Sugar for records.
-    Tuple(Vec<Type>),
-
-    /// Sugar for empty records/tuples.
-    Unit,
-
-    Str,
-    Num,
-    Bool,
-    BigInt,
+impl Scheme {
+    pub fn new_schemeless(typ: Type) -> Scheme {
+        Scheme {
+            type_vars: vec![],
+            row_vars: vec![],
+            qualified: QualifiedType { preds: vec![], typ },
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -49,20 +44,23 @@ pub struct QualifiedType {
 }
 
 #[derive(Debug)]
-pub struct Scheme {
-    pub type_vars: Vec<Ident>,
-    pub row_vars: Vec<Ident>,
-    pub qualified: QualifiedType,
-}
+pub enum Type {
+    Var(Ident),
+    Arrow(Vec<Type>),
+    Record(Row),
+    Variant(Row),
+    Row(Label, Box<Type>),
 
-impl Scheme {
-    pub fn new_schemeless(typ: Type) -> Scheme {
-        Scheme {
-            type_vars: vec![],
-            row_vars: vec![],
-            qualified: QualifiedType { preds: vec![], typ },
-        }
-    }
+    /// Sugar for empty records/tuples.
+    Unit,
+    Str,
+    Num,
+    Bool,
+    BigInt,
+    /// Array is not a sugar for anything, quite like an ad hoc type.
+    Array(Box<Type>),
+    /// Sugar for records.
+    Tuple(Vec<Type>),
 }
 
 #[derive(Debug)]
@@ -89,10 +87,10 @@ pub enum Term {
     Num(String),
     Bool(bool),
     BigInt(String),
-
     /// Eliminator for booleans.
     If(Box<Term>, Box<Term>, Box<Term>),
-
+    /// Eliminator for arrays.
+    Subs(Box<Term>, Box<Term>),
     /// Type alias.
     TLet(Ident, Scheme, Box<Term>),
 }

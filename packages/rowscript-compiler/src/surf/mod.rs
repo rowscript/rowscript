@@ -1,6 +1,6 @@
 use crate::surf::diag::ErrInfo;
 use rowscript_core::basis::data::Ident;
-use rowscript_core::presyntax::data::Term::{Abs, Bool, If, Let, Num, Str, TLet, Unit, Var};
+use rowscript_core::presyntax::data::Term::{Abs, Bool, If, Let, Num, Str, Subs, TLet, Unit, Var};
 use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, Term, Type};
 use tree_sitter::{Language, Node, Parser, Tree};
 
@@ -66,6 +66,10 @@ impl Surf {
             pt: node.start_position(),
             text: self.text(&node),
         }
+    }
+
+    fn expr_from_fields<const L: usize>(&self, node: Node, fields: [&str; L]) -> [Box<Term>; L] {
+        fields.map(|name| Box::from(self.expr(node.child_by_field_name(name).unwrap())))
     }
 
     pub fn to_presyntax(&self) -> Term {
@@ -329,7 +333,8 @@ impl Surf {
     }
 
     fn subs_expr(&self, node: Node) -> Term {
-        todo!()
+        let [o, i] = self.expr_from_fields(node, ["object", "index"]);
+        Subs(o, i)
     }
 
     fn member_expr(&self, node: Node) -> Term {
@@ -361,7 +366,8 @@ impl Surf {
     }
 
     fn ternary_expr(&self, node: Node) -> Term {
-        todo!()
+        let [c, t, e] = self.expr_from_fields(node, ["cond", "then", "else"]);
+        If(c, t, e)
     }
 
     fn new_expr(&self, node: Node) -> Term {
