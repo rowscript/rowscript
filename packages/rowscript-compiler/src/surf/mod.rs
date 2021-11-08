@@ -383,7 +383,13 @@ impl Surf {
                 return operand;
             }
             "-" | "!" | "~" => {
-                return App(vec![Term::Prim(self.ident(operator)), operand]);
+                return App(vec![
+                    Term::Prim(
+                        vec!["builtin".to_string(), "unary".to_string()],
+                        self.ident(operator),
+                    ),
+                    operand,
+                ]);
             }
             _ => unreachable!(),
         }

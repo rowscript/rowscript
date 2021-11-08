@@ -93,6 +93,6 @@ pub enum Term {
     Subs(Box<Term>, Box<Term>),
     /// Type alias.
     TLet(Ident, Scheme, Box<Term>),
-    /// Primitives
-    Prim(Ident),
+    /// Primitives (e.g. `builtin::unary::-`)
+    Prim(Vec<String>, Ident),
 }
