@@ -1,7 +1,6 @@
 use crate::basis::data::Ident;
 use crate::presyntax::data::Scheme::Scm;
-use crate::presyntax::data::Term::PrimRef;
-use tree_sitter::{Node, Point};
+use tree_sitter::Point;
 
 type Label = Ident;
 

@@ -86,13 +86,13 @@ module.exports = grammar({
 
     methodDefinition: $ =>
       seq(
-        field('name', $._propertyName),
+        field('name', $.identifier),
         field('parameters', $.declarationSignature),
         field('body', $.statementBlock)
       ),
 
     fieldDefinition: $ =>
-      seq(field('property', $._propertyName), optional($._initializer)),
+      seq(field('property', $.identifier), optional($._initializer)),
 
     lexicalDeclaration: $ =>
       seq('let', commaSep($.variableDeclarator), ';', $.statement),
@@ -362,22 +362,10 @@ module.exports = grammar({
 
     parenthesizedExpression: $ => seq('(', $.expression, ')'),
 
-    _propertyName: $ => choice($.identifier, $.string, $.number),
-
-    object: $ =>
-      prec(
-        'object',
-        seq(
-          '{',
-          optional(
-            commaSep(optional(choice($.pair, $.methodDefinition, $.identifier)))
-          ),
-          '}'
-        )
-      ),
+    object: $ => prec('object', seq('{', optional(commaSep($.pair)), '}')),
 
     pair: $ =>
-      seq(field('key', $._propertyName), ':', field('value', $.expression)),
+      seq(field('key', $.identifier), ':', field('value', $.expression)),
 
     array: $ => seq('[', commaSep(optional($.expression)), ']'),
 

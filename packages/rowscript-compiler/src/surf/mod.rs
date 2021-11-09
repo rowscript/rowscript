@@ -2,7 +2,7 @@ use crate::surf::diag::ErrInfo;
 use crate::surf::SurfError::ParsingError;
 use rowscript_core::basis::data::Ident;
 use rowscript_core::presyntax::data::Term::{
-    Abs, App, Bool, If, Let, Num, PrimRef, Str, Subs, TLet, Tuple, Unit, Var,
+    Abs, App, Bool, Cat, If, Let, Num, PrimRef, Rec, Sel, Str, Subs, TLet, Tuple, Unit, Var,
 };
 use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, Term, Type};
 use thiserror::Error;
@@ -326,7 +326,7 @@ impl Surf {
             "unaryExpression" => self.unary_expr(e),
             "binaryExpression" => self.binary_expr(e),
             "ternaryExpression" => self.ternary_expr(e),
-            "nweExpression" => self.new_expr(e),
+            "newExpression" => self.new_expr(e),
             _ => unreachable!(),
         }
     }
@@ -346,7 +346,7 @@ impl Surf {
             "true" => Bool(true),
             "object" => self.obj_expr(e),
             "array" => self.array_expr(e),
-            "arrowFunction" => self.arrow_expr(e),
+            "arrowFunction" => self.arrow_func(e),
             "callExpression" => self.call_expr(e),
             _ => unreachable!(),
         }
@@ -360,23 +360,57 @@ impl Surf {
     }
 
     fn member_expr(&self, node: Node) -> Term {
-        todo!()
+        let n = node.child_by_field_name("object").unwrap();
+        Sel(
+            Box::from(match n.kind() {
+                "expression" => self.expr(n),
+                "primaryExpression" => self.primary_expr(n),
+                _ => unreachable!(),
+            }),
+            self.ident(node.child_by_field_name("property").unwrap()),
+        )
     }
 
     fn obj_expr(&self, node: Node) -> Term {
-        todo!()
+        match node.named_child_count() {
+            0 => Unit,
+            1 => self.pair(node.named_child(0).unwrap()),
+            _ => Cat(node
+                .named_children(&mut node.walk())
+                .map(|n| self.pair(n))
+                .collect()),
+        }
+    }
+
+    fn pair(&self, node: Node) -> Term {
+        Rec(
+            self.ident(node.child_by_field_name("key").unwrap()),
+            Box::from(self.expr(node.child_by_field_name("value").unwrap())),
+        )
     }
 
     fn array_expr(&self, node: Node) -> Term {
         todo!()
     }
 
-    fn arrow_expr(&self, node: Node) -> Term {
+    fn arrow_func(&self, node: Node) -> Term {
         todo!()
     }
 
     fn call_expr(&self, node: Node) -> Term {
-        todo!()
+        let x = node.child_by_field_name("arguments").unwrap();
+        App(
+            Box::from(self.expr(node.child_by_field_name("function").unwrap())),
+            Box::from(match x.named_child_count() {
+                0 => Unit,
+                1 => self.expr(x.named_child(0).unwrap()),
+                _ => Tuple(
+                    x.named_children(&mut x.walk())
+                        .map(|n| self.expr(n))
+                        .collect(),
+                ),
+            }),
+        )
     }
 
     fn unary_expr(&self, node: Node) -> Term {
