@@ -29,7 +29,7 @@ module.exports = grammar({
     ],
     ['member', 'new', 'call', $.expression],
     ['declaration', 'literal'],
-    [$.primaryExpression, $.statementBlock, 'object']
+    [$.abstractionSignature, $.primaryExpression, $.statementBlock, 'object']
   ],
 
   word: $ => $.identifier,
@@ -119,6 +119,8 @@ module.exports = grammar({
       seq('(', optional(commaSep($.formalParameter)), ')'),
 
     formalParameter: $ => seq($.identifier, ':', $.typeExpression),
+
+    abstractionSignature: $ => seq('(', optional(commaSep($.identifier)), ')'),
 
     statementBlock: $ => prec.right(seq('{', optional($.statement), '}')),
 
@@ -372,7 +374,7 @@ module.exports = grammar({
     arrowFunction: $ =>
       prec.right(
         seq(
-          choice(field('parameter', $.identifier), $.declarationSignature),
+          field('parameter', $.abstractionSignature),
           '=>',
           field('body', choice($.expression, $.statementBlock))
         )

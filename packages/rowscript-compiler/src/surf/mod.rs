@@ -2,7 +2,7 @@ use crate::surf::diag::ErrInfo;
 use crate::surf::SurfError::ParsingError;
 use rowscript_core::basis::data::Ident;
 use rowscript_core::presyntax::data::Term::{
-    Abs, App, Bool, Cat, If, Let, Num, PrimRef, Rec, Sel, Str, Subs, TLet, Tuple, Unit, Var,
+    Abs, App, Array, Bool, Cat, If, Let, Num, PrimRef, Rec, Sel, Str, Subs, TLet, Tuple, Unit, Var,
 };
 use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, Term, Type};
 use thiserror::Error;
@@ -390,11 +390,25 @@ impl Surf {
     }
 
     fn array_expr(&self, node: Node) -> Term {
-        todo!()
+        Array(
+            node.named_children(&mut node.walk())
+                .map(|n| self.expr(n))
+                .collect(),
+        )
     }
 
     fn arrow_func(&self, node: Node) -> Term {
-        todo!()
+        let x = node.child_by_field_name("parameter").unwrap();
+        let idents = x
+            .named_children(&mut x.walk())
+            .map(|n| self.ident(n))
+            .collect();
+        let body = node.child_by_field_name("body").unwrap();
+        match body.kind() {
+            "expression" => Abs(idents, Box::from(self.expr(body))),
+            "statementBlock" => self.stmt_blk(body, idents),
+            _ => unreachable!(),
+        }
     }
 
     fn call_expr(&self, node: Node) -> Term {

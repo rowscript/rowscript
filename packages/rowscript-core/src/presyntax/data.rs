@@ -88,19 +88,26 @@ pub enum Term {
     Inj(Dir, Box<Term>),
     Case(Vec<Term>),
 
-    Unit,
-    Str(String),
-    Num(String),
-    Bool(bool),
-    BigInt(String),
-    /// Eliminator for booleans.
-    If(Box<Term>, Box<Term>, Box<Term>),
-    /// Eliminator for arrays.
-    Subs(Box<Term>, Box<Term>),
     /// Type alias.
     TLet(Ident, Scheme, Box<Term>),
+    /// Reference to primitives/builtins.
+    PrimRef(Ident, Scheme),
+    /// Constructor for units.
+    Unit,
+    /// Constructor for primitive `string`.
+    Str(String),
+    /// Constructor for primitive `number`.
+    Num(String),
+    /// Constructor for primitive `boolean`.
+    Bool(bool),
+    /// Constructor for primitive `bigint`.
+    BigInt(String),
     /// Constructor for tuples.
     Tuple(Vec<Term>),
-    /// Reference to primitives.
-    PrimRef(Ident, Scheme),
+    /// Constructor for arrays.
+    Array(Vec<Term>),
+    /// Eliminator for booleans.
+    If(Box<Term>, Box<Term>, Box<Term>),
+    /// Eliminator for arrays/tuples.
+    Subs(Box<Term>, Box<Term>),
 }
