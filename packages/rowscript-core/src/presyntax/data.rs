@@ -1,5 +1,6 @@
 use crate::basis::data::Ident;
 use crate::presyntax::data::Scheme::Scm;
+use crate::presyntax::data::Term::PrimRef;
 use tree_sitter::{Node, Point};
 
 type Label = Ident;
@@ -102,68 +103,5 @@ pub enum Term {
     /// Constructor for tuples.
     Tuple(Vec<Term>),
     /// Reference to primitives.
-    PrimRef {
-        src: Ident,
-        dst: PrimName,
-        typ: Scheme,
-    },
-}
-
-#[derive(Debug)]
-pub struct PrimName(&'static str);
-
-const PRIM_ADD: PrimName = PrimName("primAdd");
-const PRIM_SUB: PrimName = PrimName("primSub");
-const PRIM_BNOT: PrimName = PrimName("primBNot");
-const PRIM_NOT: PrimName = PrimName("primNot");
-
-const PRIM_EXP: PrimName = PrimName("primExp");
-const PRIM_TIME: PrimName = PrimName("primTime");
-const PRIM_DIV: PrimName = PrimName("primDiv");
-const PRIM_MOD: PrimName = PrimName("primMod");
-const PRIM_RSHIFT: PrimName = PrimName("primRShift");
-const PRIM_URSHIFT: PrimName = PrimName("primURShift");
-const PRIM_LSHIFT: PrimName = PrimName("primLShift");
-const PRIM_LT: PrimName = PrimName("primLt");
-const PRIM_LE: PrimName = PrimName("primLe");
-const PRIM_EQ: PrimName = PrimName("primEq");
-const PRIM_NE: PrimName = PrimName("primNe");
-const PRIM_GE: PrimName = PrimName("primGe");
-const PRIM_GT: PrimName = PrimName("primGt");
-const PRIM_AND: PrimName = PrimName("primAnd");
-const PRIM_BAND: PrimName = PrimName("primBAnd");
-const PRIM_OR: PrimName = PrimName("primOr");
-const PRIM_BOR: PrimName = PrimName("primBOr");
-const PRIM_XOR: PrimName = PrimName("primXor");
-
-impl From<Node<'_>> for PrimName {
-    fn from(n: Node) -> Self {
-        match n.kind() {
-            "+" => PRIM_ADD,
-            "-" => PRIM_SUB,
-            "~" => PRIM_BNOT,
-            "!" => PRIM_NOT,
-
-            "**" => PRIM_EXP,
-            "*" => PRIM_TIME,
-            "/" => PRIM_DIV,
-            "%" => PRIM_MOD,
-            ">>" => PRIM_RSHIFT,
-            ">>>" => PRIM_URSHIFT,
-            "<<" => PRIM_LSHIFT,
-            "<" => PRIM_LT,
-            "<=" => PRIM_LE,
-            "==" => PRIM_EQ,
-            "!=" => PRIM_NE,
-            ">=" => PRIM_GE,
-            ">" => PRIM_GT,
-            "&&" => PRIM_AND,
-            "&" => PRIM_BAND,
-            "||" => PRIM_OR,
-            "|" => PRIM_BOR,
-            "^" => PRIM_XOR,
-
-            _ => unreachable!(),
-        }
-    }
+    PrimRef(Ident, Scheme),
 }

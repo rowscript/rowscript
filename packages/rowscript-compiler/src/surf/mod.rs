@@ -4,7 +4,7 @@ use rowscript_core::basis::data::Ident;
 use rowscript_core::presyntax::data::Term::{
     Abs, App, Bool, If, Let, Num, PrimRef, Str, Subs, TLet, Tuple, Unit, Var,
 };
-use rowscript_core::presyntax::data::{PrimName, QualifiedType, Row, Scheme, Term, Type};
+use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, Term, Type};
 use thiserror::Error;
 use tree_sitter::{Language, Node, Parser, Tree};
 
@@ -78,10 +78,11 @@ impl Surf {
     }
 
     fn ident(&self, node: Node) -> Ident {
-        Ident {
-            pt: node.start_position(),
-            text: self.text(&node),
-        }
+        Ident::new(self.text(&node), node.start_position())
+    }
+
+    fn prim_ref(&self, node: Node) -> Term {
+        PrimRef(self.ident(node), Scheme::Meta(node.start_position()))
     }
 
     fn expr_from_fields<const L: usize>(&self, node: Node, fields: [&str; L]) -> [Term; L] {
@@ -109,12 +110,12 @@ impl Surf {
         match decl.kind() {
             "functionDeclaration" => self.fn_decl(decl),
             "classDeclaration" => todo!(),
-            "typeAliasDeclaration" => self.typ_alias_decl(decl),
+            "typeAliasDeclaration" => self.type_alias_decl(decl),
             _ => unreachable!(),
         }
     }
 
-    fn typ_alias_decl(&self, node: Node) -> Term {
+    fn type_alias_decl(&self, node: Node) -> Term {
         let name = self.ident(node.child_by_field_name("name").unwrap());
         let typ = self.type_scheme(node.child_by_field_name("target").unwrap());
         TLet(name, typ, Box::from(Unit))
@@ -379,26 +380,16 @@ impl Surf {
     }
 
     fn unary_expr(&self, node: Node) -> Term {
-        let operator = node.child(0).unwrap();
         App(
-            Box::from(PrimRef {
-                src: self.ident(operator),
-                dst: PrimName::from(operator),
-                typ: Scheme::Meta(node.start_position()),
-            }),
+            Box::from(self.prim_ref(node.child(0).unwrap())),
             Box::from(self.expr(node.child(1).unwrap())),
         )
     }
 
     fn binary_expr(&self, node: Node) -> Term {
         let [l, r] = self.expr_from_fields(node, ["left", "right"]);
-        let operator = node.child(1).unwrap();
         App(
-            Box::from(PrimRef {
-                src: self.ident(operator),
-                dst: PrimName::from(operator),
-                typ: Scheme::Meta(node.start_position()),
-            }),
+            Box::from(self.prim_ref(node.child(1).unwrap())),
             Box::new(Tuple(vec![l, r])),
         )
     }
