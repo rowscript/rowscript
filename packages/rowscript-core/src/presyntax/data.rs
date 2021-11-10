@@ -1,5 +1,6 @@
 use crate::basis::data::Ident;
 use crate::presyntax::data::Scheme::Scm;
+use std::collections::HashMap;
 use tree_sitter::Point;
 
 type Label = Ident;
@@ -86,7 +87,7 @@ pub enum Term {
     Cat(Vec<Term>),
 
     Inj(Dir, Box<Term>),
-    Case(Vec<Term>),
+    Case(HashMap<Ident, Term>, Box<Option<Term>>),
 
     /// Type alias.
     TLet(Ident, Scheme, Box<Term>),

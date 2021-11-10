@@ -2,9 +2,11 @@ use crate::surf::diag::ErrInfo;
 use crate::surf::SurfError::ParsingError;
 use rowscript_core::basis::data::Ident;
 use rowscript_core::presyntax::data::Term::{
-    Abs, App, Array, Bool, Cat, If, Let, Num, PrimRef, Rec, Sel, Str, Subs, TLet, Tuple, Unit, Var,
+    Abs, App, Array, Bool, Case, Cat, If, Let, Num, PrimRef, Rec, Sel, Str, Subs, TLet, Tuple,
+    Unit, Var,
 };
 use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, Term, Type};
+use std::collections::HashMap;
 use thiserror::Error;
 use tree_sitter::{Language, Node, Parser, Tree};
 
@@ -300,7 +302,38 @@ impl Surf {
     }
 
     fn switch_stmt(&self, node: Node) -> Term {
-        todo!()
+        let arg = self.expr(
+            node.child_by_field_name("value")
+                .unwrap()
+                .named_child(0)
+                .unwrap(),
+        );
+        let body = self.switch_body(node.child_by_field_name("body").unwrap());
+        App(Box::from(body), Box::from(arg))
+    }
+
+    fn switch_body(&self, node: Node) -> Term {
+        let mut cases = HashMap::new();
+        let mut default = None;
+        node.named_children(&mut node.walk())
+            .for_each(|n| match n.kind() {
+                "switchCase" => {
+                    let (name, abs) = self.switch_case(n);
+                    cases.insert(name, abs);
+                }
+                "switchDefault" => {
+                    default = Some(self.stmt(n.named_child(0).unwrap()));
+                }
+                _ => unreachable!(),
+            });
+        Case(cases, Box::from(default))
+    }
+
+    fn switch_case(&self, node: Node) -> (Ident, Term) {
+        let [lbl, var] =
+            ["label", "variable"].map(|f| self.ident(node.child_by_field_name(f).unwrap()));
+        let stmt = self.stmt(node.child_by_field_name("statement").unwrap());
+        (lbl, Abs(vec![var], Box::from(stmt)))
     }
 
     fn try_stmt(&self, node: Node) -> Term {

@@ -1,6 +1,6 @@
 use tree_sitter::Point;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Ident {
     text: String,
     pt: Option<Point>,

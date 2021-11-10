@@ -5,7 +5,7 @@ version = "0.1.0"
 keywords = ["incremental", "parsing", "rowscript"]
 categories = ["parsing", "text-editors"]
 repository = "https://github.com/rowscript/rowscript"
-edition = "2018"
+edition = "2021"
 license = "MIT"
 
 build = "bindings/rust/build.rs"
