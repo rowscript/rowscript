@@ -330,17 +330,19 @@ impl Surf {
     }
 
     fn switch_case(&self, node: Node) -> (Ident, Term) {
-        let [lbl, var] =
-            ["label", "variable"].map(|f| self.ident(node.child_by_field_name(f).unwrap()));
-        let stmt = self.stmt(node.child_by_field_name("statement").unwrap());
-        (lbl, Abs(vec![var], Box::from(stmt)))
+        let [lbl, var, stmt] =
+            ["label", "variable", "statement"].map(|f| node.child_by_field_name(f).unwrap());
+        (
+            self.ident(lbl),
+            Abs(vec![self.ident(var)], Box::from(self.stmt(stmt))),
+        )
     }
 
-    fn try_stmt(&self, node: Node) -> Term {
+    fn try_stmt(&self, _node: Node) -> Term {
         todo!()
     }
 
-    fn do_stmt(&self, node: Node) -> Term {
+    fn do_stmt(&self, _node: Node) -> Term {
         todo!()
     }
 
@@ -348,7 +350,7 @@ impl Surf {
         node.named_child(0).map_or(Unit, |n| self.expr(n))
     }
 
-    fn throw_stmt(&self, node: Node) -> Term {
+    fn throw_stmt(&self, _node: Node) -> Term {
         todo!()
     }
 
@@ -482,7 +484,7 @@ impl Surf {
         If(c, t, e)
     }
 
-    fn new_expr(&self, node: Node) -> Term {
+    fn new_expr(&self, _node: Node) -> Term {
         todo!()
     }
 }
