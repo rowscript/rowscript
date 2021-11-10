@@ -333,12 +333,12 @@ impl Surf {
     }
 
     fn switch_case(&self, node: Node) -> (Ident, Term) {
-        let [lbl, var, stmt] =
-            ["label", "variable", "statement"].map(|f| node.child_by_field_name(f).unwrap());
-        (
-            self.ident(lbl),
-            Abs(vec![self.ident(var)], Box::from(self.stmt(stmt))),
-        )
+        let mut vars = vec![];
+        let [lbl, stmt] = ["label", "statement"].map(|f| node.child_by_field_name(f).unwrap());
+        if let Some(n) = node.child_by_field_name("variable") {
+            vars.push(self.ident(n));
+        }
+        (self.ident(lbl), Abs(vars, Box::from(self.stmt(stmt))))
     }
 
     fn try_stmt(&self, _node: Node) -> Term {

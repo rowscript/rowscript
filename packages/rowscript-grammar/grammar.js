@@ -163,7 +163,7 @@ module.exports = grammar({
         'case',
         '`',
         field('label', $.identifier),
-        field('variable', $.identifier),
+        optional(field('variable', $.identifier)),
         ':',
         field('statement', $.statement)
       ),
