@@ -234,7 +234,7 @@ module.exports = grammar({
         choice(
           '`|',
           seq('`', $.identifier),
-          sep('|', seq('`', $.identifier, $.typeExpression))
+          sep('|', seq('`', $.identifier, optional($.typeExpression)))
         )
       ),
 

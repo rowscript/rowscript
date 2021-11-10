@@ -40,8 +40,11 @@ macro_rules! row_type {
                 let mut rows = vec![];
                 for i in (0..$node.named_child_count()).step_by(2) {
                     let ident = $node.named_child(i).unwrap();
-                    let typ = $node.named_child(i + 1).unwrap();
-                    rows.push(($self.ident(ident), $self.type_expr(typ)));
+                    let typ = $node
+                        .named_child(i + 1)
+                        .map(|n| $self.type_expr(n))
+                        .unwrap_or(Type::Unit);
+                    rows.push(($self.ident(ident), typ));
                 }
                 $e(Row::Labeled(rows))
             }
