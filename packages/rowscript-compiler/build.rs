@@ -1,9 +1,12 @@
+use std::fs::remove_dir_all;
 use std::path::PathBuf;
 use std::process::Command;
 
 fn main() {
     let root_dir = ["..", "rowscript-grammar"].iter().collect::<PathBuf>();
     let src_dir = root_dir.join("src");
+
+    let _ = remove_dir_all(&src_dir);
 
     Command::new("npm")
         .arg("i")

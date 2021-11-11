@@ -270,6 +270,7 @@ module.exports = grammar({
         $.false,
         $.true,
         $.object,
+        $.variant,
         $.array,
         $.arrowFunction,
         $.callExpression
@@ -367,6 +368,8 @@ module.exports = grammar({
     parenthesizedExpression: $ => seq('(', $.expression, ')'),
 
     object: $ => prec('object', seq('{', optional(commaSep($.pair)), '}')),
+
+    variant: $ => prec.left(seq('`', $.identifier, optional($.expression))),
 
     pair: $ =>
       seq(field('key', $.identifier), ':', field('value', $.expression)),

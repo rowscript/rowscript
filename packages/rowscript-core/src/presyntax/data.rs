@@ -86,7 +86,9 @@ pub enum Term {
     Prj(Dir, Box<Term>),
     Cat(Vec<Term>),
 
-    Inj(Dir, Box<Term>),
+    /// Unlike ROSE, we use identifiers as labels to form a variant value. So we
+    /// don't need multiple `Dir`s to reference the correct row type.
+    Inj(Ident, Box<Term>),
     Case(HashMap<Ident, Term>, Box<Option<Term>>),
 
     /// Type alias.

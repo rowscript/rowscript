@@ -2,7 +2,7 @@ use crate::surf::diag::ErrInfo;
 use crate::surf::SurfError::ParsingError;
 use rowscript_core::basis::data::Ident;
 use rowscript_core::presyntax::data::Term::{
-    Abs, App, Array, Bool, Case, Cat, If, Let, Num, PrimRef, Rec, Sel, Str, Subs, TLet, Tuple,
+    Abs, App, Array, Bool, Case, Cat, If, Inj, Let, Num, PrimRef, Rec, Sel, Str, Subs, TLet, Tuple,
     Unit, Var,
 };
 use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, Term, Type};
@@ -71,6 +71,7 @@ impl Surf {
                 let node = tree.root_node();
                 if node.has_error() {
                     // TODO: Better error diagnostics.
+                    dbg!(node.to_sexp());
                     let info = ErrInfo::new(&node, "syntax error");
                     return Err(SurfError::SyntaxError { info });
                 }
@@ -383,6 +384,7 @@ impl Surf {
             "false" => Bool(false),
             "true" => Bool(true),
             "object" => self.obj_expr(e),
+            "variant" => self.variant_expr(e),
             "array" => self.array_expr(e),
             "arrowFunction" => self.arrow_func(e),
             "callExpression" => self.call_expr(e),
@@ -418,6 +420,12 @@ impl Surf {
                 .map(|n| self.pair(n))
                 .collect()),
         }
+    }
+
+    fn variant_expr(&self, node: Node) -> Term {
+        let ident = self.ident(node.named_child(0).unwrap());
+        let expr = node.named_child(1).map_or(Unit, |n| self.expr(n));
+        Inj(ident, Box::from(expr))
     }
 
     fn pair(&self, node: Node) -> Term {
