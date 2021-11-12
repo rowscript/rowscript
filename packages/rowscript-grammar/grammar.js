@@ -161,7 +161,6 @@ module.exports = grammar({
     switchCase: $ =>
       seq(
         'case',
-        '`',
         field('label', $.identifier),
         optional(field('variable', $.identifier)),
         ':',
@@ -232,9 +231,8 @@ module.exports = grammar({
     variantType: $ =>
       prec.left(
         choice(
-          '`|',
-          seq('`', $.identifier),
-          sep('|', seq('`', $.identifier, optional($.typeExpression)))
+          seq('@|', optional($.identifier)),
+          sep('|', seq('@', $.identifier, optional($.typeExpression)))
         )
       ),
 
@@ -369,7 +367,7 @@ module.exports = grammar({
 
     object: $ => prec('object', seq('{', optional(commaSep($.pair)), '}')),
 
-    variant: $ => prec.left(seq('`', $.identifier, optional($.expression))),
+    variant: $ => prec.left(seq('@', $.identifier, optional($.expression))),
 
     pair: $ =>
       seq(field('key', $.identifier), ':', field('value', $.expression)),
