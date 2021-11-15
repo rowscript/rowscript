@@ -201,7 +201,8 @@ module.exports = grammar({
 
     throwStatement: $ => seq('throw', $.expression),
 
-    typeSchemeBinders: $ => seq('<', optional(commaSep($.identifier)), '>'),
+    typeSchemeBinders: $ =>
+      seq('<', optional(commaSep(choice($.rowVariable, $.identifier))), '>'),
 
     typeScheme: $ => seq(optional($.typeSchemeBinders), $.typeExpression),
 
@@ -224,14 +225,14 @@ module.exports = grammar({
     recordType: $ =>
       choice(
         '{}',
-        seq('{', $.identifier, '}'),
+        seq('{', $.rowVariable, '}'),
         seq('{', commaSep(seq($.identifier, ':', $.typeExpression)), '}')
       ),
 
     variantType: $ =>
       prec.left(
         choice(
-          seq('@|', optional($.identifier)),
+          seq('@|', optional($.rowVariable)),
           sep('|', seq('@', $.identifier, optional($.typeExpression)))
         )
       ),
@@ -388,6 +389,8 @@ module.exports = grammar({
         'call',
         seq(field('function', $.expression), field('arguments', $.arguments))
       ),
+
+    rowVariable: $ => seq('@', $.identifier),
 
     identifier: () => token(seq(ALPHA, repeat(ALNUM))),
 

@@ -5,7 +5,7 @@ use rowscript_core::presyntax::data::Term::{
     Abs, App, Array, Bool, Case, Cat, If, Inj, Let, Num, PrimRef, Rec, Sel, Str, Subs, TLet, Tuple,
     Unit, Var,
 };
-use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, Term, Type};
+use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, SchemeBinder, Term, Type};
 use std::collections::HashMap;
 use thiserror::Error;
 use tree_sitter::{Language, Node, Parser, Tree};
@@ -134,16 +134,10 @@ impl Surf {
         Let(
             self.ident(name),
             Scheme::Scm {
-                type_vars: node
+                binders: node
                     .child_by_field_name("scheme")
-                    .map(|n| {
-                        n.named_children(&mut n.walk())
-                            .map(|n| self.ident(n))
-                            .collect()
-                    })
+                    .map(|n| self.type_scheme_binders(n))
                     .unwrap_or(Default::default()),
-                // TODO: Determine type/row variables.
-                row_vars: vec![],
                 qualified: QualifiedType {
                     preds: vec![],
                     typ: Type::Arrow(vec![
@@ -181,19 +175,27 @@ impl Surf {
         }
     }
 
+    fn type_scheme_binders(&self, node: Node) -> SchemeBinder {
+        let mut tvars = vec![];
+        let mut rvars = vec![];
+        node.named_children(&mut node.walk()).for_each(|n| {
+            let ident = self.ident(n);
+            match n.kind() {
+                "identifier" => tvars.push(ident),
+                "rowVariable" => rvars.push(ident),
+                _ => unreachable!(),
+            }
+        });
+        SchemeBinder::new(tvars, rvars)
+    }
+
     fn type_scheme(&self, node: Node) -> Scheme {
-        // TODO: Determine type/row variables.
-        let mut type_vars = vec![];
+        let mut binders = Default::default();
         if node.child_count() == 2 {
-            let b = node.child(0).unwrap();
-            type_vars = b
-                .named_children(&mut b.walk())
-                .map(|n| self.ident(n))
-                .collect();
+            binders = self.type_scheme_binders(node.child(0).unwrap());
         }
         Scheme::Scm {
-            type_vars,
-            row_vars: vec![],
+            binders,
             qualified: QualifiedType {
                 preds: vec![],
                 typ: self.type_expr(node.children(&mut node.walk()).last().unwrap()),

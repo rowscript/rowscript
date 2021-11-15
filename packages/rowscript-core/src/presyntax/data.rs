@@ -19,11 +19,22 @@ pub enum Row {
     Labeled(Vec<(Label, Type)>),
 }
 
+#[derive(Debug, Default)]
+pub struct SchemeBinder {
+    tvars: Vec<Ident>,
+    rvars: Vec<Ident>,
+}
+
+impl SchemeBinder {
+    pub fn new(tvars: Vec<Ident>, rvars: Vec<Ident>) -> SchemeBinder {
+        SchemeBinder { tvars, rvars }
+    }
+}
+
 #[derive(Debug)]
 pub enum Scheme {
     Scm {
-        type_vars: Vec<Ident>,
-        row_vars: Vec<Ident>,
+        binders: SchemeBinder,
         qualified: QualifiedType,
     },
 
@@ -34,8 +45,7 @@ pub enum Scheme {
 impl Scheme {
     pub fn new_schemeless(typ: Type) -> Scheme {
         Scm {
-            type_vars: vec![],
-            row_vars: vec![],
+            binders: Default::default(),
             qualified: QualifiedType { preds: vec![], typ },
         }
     }
@@ -178,20 +188,23 @@ impl std::fmt::Display for QualifiedType {
     }
 }
 
+impl std::fmt::Display for SchemeBinder {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "(scheme-binder {} {})",
+            pretty::Iter::new(self.tvars.iter()),
+            pretty::Iter::new(self.rvars.iter()),
+        )
+    }
+}
+
 impl std::fmt::Display for Scheme {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Scheme::Scm {
-                type_vars,
-                row_vars,
-                qualified,
-            } => write!(
-                f,
-                "(scheme/scm {} {} {})",
-                pretty::Iter::new(type_vars.iter()),
-                pretty::Iter::new(row_vars.iter()),
-                qualified
-            ),
+            Scheme::Scm { binders, qualified } => {
+                write!(f, "(scheme/scm {} {})", binders, qualified)
+            }
             Scheme::Meta(point) => write!(f, "(scheme/meta {} {})", point.row, point.column),
         }
     }
