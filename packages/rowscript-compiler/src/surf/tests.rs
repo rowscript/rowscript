@@ -52,3 +52,15 @@ fn it_converts_call_expressions() {
     ]
     .map(|i| println!("{}", Surf::new(i.into()).unwrap().to_presyntax()));
 }
+
+#[test]
+fn it_converts_pipeline_expressions() {
+    [
+        "function _() { return a:foo() }",
+        "function _() { return a:foo:bar() }",
+        "function _() { return a:foo:bar:baz() }",
+        "function _() { return a:foo:bar:baz(1) }",
+        "function _() { return a:foo:bar:baz(1, 2) }",
+    ]
+    .map(|i| println!("{}", Surf::new(i.into()).unwrap().to_presyntax()));
+}

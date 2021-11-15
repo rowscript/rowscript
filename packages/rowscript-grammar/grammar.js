@@ -29,7 +29,13 @@ module.exports = grammar({
     ],
     ['member', 'new', 'call', $.expression],
     ['declaration', 'literal'],
-    [$.abstractionSignature, $.primaryExpression, $.statementBlock, 'object']
+    [
+      $.abstractionSignature,
+      'call',
+      $.primaryExpression,
+      $.statementBlock,
+      'object'
+    ]
   ],
 
   word: $ => $.identifier,
@@ -269,7 +275,8 @@ module.exports = grammar({
         $.variant,
         $.array,
         $.arrowFunction,
-        $.callExpression
+        $.callExpression,
+        $.pipelineExpression
       ),
 
     subscriptExpression: $ =>
@@ -376,6 +383,10 @@ module.exports = grammar({
         'call',
         seq(field('function', $.expression), field('arguments', $.arguments))
       ),
+
+    pipelineExpression: $ => seq($.expression, $.pipelineCalls, $.arguments),
+
+    pipelineCalls: $ => repeat1(prec('call', seq(':', $.identifier))),
 
     rowVariable: $ => seq('@', $.identifier),
 

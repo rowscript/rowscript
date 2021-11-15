@@ -387,6 +387,7 @@ impl Surf {
             "array" => self.array_expr(e),
             "arrowFunction" => self.arrow_func(e),
             "callExpression" => self.call_expr(e),
+            "pipelineExpression" => self.pipeline_expr(e),
             _ => unreachable!(),
         }
     }
@@ -469,6 +470,34 @@ impl Surf {
                         .collect(),
                 ),
             }),
+        )
+    }
+
+    fn pipeline_expr(&self, node: Node) -> Term {
+        let expr = self.expr(node.named_child(0).unwrap());
+        let calls = node.named_child(1).unwrap();
+        let args_node = node.named_child(2).unwrap();
+        if args_node.named_child_count() == 0 {
+            return calls
+                .named_children(&mut calls.walk())
+                .map(|n| self.ident(n))
+                .fold(expr, |acc, a| App(Box::from(Var(a)), Box::from(acc)));
+        }
+        let mut args = vec![(0..calls.named_child_count() - 1)
+            .map(|i| self.ident(calls.named_child(i).unwrap()))
+            .fold(expr, |acc, a| App(Box::from(Var(a)), Box::from(acc)))];
+        args.append(
+            &mut args_node
+                .named_children(&mut args_node.walk())
+                .map(|n| self.expr(n))
+                .collect::<Vec<Term>>(),
+        );
+
+        App(
+            Box::from(Var(
+                self.ident(calls.named_children(&mut calls.walk()).last().unwrap())
+            )),
+            Box::from(Tuple(args)),
         )
     }
 
