@@ -367,7 +367,6 @@ impl Surf {
             "unaryExpression" => self.unary_expr(e),
             "binaryExpression" => self.binary_expr(e),
             "ternaryExpression" => self.ternary_expr(e),
-            "newExpression" => self.new_expr(e),
             _ => unreachable!(),
         }
     }
@@ -379,8 +378,6 @@ impl Surf {
             "memberExpression" => self.member_expr(e),
             "parenthesizedExpression" => self.expr(e.named_child(0).unwrap()),
             "identifier" => Var(self.ident(e)),
-            "this" => todo!(),
-            "super" => todo!(),
             "number" => Num(self.text(&e)),
             "string" | "regex" => Str(self.text(&e)),
             "false" => Bool(false),
@@ -495,9 +492,5 @@ impl Surf {
             .expr_from_fields(node, ["cond", "then", "else"])
             .map(Box::from);
         If(c, t, e)
-    }
-
-    fn new_expr(&self, _node: Node) -> Term {
-        todo!()
     }
 }

@@ -251,8 +251,7 @@ module.exports = grammar({
         $.primaryExpression,
         $.unaryExpression,
         $.binaryExpression,
-        $.ternaryExpression,
-        $.newExpression
+        $.ternaryExpression
       ),
 
     primaryExpression: $ =>
@@ -261,8 +260,6 @@ module.exports = grammar({
         $.memberExpression,
         $.parenthesizedExpression,
         $.identifier,
-        $.this,
-        $.super,
         $.number,
         $.string,
         $.regex,
@@ -352,16 +349,6 @@ module.exports = grammar({
         )
       ),
 
-    newExpression: $ =>
-      prec.right(
-        'new',
-        seq(
-          'new',
-          field('constructor', $.identifier),
-          field('arguments', $.arguments)
-        )
-      ),
-
     arguments: $ => seq('(', optional(commaSep($.expression)), ')'),
 
     parenthesizedExpression: $ => seq('(', $.expression, ')'),
@@ -394,8 +381,6 @@ module.exports = grammar({
 
     identifier: () => token(seq(ALPHA, repeat(ALNUM))),
 
-    this: () => 'this',
-    super: () => 'super',
     true: () => 'true',
     false: () => 'false',
 
