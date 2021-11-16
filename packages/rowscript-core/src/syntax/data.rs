@@ -1,15 +1,17 @@
-use crate::basis::data::Ident;
+use crate::basis::data::{Ident, Lvl};
 
-enum Type {
-    Var(Ident),
+#[derive(Debug)]
+pub enum Type {
+    Var(Ident, Lvl),
     Arr(Vec<Type>),
     Forall(Ident, Box<Type>),
     Prod(Vec<Type>),
     Coprod(Vec<Type>),
 }
 
-enum Term {
-    Var(Ident),
+#[derive(Debug)]
+pub enum Term {
+    Var(Ident, Lvl),
 
     Abs(Vec<(Ident, Type)>, Box<Term>),
     App(Vec<Term>),

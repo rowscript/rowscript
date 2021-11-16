@@ -25,3 +25,6 @@ impl std::fmt::Display for Ident {
         }
     }
 }
+
+pub type Ix = i64;
+pub type Lvl = i64;

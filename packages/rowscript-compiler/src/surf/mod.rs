@@ -1,6 +1,7 @@
-use crate::surf::diag::ErrInfo;
+use crate::surf::diag::Diag;
 use crate::surf::SurfError::ParsingError;
 use rowscript_core::basis::data::Ident;
+use rowscript_core::presyntax::check::CheckError;
 use rowscript_core::presyntax::data::Term::{
     Abs, App, Array, Bool, Case, Cat, If, Inj, Let, Num, PrimRef, Rec, Sel, Str, Subs, TLet, Tuple,
     Unit, Var,
@@ -22,7 +23,9 @@ pub enum SurfError {
     #[error("General parsing error")]
     ParsingError(String),
     #[error("Syntax error")]
-    SyntaxError { info: ErrInfo },
+    SyntaxError { info: Diag },
+    #[error("Typecheck error")]
+    TypecheckError(CheckError),
 }
 
 type SurfM<T> = Result<T, SurfError>;
@@ -35,7 +38,7 @@ macro_rules! row_type {
     ($self:ident,$e:expr,$node:ident) => {
         match $node.named_child_count() {
             0 => $e(Row::Labeled(vec![])),
-            1 => $e(Row::Var($self.ident($node.named_child(0).unwrap()))),
+            1 => $e(Row::Var($self.ident($node.named_child(0).unwrap()), 0)),
             _ => {
                 let mut rows = vec![];
                 for i in (0..$node.named_child_count()).step_by(2) {
@@ -72,7 +75,7 @@ impl Surf {
                 if node.has_error() {
                     // TODO: Better error diagnostics.
                     dbg!(node.to_sexp());
-                    let info = ErrInfo::new(&node, "syntax error");
+                    let info = Diag::new(&node, "syntax error");
                     return Err(SurfError::SyntaxError { info });
                 }
                 Ok(Surf { src, tree })
@@ -225,7 +228,7 @@ impl Surf {
             "numberType" => Type::Num,
             "booleanType" => Type::Bool,
             "bigintType" => Type::BigInt,
-            "identifier" => Type::Var(self.ident(tm)),
+            "identifier" => Type::Var(self.ident(tm), 0),
             _ => unreachable!(),
         }
     }
@@ -377,7 +380,7 @@ impl Surf {
             "subscriptExpression" => self.subs_expr(e),
             "memberExpression" => self.member_expr(e),
             "parenthesizedExpression" => self.expr(e.named_child(0).unwrap()),
-            "identifier" => Var(self.ident(e)),
+            "identifier" => Var(self.ident(e), 0),
             "number" => Num(self.text(&e)),
             "string" | "regex" => Str(self.text(&e)),
             "false" => Bool(false),
@@ -481,11 +484,11 @@ impl Surf {
             return calls
                 .named_children(&mut calls.walk())
                 .map(|n| self.ident(n))
-                .fold(expr, |acc, a| App(Box::from(Var(a)), Box::from(acc)));
+                .fold(expr, |acc, a| App(Box::from(Var(a, 0)), Box::from(acc)));
         }
         let mut args = vec![(0..calls.named_child_count() - 1)
             .map(|i| self.ident(calls.named_child(i).unwrap()))
-            .fold(expr, |acc, a| App(Box::from(Var(a)), Box::from(acc)))];
+            .fold(expr, |acc, a| App(Box::from(Var(a, 0)), Box::from(acc)))];
         args.append(
             &mut args_node
                 .named_children(&mut args_node.walk())
@@ -495,7 +498,8 @@ impl Surf {
 
         App(
             Box::from(Var(
-                self.ident(calls.named_children(&mut calls.walk()).last().unwrap())
+                self.ident(calls.named_children(&mut calls.walk()).last().unwrap()),
+                0,
             )),
             Box::from(Tuple(args)),
         )

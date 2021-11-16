@@ -1,4 +1,4 @@
-use crate::basis::data::Ident;
+use crate::basis::data::{Ident, Ix};
 use crate::basis::pretty;
 use crate::presyntax::data::Scheme::Scm;
 use std::collections::HashMap;
@@ -7,19 +7,19 @@ use tree_sitter::Point;
 
 type Label = Ident;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Dir {
     L,
     R,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Row {
-    Var(Ident),
+    Var(Ident, Ix),
     Labeled(Vec<(Label, Type)>),
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct SchemeBinder {
     tvars: Vec<Ident>,
     rvars: Vec<Ident>,
@@ -31,7 +31,7 @@ impl SchemeBinder {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Scheme {
     Scm {
         binders: SchemeBinder,
@@ -51,21 +51,21 @@ impl Scheme {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Pred {
     Cont { d: Dir, lhs: Row, rhs: Row },
     Comb { lhs: Row, rhs: Row, result: Row },
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct QualifiedType {
     pub preds: Vec<Pred>,
     pub typ: Type,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Type {
-    Var(Ident),
+    Var(Ident, Ix),
     Arrow(Vec<Type>),
     Record(Row),
     Variant(Row),
@@ -83,9 +83,9 @@ pub enum Type {
     Tuple(Vec<Type>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Term {
-    Var(Ident),
+    Var(Ident, Ix),
 
     Abs(Vec<Ident>, Box<Term>),
     App(Box<Term>, Box<Term>),
@@ -139,7 +139,7 @@ impl std::fmt::Display for Dir {
 impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Type::Var(ident) => write!(f, "(type/var {})", ident),
+            Type::Var(ident, ix) => write!(f, "(type/var {} {})", ident, ix),
             Type::Arrow(types) => write!(f, "(type/arrow {})", pretty::Iter::new(types.iter())),
             Type::Record(row) => write!(f, "(type/record {})", row),
             Type::Variant(row) => write!(f, "(type/variant {})", row),
@@ -158,7 +158,7 @@ impl std::fmt::Display for Type {
 impl std::fmt::Display for Row {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Row::Var(ident) => write!(f, "(row/var {})", ident),
+            Row::Var(ident, ix) => write!(f, "(row/var {} {})", ident, ix),
             Row::Labeled(label) => write!(
                 f,
                 "(row/labeled {})",
@@ -214,7 +214,7 @@ impl std::fmt::Display for Term {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         use Term::*;
         match self {
-            Var(ident) => write!(f, "(term/var {})", ident),
+            Var(ident, ix) => write!(f, "(term/var {} {})", ident, ix),
             Abs(args, body) => write!(f, "(term/abs {} {})", pretty::Iter::new(args.iter()), body),
             App(func, term) => write!(f, "(term/app {} {})", func, term),
             Let(x, t, val, body) => write!(f, "(term/let {} {} {} {})", x, t, val, body),
