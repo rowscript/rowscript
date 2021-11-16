@@ -19,25 +19,6 @@ enum BD {
 }
 
 #[derive(Debug, Default)]
-struct Env {
-    env: Vec<(String, Term)>,
-}
-
-impl Env {
-    fn resolve_name(&self, var: &mut Term) -> Result<(), CheckError> {
-        if let Var(ident, ix) = var {
-            for i in 0..self.env.len() {
-                if ident.text == self.env[i].0 {
-                    *ix = i as Ix
-                }
-            }
-            return Err(NameNotInScope(ident.to_owned()));
-        }
-        unreachable!()
-    }
-}
-
-#[derive(Debug, Default)]
 pub struct Ctx {
     env: Vec<Term>,
     lvl: Lvl,
@@ -51,8 +32,20 @@ impl Ctx {
         Default::default()
     }
 
+    fn resolve_var(&self, ident: &Ident, ix: &mut Ix) -> Result<(), CheckError> {
+        for i in 0..self.raw_named.len() {
+            if ident.text == self.raw_named[i].0 {
+                *ix = i as Ix
+            }
+        }
+        return Err(NameNotInScope(ident.to_owned()));
+    }
+
     pub fn scope_check(&mut self, tm: &mut Term) -> Result<(), CheckError> {
-        todo!()
+        match tm {
+            Var(ident, ix) => self.resolve_var(ident, ix),
+            _ => todo!(),
+        }
     }
 
     pub fn infer(&mut self, tm: Term) -> Result<Type, CheckError> {
