@@ -35,7 +35,8 @@ module.exports = grammar({
       $.primaryExpression,
       $.statementBlock,
       'object'
-    ]
+    ],
+    [$.rowVariable, $.variantType]
   ],
 
   word: $ => $.identifier,
@@ -207,10 +208,42 @@ module.exports = grammar({
 
     throwStatement: $ => seq('throw', $.expression),
 
+    typeScheme: $ =>
+      seq(
+        optional(field('binders', $.typeSchemeBinders)),
+        optional(field('predicates', $.typePredicates)),
+        $.typeExpression
+      ),
+
     typeSchemeBinders: $ =>
       seq('<', optional(commaSep(choice($.rowVariable, $.identifier))), '>'),
 
-    typeScheme: $ => seq(optional($.typeSchemeBinders), $.typeExpression),
+    typePredicates: $ => seq(commaSep($.typePredicate), '=>'),
+
+    typePredicate: $ =>
+      choice($.rowContainment, $.rowCombination, $.parenthesizedTypePredicate),
+
+    rowContainment: $ =>
+      seq(
+        $.rowPredicateExpression,
+        choice('<:', ':>'),
+        $.rowPredicateExpression
+      ),
+
+    rowCombination: $ =>
+      prec.left(
+        seq(
+          $.rowPredicateExpression,
+          '::',
+          $.rowPredicateExpression,
+          '==',
+          $.rowPredicateExpression
+        )
+      ),
+
+    parenthesizedTypePredicate: $ => seq('(', $.typePredicate, ')'),
+
+    rowPredicateExpression: $ => choice($.rowVariable, $.rowTerms),
 
     typeExpression: $ => prec.right(sep('->', $.typeTerm)),
 
@@ -231,17 +264,35 @@ module.exports = grammar({
     recordType: $ =>
       choice(
         '{}',
-        seq('{', $.rowVariable, '}'),
+        seq('{', $.rowTypeExpression, '}'),
         seq('{', commaSep(seq($.identifier, ':', $.typeExpression)), '}')
       ),
 
     variantType: $ =>
       prec.left(
         choice(
-          seq('@|', optional($.rowVariable)),
+          seq('@|', optional($.rowTypeExpression)),
           sep('|', seq('@', $.identifier, optional($.typeExpression)))
         )
       ),
+
+    rowTypeExpression: $ =>
+      choice(
+        $.rowVariable,
+        $.rowTerms,
+        $.rowConcatenation,
+        $.parenthesizedRowTypeExpression
+      ),
+
+    rowVariable: $ => seq('@', $.identifier),
+
+    rowTerms: $ =>
+      seq('(', commaSep(seq($.identifier, ':', $.typeExpression)), ')'),
+
+    rowConcatenation: $ =>
+      prec.left(seq($.rowTypeExpression, '::', $.rowTypeExpression)),
+
+    parenthesizedRowTypeExpression: $ => seq('(', $.rowTypeExpression, ')'),
 
     arrayType: $ => seq('[', $.typeExpression, ']'),
 
@@ -387,8 +438,6 @@ module.exports = grammar({
     pipelineExpression: $ => seq($.expression, $.pipelineCalls, $.arguments),
 
     pipelineCalls: $ => repeat1(prec('call', seq(':', $.identifier))),
-
-    rowVariable: $ => seq('@', $.identifier),
 
     identifier: () => token(seq(ALPHA, repeat(ALNUM))),
 

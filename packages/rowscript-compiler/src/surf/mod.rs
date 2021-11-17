@@ -2,11 +2,14 @@ use crate::surf::diag::Diag;
 use crate::surf::SurfError::ParsingError;
 use rowscript_core::basis::data::Ident;
 use rowscript_core::presyntax::check::CheckError;
+use rowscript_core::presyntax::data::Pred::{Comb, Cont};
 use rowscript_core::presyntax::data::Term::{
     Abs, App, Array, Bool, Case, Cat, If, Inj, Let, Num, PrimRef, Rec, Sel, Str, Subs, TLet, Tuple,
     Unit, Var,
 };
-use rowscript_core::presyntax::data::{QualifiedType, Row, Scheme, SchemeBinder, Term, Type};
+use rowscript_core::presyntax::data::{
+    Dir, Label, Pred, QualifiedType, RowPred, RowType, Scheme, SchemeBinder, Term, Type,
+};
 use std::collections::HashMap;
 use thiserror::Error;
 use tree_sitter::{Language, Node, Parser, Tree};
@@ -35,24 +38,26 @@ extern "C" {
 }
 
 macro_rules! row_type {
-    ($self:ident,$e:expr,$node:ident) => {
-        match $node.named_child_count() {
-            0 => $e(Row::Labeled(vec![])),
-            1 => $e(Row::Var($self.ident($node.named_child(0).unwrap()), 0)),
-            _ => {
-                let mut rows = vec![];
-                for i in (0..$node.named_child_count()).step_by(2) {
-                    let ident = $node.named_child(i).unwrap();
-                    let typ = $node
-                        .named_child(i + 1)
-                        .map(|n| $self.type_expr(n))
-                        .unwrap_or(Type::Unit);
-                    rows.push(($self.ident(ident), typ));
-                }
-                $e(Row::Labeled(rows))
-            }
+    ($self:ident,$e:expr,$node:ident) => {{
+        let cnt = $node.named_child_count();
+        if cnt == 0 {
+            return $e(RowType::Labeled(vec![]));
         }
-    };
+        let n = $node.named_child(0).unwrap();
+        if cnt == 1 && n.kind() == "rowTypeExpression" {
+            return $e($self.row_type_expr(n));
+        }
+        let mut rows = vec![];
+        for i in (0..$node.named_child_count()).step_by(2) {
+            let ident = $node.named_child(i).unwrap();
+            let typ = $node
+                .named_child(i + 1)
+                .map(|n| $self.type_expr(n))
+                .unwrap_or(Type::Unit);
+            rows.push(($self.ident(ident), typ));
+        }
+        $e(RowType::Labeled(rows))
+    }};
 }
 
 /// Surface syntax.
@@ -73,9 +78,9 @@ impl Surf {
             .and_then(|tree| {
                 let node = tree.root_node();
                 if node.has_error() {
-                    // TODO: Better error diagnostics.
+                    // FIXME
                     dbg!(node.to_sexp());
-                    let info = Diag::new(&node, "syntax error");
+                    let info = Diag::find_err(node, "syntax error").unwrap();
                     return Err(SurfError::SyntaxError { info });
                 }
                 Ok(Surf { src, tree })
@@ -178,6 +183,25 @@ impl Surf {
         }
     }
 
+    fn type_scheme(&self, node: Node) -> Scheme {
+        Scheme::Scm {
+            binders: node
+                .child_by_field_name("binders")
+                .map_or(Default::default(), |n| self.type_scheme_binders(n)),
+            qualified: QualifiedType {
+                preds: node
+                    .child_by_field_name("predicates")
+                    .map_or(vec![], |preds| {
+                        preds
+                            .named_children(&mut preds.walk())
+                            .map(|n| self.type_pred(n.named_child(0).unwrap()))
+                            .collect()
+                    }),
+                typ: self.type_expr(node.children(&mut node.walk()).last().unwrap()),
+            },
+        }
+    }
+
     fn type_scheme_binders(&self, node: Node) -> SchemeBinder {
         let mut tvars = vec![];
         let mut rvars = vec![];
@@ -192,17 +216,34 @@ impl Surf {
         SchemeBinder::new(tvars, rvars)
     }
 
-    fn type_scheme(&self, node: Node) -> Scheme {
-        let mut binders = Default::default();
-        if node.child_count() == 2 {
-            binders = self.type_scheme_binders(node.child(0).unwrap());
-        }
-        Scheme::Scm {
-            binders,
-            qualified: QualifiedType {
-                preds: vec![],
-                typ: self.type_expr(node.children(&mut node.walk()).last().unwrap()),
+    fn type_pred(&self, node: Node) -> Pred {
+        match node.kind() {
+            "rowContainment" => {
+                let lhs = self.row_pred_expr(node.named_child(0).unwrap());
+                let rhs = self.row_pred_expr(node.named_child(1).unwrap());
+                let d = match node.child(1).unwrap().kind() {
+                    "<:" => Dir::L,
+                    ":>" => Dir::R,
+                    _ => unreachable!(),
+                };
+                Cont { d, lhs, rhs }
+            }
+            "rowCombination" => Comb {
+                lhs: self.row_pred_expr(node.named_child(0).unwrap()),
+                rhs: self.row_pred_expr(node.named_child(1).unwrap()),
+                result: self.row_pred_expr(node.named_child(2).unwrap()),
             },
+            "parenthesizedTypePredicate" => self.type_pred(node.named_child(0).unwrap()),
+            _ => unreachable!(),
+        }
+    }
+
+    fn row_pred_expr(&self, node: Node) -> RowPred {
+        let n = node.child(0).unwrap();
+        match n.kind() {
+            "rowVariable" => RowPred::Var(self.ident(n), 0),
+            "rowTerms" => RowPred::Labeled(self.row_terms(n)),
+            _ => unreachable!(),
         }
     }
 
@@ -239,6 +280,30 @@ impl Surf {
 
     fn variant_type(&self, node: Node) -> Type {
         row_type!(self, Type::Variant, node)
+    }
+
+    fn row_type_expr(&self, node: Node) -> RowType {
+        let n = node.child(0).unwrap();
+        match n.kind() {
+            "rowVariable" => RowType::Var(self.ident(n), 0),
+            "rowTerms" => RowType::Labeled(self.row_terms(n)),
+            "rowConcatenation" => RowType::Cat(
+                Box::from(self.row_type_expr(n.named_child(0).unwrap())),
+                Box::from(self.row_type_expr(n.named_child(1).unwrap())),
+            ),
+            "parenthesizedRowTypeExpression" => self.row_type_expr(n.named_child(0).unwrap()),
+            _ => unreachable!(),
+        }
+    }
+
+    fn row_terms(&self, node: Node) -> Vec<(Label, Type)> {
+        let mut rows = vec![];
+        for i in (0..node.named_child_count()).step_by(2) {
+            let ident = self.ident(node.named_child(i).unwrap());
+            let typ = self.type_expr(node.named_child(i + 1).unwrap());
+            rows.push((ident, typ));
+        }
+        rows
     }
 
     fn array_type(&self, node: Node) -> Type {

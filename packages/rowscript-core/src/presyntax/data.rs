@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::fmt::Formatter;
 use tree_sitter::Point;
 
-type Label = Ident;
+pub type Label = Ident;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Dir {
@@ -14,7 +14,14 @@ pub enum Dir {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum Row {
+pub enum RowType {
+    Var(Ident, Ix),
+    Labeled(Vec<(Label, Type)>),
+    Cat(Box<RowType>, Box<RowType>),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum RowPred {
     Var(Ident, Ix),
     Labeled(Vec<(Label, Type)>),
 }
@@ -53,8 +60,16 @@ impl Scheme {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Pred {
-    Cont { d: Dir, lhs: Row, rhs: Row },
-    Comb { lhs: Row, rhs: Row, result: Row },
+    Cont {
+        d: Dir,
+        lhs: RowPred,
+        rhs: RowPred,
+    },
+    Comb {
+        lhs: RowPred,
+        rhs: RowPred,
+        result: RowPred,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -67,8 +82,8 @@ pub struct QualifiedType {
 pub enum Type {
     Var(Ident, Ix),
     Arrow(Vec<Type>),
-    Record(Row),
-    Variant(Row),
+    Record(RowType),
+    Variant(RowType),
     Row(Label, Box<Type>),
 
     /// Sugar for empty records/tuples.
@@ -155,13 +170,27 @@ impl std::fmt::Display for Type {
     }
 }
 
-impl std::fmt::Display for Row {
+impl std::fmt::Display for RowType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Row::Var(ident, ix) => write!(f, "(row/var {} {})", ident, ix),
-            Row::Labeled(label) => write!(
+            RowType::Var(ident, ix) => write!(f, "(row-type/var {} {})", ident, ix),
+            RowType::Labeled(label) => write!(
                 f,
-                "(row/labeled {})",
+                "(row-type/labeled {})",
+                pretty::Iter::new(label.iter().map(|x| pretty::Pair::new((&x.0, &x.1))))
+            ),
+            RowType::Cat(lhs, rhs) => write!(f, "(row-type/cat {} {})", lhs, rhs),
+        }
+    }
+}
+
+impl std::fmt::Display for RowPred {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RowPred::Var(ident, ix) => write!(f, "(row-pred/var {} {})", ident, ix),
+            RowPred::Labeled(label) => write!(
+                f,
+                "(row-pred/labeled {})",
                 pretty::Iter::new(label.iter().map(|x| pretty::Pair::new((&x.0, &x.1))))
             ),
         }

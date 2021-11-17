@@ -16,23 +16,6 @@ fn it_cannot_parse_no_return_function() {
 }
 
 #[test]
-fn it_parses_class_declaration() {
-    Surf::new(
-        "
-class Derived<A> extends Base<B> {
-  constructor() {
-  }
-
-  doSomething() {
-  }
-}
-    "
-        .into(),
-    )
-    .unwrap();
-}
-
-#[test]
 fn it_converts_unary_expressions() {
     [
         "function foo(n: number): number { return +42 }",
@@ -61,6 +44,17 @@ fn it_converts_pipeline_expressions() {
         "function _() { return a:foo:bar:baz() }",
         "function _() { return a:foo:bar:baz(1) }",
         "function _() { return a:foo:bar:baz(1, 2) }",
+    ]
+    .map(|i| println!("{}", Surf::new(i.into()).unwrap().to_presyntax()));
+}
+
+#[test]
+fn it_converts_type_predicates() {
+    [
+        "type A = <T, @Z1, @Z2> (x : T) <: @Z3, @Z1 :: @Z2 == @Z3 => {@Z1} -> {@Z2} -> T;",
+        "type A = <T, @Z1, @Z2, @Z3> (x : T) <: @Z3, @Z1 :: @Z2 == @Z3 => {@Z3} -> T;",
+        "type A = <T, @Z1, @Z2, @Z3> (x : T) <: @Z3, @Z1 :: @Z2 == @Z3 => {@Z1 :: @Z2 :: (y : T)} -> T;",
+        "type A = <T, @Z1, @Z2> (x : T) <: @Z1, (y : T) <: @Z2 => {@Z1 :: @Z2} -> T;",
     ]
     .map(|i| println!("{}", Surf::new(i.into()).unwrap().to_presyntax()));
 }

@@ -9,7 +9,7 @@ pub struct Diag {
 }
 
 impl Diag {
-    pub fn new(node: &Node, msg: &'static str) -> Diag {
+    pub fn new(node: Node, msg: &'static str) -> Diag {
         let pt = node.start_position();
         Diag {
             line: pt.row + 1,
@@ -18,8 +18,16 @@ impl Diag {
         }
     }
 
-    pub fn new_string(node: &Node, msg: &'static str) -> String {
-        Self::new(node, msg).to_string()
+    pub fn find_err(node: Node, msg: &'static str) -> Option<Diag> {
+        for n in node.children(&mut node.walk()) {
+            if n.is_error() {
+                return Some(Diag::new(n, msg));
+            }
+            if let Some(e) = Diag::find_err(n, msg) {
+                return Some(e);
+            }
+        }
+        None
     }
 }
 
