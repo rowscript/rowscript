@@ -51,10 +51,10 @@ fn it_converts_pipeline_expressions() {
 #[test]
 fn it_converts_type_predicates() {
     [
-        "type A = <T, @Z1, @Z2> (x : T) <: @Z3, @Z1 :: @Z2 == @Z3 => {@Z1} -> {@Z2} -> T;",
-        "type A = <T, @Z1, @Z2, @Z3> (x : T) <: @Z3, @Z1 :: @Z2 == @Z3 => {@Z3} -> T;",
-        "type A = <T, @Z1, @Z2, @Z3> (x : T) <: @Z3, @Z1 :: @Z2 == @Z3 => {@Z1 :: @Z2 :: (y : T)} -> T;",
-        "type A = <T, @Z1, @Z2> (x : T) <: @Z1, (y : T) <: @Z2 => {@Z1 :: @Z2} -> T;",
+        "type A = < T, @Z1, @Z2;        (x : T) <: @Z3, @Z1 :: @Z2 == @Z3 > {@Z1} -> {@Z2} -> T;",
+        "type A = < T, @Z1, @Z2, @Z3;   (x : T) <: @Z3, @Z1 :: @Z2 == @Z3 > {@Z3} -> T;",
+        "type A = < T, @Z1, @Z2, @Z3;   (x : T) <: @Z3, @Z1 :: @Z2 == @Z3 > {@Z1 :: @Z2 :: (y : T)} -> T;",
+        "type A = < T, @Z1, @Z2;        (x : T) <: @Z1, (y : T) <: @Z2 >    {@Z1 :: @Z2} -> T;",
     ]
     .map(|i| println!("{}", Surf::new(i.into()).unwrap().to_presyntax()));
 }

@@ -18,12 +18,12 @@ impl Diag {
         }
     }
 
-    pub fn find_err(node: Node, msg: &'static str) -> Option<Diag> {
+    pub fn diagnose(node: Node, msg: &'static str) -> Option<Diag> {
         for n in node.children(&mut node.walk()) {
-            if n.is_error() {
+            if n.is_error() || n.is_missing() {
                 return Some(Diag::new(n, msg));
             }
-            if let Some(e) = Diag::find_err(n, msg) {
+            if let Some(e) = Diag::diagnose(n, msg) {
                 return Some(e);
             }
         }

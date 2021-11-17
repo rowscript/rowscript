@@ -45,7 +45,10 @@ module.exports = grammar({
     program: $ => repeat($.declaration),
 
     declaration: $ =>
-      choice($.functionDeclaration, $.classDeclaration, $.typeAliasDeclaration),
+      choice(
+        $.functionDeclaration,
+        /* $.classDeclaration, */ $.typeAliasDeclaration
+      ),
 
     functionDeclaration: $ =>
       prec.right(
@@ -53,53 +56,54 @@ module.exports = grammar({
         seq(
           'function',
           field('name', $.identifier),
-          field('scheme', optional($.typeSchemeBinders)),
+          field('header', optional($.typeSchemeHeader)),
           field('sig', $.declarationSignature),
           optional(seq(':', field('ret', $.typeExpression))),
           field('body', $.statementBlock)
         )
       ),
 
-    classDeclaration: $ =>
-      prec(
-        'declaration',
-        seq(
-          'class',
-          field('name', $.identifier),
-          optional($.typeSchemeBinders),
-          optional($.classHeritage),
-          field('body', $.classBody)
-        )
-      ),
-
-    classHeritage: $ =>
-      seq(
-        'extends',
-        field('base', $.identifier),
-        optional($.typeSchemeBinders)
-      ),
-
-    classBody: $ =>
-      seq(
-        '{',
-        repeat(
-          choice(
-            field('member', $.methodDefinition),
-            field('member', $.fieldDefinition)
-          )
-        ),
-        '}'
-      ),
-
-    methodDefinition: $ =>
-      seq(
-        field('name', $.identifier),
-        field('parameters', $.declarationSignature),
-        field('body', $.statementBlock)
-      ),
-
-    fieldDefinition: $ =>
-      seq(field('property', $.identifier), optional($._initializer)),
+    // TODO: Interfaces and classes.
+    // classDeclaration: $ =>
+    //   prec(
+    //     'declaration',
+    //     seq(
+    //       'class',
+    //       field('name', $.identifier),
+    //       optional($.typeSchemeBinders),
+    //       optional($.classHeritage),
+    //       field('body', $.classBody)
+    //     )
+    //   ),
+    //
+    // classHeritage: $ =>
+    //   seq(
+    //     'extends',
+    //     field('base', $.identifier),
+    //     optional($.typeSchemeBinders)
+    //   ),
+    //
+    // classBody: $ =>
+    //   seq(
+    //     '{',
+    //     repeat(
+    //       choice(
+    //         field('member', $.methodDefinition),
+    //         field('member', $.fieldDefinition)
+    //       )
+    //     ),
+    //     '}'
+    //   ),
+    //
+    // methodDefinition: $ =>
+    //   seq(
+    //     field('name', $.identifier),
+    //     field('parameters', $.declarationSignature),
+    //     field('body', $.statementBlock)
+    //   ),
+    //
+    // fieldDefinition: $ =>
+    //   seq(field('property', $.identifier), optional($._initializer)),
 
     lexicalDeclaration: $ =>
       seq('let', commaSep($.variableDeclarator), ';', $.statement),
@@ -209,16 +213,19 @@ module.exports = grammar({
     throwStatement: $ => seq('throw', $.expression),
 
     typeScheme: $ =>
+      seq(optional(field('header', $.typeSchemeHeader)), $.typeExpression),
+
+    typeSchemeHeader: $ =>
       seq(
-        optional(field('binders', $.typeSchemeBinders)),
+        '<',
+        field('binders', $.typeSchemeBinders),
         optional(field('predicates', $.typePredicates)),
-        $.typeExpression
+        '>'
       ),
 
-    typeSchemeBinders: $ =>
-      seq('<', optional(commaSep(choice($.rowVariable, $.identifier))), '>'),
+    typeSchemeBinders: $ => commaSep(choice($.rowVariable, $.identifier)),
 
-    typePredicates: $ => seq(commaSep($.typePredicate), '=>'),
+    typePredicates: $ => seq(';', commaSep($.typePredicate)),
 
     typePredicate: $ =>
       choice($.rowContainment, $.rowCombination, $.parenthesizedTypePredicate),

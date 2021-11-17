@@ -80,7 +80,7 @@ impl Surf {
                 if node.has_error() {
                     // FIXME
                     dbg!(node.to_sexp());
-                    let info = Diag::find_err(node, "syntax error").unwrap();
+                    let info = Diag::diagnose(node, "syntax error").unwrap();
                     return Err(SurfError::SyntaxError { info });
                 }
                 Ok(Surf { src, tree })
@@ -138,16 +138,18 @@ impl Surf {
     fn fn_decl(&self, node: Node) -> Term {
         let name = node.child_by_field_name("name").unwrap();
         let (arg_type, arg_idents) = self.decl_sig(node.child_by_field_name("sig").unwrap());
+        let (binders, preds) = node
+            .child_by_field_name("header")
+            .map_or((SchemeBinder::default(), vec![]), |n| {
+                self.type_scheme_header(n)
+            });
 
         Let(
             self.ident(name),
             Scheme::Scm {
-                binders: node
-                    .child_by_field_name("scheme")
-                    .map(|n| self.type_scheme_binders(n))
-                    .unwrap_or(Default::default()),
+                binders,
                 qualified: QualifiedType {
-                    preds: vec![],
+                    preds,
                     typ: Type::Arrow(vec![
                         arg_type,
                         node.child_by_field_name("ret")
@@ -184,22 +186,26 @@ impl Surf {
     }
 
     fn type_scheme(&self, node: Node) -> Scheme {
+        let (binders, preds) = node
+            .child_by_field_name("header")
+            .map_or((SchemeBinder::default(), vec![]), |n| {
+                self.type_scheme_header(n)
+            });
         Scheme::Scm {
-            binders: node
-                .child_by_field_name("binders")
-                .map_or(Default::default(), |n| self.type_scheme_binders(n)),
+            binders,
             qualified: QualifiedType {
-                preds: node
-                    .child_by_field_name("predicates")
-                    .map_or(vec![], |preds| {
-                        preds
-                            .named_children(&mut preds.walk())
-                            .map(|n| self.type_pred(n.named_child(0).unwrap()))
-                            .collect()
-                    }),
+                preds,
                 typ: self.type_expr(node.children(&mut node.walk()).last().unwrap()),
             },
         }
+    }
+
+    fn type_scheme_header(&self, node: Node) -> (SchemeBinder, Vec<Pred>) {
+        (
+            self.type_scheme_binders(node.child_by_field_name("binders").unwrap()),
+            node.child_by_field_name("predicates")
+                .map_or(vec![], |n| self.type_preds(n)),
+        )
     }
 
     fn type_scheme_binders(&self, node: Node) -> SchemeBinder {
@@ -214,6 +220,12 @@ impl Surf {
             }
         });
         SchemeBinder::new(tvars, rvars)
+    }
+
+    fn type_preds(&self, node: Node) -> Vec<Pred> {
+        node.named_children(&mut node.walk())
+            .map(|n| self.type_pred(n.named_child(0).unwrap()))
+            .collect()
     }
 
     fn type_pred(&self, node: Node) -> Pred {
