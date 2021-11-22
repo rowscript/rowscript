@@ -1,7 +1,7 @@
 use crate::basis::data::{Ident, Ix, Lvl};
-use crate::presyntax::check::CheckError::NameNotInScope;
-use crate::presyntax::data::Term::Var;
-use crate::presyntax::data::{Term, Type};
+use crate::conc::check::CheckError::NameNotInScope;
+use crate::conc::data::Term::Var;
+use crate::conc::data::{Term, Type};
 use std::collections::HashMap;
 use std::process::id;
 use tree_sitter::Point;

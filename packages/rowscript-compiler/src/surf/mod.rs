@@ -1,13 +1,13 @@
 use crate::surf::diag::Diag;
 use crate::surf::SurfError::ParsingError;
 use rowscript_core::basis::data::Ident;
-use rowscript_core::presyntax::check::CheckError;
-use rowscript_core::presyntax::data::Pred::{Comb, Cont};
-use rowscript_core::presyntax::data::Term::{
+use rowscript_core::conc::check::CheckError;
+use rowscript_core::conc::data::Pred::{Comb, Cont};
+use rowscript_core::conc::data::Term::{
     Abs, App, Array, Bool, Case, Cat, If, Inj, Let, Num, PrimRef, Rec, Sel, Str, Subs, TLet, Tuple,
     Unit, Var,
 };
-use rowscript_core::presyntax::data::{
+use rowscript_core::conc::data::{
     Dir, Label, Pred, QualifiedType, RowPred, RowType, Scheme, SchemeBinder, Term, Type,
 };
 use std::collections::HashMap;

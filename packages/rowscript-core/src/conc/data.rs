@@ -1,6 +1,6 @@
 use crate::basis::data::{Ident, Ix};
 use crate::basis::pretty;
-use crate::presyntax::data::Scheme::Scm;
+use crate::conc::data::Scheme::Scm;
 use std::collections::HashMap;
 use std::fmt::Formatter;
 use tree_sitter::Point;
