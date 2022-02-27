@@ -10,8 +10,15 @@ pub enum Dir {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+pub struct Labelled {
+    label: Label,
+    typ: Type,
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum Row {
     Var(Ident, Ix),
+    Labelled(Vec<Labelled>),
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -37,8 +44,8 @@ pub enum Pred {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct QualifiedType {
-    pub preds: Vec<Pred>,
-    pub typ: Type,
+    preds: Vec<Pred>,
+    typ: Type,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -47,6 +54,7 @@ pub enum Type {
     Arrow(Vec<Type>),
     Record(Row),
     Variant(Row),
+    // TODO: Wtf is this?
     Row(Label, Box<Type>),
 
     Unit,
@@ -77,7 +85,6 @@ pub enum Term {
     Inj(Ident, Box<Term>),
     Case(Box<Term>, Box<Term>),
 
-    PrimRef(Ident, Scheme),
     Unit,
     Str(String),
     Num(String),
