@@ -1,6 +1,0 @@
-# Tree-sitter generated files.
-node_modules/
-bindings/
-src/
-build/
-binding.gyp
