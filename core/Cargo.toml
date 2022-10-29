@@ -1,0 +1,7 @@
+[package]
+name = "rowscript_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pest = "2.4.0"
