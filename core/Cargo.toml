@@ -3,5 +3,12 @@ name = "rowscript_core"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-pest = "2.4.0"
+[dependencies.pest]
+version = "2.4.0"
+
+[dependencies.uuid]
+version = "1.2.1"
+features = [
+    "v4",
+    "fast-rng",
+]
