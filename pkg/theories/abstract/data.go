@@ -5,14 +5,18 @@ import "github.com/rowscript/rowscript/pkg/theories/base"
 type Dir int
 
 const (
-	LessThan Dir = iota + 1
-	GreaterThan
+	Left Dir = iota + 1
+	Right
 )
 
 type (
 	Term interface{}
 
 	Ref struct{ Var *base.LocalVar }
+	Let struct {
+		Param    base.Param[Term]
+		Tm, Body Term
+	}
 
 	univ struct{}
 
@@ -25,18 +29,15 @@ type (
 		Body  Term
 	}
 	App struct{ F, A Term }
-	Let struct {
-		Param    base.Param[Term]
-		Tm, Body Term
-	}
 
-	RowEq  struct{ Lhs, Rhs Term }
-	RowOrd struct {
+	RowConcatEq struct{ A, B, C Term }
+	RowRefl     struct{}
+
+	RowCont struct {
 		Dir      Dir
 		Lhs, Rhs Term
 	}
-	RowConcat struct{ Lhs, Rhs Term }
-	RowSat    struct{}
+	RowSat struct{}
 
 	Row struct {
 		Name string
