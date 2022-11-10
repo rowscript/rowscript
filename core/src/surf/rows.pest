@@ -1,0 +1,52 @@
+WHITESPACE = _{ WHITE_SPACE }
+COMMENT = _{ "//" ~ (!NEWLINE ~ ANY)* | "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+
+pub_camelback_id = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
+priv_camelback_id = @{ "_" ~ pub_camelback_id }
+
+pub_camel_id = @{ ASCII_ALPHA_UPPER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
+priv_camel_id = @{ "_" ~ pub_camel_id }
+
+fn_id = _{ pub_camelback_id | priv_camelback_id }
+implicit_id = _{ pub_camel_id }
+param_id = _{ pub_camelback_id }
+let_id = _{ pub_camelback_id }
+idref =
+ _{ fn_id
+  | implicit_id
+  | param_id
+  | let_id
+  }
+
+type_expr =
+  { "(" ~ type_expr ~ ")"
+  // TODO: Function types.
+  | "string"
+  | "number"
+  | "boolean"
+  | "unit"
+  | idref
+  }
+
+implicits = { "<" ~ implicit_id ~ ("," ~ implicit_id)* ~ ">" }
+
+param = { param_id ~ ":" ~ type_expr }
+params =
+  { "()"
+  | "(" ~ param ~ ("," ~ param)* ~ ")"
+  }
+
+ret_type = { ":" ~ type_expr }
+
+fn_def =
+  { "function"
+  ~ fn_id
+  ~ implicits?
+  ~ params
+  ~ ret_type?
+  ~ "{"
+  // TODO: Function body.
+  ~ "}"
+  }
+
+file = { SOI ~ fn_def* ~ EOI }
