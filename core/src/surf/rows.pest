@@ -7,10 +7,10 @@ priv_camelback_id = @{ "_" ~ pub_camelback_id }
 pub_camel_id = @{ ASCII_ALPHA_UPPER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
 priv_camel_id = @{ "_" ~ pub_camel_id }
 
-fn_id = _{ pub_camelback_id | priv_camelback_id }
-implicit_id = _{ pub_camel_id }
-param_id = _{ pub_camelback_id }
-let_id = _{ pub_camelback_id }
+fn_id = { pub_camelback_id | priv_camelback_id }
+implicit_id = { pub_camel_id }
+param_id = { pub_camelback_id }
+let_id = { pub_camelback_id }
 idref =
  _{ fn_id
   | implicit_id
@@ -18,35 +18,80 @@ idref =
   | let_id
   }
 
+string = @{ "\"" ~ (unescaped_string_fragment | escaped_string_fragment)* ~ "\"" }
+unescaped_string_fragment = @{ (!("\"" | "\\") ~ ANY)+ }
+escaped_string_fragment =
+ @{ "\\"
+  ~ ( !("x" | "u" | ASCII_OCT_DIGIT)
+    | ASCII_OCT_DIGIT{1,3}
+    | "x" ~ ASCII_HEX_DIGIT{2}
+    | "u" ~ ASCII_HEX_DIGIT{4}
+    | "u{" ~ ASCII_HEX_DIGIT+ ~ "}"
+    )
+  }
+
+number =
+  { binary_number
+  | octal_number
+  | hex_number
+  | bigint_number
+  | decimal_number
+  }
+binary_number = @{ ("0b" | "0B") ~ ASCII_BIN_DIGIT ~ ("_"? ~ ASCII_BIN_DIGIT)* }
+octal_number = @{ ("0o" | "0O") ~ ASCII_OCT_DIGIT ~ ("_"? ~ ASCII_OCT_DIGIT)* }
+hex_number = @{ ("0x" | "0X") ~ ASCII_HEX_DIGIT ~ ("_"? ~ ASCII_HEX_DIGIT)* }
+bigint_number = @{ (binary_number | octal_number | hex_number | decimal_digits) ~ "n" }
+decimal_number =
+ @{ decimal_digits
+  | decimal_integer ~ exponent_part
+  | "." ~ decimal_digits ~ (exponent_part)?
+  | decimal_integer ~ "." ~ decimal_digits? ~ exponent_part?
+  }
+decimal_digits = @{ ASCII_DIGIT ~ ("_"? ~ ASCII_DIGIT)* }
+exponent_part = @{ ("e" | "E")? ~ ("-" | "+")? ~ decimal_digits }
+decimal_integer = @{ "0" | "0"? ~ ASCII_NONZERO_DIGIT ~ ("_"? ~ decimal_digits)? }
+
+implicits = _{ "<" ~ implicit_id ~ ("," ~ implicit_id)* ~ ">" }
+
+param = { param_id ~ ":" ~ type_expr }
+params = _{ "()" | "(" ~ param ~ ("," ~ param)* ~ ")" }
+
 type_expr =
   { "(" ~ type_expr ~ ")"
-  // TODO: Function types.
+  | params ~ "->" ~ type_expr
+  // TODO: Objects and variants.
   | "string"
   | "number"
+  | "bigint"
   | "boolean"
   | "unit"
   | idref
   }
 
-implicits = { "<" ~ implicit_id ~ ("," ~ implicit_id)* ~ ">" }
-
-param = { param_id ~ ":" ~ type_expr }
-params =
-  { "()"
-  | "(" ~ param ~ ("," ~ param)* ~ ")"
+primary_expr =
+  { lambda_expr
+  | string
+  | number
+  | "false"
+  | "true"
   }
 
-ret_type = { ":" ~ type_expr }
+lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
+lambda_params = { "()" | param_id | "(" ~ param_id ~ ("," ~ param_id)+ ~ ")" }
+lambda_body = { primary_expr | fn_body_block }
 
 fn_def =
   { "function"
   ~ fn_id
   ~ implicits?
   ~ params
-  ~ ret_type?
-  ~ "{"
-  // TODO: Function body.
-  ~ "}"
+  ~ (":" ~ type_expr)?
+  ~ fn_body_block
+  }
+fn_body_block = { "{" ~ fn_body ~ "}" }
+fn_body =
+  { "let" ~ param_id ~ ":" ~ type_expr ~ "=" ~ primary_expr ~ ";" ~ fn_body
+  | "return" ~ primary_expr ~ ";"
   }
 
 file = { SOI ~ fn_def* ~ EOI }
