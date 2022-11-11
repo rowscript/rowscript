@@ -1,4 +1,4 @@
-use std::fmt::{format, Debug, Display, Formatter, Write};
+use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 
 use uuid::Uuid;

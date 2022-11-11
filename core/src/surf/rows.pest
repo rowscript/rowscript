@@ -74,6 +74,7 @@ primary_expr =
   | number
   | "false"
   | "true"
+  | idref
   }
 
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
@@ -91,7 +92,7 @@ fn_def =
 fn_body_block = { "{" ~ fn_body ~ "}" }
 fn_body =
   { "let" ~ param_id ~ ":" ~ type_expr ~ "=" ~ primary_expr ~ ";" ~ fn_body
-  | "return" ~ primary_expr ~ ";"
+  | "return" ~ primary_expr? ~ ";"
   }
 
 file = { SOI ~ fn_def* ~ EOI }
