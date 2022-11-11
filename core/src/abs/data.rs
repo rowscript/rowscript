@@ -1,37 +1,39 @@
 use crate::base::{LocalVar, Param};
 
+#[derive(Debug)]
 pub enum Dir {
     Left,
     Right,
 }
 
+#[derive(Debug)]
 pub enum Term {
     Ref(LocalVar),
-    Let(Param<Term>, Term, Term),
+    Let(Param<Self>, Box<Self>, Box<Self>),
 
     Univ,
 
-    Fn(Param<Term>, Term),
-    Lam(Param<Term>, Term),
-    App(Term, Term),
+    Fn(Param<Self>, Box<Self>),
+    Lam(Param<Self>, Box<Self>),
+    App(Box<Self>, Box<Self>),
 
-    RowConcatEq(Term, Term, Term),
+    RowConcatEq(Box<Self>, Box<Self>, Box<Self>),
     RowRefl,
 
-    RowCont(Dir, Term, Term),
+    RowCont(Dir, Box<Self>, Box<Self>),
     RowSat,
 
-    Row(Vec<(String, Term)>),
-    Label(String, Term),
-    Unlabel(Term, String),
+    Row(Vec<(String, Self)>),
+    Label(String, Box<Self>),
+    Unlabel(Box<Self>, String),
 
-    Record(Term),
-    Prj(Dir, Term),
-    Concat(Term, Term),
+    Record(Box<Self>),
+    Prj(Dir, Box<Self>),
+    Concat(Box<Self>, Box<Self>),
 
-    Variant(Term),
-    Inj(Dir, Term),
-    Branch(Term, Term),
+    Variant(Box<Self>),
+    Inj(Dir, Box<Self>),
+    Branch(Box<Self>, Box<Self>),
 }
 
 pub const U: Term = Term::Univ;
