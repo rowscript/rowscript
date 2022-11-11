@@ -1,8 +1,6 @@
-<h1 align="center">RowScript</h1>
+# RowScript
 
-<p align="center">
-<small><em>RowScript pull up, typed boys hop out!</em></small>
-</p>
+RowScript is an anti-gradually typed JavaScript dialect.
 
 ## License
 
