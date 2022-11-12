@@ -20,10 +20,16 @@ pub enum Expr {
     TT(LineCol),
     UnitLet(LineCol, Box<Self>, Box<Self>),
 
-    Bool(LineCol),
+    Boolean(LineCol),
     False(LineCol),
     True(LineCol),
     IfThenElse(LineCol, Box<Self>, Box<Self>, Box<Self>),
+
+    String(LineCol),
+
+    Number(LineCol),
+
+    BigInt(LineCol),
 }
 
 impl Syntax for Expr {}

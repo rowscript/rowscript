@@ -12,7 +12,7 @@ implicit_id = { pub_camel_id }
 param_id = { pub_camelback_id }
 let_id = { pub_camelback_id }
 idref =
- _{ fn_id
+  { fn_id
   | implicit_id
   | param_id
   | let_id
@@ -57,16 +57,23 @@ param = { param_id ~ ":" ~ type_expr }
 params = _{ "()" | "(" ~ param ~ ("," ~ param)* ~ ")" }
 
 type_expr =
-  { "(" ~ type_expr ~ ")"
-  | params ~ "->" ~ type_expr
+  { paren_type_expr
+  | fn_type
   // TODO: Objects and variants.
-  | "string"
-  | "number"
-  | "bigint"
-  | "boolean"
-  | "unit"
+  | string_type
+  | number_type
+  | bigint_type
+  | boolean_type
+  | unit_type
   | idref
   }
+paren_type_expr = { "(" ~ type_expr ~ ")" }
+fn_type = { params ~ "->" ~ type_expr }
+string_type = { "string" }
+number_type = { "number" }
+bigint_type = { "bigint" }
+boolean_type = { "boolean" }
+unit_type = { "unit" }
 
 primary_expr =
   { lambda_expr
