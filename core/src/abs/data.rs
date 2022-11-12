@@ -13,9 +13,22 @@ pub enum Term {
 
     Univ,
 
-    Fn(Param<Self>, Box<Self>),
+    Pi(Param<Self>, Box<Self>),
     Lam(Param<Self>, Box<Self>),
     App(Box<Self>, Box<Self>),
+
+    Sig(Param<Self>, Box<Self>),
+    Pair(Box<Self>, Box<Self>),
+    PairLet(Param<Self>, Param<Self>, Box<Self>, Box<Self>),
+
+    Unit,
+    TT,
+    UnitLet(Box<Self>, Box<Self>),
+
+    Bool,
+    False,
+    True,
+    IfThenElse(Box<Self>, Box<Self>, Box<Self>),
 
     RowConcatEq(Box<Self>, Box<Self>, Box<Self>),
     RowRefl,
@@ -37,3 +50,4 @@ pub enum Term {
 }
 
 pub const U: Term = Term::Univ;
+pub const TT: Term = Term::TT;

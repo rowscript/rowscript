@@ -1,7 +1,24 @@
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 
+use pest::Span;
 use uuid::Uuid;
+
+#[derive(Debug)]
+pub struct LineCol {
+    line: usize,
+    col: usize,
+}
+
+impl<'a> From<Span<'a>> for LineCol {
+    fn from(span: Span) -> Self {
+        let line_col = span.start_pos().line_col();
+        LineCol {
+            line: line_col.0,
+            col: line_col.1,
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct LocalVar {

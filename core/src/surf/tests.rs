@@ -11,7 +11,7 @@ function bar() {
   return;
 }
 
-function baz(): () -> number {
+function baz<N>(): () -> number {
   return () => 42;
 }
 
