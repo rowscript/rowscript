@@ -49,6 +49,10 @@ impl LocalVar {
     pub fn unbound() -> Self {
         Self::new("_")
     }
+
+    pub fn tupled() -> Self {
+        Self::new("_tupled")
+    }
 }
 
 impl Hash for LocalVar {
@@ -57,10 +61,10 @@ impl Hash for LocalVar {
     }
 }
 
+pub trait Syntax {}
+
 #[derive(Debug)]
 pub struct Param<T: Syntax> {
     var: LocalVar,
     typ: Box<T>,
 }
-
-pub trait Syntax {}
