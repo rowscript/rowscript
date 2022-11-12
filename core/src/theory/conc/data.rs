@@ -1,4 +1,4 @@
-use crate::base::{LineCol, LocalVar, Param};
+use crate::theory::base::{LineCol, LocalVar, Param, Syntax};
 
 #[derive(Debug)]
 pub enum Expr {
@@ -25,3 +25,5 @@ pub enum Expr {
     True(LineCol),
     IfThenElse(LineCol, Box<Self>, Box<Self>, Box<Self>),
 }
+
+impl Syntax for Expr {}

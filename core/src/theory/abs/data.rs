@@ -1,4 +1,4 @@
-use crate::base::{LocalVar, Param};
+use crate::theory::base::{LocalVar, Param, Syntax};
 
 #[derive(Debug)]
 pub enum Dir {
@@ -48,6 +48,8 @@ pub enum Term {
     Inj(Dir, Box<Self>),
     Branch(Box<Self>, Box<Self>),
 }
+
+impl Syntax for Term {}
 
 pub const U: Term = Term::Univ;
 pub const TT: Term = Term::TT;

@@ -46,7 +46,9 @@ impl Hash for LocalVar {
 }
 
 #[derive(Debug)]
-pub struct Param<T> {
+pub struct Param<T: Syntax> {
     var: LocalVar,
     typ: Box<T>,
 }
+
+pub trait Syntax {}

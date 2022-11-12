@@ -9,6 +9,9 @@ version = "2.4.1"
 [dependencies.pest_derive]
 version = "2.4.1"
 
+[dependencies.thiserror]
+version = "1.0.37"
+
 [dependencies.uuid]
 version = "1.2.1"
 features = [
