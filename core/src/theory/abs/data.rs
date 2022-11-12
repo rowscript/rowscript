@@ -1,4 +1,4 @@
-use crate::theory::base::{LocalVar, Param, Syntax};
+use crate::theory::{LocalVar, Param, Syntax};
 
 #[derive(Debug)]
 pub enum Dir {

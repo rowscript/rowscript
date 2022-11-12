@@ -1,4 +1,4 @@
-use crate::theory::base::{LineCol, LocalVar, Param, Syntax};
+use crate::theory::{LineCol, LocalVar, Param, Syntax};
 
 #[derive(Debug)]
 pub enum Expr {
