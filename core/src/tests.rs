@@ -3,7 +3,7 @@ use crate::Driver;
 #[test]
 fn test_basic() {
     Driver::new("test")
-        .parse_text(
+        .check_text(
             "
         function foo<T>(a: number, b: string): boolean {
             return false;

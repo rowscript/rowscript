@@ -1,5 +1,6 @@
 extern crate core;
 
+use std::convert::identity;
 use std::fs::read_to_string;
 use std::io;
 
@@ -8,7 +9,7 @@ use pest_derive::Parser;
 use thiserror::Error;
 
 use crate::theory::abs::def::Def;
-use crate::theory::conc::trans::Trans;
+use crate::theory::conc::trans;
 
 #[cfg(test)]
 mod tests;
@@ -35,23 +36,23 @@ impl<'a> Driver<'a> {
         Self { file }
     }
 
-    pub fn parse_file(self) -> Result<(), Error> {
+    pub fn check(self) -> Result<(), Error> {
         let src = read_to_string(self.file)?;
-        self.parse_text(src.as_str())
+        self.check_text(src.as_str())
     }
 
-    pub fn parse_text(self, src: &str) -> Result<(), Error> {
+    pub fn check_text(self, src: &str) -> Result<(), Error> {
         let file = RowsParser::parse(Rule::file, src)?.next().unwrap();
-        let t = Trans::from(self);
         let defs = file
             .into_inner()
             .map(|d| match d.as_rule() {
-                Rule::fn_def => Some(t.fn_def(d)),
+                Rule::fn_def => Some(trans::fn_def(d)),
                 Rule::EOI => None,
                 _ => unreachable!(),
             })
             .into_iter()
-            .collect::<Vec<Option<_>>>();
+            .filter_map(identity)
+            .collect::<Vec<_>>();
         dbg!(defs);
         Ok(())
     }
