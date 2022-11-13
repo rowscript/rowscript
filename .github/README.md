@@ -1,6 +1,6 @@
 # RowScript
 
-RowScript is an anti-gradually typed JavaScript dialect.
+RowScript is a robustly-typed functional language that compiles to efficient and reliable JavaScript.
 
 ## License
 
