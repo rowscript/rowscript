@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::{
-    App, IfThenElse, Let, Pair, PairLet, Pi, Resolved, Sigma, TupledLam, UnitLet, Unresolved,
+    App, If, Let, Pi, Resolved, Sigma, Tuple, TupleLet, TupledLam, UnitLet, Unresolved,
 };
 use crate::theory::{LocalVar, Param};
 use crate::Error::UnresolvedVar;
@@ -70,12 +70,12 @@ impl<'a> Resolver<'a> {
             Let(_, _, _, _) => todo!(),
             Pi(_, _, _) => todo!(),
             TupledLam(_, _, _) => todo!(),
-            App(_, _, _) => todo!(),
+            App(loc, f, x) => App(loc, self.expr(f)?, self.expr(x)?),
             Sigma(_, _, _) => todo!(),
-            Pair(_, _, _) => todo!(),
-            PairLet(_, _, _, _, _) => todo!(),
+            Tuple(loc, a, b) => Tuple(loc, self.expr(a)?, self.expr(b)?),
+            TupleLet(_, _, _, _, _) => todo!(),
             UnitLet(_, _, _) => todo!(),
-            IfThenElse(_, _, _, _) => todo!(),
+            If(loc, p, t, e) => If(loc, self.expr(p)?, self.expr(t)?, self.expr(e)?),
             e => e,
         }))
     }

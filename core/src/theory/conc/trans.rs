@@ -3,8 +3,8 @@ use pest::iterators::Pair;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::{
-    Big, BigInt, Boolean, False, Let, Num, Number, Pi, Sigma, Str, String, True, TupledLam, Unit,
-    Univ, Unresolved, TT,
+    App, Big, BigInt, Boolean, False, If, Let, Num, Number, Pi, Sigma, Str, String, True, Tuple,
+    TupledLam, Unit, Univ, Unresolved, TT,
 };
 use crate::theory::{LineCol, LocalVar, Param};
 use crate::Rule;
@@ -46,7 +46,6 @@ fn type_expr(t: Pair<Rule>) -> Expr {
     let p = t.into_inner().next().unwrap();
     let loc = LineCol::from(p.as_span());
     match p.as_rule() {
-        Rule::paren_type_expr => type_expr(p),
         Rule::fn_type => {
             let ps = p.into_inner();
             let mut untupled = UntupledParams::new(loc);
@@ -67,6 +66,7 @@ fn type_expr(t: Pair<Rule>) -> Expr {
         Rule::boolean_type => Boolean(LineCol::from(p.as_span())),
         Rule::unit_type => Unit(LineCol::from(p.as_span())),
         Rule::idref => Unresolved(LineCol::from(p.as_span()), LocalVar::from(p)),
+        Rule::paren_type_expr => type_expr(p.into_inner().next().unwrap()),
         _ => unreachable!(),
     }
 }
@@ -93,6 +93,20 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
     let p = e.into_inner().next().unwrap();
     let loc = LineCol::from(p.as_span());
     match p.as_rule() {
+        Rule::string => Str(loc, p.as_str().to_string()),
+        Rule::number => Num(loc, p.into_inner().next().unwrap().as_str().to_string()),
+        Rule::bigint => Big(loc, p.as_str().to_string()),
+        Rule::boolean_false => False(loc),
+        Rule::boolean_true => True(loc),
+        Rule::boolean_if => {
+            let mut pairs = p.into_inner();
+            If(
+                loc,
+                Box::new(primary_expr(pairs.next().unwrap())),
+                Box::new(branch(pairs.next().unwrap())),
+                Box::new(branch(pairs.next().unwrap())),
+            )
+        }
         Rule::lambda_expr => {
             let pairs = p.into_inner();
             let mut vars: Vec<LocalVar> = Default::default();
@@ -114,13 +128,53 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
             }
             TupledLam(loc, vars, Box::new(body.unwrap()))
         }
-        Rule::string => Str(loc, p.as_str().to_string()),
-        Rule::number => Num(loc, p.into_inner().next().unwrap().as_str().to_string()),
-        Rule::bigint => Big(loc, p.as_str().to_string()),
-        Rule::boolean_false => False(loc),
-        Rule::boolean_true => True(loc),
+        Rule::app => {
+            let mut pairs = p.into_inner();
+            let f = pairs.next().unwrap();
+            let floc = LineCol::from(f.as_span());
+            let f = match f.as_rule() {
+                Rule::primary_expr => primary_expr(f),
+                Rule::idref => Unresolved(LineCol::from(f.as_span()), LocalVar::from(f)),
+                _ => unreachable!(),
+            };
+            let mut type_args: Vec<Expr> = Default::default();
+            let mut untupled_args: Vec<Expr> = Default::default();
+            for arg in pairs {
+                match arg.as_rule() {
+                    Rule::type_expr => type_args.push(type_expr(arg)),
+                    Rule::primary_expr => untupled_args.push(primary_expr(arg)),
+                    _ => unreachable!(),
+                }
+            }
+            let app = type_args
+                .into_iter()
+                .fold(f, |a, x| App(floc, Box::new(a), Box::new(x)));
+            let tupled_arg = untupled_args
+                .into_iter()
+                .rfold(TT(floc), |a, x| Tuple(floc, Box::new(x), Box::new(a)));
+            App(floc, Box::new(app), Box::new(tupled_arg))
+        }
         Rule::tt => TT(loc),
         Rule::idref => Unresolved(loc, LocalVar::from(p)),
+        Rule::paren_primary_expr => primary_expr(p.into_inner().next().unwrap()),
+        _ => unreachable!(),
+    }
+}
+
+fn branch(b: Pair<Rule>) -> Expr {
+    let pair = b.into_inner().next().unwrap();
+    let loc = LineCol::from(pair.as_span());
+    match pair.as_rule() {
+        Rule::branch_let => {
+            let mut l = pair.into_inner();
+            Let(
+                loc,
+                param(l.next().unwrap()),
+                Box::new(primary_expr(l.next().unwrap())),
+                Box::new(branch(l.next().unwrap())),
+            )
+        }
+        Rule::primary_expr => primary_expr(pair),
         _ => unreachable!(),
     }
 }

@@ -56,8 +56,7 @@ param = { param_id ~ ":" ~ type_expr }
 params = _{ "()" | "(" ~ param ~ ("," ~ param)* ~ ")" }
 
 type_expr =
-  { paren_type_expr
-  | fn_type
+  { fn_type
   // TODO: Objects and variants.
   | string_type
   | number_type
@@ -65,6 +64,7 @@ type_expr =
   | boolean_type
   | unit_type
   | idref
+  | paren_type_expr
   }
 paren_type_expr = { "(" ~ type_expr ~ ")" }
 fn_type = { params ~ "->" ~ type_expr }
@@ -75,20 +75,34 @@ boolean_type = { "boolean" }
 unit_type = { "unit" }
 
 primary_expr =
-  { lambda_expr
-  | string
+  { string
   | number
   | bigint
   | boolean_false
   | boolean_true
+  | boolean_if
+  | lambda_expr
+  | app
   | tt
   | idref
+  | paren_primary_expr
   }
+paren_primary_expr = { "(" ~ primary_expr ~ ")" }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
 lambda_params = _{ "()" | param_id | "(" ~ param_id ~ ("," ~ param_id)+ ~ ")" }
 lambda_body = { primary_expr | fn_body_block }
+app = { ("(" ~ primary_expr ~ ")" | idref) ~ type_args? ~ args }
+type_args = _{ "<" ~ type_expr ~ ("," ~ type_expr)* ~ ">" }
+args = _{ "(" ~ primary_expr ~ ("," ~ primary_expr)* ~ ")" }
 boolean_false = { "false" }
 boolean_true = { "true" }
+boolean_if =
+  { "if" ~ "(" ~ primary_expr ~ ")"
+  ~ "{" ~ branch ~ "}"
+  ~ "else" ~ "{" ~ branch ~ "}"
+  }
+branch = { branch_let | primary_expr }
+branch_let = { "let" ~ param ~ "=" ~ primary_expr ~ ";" ~ branch }
 tt = { "()" }
 
 fn_def =

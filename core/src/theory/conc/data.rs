@@ -13,8 +13,8 @@ pub enum Expr {
     App(LineCol, Box<Self>, Box<Self>),
 
     Sigma(LineCol, Param<Self>, Box<Self>),
-    Pair(LineCol, Box<Self>, Box<Self>),
-    PairLet(LineCol, Param<Self>, Param<Self>, Box<Self>, Box<Self>),
+    Tuple(LineCol, Box<Self>, Box<Self>),
+    TupleLet(LineCol, LocalVar, LocalVar, Box<Self>, Box<Self>),
 
     Unit(LineCol),
     TT(LineCol),
@@ -23,7 +23,7 @@ pub enum Expr {
     Boolean(LineCol),
     False(LineCol),
     True(LineCol),
-    IfThenElse(LineCol, Box<Self>, Box<Self>, Box<Self>),
+    If(LineCol, Box<Self>, Box<Self>, Box<Self>),
 
     String(LineCol),
     Str(LineCol, String),

@@ -1,22 +1,37 @@
 use crate::Driver;
 
+fn check(text: &str) {
+    Driver::new("test").check_text(text).unwrap()
+}
+
 #[test]
-fn test_basic() {
-    Driver::new("test")
-        .check_text(
-            "
-        function foo<T>(a: number, b: string): boolean {
-            return false
-        }
+fn test_fn() {
+    check(
+        "
+    function f(): () -> unit {
+        let id: (n: number) -> number = n => n;
+        let a: number = id(42);
+        let b: number = (n => n)(69);
+        return () => ()
+    }
+    ",
+    )
+}
 
-        function bar<T, U>(a: number): (b: string) -> string {
-            return b => \"hello\"
-        }
-
-        function baz(): () -> number {
-            return () => 42
-        }
-        ",
-        )
-        .unwrap()
+#[test]
+fn test_bool() {
+    check(
+        "
+    function f() {
+        let a: number = if (true) {
+            let b: number = 42;
+            b
+        } else {
+            let c: number = 69;
+            c
+        };
+        return
+    }
+    ",
+    )
 }

@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display, Formatter, Write};
+use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 
 use pest::iterators::Pair;
