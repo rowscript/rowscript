@@ -1,25 +1,24 @@
 use std::fmt::Debug;
 
+use crate::theory::abs::def::Body::Fun;
 use crate::theory::{LineCol, LocalVar, Param, Syntax};
 
-pub trait Def<T: Syntax>: Debug {
-    fn loc(self) -> LineCol;
-    fn name(self) -> LocalVar;
-    fn tele(self) -> Vec<Param<T>>;
-    fn ret(self) -> Box<T>;
+#[derive(Debug)]
+pub struct Def<T: Syntax> {
+    loc: LineCol,
+    name: LocalVar,
+    pub tele: Vec<Param<T>>,
+    ret: Box<T>,
+    pub body: Body<T>,
 }
 
 #[derive(Debug)]
-pub struct Fun<T: Syntax> {
-    loc: LineCol,
-    name: LocalVar,
-    tele: Vec<Param<T>>,
-    ret: Box<T>,
-    body: Box<T>,
+pub enum Body<T: Syntax> {
+    Fun(Box<T>),
 }
 
-impl<T: Syntax> Fun<T> {
-    pub fn new(
+impl<T: Syntax> Def<T> {
+    pub fn fun(
         loc: LineCol,
         name: LocalVar,
         tele: Vec<Param<T>>,
@@ -31,25 +30,7 @@ impl<T: Syntax> Fun<T> {
             name,
             tele,
             ret,
-            body,
+            body: Fun(body),
         }
-    }
-}
-
-impl<T: Syntax + Debug> Def<T> for Fun<T> {
-    fn loc(self) -> LineCol {
-        self.loc
-    }
-
-    fn name(self) -> LocalVar {
-        self.name
-    }
-
-    fn tele(self) -> Vec<Param<T>> {
-        self.tele
-    }
-
-    fn ret(self) -> Box<T> {
-        self.ret
     }
 }

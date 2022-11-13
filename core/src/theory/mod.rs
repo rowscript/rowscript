@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter, Write};
 use std::hash::{Hash, Hasher};
 
 use pest::iterators::Pair;
@@ -16,6 +16,12 @@ pub struct LineCol {
     col: usize,
 }
 
+impl Display for LineCol {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(format!("{}:{}", self.line, self.col).as_str())
+    }
+}
+
 impl<'a> From<Span<'a>> for LineCol {
     fn from(span: Span) -> Self {
         let line_col = span.start_pos().line_col();
@@ -26,10 +32,16 @@ impl<'a> From<Span<'a>> for LineCol {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LocalVar {
     id: Uuid,
     name: String,
+}
+
+impl Display for LocalVar {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.name.as_str())
+    }
 }
 
 impl<'a> From<Pair<'a, Rule>> for LocalVar {

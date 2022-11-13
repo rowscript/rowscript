@@ -1,27 +1,27 @@
 use pest::iterators::Pair;
 
-use crate::theory::abs::def::{Def, Fun};
+use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::{
-    Big, BigInt, Boolean, False, Let, Num, Number, Pi, Sig, Str, String, True, TupledLam, Unit,
+    Big, BigInt, Boolean, False, Let, Num, Number, Pi, Sigma, Str, String, True, TupledLam, Unit,
     Univ, Unresolved, TT,
 };
 use crate::theory::{LineCol, LocalVar, Param};
 use crate::Rule;
 
-pub fn fn_def(f: Pair<Rule>) -> Box<dyn Def<Expr>> {
+pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
     let loc = LineCol::from(f.as_span());
     let mut pairs = f.into_inner();
 
     let name = pairs.next().unwrap();
-    let mut params: Vec<Param<Expr>> = Default::default();
+    let mut tele: Vec<Param<Expr>> = Default::default();
     let mut untupled = UntupledParams::new(loc);
     let mut ret = Unit(loc);
     let mut body: Option<Expr> = None;
 
     for p in pairs {
         match p.as_rule() {
-            Rule::implicit_id => params.push(implicit(p)),
+            Rule::implicit_id => tele.push(implicit(p)),
             Rule::param => untupled.push(LineCol::from(p.as_span()), param(p)),
             Rule::type_expr => ret = type_expr(p),
             Rule::fn_body => {
@@ -31,15 +31,15 @@ pub fn fn_def(f: Pair<Rule>) -> Box<dyn Def<Expr>> {
             _ => unreachable!(),
         }
     }
-    params.push(Param::from(untupled));
+    tele.push(Param::from(untupled));
 
-    Box::new(Fun::new(
+    Def::fun(
         loc,
         LocalVar::from(name),
-        params,
+        tele,
         Box::new(ret),
         Box::new(body.unwrap()),
-    ))
+    )
 }
 
 fn type_expr(t: Pair<Rule>) -> Expr {
@@ -134,11 +134,9 @@ fn implicit(p: Pair<Rule>) -> Param<Expr> {
 
 fn param(p: Pair<Rule>) -> Param<Expr> {
     let mut pairs = p.into_inner();
-    let id = pairs.next().unwrap();
-    let typ = pairs.next().unwrap();
     Param {
-        var: LocalVar::from(id),
-        typ: Box::new(type_expr(typ)),
+        var: LocalVar::from(pairs.next().unwrap()),
+        typ: Box::new(type_expr(pairs.next().unwrap())),
     }
 }
 
@@ -158,7 +156,7 @@ impl From<UntupledParams> for Param<Expr> {
     fn from(ps: UntupledParams) -> Self {
         let mut ret = Unit(ps.0);
         for p in ps.1.into_iter().rev() {
-            ret = Sig(p.0, p.1, Box::new(ret));
+            ret = Sigma(p.0, p.1, Box::new(ret));
         }
         Self {
             var: LocalVar::tupled(),

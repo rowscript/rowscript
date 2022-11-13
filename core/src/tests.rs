@@ -6,15 +6,15 @@ fn test_basic() {
         .check_text(
             "
         function foo<T>(a: number, b: string): boolean {
-            return false;
+            return false
         }
 
         function bar<T, U>(a: number): (b: string) -> string {
-            return b => \"hello\";
+            return b => \"hello\"
         }
 
         function baz(): () -> number {
-            return () => 42;
+            return () => 42
         }
         ",
         )

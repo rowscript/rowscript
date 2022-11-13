@@ -8,8 +8,8 @@ use pest::Parser;
 use pest_derive::Parser;
 use thiserror::Error;
 
-use crate::theory::abs::def::Def;
 use crate::theory::conc::trans;
+use crate::theory::{LineCol, LocalVar};
 
 #[cfg(test)]
 mod tests;
@@ -19,8 +19,12 @@ mod theory;
 pub enum Error {
     #[error("IO error")]
     IO(#[from] io::Error),
+
     #[error("parse error")]
     Parsing(#[from] pest::error::Error<Rule>),
+
+    #[error("{0}:{1}: unresolved variable \"{2}\"")]
+    UnresolvedVar(String, LineCol, LocalVar),
 }
 
 #[derive(Parser)]

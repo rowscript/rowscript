@@ -12,7 +12,7 @@ pub enum Expr {
     TupledLam(LineCol, Vec<LocalVar>, Box<Self>),
     App(LineCol, Box<Self>, Box<Self>),
 
-    Sig(LineCol, Param<Self>, Box<Self>),
+    Sigma(LineCol, Param<Self>, Box<Self>),
     Pair(LineCol, Box<Self>, Box<Self>),
     PairLet(LineCol, Param<Self>, Param<Self>, Box<Self>, Box<Self>),
 

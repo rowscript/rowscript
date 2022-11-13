@@ -102,6 +102,6 @@ fn_def =
 fn_body_block = _{ "{" ~ fn_body ~ "}" }
 fn_body = { fn_body_let | fn_body_ret }
 fn_body_let = { "let" ~ param ~ "=" ~ primary_expr ~ ";" ~ fn_body }
-fn_body_ret = { "return" ~ primary_expr? ~ ";" }
+fn_body_ret = { "return" ~ primary_expr? }
 
 file = { SOI ~ fn_def* ~ EOI }
