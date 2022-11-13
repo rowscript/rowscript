@@ -34,13 +34,12 @@ number =
   { binary_number
   | octal_number
   | hex_number
-  | bigint_number
   | decimal_number
   }
+bigint = @{ (binary_number | octal_number | hex_number | decimal_digits) ~ "n" }
 binary_number = @{ ("0b" | "0B") ~ ASCII_BIN_DIGIT ~ ("_"? ~ ASCII_BIN_DIGIT)* }
 octal_number = @{ ("0o" | "0O") ~ ASCII_OCT_DIGIT ~ ("_"? ~ ASCII_OCT_DIGIT)* }
 hex_number = @{ ("0x" | "0X") ~ ASCII_HEX_DIGIT ~ ("_"? ~ ASCII_HEX_DIGIT)* }
-bigint_number = @{ (binary_number | octal_number | hex_number | decimal_digits) ~ "n" }
 decimal_number =
  @{ decimal_digits
   | decimal_integer ~ exponent_part
@@ -79,14 +78,18 @@ primary_expr =
   { lambda_expr
   | string
   | number
-  | "false"
-  | "true"
+  | bigint
+  | boolean_false
+  | boolean_true
+  | tt
   | idref
   }
-
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
-lambda_params = { "()" | param_id | "(" ~ param_id ~ ("," ~ param_id)+ ~ ")" }
+lambda_params = _{ "()" | param_id | "(" ~ param_id ~ ("," ~ param_id)+ ~ ")" }
 lambda_body = { primary_expr | fn_body_block }
+boolean_false = { "false" }
+boolean_true = { "true" }
+tt = { "()" }
 
 fn_def =
   { "function"
@@ -96,10 +99,9 @@ fn_def =
   ~ (":" ~ type_expr)?
   ~ fn_body_block
   }
-fn_body_block = { "{" ~ fn_body ~ "}" }
-fn_body =
-  { "let" ~ param_id ~ ":" ~ type_expr ~ "=" ~ primary_expr ~ ";" ~ fn_body
-  | "return" ~ primary_expr? ~ ";"
-  }
+fn_body_block = _{ "{" ~ fn_body ~ "}" }
+fn_body = { fn_body_let | fn_body_ret }
+fn_body_let = { "let" ~ param ~ "=" ~ primary_expr ~ ";" ~ fn_body }
+fn_body_ret = { "return" ~ primary_expr? ~ ";" }
 
 file = { SOI ~ fn_def* ~ EOI }

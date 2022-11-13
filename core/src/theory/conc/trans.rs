@@ -3,7 +3,8 @@ use pest::iterators::Pair;
 use crate::theory::abs::def::{Def, Fun};
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::{
-    BigInt, Boolean, Number, Pi, Sig, String, Unit, Univ, Unresolved, TT,
+    Big, BigInt, Boolean, False, Let, Num, Number, Pi, Sig, Str, String, True, TupledLam, Unit,
+    Univ, Unresolved, TT,
 };
 use crate::theory::{LineCol, LocalVar, Param};
 use crate::{Driver, Rule};
@@ -21,22 +22,21 @@ impl<'a> From<Driver<'a>> for Trans<'a> {
 impl<'a> Trans<'a> {
     pub fn fn_def(&self, f: Pair<Rule>) -> Box<dyn Def<Expr>> {
         let loc = LineCol::from(f.as_span());
-
         let mut pairs = f.into_inner();
-        let name = pairs.next().unwrap();
 
+        let name = pairs.next().unwrap();
         let mut params: Vec<Param<Expr>> = Default::default();
         let mut untupled = UntupledParams::new(loc);
-
         let mut ret = Unit(loc);
+        let mut body: Option<Expr> = None;
 
         for p in pairs {
             match p.as_rule() {
                 Rule::implicit_id => params.push(self.implicit(p)),
                 Rule::param => untupled.push(LineCol::from(p.as_span()), self.param(p)),
                 Rule::type_expr => ret = self.type_expr(p),
-                Rule::fn_body_block => {
-                    // TODO
+                Rule::fn_body => {
+                    body = Some(self.fn_body(p));
                     break;
                 }
                 _ => unreachable!(),
@@ -49,8 +49,7 @@ impl<'a> Trans<'a> {
             LocalVar::from(name),
             params,
             Box::new(ret),
-            // TODO: Function body.
-            Box::new(TT(loc)),
+            Box::new(body.unwrap()),
         ))
     }
 
@@ -79,6 +78,63 @@ impl<'a> Trans<'a> {
             Rule::boolean_type => Boolean(LineCol::from(p.as_span())),
             Rule::unit_type => Unit(LineCol::from(p.as_span())),
             Rule::idref => Unresolved(LineCol::from(p.as_span()), LocalVar::from(p)),
+            _ => unreachable!(),
+        }
+    }
+
+    fn fn_body(&self, b: Pair<Rule>) -> Expr {
+        let p = b.into_inner().next().unwrap();
+        let loc = LineCol::from(p.as_span());
+        match p.as_rule() {
+            Rule::fn_body_let => {
+                let mut pairs = p.into_inner();
+                Let(
+                    loc,
+                    self.param(pairs.next().unwrap()),
+                    Box::new(self.primary_expr(pairs.next().unwrap())),
+                    Box::new(self.fn_body(pairs.next().unwrap())),
+                )
+            }
+            Rule::fn_body_ret => p
+                .into_inner()
+                .next()
+                .map_or(Unit(loc), |e| self.primary_expr(e)),
+            _ => unreachable!(),
+        }
+    }
+
+    fn primary_expr(&self, e: Pair<Rule>) -> Expr {
+        let p = e.into_inner().next().unwrap();
+        let loc = LineCol::from(p.as_span());
+        match p.as_rule() {
+            Rule::lambda_expr => {
+                let pairs = p.into_inner();
+                let mut vars: Vec<LocalVar> = Default::default();
+                let mut body: Option<Expr> = None;
+                for p in pairs {
+                    match p.as_rule() {
+                        Rule::param_id => vars.push(LocalVar::from(p)),
+                        Rule::lambda_body => {
+                            let b = p.into_inner().next().unwrap();
+                            body = Some(match b.as_rule() {
+                                Rule::primary_expr => self.primary_expr(b),
+                                Rule::fn_body => self.fn_body(b),
+                                _ => unreachable!(),
+                            });
+                            break;
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                TupledLam(loc, vars, Box::new(body.unwrap()))
+            }
+            Rule::string => Str(loc, p.as_str().to_string()),
+            Rule::number => Num(loc, p.into_inner().next().unwrap().as_str().to_string()),
+            Rule::bigint => Big(loc, p.as_str().to_string()),
+            Rule::boolean_false => False(loc),
+            Rule::boolean_true => True(loc),
+            Rule::tt => TT(loc),
+            Rule::idref => Unresolved(loc, LocalVar::from(p)),
             _ => unreachable!(),
         }
     }

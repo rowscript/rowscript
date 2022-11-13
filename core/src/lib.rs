@@ -23,7 +23,7 @@ pub enum Error {
 }
 
 #[derive(Parser)]
-#[grammar = "theory/rows.pest"]
+#[grammar = "theory/surf.pest"]
 struct RowsParser;
 
 pub struct Driver<'a> {
@@ -45,7 +45,7 @@ impl<'a> Driver<'a> {
         let t = Trans::from(self);
         let defs = file
             .into_inner()
-            .map(move |d| match d.as_rule() {
+            .map(|d| match d.as_rule() {
                 Rule::fn_def => Some(t.fn_def(d)),
                 Rule::EOI => None,
                 _ => unreachable!(),

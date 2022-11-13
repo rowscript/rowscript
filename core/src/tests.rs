@@ -9,12 +9,12 @@ fn test_basic() {
             return false;
         }
 
-        function bar<T, U>(a: number): (b: string) -> boolean {
-            return b => false;
+        function bar<T, U>(a: number): (b: string) -> string {
+            return b => \"hello\";
         }
 
-        function baz(): () -> boolean {
-            return () => true;
+        function baz(): () -> number {
+            return () => 42;
         }
         ",
         )

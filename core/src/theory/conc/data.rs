@@ -4,12 +4,12 @@ use crate::theory::{LineCol, LocalVar, Param, Syntax};
 pub enum Expr {
     Unresolved(LineCol, LocalVar),
     Resolved(LineCol, LocalVar),
-    Let(Param<Self>, Box<Self>, Box<Self>),
+    Let(LineCol, Param<Self>, Box<Self>, Box<Self>),
 
     Univ(LineCol),
 
     Pi(LineCol, Param<Self>, Box<Self>),
-    Lam(LineCol, Param<Self>, Box<Self>),
+    TupledLam(LineCol, Vec<LocalVar>, Box<Self>),
     App(LineCol, Box<Self>, Box<Self>),
 
     Sig(LineCol, Param<Self>, Box<Self>),
@@ -26,10 +26,13 @@ pub enum Expr {
     IfThenElse(LineCol, Box<Self>, Box<Self>, Box<Self>),
 
     String(LineCol),
+    Str(LineCol, String),
 
     Number(LineCol),
+    Num(LineCol, String),
 
     BigInt(LineCol),
+    Big(LineCol, String),
 }
 
 impl Syntax for Expr {}
