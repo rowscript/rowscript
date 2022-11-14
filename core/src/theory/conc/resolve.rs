@@ -58,7 +58,36 @@ impl<'a> Resolver<'a> {
         todo!()
     }
 
-    fn expr(&self, e: Box<Expr>) -> Result<Box<Expr>, Error> {
+    fn bodied(&mut self, e: Box<Expr>, vars: &[LocalVar]) -> Result<Box<Expr>, Error> {
+        let mut olds: Vec<Option<LocalVar>> = Default::default();
+
+        for v in vars {
+            olds.push(self.r.insert(v.name.to_owned(), v.to_owned()));
+        }
+
+        let ret = self.expr(e)?;
+
+        for i in 0..vars.len() {
+            let old = olds.get(i).unwrap();
+            let var = vars.get(i).unwrap();
+            if let Some(v) = old {
+                self.r.insert(v.name.to_owned(), v.to_owned());
+            } else {
+                self.r.remove(&var.name.to_owned());
+            }
+        }
+
+        Ok(ret)
+    }
+
+    fn param(&mut self, p: Param<Expr>) -> Result<Param<Expr>, Error> {
+        Ok(Param {
+            var: p.var,
+            typ: self.expr(p.typ)?,
+        })
+    }
+
+    fn expr(&mut self, e: Box<Expr>) -> Result<Box<Expr>, Error> {
         Ok(Box::new(match *e {
             Unresolved(loc, r) => {
                 if let Some(v) = self.r.get(&r.name) {
@@ -67,14 +96,24 @@ impl<'a> Resolver<'a> {
                     return Err(UnresolvedVar(self.file.to_string(), loc, r));
                 }
             }
-            Let(_, _, _, _) => todo!(),
-            Pi(_, _, _) => todo!(),
-            TupledLam(_, _, _) => todo!(),
+            Let(loc, x, typ, a, b) => todo!(),
+            Pi(loc, p, b) => {
+                let var = p.var.to_owned();
+                Pi(loc, self.param(p)?, self.bodied(b, &[var])?)
+            }
+            TupledLam(loc, vs, _) => todo!(),
             App(loc, f, x) => App(loc, self.expr(f)?, self.expr(x)?),
-            Sigma(_, _, _) => todo!(),
+            Sigma(loc, p, b) => {
+                let var = p.var.to_owned();
+                Sigma(loc, self.param(p)?, self.bodied(b, &[var])?)
+            }
             Tuple(loc, a, b) => Tuple(loc, self.expr(a)?, self.expr(b)?),
-            TupleLet(_, _, _, _, _) => todo!(),
-            UnitLet(_, _, _) => todo!(),
+            TupleLet(loc, x, y, a, b) => {
+                let vx = x.to_owned();
+                let vy = y.to_owned();
+                TupleLet(loc, x, y, self.expr(a)?, self.bodied(b, &[vx, vy])?)
+            }
+            UnitLet(loc, a, b) => UnitLet(loc, self.expr(a)?, self.expr(b)?),
             If(loc, p, t, e) => If(loc, self.expr(p)?, self.expr(t)?, self.expr(e)?),
             e => e,
         }))

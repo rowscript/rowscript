@@ -102,7 +102,7 @@ boolean_if =
   ~ "else" ~ "{" ~ branch ~ "}"
   }
 branch = { branch_let | primary_expr }
-branch_let = { "let" ~ param ~ "=" ~ primary_expr ~ ";" ~ branch }
+branch_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ primary_expr ~ ";" ~ branch }
 tt = { "()" }
 
 fn_def =
@@ -115,7 +115,7 @@ fn_def =
   }
 fn_body_block = _{ "{" ~ fn_body ~ "}" }
 fn_body = { fn_body_let | fn_body_ret }
-fn_body_let = { "let" ~ param ~ "=" ~ primary_expr ~ ";" ~ fn_body }
+fn_body_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ primary_expr ~ ";" ~ fn_body }
 fn_body_ret = { "return" ~ primary_expr? }
 
 file = { SOI ~ fn_def* ~ EOI }

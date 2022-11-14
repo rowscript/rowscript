@@ -4,12 +4,13 @@ use crate::theory::{LineCol, LocalVar, Param, Syntax};
 pub enum Expr {
     Unresolved(LineCol, LocalVar),
     Resolved(LineCol, LocalVar),
-    Let(LineCol, Param<Self>, Box<Self>, Box<Self>),
+    Let(LineCol, LocalVar, Option<Box<Self>>, Box<Self>, Box<Self>),
 
     Univ(LineCol),
 
     Pi(LineCol, Param<Self>, Box<Self>),
     TupledLam(LineCol, Vec<LocalVar>, Box<Self>),
+    Lam(LineCol, LocalVar, Box<Self>),
     App(LineCol, Box<Self>, Box<Self>),
 
     Sigma(LineCol, Param<Self>, Box<Self>),

@@ -24,7 +24,7 @@ fn test_bool() {
         "
     function f() {
         let a: number = if (true) {
-            let b: number = 42;
+            let b = 42;
             b
         } else {
             let c: number = 69;

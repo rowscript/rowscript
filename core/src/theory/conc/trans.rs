@@ -1,4 +1,4 @@
-use pest::iterators::Pair;
+use pest::iterators::{Pair, Pairs};
 
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
@@ -76,13 +76,9 @@ fn fn_body(b: Pair<Rule>) -> Expr {
     let loc = LineCol::from(p.as_span());
     match p.as_rule() {
         Rule::fn_body_let => {
-            let mut pairs = p.into_inner();
-            Let(
-                loc,
-                param(pairs.next().unwrap()),
-                Box::new(primary_expr(pairs.next().unwrap())),
-                Box::new(fn_body(pairs.next().unwrap())),
-            )
+            let mut l = p.into_inner();
+            let (id, typ, tm) = partial_let(&mut l);
+            Let(loc, id, typ, tm, Box::new(fn_body(l.next().unwrap())))
         }
         Rule::fn_body_ret => p.into_inner().next().map_or(Unit(loc), primary_expr),
         _ => unreachable!(),
@@ -167,12 +163,8 @@ fn branch(b: Pair<Rule>) -> Expr {
     match pair.as_rule() {
         Rule::branch_let => {
             let mut l = pair.into_inner();
-            Let(
-                loc,
-                param(l.next().unwrap()),
-                Box::new(primary_expr(l.next().unwrap())),
-                Box::new(branch(l.next().unwrap())),
-            )
+            let (id, typ, tm) = partial_let(&mut l);
+            Let(loc, id, typ, tm, Box::new(branch(l.next().unwrap())))
         }
         Rule::primary_expr => primary_expr(pair),
         _ => unreachable!(),
@@ -184,6 +176,21 @@ fn implicit(p: Pair<Rule>) -> Param<Expr> {
         var: LocalVar::new(p.as_str()),
         typ: Box::new(Univ(LineCol::from(p.as_span()))),
     }
+}
+
+fn partial_let(pairs: &mut Pairs<Rule>) -> (LocalVar, Option<Box<Expr>>, Box<Expr>) {
+    let id = LocalVar::from(pairs.next().unwrap());
+    let mut typ = None;
+    let type_or_primary_expr = pairs.next().unwrap();
+    let tm = match type_or_primary_expr.as_rule() {
+        Rule::type_expr => {
+            typ = Some(Box::new(type_expr(type_or_primary_expr)));
+            primary_expr(pairs.next().unwrap())
+        }
+        Rule::primary_expr => primary_expr(type_or_primary_expr),
+        _ => unreachable!(),
+    };
+    (id, typ, Box::new(tm))
 }
 
 fn param(p: Pair<Rule>) -> Param<Expr> {
