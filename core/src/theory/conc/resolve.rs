@@ -96,12 +96,28 @@ impl<'a> Resolver<'a> {
                     return Err(UnresolvedVar(self.file.to_string(), loc, r));
                 }
             }
-            Let(loc, x, typ, a, b) => todo!(),
+            Let(loc, x, typ, a, b) => {
+                let v = x.to_owned();
+                Let(
+                    loc,
+                    x,
+                    if let Some(ty) = typ {
+                        Some(self.expr(ty)?)
+                    } else {
+                        None
+                    },
+                    self.expr(a)?,
+                    self.bodied(b, &[v])?,
+                )
+            }
             Pi(loc, p, b) => {
                 let var = p.var.to_owned();
                 Pi(loc, self.param(p)?, self.bodied(b, &[var])?)
             }
-            TupledLam(loc, vs, _) => todo!(),
+            TupledLam(loc, vs, b) => {
+                let vars = vs.to_owned();
+                TupledLam(loc, vs, self.bodied(b, vars.as_slice())?)
+            }
             App(loc, f, x) => App(loc, self.expr(f)?, self.expr(x)?),
             Sigma(loc, p, b) => {
                 let var = p.var.to_owned();
