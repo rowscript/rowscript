@@ -17,18 +17,27 @@ pub enum Term {
     Lam(Param<Self>, Box<Self>),
     App(Box<Self>, Box<Self>),
 
-    Sig(Param<Self>, Box<Self>),
-    Pair(Box<Self>, Box<Self>),
-    PairLet(Param<Self>, Param<Self>, Box<Self>, Box<Self>),
+    Sigma(Param<Self>, Box<Self>),
+    Tuple(Box<Self>, Box<Self>),
+    TupleLet(Param<Self>, Param<Self>, Box<Self>, Box<Self>),
 
     Unit,
     TT,
     UnitLet(Box<Self>, Box<Self>),
 
-    Bool,
+    Boolean,
     False,
     True,
-    IfThenElse(Box<Self>, Box<Self>, Box<Self>),
+    If(Box<Self>, Box<Self>, Box<Self>),
+
+    String,
+    Str(String),
+
+    Number,
+    Num(String),
+
+    BigInt,
+    Big(String),
 
     RowConcatEq(Box<Self>, Box<Self>, Box<Self>),
     RowRefl,
@@ -50,6 +59,3 @@ pub enum Term {
 }
 
 impl Syntax for Term {}
-
-pub const U: Term = Term::Univ;
-pub const TT: Term = Term::TT;
