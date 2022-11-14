@@ -5,10 +5,10 @@ use crate::theory::{LineCol, LocalVar, Param, Syntax};
 
 #[derive(Debug)]
 pub struct Def<T: Syntax> {
-    loc: LineCol,
-    name: LocalVar,
+    pub loc: LineCol,
+    pub name: LocalVar,
     pub tele: Vec<Param<T>>,
-    ret: Box<T>,
+    pub ret: Box<T>,
     pub body: Body<T>,
 }
 

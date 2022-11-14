@@ -8,6 +8,9 @@ use pest::Parser;
 use pest_derive::Parser;
 use thiserror::Error;
 
+use crate::theory::abs::def::Def;
+use crate::theory::conc::data::Expr;
+use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
 use crate::theory::{LineCol, LocalVar};
 
@@ -57,7 +60,14 @@ impl<'a> Driver<'a> {
             .into_iter()
             .filter_map(identity)
             .collect::<Vec<_>>();
-        dbg!(defs);
+
+        let mut r: Resolver = Resolver::from(self);
+        let mut resolved: Vec<Def<Expr>> = Default::default();
+        for d in defs {
+            resolved.push(r.def(d)?);
+        }
+
+        dbg!(resolved);
         Ok(())
     }
 }
