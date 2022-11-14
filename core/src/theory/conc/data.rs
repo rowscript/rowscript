@@ -1,6 +1,6 @@
 use crate::theory::{LineCol, LocalVar, Param, Syntax};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     Unresolved(LineCol, LocalVar),
     Resolved(LineCol, LocalVar),

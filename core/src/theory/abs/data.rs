@@ -1,12 +1,12 @@
 use crate::theory::{LocalVar, Param, Syntax};
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Dir {
     Left,
     Right,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Term {
     Ref(LocalVar),
     Let(Param<Self>, Box<Self>, Box<Self>),

@@ -32,7 +32,7 @@ impl<'a> From<Span<'a>> for LineCol {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct LocalVar {
     id: Uuid,
     name: String,
@@ -75,7 +75,7 @@ impl Hash for LocalVar {
 
 pub trait Syntax {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Param<T: Syntax> {
     var: LocalVar,
     typ: Box<T>,
