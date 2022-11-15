@@ -6,7 +6,7 @@ use crate::theory::abs::def::Def;
 use crate::theory::abs::rename::rename;
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::{
-    Big, BigInt, Boolean, False, If, Num, Number, Resolved, Str, String, True, Unit, Univ, TT,
+    Big, BigInt, Boolean, False, If, Let, Num, Number, Resolved, Str, String, True, Unit, Univ, TT,
 };
 use crate::theory::{LocalVar, Param};
 use crate::Error;
@@ -38,7 +38,7 @@ impl Elaborator {
             let checked_var = p.var.to_owned();
             let var = p.var.to_owned();
 
-            let gamma_typ = self.check(p.typ, Box::new(Term::Univ))?;
+            let gamma_typ = self.check(p.typ, &Box::new(Term::Univ))?;
             let typ = gamma_typ.to_owned();
 
             self.gamma.insert(gamma_var, gamma_typ);
@@ -46,9 +46,9 @@ impl Elaborator {
             tele.push(Param { var, typ })
         }
 
-        let ret = self.check(d.ret, Box::new(Term::Univ))?;
+        let ret = self.check(d.ret, &Box::new(Term::Univ))?;
         let body = match d.body {
-            Fun(f) => Fun(self.check(f, ret.to_owned())?),
+            Fun(f) => Fun(self.check(f, &ret)?),
         };
 
         let d = Def {
@@ -66,16 +66,24 @@ impl Elaborator {
         Ok(d)
     }
 
-    fn check(&mut self, e: Box<Expr>, ty: Box<Term>) -> Result<Box<Term>, Error> {
+    fn check(&mut self, e: Box<Expr>, ty: &Box<Term>) -> Result<Box<Term>, Error> {
         Ok(match *e {
-            If(_, p, t, e) => {
-                let else_ty = ty.to_owned();
-                Box::new(Term::If(
-                    self.check(p, Box::new(Term::Boolean))?,
-                    self.check(t, ty)?,
-                    self.check(e, else_ty)?,
-                ))
+            Let(_, var, maybe_typ, a, b) => {
+                let (tm, typ) = if let Some(t) = maybe_typ {
+                    let checked_ty = self.check(t, &Box::new(Term::Univ))?;
+                    (self.check(a, &checked_ty)?, checked_ty)
+                } else {
+                    self.infer(a)?
+                };
+                let param = Param { var, typ };
+                let body = self.guarded_check(&[&param], b, ty)?;
+                Box::new(Term::Let(param, tm, body))
             }
+            If(_, p, t, e) => Box::new(Term::If(
+                self.check(p, &Box::new(Term::Boolean))?,
+                self.check(t, ty)?,
+                self.check(e, ty)?,
+            )),
             _ => {
                 let (tm, inferred_ty) = self.infer(e)?;
                 // TODO: Unification.
@@ -115,5 +123,23 @@ impl Elaborator {
 
             _ => unreachable!(),
         })
+    }
+
+    fn guarded_check(
+        &mut self,
+        ps: &[&Param<Term>],
+        e: Box<Expr>,
+        ty: &Box<Term>,
+    ) -> Result<Box<Term>, Error> {
+        for p in ps {
+            let var = p.var.to_owned();
+            let typ = p.typ.to_owned();
+            self.gamma.insert(var, typ);
+        }
+        let checked = self.check(e, ty)?;
+        for p in ps {
+            self.gamma.remove(&p.var);
+        }
+        Ok(checked)
     }
 }
