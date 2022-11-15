@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
-use crate::theory::abs::data::{Term, U};
+use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Body::Fun;
 use crate::theory::abs::def::Def;
+use crate::theory::abs::rename::rename;
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::{
-    Big, BigInt, Boolean, False, If, Num, Number, Str, String, True, Unit, Univ, TT,
+    Big, BigInt, Boolean, False, If, Num, Number, Resolved, Str, String, True, Unit, Univ, TT,
 };
 use crate::theory::{LocalVar, Param};
 use crate::Error;
@@ -17,6 +18,15 @@ type Rho = HashMap<LocalVar, Box<Term>>;
 pub struct Elaborator {
     sigma: Sigma,
     gamma: Gamma,
+}
+
+impl Default for Elaborator {
+    fn default() -> Self {
+        Self {
+            sigma: Default::default(),
+            gamma: Default::default(),
+        }
+    }
 }
 
 impl Elaborator {
@@ -76,7 +86,21 @@ impl Elaborator {
 
     fn infer(&mut self, e: Box<Expr>) -> Result<(Box<Term>, Box<Term>), Error> {
         Ok(match *e {
-            Univ(_) => (Box::new(U), Box::new(Term::Univ)),
+            Resolved(_, v) => {
+                if let Some(ty) = self.gamma.get(&v) {
+                    (Box::new(Term::Ref(v)), ty.to_owned())
+                } else {
+                    let d = self.sigma.get(&v).unwrap();
+                    match &d.body {
+                        Fun(f) => (
+                            rename(Term::new_lam(&d.tele, f.to_owned())),
+                            Term::new_pi(&d.tele, d.ret.to_owned()),
+                        ),
+                    }
+                }
+            }
+
+            Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
             Unit(_) => (Box::new(Term::Unit), Box::new(Term::Univ)),
             TT(_) => (Box::new(Term::TT), Box::new(Term::Unit)),
             Boolean(_) => (Box::new(Term::Boolean), Box::new(Term::Univ)),
@@ -88,6 +112,7 @@ impl Elaborator {
             Num(_, v) => (Box::new(Term::Num(v)), Box::new(Term::Number)),
             BigInt(_) => (Box::new(Term::BigInt), Box::new(Term::Univ)),
             Big(_, v) => (Box::new(Term::Big(v)), Box::new(Term::BigInt)),
+
             _ => unreachable!(),
         })
     }

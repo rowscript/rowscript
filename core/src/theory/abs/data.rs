@@ -1,3 +1,4 @@
+use crate::theory::abs::data::Term::{Lam, Pi};
 use crate::theory::{LocalVar, Param, Syntax};
 
 #[derive(Debug, Copy, Clone)]
@@ -56,6 +57,16 @@ pub enum Term {
     Variant(Box<Self>),
     Inj(Dir, Box<Self>),
     Branch(Box<Self>, Box<Self>),
+}
+
+impl Term {
+    pub fn new_lam(tele: &Vec<Param<Term>>, tm: Box<Term>) -> Box<Term> {
+        tele.iter().rfold(tm, |b, p| Box::new(Lam(p.to_owned(), b)))
+    }
+
+    pub fn new_pi(tele: &Vec<Param<Term>>, tm: Box<Term>) -> Box<Term> {
+        tele.iter().rfold(tm, |b, p| Box::new(Pi(p.to_owned(), b)))
+    }
 }
 
 impl Syntax for Term {}
