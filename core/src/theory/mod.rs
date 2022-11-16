@@ -52,7 +52,7 @@ impl<'a> From<Pair<'a, Rule>> for LocalVar {
 }
 
 impl LocalVar {
-    fn new<S : AsRef<str>>(name: S) -> Self {
+    fn new<S: AsRef<str>>(name: S) -> Self {
         LocalVar {
             name: Rc::new(name.as_ref().to_string()),
         }

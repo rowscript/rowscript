@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use crate::theory::abs::def::Body::Fun;
 use crate::theory::abs::def::Def;
@@ -12,7 +13,7 @@ use crate::{Driver, Error};
 
 pub struct Resolver<'a> {
     file: &'a str,
-    r: HashMap<String, LocalVar>,
+    r: HashMap<Rc<String>, LocalVar>,
 }
 
 impl<'a> From<Driver<'a>> for Resolver<'a> {
@@ -31,7 +32,7 @@ impl<'a> Resolver<'a> {
 
         let mut tele: Vec<Param<Expr>> = Default::default();
         for p in d.tele {
-            if let Some(old) = self.r.insert(p.var.name.as_str().to_string(), p.var.clone()) {
+            if let Some(old) = self.r.insert(p.var.name.clone(), p.var.clone()) {
                 recoverable.push(old);
             } else {
                 removable.push(p.var.clone());
@@ -46,10 +47,10 @@ impl<'a> Resolver<'a> {
         d = self.body(d)?;
 
         for x in removable {
-            self.r.remove(x.name.as_str());
+            self.r.remove(&x.name);
         }
         for x in recoverable {
-            self.r.insert(x.name.as_str().to_string(), x);
+            self.r.insert(x.name.clone(), x);
         }
 
         Ok(d)
@@ -72,7 +73,7 @@ impl<'a> Resolver<'a> {
         let mut olds: Vec<Option<LocalVar>> = Default::default();
 
         for v in vars {
-            olds.push(self.r.insert(v.name.as_str().to_string(), v.clone()));
+            olds.push(self.r.insert(v.name.clone(), v.clone()));
         }
 
         let ret = self.expr(e)?;
@@ -81,7 +82,7 @@ impl<'a> Resolver<'a> {
             let old = olds.get(i).unwrap();
             let var = vars.get(i).unwrap();
             if let Some(v) = old {
-                self.r.insert(v.name.as_str().to_string(), v.clone());
+                self.r.insert(v.name.clone(), v.clone());
             } else {
                 self.r.remove(&var.name.as_str().to_string());
             }
