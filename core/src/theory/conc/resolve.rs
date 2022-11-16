@@ -31,10 +31,10 @@ impl<'a> Resolver<'a> {
 
         let mut tele: Vec<Param<Expr>> = Default::default();
         for p in d.tele {
-            if let Some(old) = self.r.insert(p.var.name.to_owned(), p.var.to_owned()) {
+            if let Some(old) = self.r.insert(p.var.name.as_str().to_string(), p.var.clone()) {
                 recoverable.push(old);
             } else {
-                removable.push(p.var.to_owned());
+                removable.push(p.var.clone());
             }
             tele.push(Param {
                 var: p.var,
@@ -46,10 +46,10 @@ impl<'a> Resolver<'a> {
         d = self.body(d)?;
 
         for x in removable {
-            self.r.remove(&x.name);
+            self.r.remove(x.name.as_str());
         }
         for x in recoverable {
-            self.r.insert(x.name.to_owned(), x);
+            self.r.insert(x.name.as_str().to_string(), x);
         }
 
         Ok(d)
@@ -72,7 +72,7 @@ impl<'a> Resolver<'a> {
         let mut olds: Vec<Option<LocalVar>> = Default::default();
 
         for v in vars {
-            olds.push(self.r.insert(v.name.to_owned(), v.to_owned()));
+            olds.push(self.r.insert(v.name.as_str().to_string(), v.clone()));
         }
 
         let ret = self.expr(e)?;
@@ -81,9 +81,9 @@ impl<'a> Resolver<'a> {
             let old = olds.get(i).unwrap();
             let var = vars.get(i).unwrap();
             if let Some(v) = old {
-                self.r.insert(v.name.to_owned(), v.to_owned());
+                self.r.insert(v.name.as_str().to_string(), v.clone());
             } else {
-                self.r.remove(&var.name.to_owned());
+                self.r.remove(&var.name.as_str().to_string());
             }
         }
 
@@ -100,14 +100,14 @@ impl<'a> Resolver<'a> {
     fn expr(&mut self, e: Box<Expr>) -> Result<Box<Expr>, Error> {
         Ok(Box::new(match *e {
             Unresolved(loc, r) => {
-                if let Some(v) = self.r.get(&r.name) {
-                    Resolved(loc, v.to_owned())
+                if let Some(v) = self.r.get(r.name.as_ref()) {
+                    Resolved(loc, v.clone())
                 } else {
                     return Err(UnresolvedVar(self.file.to_string(), loc, r));
                 }
             }
             Let(loc, x, typ, a, b) => {
-                let v = x.to_owned();
+                let v = x.clone();
                 Let(
                     loc,
                     x,
@@ -121,22 +121,22 @@ impl<'a> Resolver<'a> {
                 )
             }
             Pi(loc, p, b) => {
-                let var = p.var.to_owned();
+                let var = p.var.clone();
                 Pi(loc, self.param(p)?, self.bodied(b, &[var])?)
             }
             TupledLam(loc, vs, b) => {
-                let vars = vs.to_owned();
+                let vars = vs.clone();
                 TupledLam(loc, vs, self.bodied(b, vars.as_slice())?)
             }
             App(loc, f, x) => App(loc, self.expr(f)?, self.expr(x)?),
             Sigma(loc, p, b) => {
-                let var = p.var.to_owned();
+                let var = p.var.clone();
                 Sigma(loc, self.param(p)?, self.bodied(b, &[var])?)
             }
             Tuple(loc, a, b) => Tuple(loc, self.expr(a)?, self.expr(b)?),
             TupleLet(loc, x, y, a, b) => {
-                let vx = x.to_owned();
-                let vy = y.to_owned();
+                let vx = x.clone();
+                let vy = y.clone();
                 TupleLet(loc, x, y, self.expr(a)?, self.bodied(b, &[vx, vy])?)
             }
             UnitLet(loc, a, b) => UnitLet(loc, self.expr(a)?, self.expr(b)?),

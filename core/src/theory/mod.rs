@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 
 use pest::iterators::Pair;
 use pest::Span;
-use uuid::Uuid;
+use std::rc::Rc;
 
 use crate::Rule;
 
@@ -32,10 +32,11 @@ impl<'a> From<Span<'a>> for LineCol {
     }
 }
 
+type Name = Rc<String>;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct LocalVar {
-    id: Uuid,
-    name: String,
+    name: Name,
 }
 
 impl Display for LocalVar {
@@ -51,10 +52,9 @@ impl<'a> From<Pair<'a, Rule>> for LocalVar {
 }
 
 impl LocalVar {
-    fn new(name: &str) -> Self {
+    fn new<S : AsRef<str>>(name: S) -> Self {
         LocalVar {
-            id: Uuid::new_v4(),
-            name: name.to_string(),
+            name: Rc::new(name.as_ref().to_string()),
         }
     }
 
@@ -65,11 +65,15 @@ impl LocalVar {
     pub fn tupled() -> Self {
         Self::new("_tupled")
     }
+
+    pub fn id(&self) -> usize {
+        Rc::as_ptr(&self.name) as _
+    }
 }
 
 impl Hash for LocalVar {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.hash(state)
+        self.id().hash(state)
     }
 }
 
