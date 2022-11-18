@@ -1,11 +1,11 @@
 use std::fmt::Debug;
 
 use crate::theory::abs::def::Body::Fun;
-use crate::theory::{LineCol, LocalVar, Param, Syntax};
+use crate::theory::{Loc, LocalVar, Param, Syntax};
 
 #[derive(Debug)]
 pub struct Def<T: Syntax> {
-    pub loc: LineCol,
+    pub loc: Loc,
     pub name: LocalVar,
     pub tele: Vec<Param<T>>,
     pub ret: Box<T>,
@@ -18,13 +18,7 @@ pub enum Body<T: Syntax> {
 }
 
 impl<T: Syntax> Def<T> {
-    pub fn fun(
-        loc: LineCol,
-        name: LocalVar,
-        tele: Vec<Param<T>>,
-        ret: Box<T>,
-        body: Box<T>,
-    ) -> Self {
+    pub fn fun(loc: Loc, name: LocalVar, tele: Vec<Param<T>>, ret: Box<T>, body: Box<T>) -> Self {
         Self {
             loc,
             name,

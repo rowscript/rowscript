@@ -8,31 +8,25 @@ use crate::theory::conc::data::Expr::{
     App, If, Let, Pi, Resolved, Sigma, Tuple, TupleLet, TupledLam, UnitLet, Unresolved,
 };
 use crate::theory::{LocalVar, Param};
+use crate::Error;
 use crate::Error::UnresolvedVar;
-use crate::{Driver, Error};
 
-pub struct Resolver<'a> {
-    file: &'a str,
-    r: HashMap<Rc<String>, LocalVar>,
-}
+pub struct Resolver(HashMap<Rc<String>, LocalVar>);
 
-impl<'a> From<Driver<'a>> for Resolver<'a> {
-    fn from(d: Driver<'a>) -> Self {
-        Self {
-            file: d.file,
-            r: Default::default(),
-        }
+impl Default for Resolver {
+    fn default() -> Self {
+        Self(Default::default())
     }
 }
 
-impl<'a> Resolver<'a> {
+impl Resolver {
     pub fn def(&mut self, mut d: Def<Expr>) -> Result<Def<Expr>, Error> {
         let mut recoverable: Vec<LocalVar> = Default::default();
         let mut removable: Vec<LocalVar> = Default::default();
 
         let mut tele: Vec<Param<Expr>> = Default::default();
         for p in d.tele {
-            if let Some(old) = self.r.insert(p.var.name.clone(), p.var.clone()) {
+            if let Some(old) = self.0.insert(p.var.name.clone(), p.var.clone()) {
                 recoverable.push(old);
             } else {
                 removable.push(p.var.clone());
@@ -47,10 +41,10 @@ impl<'a> Resolver<'a> {
         d = self.body(d)?;
 
         for x in removable {
-            self.r.remove(&x.name);
+            self.0.remove(&x.name);
         }
         for x in recoverable {
-            self.r.insert(x.name.clone(), x);
+            self.0.insert(x.name.clone(), x);
         }
 
         Ok(d)
@@ -73,7 +67,7 @@ impl<'a> Resolver<'a> {
         let mut olds: Vec<Option<LocalVar>> = Default::default();
 
         for v in vars {
-            olds.push(self.r.insert(v.name.clone(), v.clone()));
+            olds.push(self.0.insert(v.name.clone(), v.clone()));
         }
 
         let ret = self.expr(e)?;
@@ -82,9 +76,9 @@ impl<'a> Resolver<'a> {
             let old = olds.get(i).unwrap();
             let var = vars.get(i).unwrap();
             if let Some(v) = old {
-                self.r.insert(v.name.clone(), v.clone());
+                self.0.insert(v.name.clone(), v.clone());
             } else {
-                self.r.remove(&var.name.as_str().to_string());
+                self.0.remove(&var.name.as_str().to_string());
             }
         }
 
@@ -101,10 +95,10 @@ impl<'a> Resolver<'a> {
     fn expr(&mut self, e: Box<Expr>) -> Result<Box<Expr>, Error> {
         Ok(Box::new(match *e {
             Unresolved(loc, r) => {
-                if let Some(v) = self.r.get(r.name.as_ref()) {
+                if let Some(v) = self.0.get(r.name.as_ref()) {
                     Resolved(loc, v.clone())
                 } else {
-                    return Err(UnresolvedVar(self.file.to_string(), loc, r));
+                    return Err(UnresolvedVar(loc));
                 }
             }
             Let(loc, x, typ, a, b) => {

@@ -1,39 +1,39 @@
-use crate::theory::{LineCol, LocalVar, Param, Syntax};
+use crate::theory::{Loc, LocalVar, Param, Syntax};
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-    Unresolved(LineCol, LocalVar),
-    Resolved(LineCol, LocalVar),
-    Let(LineCol, LocalVar, Option<Box<Self>>, Box<Self>, Box<Self>),
+    Unresolved(Loc, LocalVar),
+    Resolved(Loc, LocalVar),
+    Let(Loc, LocalVar, Option<Box<Self>>, Box<Self>, Box<Self>),
 
-    Univ(LineCol),
+    Univ(Loc),
 
-    Pi(LineCol, Param<Self>, Box<Self>),
-    TupledLam(LineCol, Vec<LocalVar>, Box<Self>),
-    Lam(LineCol, LocalVar, Box<Self>),
-    App(LineCol, Box<Self>, Box<Self>),
+    Pi(Loc, Param<Self>, Box<Self>),
+    TupledLam(Loc, Vec<LocalVar>, Box<Self>),
+    Lam(Loc, LocalVar, Box<Self>),
+    App(Loc, Box<Self>, Box<Self>),
 
-    Sigma(LineCol, Param<Self>, Box<Self>),
-    Tuple(LineCol, Box<Self>, Box<Self>),
-    TupleLet(LineCol, LocalVar, LocalVar, Box<Self>, Box<Self>),
+    Sigma(Loc, Param<Self>, Box<Self>),
+    Tuple(Loc, Box<Self>, Box<Self>),
+    TupleLet(Loc, LocalVar, LocalVar, Box<Self>, Box<Self>),
 
-    Unit(LineCol),
-    TT(LineCol),
-    UnitLet(LineCol, Box<Self>, Box<Self>),
+    Unit(Loc),
+    TT(Loc),
+    UnitLet(Loc, Box<Self>, Box<Self>),
 
-    Boolean(LineCol),
-    False(LineCol),
-    True(LineCol),
-    If(LineCol, Box<Self>, Box<Self>, Box<Self>),
+    Boolean(Loc),
+    False(Loc),
+    True(Loc),
+    If(Loc, Box<Self>, Box<Self>, Box<Self>),
 
-    String(LineCol),
-    Str(LineCol, String),
+    String(Loc),
+    Str(Loc, String),
 
-    Number(LineCol),
-    Num(LineCol, String),
+    Number(Loc),
+    Num(Loc, String),
 
-    BigInt(LineCol),
-    Big(LineCol, String),
+    BigInt(Loc),
+    Big(Loc, String),
 }
 
 impl Syntax for Expr {}

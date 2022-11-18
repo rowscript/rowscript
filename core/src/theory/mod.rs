@@ -1,9 +1,9 @@
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
+use std::rc::Rc;
 
 use pest::iterators::Pair;
 use pest::Span;
-use std::rc::Rc;
 
 use crate::Rule;
 
@@ -11,27 +11,27 @@ pub mod abs;
 pub mod conc;
 
 #[derive(Debug, Copy, Clone)]
-pub struct LineCol {
+pub struct Loc {
     pub line: usize,
     pub col: usize,
     pub start: usize,
-    pub end: usize
+    pub end: usize,
 }
 
-impl Display for LineCol {
+impl Display for Loc {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(format!("{}:{}", self.line, self.col).as_str())
     }
 }
 
-impl<'a> From<Span<'a>> for LineCol {
+impl<'a> From<Span<'a>> for Loc {
     fn from(span: Span) -> Self {
         let line_col = span.start_pos().line_col();
-        LineCol {
+        Loc {
             line: line_col.0,
             col: line_col.1,
             start: span.start(),
-            end: span.end()
+            end: span.end(),
         }
     }
 }

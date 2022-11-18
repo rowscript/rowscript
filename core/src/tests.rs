@@ -1,8 +1,9 @@
 use crate::Driver;
 
 fn check(text: &str) {
-    if let Err(e) = Driver::new("test").check_text(text) {
-        e.print("<test>".to_string(), text);
+    let file = "test";
+    if let Err(e) = Driver::new(file).check_text(text) {
+        e.print(file, text);
         panic!("test failure : {:#?}", e)
     }
 }
@@ -41,7 +42,13 @@ fn test_bool() {
 
 #[test]
 #[should_panic]
-fn test_err() {
+fn test_parse_err() {
+    check("function f() {}")
+}
+
+#[test]
+#[should_panic]
+fn test_resolve_err() {
     check(
         "
     function f() {

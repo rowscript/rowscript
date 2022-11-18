@@ -6,11 +6,11 @@ use crate::theory::conc::data::Expr::{
     App, Big, BigInt, Boolean, False, If, Let, Num, Number, Pi, Sigma, Str, String, True, Tuple,
     TupledLam, Unit, Univ, Unresolved, TT,
 };
-use crate::theory::{LineCol, LocalVar, Param};
+use crate::theory::{Loc, LocalVar, Param};
 use crate::Rule;
 
 pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
-    let loc = LineCol::from(f.as_span());
+    let loc = Loc::from(f.as_span());
     let mut pairs = f.into_inner();
 
     let name = pairs.next().unwrap();
@@ -22,7 +22,7 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
     for p in pairs {
         match p.as_rule() {
             Rule::implicit_id => tele.push(implicit(p)),
-            Rule::param => untupled.push(LineCol::from(p.as_span()), param(p)),
+            Rule::param => untupled.push(Loc::from(p.as_span()), param(p)),
             Rule::type_expr => ret = type_expr(p),
             Rule::fn_body => {
                 body = Some(fn_body(p));
@@ -44,14 +44,14 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
 
 fn type_expr(t: Pair<Rule>) -> Expr {
     let p = t.into_inner().next().unwrap();
-    let loc = LineCol::from(p.as_span());
+    let loc = Loc::from(p.as_span());
     match p.as_rule() {
         Rule::fn_type => {
             let ps = p.into_inner();
             let mut untupled = UntupledParams::new(loc);
             for fp in ps {
                 match fp.as_rule() {
-                    Rule::param => untupled.push(LineCol::from(fp.as_span()), param(fp)),
+                    Rule::param => untupled.push(Loc::from(fp.as_span()), param(fp)),
                     Rule::type_expr => {
                         return Pi(loc, Param::from(untupled), Box::new(type_expr(fp)));
                     }
@@ -60,12 +60,12 @@ fn type_expr(t: Pair<Rule>) -> Expr {
             }
             unreachable!()
         }
-        Rule::string_type => String(LineCol::from(p.as_span())),
-        Rule::number_type => Number(LineCol::from(p.as_span())),
-        Rule::bigint_type => BigInt(LineCol::from(p.as_span())),
-        Rule::boolean_type => Boolean(LineCol::from(p.as_span())),
-        Rule::unit_type => Unit(LineCol::from(p.as_span())),
-        Rule::idref => Unresolved(LineCol::from(p.as_span()), LocalVar::from(p)),
+        Rule::string_type => String(Loc::from(p.as_span())),
+        Rule::number_type => Number(Loc::from(p.as_span())),
+        Rule::bigint_type => BigInt(Loc::from(p.as_span())),
+        Rule::boolean_type => Boolean(Loc::from(p.as_span())),
+        Rule::unit_type => Unit(Loc::from(p.as_span())),
+        Rule::idref => Unresolved(Loc::from(p.as_span()), LocalVar::from(p)),
         Rule::paren_type_expr => type_expr(p.into_inner().next().unwrap()),
         _ => unreachable!(),
     }
@@ -73,7 +73,7 @@ fn type_expr(t: Pair<Rule>) -> Expr {
 
 fn fn_body(b: Pair<Rule>) -> Expr {
     let p = b.into_inner().next().unwrap();
-    let loc = LineCol::from(p.as_span());
+    let loc = Loc::from(p.as_span());
     match p.as_rule() {
         Rule::fn_body_let => {
             let mut l = p.into_inner();
@@ -87,7 +87,7 @@ fn fn_body(b: Pair<Rule>) -> Expr {
 
 fn primary_expr(e: Pair<Rule>) -> Expr {
     let p = e.into_inner().next().unwrap();
-    let loc = LineCol::from(p.as_span());
+    let loc = Loc::from(p.as_span());
     match p.as_rule() {
         Rule::string => Str(loc, p.as_str().to_string()),
         Rule::number => Num(loc, p.into_inner().next().unwrap().as_str().to_string()),
@@ -127,10 +127,10 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
         Rule::app => {
             let mut pairs = p.into_inner();
             let f = pairs.next().unwrap();
-            let floc = LineCol::from(f.as_span());
+            let floc = Loc::from(f.as_span());
             let f = match f.as_rule() {
                 Rule::primary_expr => primary_expr(f),
-                Rule::idref => Unresolved(LineCol::from(f.as_span()), LocalVar::from(f)),
+                Rule::idref => Unresolved(Loc::from(f.as_span()), LocalVar::from(f)),
                 _ => unreachable!(),
             };
             let mut type_args: Vec<Expr> = Default::default();
@@ -159,7 +159,7 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
 
 fn branch(b: Pair<Rule>) -> Expr {
     let pair = b.into_inner().next().unwrap();
-    let loc = LineCol::from(pair.as_span());
+    let loc = Loc::from(pair.as_span());
     match pair.as_rule() {
         Rule::branch_let => {
             let mut l = pair.into_inner();
@@ -174,7 +174,7 @@ fn branch(b: Pair<Rule>) -> Expr {
 fn implicit(p: Pair<Rule>) -> Param<Expr> {
     Param {
         var: LocalVar::new(p.as_str()),
-        typ: Box::new(Univ(LineCol::from(p.as_span()))),
+        typ: Box::new(Univ(Loc::from(p.as_span()))),
     }
 }
 
@@ -201,14 +201,14 @@ fn param(p: Pair<Rule>) -> Param<Expr> {
     }
 }
 
-struct UntupledParams(LineCol, Vec<(LineCol, Param<Expr>)>);
+struct UntupledParams(Loc, Vec<(Loc, Param<Expr>)>);
 
 impl UntupledParams {
-    fn new(loc: LineCol) -> Self {
+    fn new(loc: Loc) -> Self {
         Self(loc, Default::default())
     }
 
-    fn push(&mut self, loc: LineCol, param: Param<Expr>) {
+    fn push(&mut self, loc: Loc, param: Param<Expr>) {
         self.1.push((loc, param))
     }
 }

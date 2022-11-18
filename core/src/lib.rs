@@ -4,6 +4,8 @@ use std::convert::identity;
 use std::fs::read_to_string;
 use std::io;
 
+use ariadne::{Color, Label, Report, ReportKind, Source};
+use pest::error::InputLocation;
 use pest::Parser;
 use pest_derive::Parser;
 use thiserror::Error;
@@ -12,7 +14,8 @@ use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
-use crate::theory::{LineCol, LocalVar};
+use crate::theory::Loc;
+use crate::Error::{Parsing, UnresolvedVar};
 
 #[cfg(test)]
 mod tests;
@@ -26,32 +29,34 @@ pub enum Error {
     #[error("parse error")]
     Parsing(#[from] pest::error::Error<Rule>),
 
-    #[error("{0}:{1}: unresolved variable \"{2}\"")]
-    UnresolvedVar(String, LineCol, LocalVar),
+    #[error("unresolved variable")]
+    UnresolvedVar(Loc),
 }
 
 impl Error {
-    fn print<S : AsRef<str>, T : AsRef<str>>(&self, filename: S, source: T) {
-        use ariadne::*;
-        match self {
-            Error::UnresolvedVar(_, loc, var) => {
-                Report::build(ReportKind::Error, filename.as_ref(), loc.start)
-                    .with_code(1)
-                    .with_message("unresolved variable")
-                    .with_label(
-                        Label::new((filename.as_ref(), loc.start..loc.end))
-                            .with_message(format!(
-                                "variable {} cannot be resolved within context",
-                                var.name
-                            ))
-                            .with_color(Color::Red),
-                    )
-                    .finish()
-                    .print((filename.as_ref(), Source::from(source.as_ref())))
-                    .unwrap();
+    fn print<F: AsRef<str>, S: AsRef<str>>(&self, file: F, source: S) {
+        let (range, msg) = match self {
+            Parsing(e) => {
+                let range = match e.location {
+                    InputLocation::Pos(start) => start..source.as_ref().len(),
+                    InputLocation::Span((start, end)) => start..end,
+                };
+                (range, e.variant.message().to_string())
             }
+            UnresolvedVar(loc) => (loc.start..loc.end, self.to_string()),
             _ => todo!(),
-        }
+        };
+        Report::build(ReportKind::Error, file.as_ref(), range.start)
+            .with_message(self.to_string())
+            .with_label(
+                Label::new((file.as_ref(), range))
+                    .with_message(msg)
+                    .with_color(Color::Red),
+            )
+            .with_code(1)
+            .finish()
+            .print((file.as_ref(), Source::from(source.as_ref())))
+            .unwrap();
     }
 }
 
@@ -86,7 +91,7 @@ impl<'a> Driver<'a> {
             .filter_map(identity)
             .collect::<Vec<_>>();
 
-        let mut r: Resolver = Resolver::from(self);
+        let mut r: Resolver = Default::default();
         let mut resolved: Vec<Def<Expr>> = Default::default();
         for d in defs {
             resolved.push(r.def(d)?);
