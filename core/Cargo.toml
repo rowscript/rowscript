@@ -1,14 +1,18 @@
 [package]
-name = "rowscript_core"
+name = "rowscript-core"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies.pest]
 version = "2.4.1"
+features = ["fast-line-col"]
 
 [dependencies.pest_derive]
 version = "2.4.1"
 
 [dependencies.thiserror]
 version = "1.0.37"
+
+[dependencies.ariadne]
+version = "0.1.5"
 

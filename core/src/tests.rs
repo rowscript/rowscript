@@ -1,7 +1,10 @@
 use crate::Driver;
 
 fn check(text: &str) {
-    Driver::new("test").check_text(text).unwrap()
+    if let Err(e) = Driver::new("test").check_text(text) {
+        e.print("<test>".to_string(), text);
+        panic!("test failure : {:#?}", e)
+    }
 }
 
 #[test]
@@ -29,6 +32,25 @@ fn test_bool() {
         } else {
             let c: number = 69;
             c
+        };
+        return
+    }
+    ",
+    )
+}
+
+#[test]
+#[should_panic]
+fn test_err() {
+    check(
+        "
+    function f() {
+        let a: number = if (true) {
+            let b = 42;
+            b
+        } else {
+            let c: number = 69;
+            c1
         };
         return
     }
