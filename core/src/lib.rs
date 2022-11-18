@@ -30,6 +30,31 @@ pub enum Error {
     UnresolvedVar(String, LineCol, LocalVar),
 }
 
+impl Error {
+    fn print<S : AsRef<str>, T : AsRef<str>>(&self, filename: S, source: T) {
+        use ariadne::*;
+        match self {
+            Error::UnresolvedVar(_, loc, var) => {
+                Report::build(ReportKind::Error, filename.as_ref(), loc.start)
+                    .with_code(1)
+                    .with_message("unresolved variable")
+                    .with_label(
+                        Label::new((filename.as_ref(), loc.start..loc.end))
+                            .with_message(format!(
+                                "variable {} cannot be resolved within context",
+                                var.name
+                            ))
+                            .with_color(Color::Red),
+                    )
+                    .finish()
+                    .print((filename.as_ref(), Source::from(source.as_ref())))
+                    .unwrap();
+            }
+            _ => todo!(),
+        }
+    }
+}
+
 #[derive(Parser)]
 #[grammar = "theory/surf.pest"]
 struct RowsParser;

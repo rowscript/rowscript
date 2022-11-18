@@ -12,8 +12,10 @@ pub mod conc;
 
 #[derive(Debug, Copy, Clone)]
 pub struct LineCol {
-    line: usize,
-    col: usize,
+    pub line: usize,
+    pub col: usize,
+    pub start: usize,
+    pub end: usize
 }
 
 impl Display for LineCol {
@@ -28,6 +30,8 @@ impl<'a> From<Span<'a>> for LineCol {
         LineCol {
             line: line_col.0,
             col: line_col.1,
+            start: span.start(),
+            end: span.end()
         }
     }
 }
@@ -36,7 +40,7 @@ type Name = Rc<String>;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct LocalVar {
-    name: Name,
+    pub name: Name,
 }
 
 impl Display for LocalVar {
