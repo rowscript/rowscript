@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 use crate::theory::{Loc, LocalVar, Param, Syntax};
 
 #[derive(Debug, Clone)]
@@ -37,3 +39,9 @@ pub enum Expr {
 }
 
 impl Syntax for Expr {}
+
+impl Display for Expr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}

@@ -1,32 +1,20 @@
-use std::collections::HashMap;
-
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Body::Fun;
-use crate::theory::abs::def::Def;
+use crate::theory::abs::def::{Def, Gamma, Sigma};
+use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::{
-    Big, BigInt, Boolean, False, If, Let, Num, Number, Resolved, Str, String, True, Unit, Univ, TT,
+    Big, BigInt, Boolean, False, If, Lam, Let, Num, Number, Resolved, Str, String, True, Unit,
+    Univ, TT,
 };
 use crate::theory::{LocalVar, Param};
 use crate::Error;
-
-type Sigma = HashMap<LocalVar, Def<Term>>;
-type Gamma = HashMap<LocalVar, Box<Term>>;
-type Rho = HashMap<LocalVar, Box<Term>>;
+use crate::Error::ExpectedPi;
 
 pub struct Elaborator {
-    sigma: Sigma,
+    pub sigma: Sigma,
     gamma: Gamma,
-}
-
-impl Default for Elaborator {
-    fn default() -> Self {
-        Self {
-            sigma: Default::default(),
-            gamma: Default::default(),
-        }
-    }
 }
 
 impl Elaborator {
@@ -78,6 +66,14 @@ impl Elaborator {
                 let param = Param { var, typ };
                 let body = self.guarded_check(&[&param], b, ty)?;
                 Box::new(Term::Let(param, tm, body))
+            }
+            Lam(loc, _, _) => {
+                let pi = Normalizer::from(self as &_).term(ty);
+                if let Term::Pi(pi_pram, pi_body) = *pi {
+                    todo!()
+                } else {
+                    return Err(ExpectedPi(loc, *e.clone(), *ty.clone()));
+                }
             }
             If(_, p, t, e) => Box::new(Term::If(
                 self.check(p, &Box::new(Term::Boolean))?,
@@ -141,5 +137,14 @@ impl Elaborator {
             self.gamma.remove(&p.var);
         }
         Ok(checked)
+    }
+}
+
+impl Default for Elaborator {
+    fn default() -> Self {
+        Self {
+            sigma: Default::default(),
+            gamma: Default::default(),
+        }
     }
 }

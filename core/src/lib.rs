@@ -10,12 +10,13 @@ use pest::Parser;
 use pest_derive::Parser;
 use thiserror::Error;
 
+use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
 use crate::theory::Loc;
-use crate::Error::{Parsing, UnresolvedVar};
+use crate::Error::{ExpectedPi, Parsing, UnresolvedVar, IO};
 
 #[cfg(test)]
 mod tests;
@@ -31,33 +32,40 @@ pub enum Error {
 
     #[error("unresolved variable")]
     UnresolvedVar(Loc),
+
+    #[error("expected function type for \"{1}\", got \"{2}\"")]
+    ExpectedPi(Loc, Expr, Term),
 }
 
 const PARSER_FAILED: &str = "failed while parsing";
 const RESOLVER_FAILED: &str = "failed while resolving";
+const CHECKER_FAILED: &str = "failed while typechecking";
 
 impl Error {
     fn print<F: AsRef<str>, S: AsRef<str>>(&self, file: F, source: S) {
         let (range, title, msg) = match self {
+            IO(e) => (0..source.as_ref().len(), PARSER_FAILED, None),
             Parsing(e) => {
                 let range = match e.location {
                     InputLocation::Pos(start) => start..source.as_ref().len(),
                     InputLocation::Span((start, end)) => start..end,
                 };
-                (range, PARSER_FAILED, e.variant.message().to_string())
+                (range, PARSER_FAILED, Some(e.variant.message().to_string()))
             }
-            UnresolvedVar(loc) => (loc.start..loc.end, RESOLVER_FAILED, self.to_string()),
-            _ => todo!(),
+            UnresolvedVar(loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
+            ExpectedPi(loc, _, _) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
         };
-        Report::build(ReportKind::Error, file.as_ref(), range.start)
+        let mut b = Report::build(ReportKind::Error, file.as_ref(), range.start)
             .with_message(title)
-            .with_label(
+            .with_code(1);
+        if let Some(m) = msg {
+            b = b.with_label(
                 Label::new((file.as_ref(), range))
-                    .with_message(msg)
+                    .with_message(m)
                     .with_color(Color::Red),
-            )
-            .with_code(1)
-            .finish()
+            );
+        }
+        b.finish()
             .print((file.as_ref(), Source::from(source.as_ref())))
             .unwrap();
     }

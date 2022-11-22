@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 use crate::theory::abs::data::Term::{Lam, Pi};
 use crate::theory::{LocalVar, Param, Syntax};
 
@@ -70,3 +72,9 @@ impl Term {
 }
 
 impl Syntax for Term {}
+
+impl Display for Term {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
