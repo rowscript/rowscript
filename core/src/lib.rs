@@ -33,21 +33,24 @@ pub enum Error {
     UnresolvedVar(Loc),
 }
 
+const PARSER_FAILED: &str = "failed while parsing";
+const RESOLVER_FAILED: &str = "failed while resolving";
+
 impl Error {
     fn print<F: AsRef<str>, S: AsRef<str>>(&self, file: F, source: S) {
-        let (range, msg) = match self {
+        let (range, title, msg) = match self {
             Parsing(e) => {
                 let range = match e.location {
                     InputLocation::Pos(start) => start..source.as_ref().len(),
                     InputLocation::Span((start, end)) => start..end,
                 };
-                (range, e.variant.message().to_string())
+                (range, PARSER_FAILED, e.variant.message().to_string())
             }
-            UnresolvedVar(loc) => (loc.start..loc.end, self.to_string()),
+            UnresolvedVar(loc) => (loc.start..loc.end, RESOLVER_FAILED, self.to_string()),
             _ => todo!(),
         };
         Report::build(ReportKind::Error, file.as_ref(), range.start)
-            .with_message(self.to_string())
+            .with_message(title)
             .with_label(
                 Label::new((file.as_ref(), range))
                     .with_message(msg)
