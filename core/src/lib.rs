@@ -33,8 +33,8 @@ pub enum Error {
     #[error("unresolved variable")]
     UnresolvedVar(Loc),
 
-    #[error("expected function type for \"{1}\", got \"{2}\"")]
-    ExpectedPi(Loc, Expr, Term),
+    #[error("expected function type but got \"{1}\"")]
+    ExpectedPi(Loc, Box<Term>),
 }
 
 const PARSER_FAILED: &str = "failed while parsing";
@@ -53,7 +53,7 @@ impl Error {
                 (range, PARSER_FAILED, Some(e.variant.message().to_string()))
             }
             UnresolvedVar(loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
-            ExpectedPi(loc, _, _) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
+            ExpectedPi(loc, _) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
         };
         let mut b = Report::build(ReportKind::Error, file.as_ref(), range.start)
             .with_message(title)
