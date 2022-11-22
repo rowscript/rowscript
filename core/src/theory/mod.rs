@@ -38,20 +38,14 @@ impl<'a> From<Span<'a>> for Loc {
 
 type Name = Rc<String>;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq)]
 pub struct LocalVar {
     pub name: Name,
 }
 
-impl Display for LocalVar {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.name.as_str())
-    }
-}
-
-impl<'a> From<Pair<'a, Rule>> for LocalVar {
-    fn from(p: Pair<'a, Rule>) -> Self {
-        Self::new(p.as_str())
+impl PartialEq<Self> for LocalVar {
+    fn eq(&self, other: &Self) -> bool {
+        self.id() == other.id()
     }
 }
 
@@ -72,6 +66,18 @@ impl LocalVar {
 
     pub fn id(&self) -> usize {
         Rc::as_ptr(&self.name) as _
+    }
+}
+
+impl Display for LocalVar {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.name.as_str())
+    }
+}
+
+impl<'a> From<Pair<'a, Rule>> for LocalVar {
+    fn from(p: Pair<'a, Rule>) -> Self {
+        Self::new(p.as_str())
     }
 }
 
