@@ -1,7 +1,7 @@
 use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{
-    App, Big, BigInt, Boolean, False, Lam, Let, Num, Number, Pi, Ref, Sigma, Str, String, True,
-    Tuple, TupleLet, Unit, Univ, TT,
+    App, Big, BigInt, Boolean, False, If, Lam, Let, Num, Number, Pi, Ref, Sigma, Str, String, True,
+    Tuple, TupleLet, Unit, UnitLet, Univ, TT,
 };
 use crate::theory::abs::def::{Rho, Sigma as Sig};
 use crate::theory::abs::rename::Renamer;
@@ -49,6 +49,22 @@ impl<'a> Normalizer<'a> {
                     self.term(b)
                 } else {
                     Box::new(TupleLet(p, q, a, b))
+                }
+            }
+            UnitLet(a, b) => {
+                let a = self.term(a);
+                if let TT = *a {
+                    self.term(b)
+                } else {
+                    Box::new(UnitLet(a, b))
+                }
+            }
+            If(p, t, e) => {
+                let p = self.term(p);
+                match *p {
+                    True => self.term(t),
+                    False => self.term(e),
+                    _ => unreachable!(),
                 }
             }
 
