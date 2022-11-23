@@ -1,14 +1,15 @@
 use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{
-    Big, BigInt, Boolean, False, Let, Num, Number, Ref, Str, String, True, Unit, Univ, TT,
+    App, Big, BigInt, Boolean, False, Lam, Let, Num, Number, Pi, Ref, Sigma, Str, String, True,
+    Tuple, TupleLet, Unit, Univ, TT,
 };
-use crate::theory::abs::def::{Rho, Sigma};
+use crate::theory::abs::def::{Rho, Sigma as Sig};
 use crate::theory::abs::rename::Renamer;
 use crate::theory::conc::elab::Elaborator;
-use crate::theory::LocalVar;
+use crate::theory::{LocalVar, Param};
 
 pub struct Normalizer<'a> {
-    sigma: &'a Sigma,
+    sigma: &'a Sig,
     rho: Rho,
 }
 
@@ -25,6 +26,30 @@ impl<'a> Normalizer<'a> {
             Let(p, a, b) => {
                 let a = self.term(a);
                 self.with(b, &[(p.var, a)])
+            }
+            Pi(p, b) => Box::new(Pi(self.param(p), self.term(b))),
+            Lam(p, b) => Box::new(Lam(self.param(p), self.term(b))),
+            App(f, x) => {
+                let f = self.term(f);
+                let x = self.term(x);
+                if let Lam(p, b) = *f {
+                    self.rho.insert(p.var, x);
+                    self.term(b)
+                } else {
+                    Box::new(App(f, x))
+                }
+            }
+            Sigma(p, b) => Box::new(Sigma(self.param(p), self.term(b))),
+            Tuple(a, b) => Box::new(Tuple(self.term(a), self.term(b))),
+            TupleLet(p, q, a, b) => {
+                let a = self.term(a);
+                if let Tuple(x, y) = *a {
+                    self.rho.insert(p.var, x);
+                    self.rho.insert(q.var, y);
+                    self.term(b)
+                } else {
+                    Box::new(TupleLet(p, q, a, b))
+                }
             }
 
             Univ => Box::new(Univ),
@@ -49,6 +74,13 @@ impl<'a> Normalizer<'a> {
             self.rho.insert(x.clone(), v.clone());
         }
         self.term(tm)
+    }
+
+    fn param(&mut self, p: Param<Term>) -> Param<Term> {
+        Param {
+            var: p.var,
+            typ: self.term(p.typ),
+        }
     }
 }
 
