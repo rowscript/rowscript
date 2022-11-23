@@ -1,21 +1,16 @@
 use crate::theory::abs::data::Term;
-use crate::theory::abs::def;
 use crate::theory::abs::def::Body::Fun;
-use crate::theory::abs::def::{Def, Gamma};
+use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::unify;
 use crate::theory::conc::data::Expr;
-use crate::theory::conc::data::Expr::{
-    Big, BigInt, Boolean, False, If, Lam, Let, Num, Number, Resolved, Str, String, True, Tuple,
-    Unit, Univ, TT,
-};
 use crate::theory::{LocalVar, Param};
 use crate::Error;
 use crate::Error::{ExpectedPi, ExpectedSigma};
 
 pub struct Elaborator {
-    pub sigma: def::Sigma,
+    pub sigma: Sigma,
     gamma: Gamma,
 }
 
@@ -57,6 +52,7 @@ impl Elaborator {
     }
 
     fn check(&mut self, e: Box<Expr>, ty: &Box<Term>) -> Result<Box<Term>, Error> {
+        use Expr::*;
         Ok(match *e {
             Let(_, var, maybe_typ, a, b) => {
                 let (tm, typ) = if let Some(t) = maybe_typ {
@@ -100,6 +96,30 @@ impl Elaborator {
                     _ => return Err(ExpectedSigma(loc, ty.clone())),
                 }
             }
+            TupleLet(loc, x, y, a, b) => {
+                let (a, a_ty) = self.infer(a)?;
+                let sig = Normalizer::from(self as &_).term(a_ty);
+                match *sig {
+                    Term::Sigma(ty_param, ty_body) => self.guarded_check(
+                        &[
+                            &Param {
+                                var: x,
+                                typ: ty_param.typ,
+                            },
+                            &Param {
+                                var: y,
+                                typ: ty_body,
+                            },
+                        ],
+                        b,
+                        ty,
+                    )?,
+                    _ => return Err(ExpectedSigma(loc, ty.clone())),
+                }
+            }
+            UnitLet(loc, a, b) => {
+                Term::UnitLet(self.check(a, &Box::new(Term::Unit))?, self.check(b, ty)?)
+            }
             If(_, p, t, e) => Box::new(Term::If(
                 self.check(p, &Box::new(Term::Boolean))?,
                 self.check(t, ty)?,
@@ -117,6 +137,7 @@ impl Elaborator {
     }
 
     fn infer(&mut self, e: Box<Expr>) -> Result<(Box<Term>, Box<Term>), Error> {
+        use Expr::*;
         Ok(match *e {
             Resolved(_, v) => {
                 if let Some(ty) = self.gamma.get(&v) {
