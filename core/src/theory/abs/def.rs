@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Body::Fun;

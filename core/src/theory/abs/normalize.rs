@@ -1,20 +1,17 @@
 use crate::theory::abs::data::Term;
-use crate::theory::abs::data::Term::{
-    App, Big, BigInt, Boolean, False, If, Lam, Let, Num, Number, Pi, Ref, Sigma, Str, String, True,
-    Tuple, TupleLet, Unit, UnitLet, Univ, TT,
-};
-use crate::theory::abs::def::{Rho, Sigma as Sig};
+use crate::theory::abs::def::{Rho, Sigma};
 use crate::theory::abs::rename::Renamer;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::{LocalVar, Param};
 
 pub struct Normalizer<'a> {
-    sigma: &'a Sig,
+    sigma: &'a Sigma,
     rho: Rho,
 }
 
 impl<'a> Normalizer<'a> {
     pub fn term(&mut self, tm: Box<Term>) -> Box<Term> {
+        use Term::*;
         match *tm {
             Ref(ref x) => {
                 if let Some(y) = self.rho.get(&x) {
@@ -25,7 +22,7 @@ impl<'a> Normalizer<'a> {
             }
             Let(p, a, b) => {
                 let a = self.term(a);
-                self.with(b, &[(p.var, a)])
+                self.with(b, &[(&p.var, &a)])
             }
             Pi(p, b) => Box::new(Pi(self.param(p), self.term(b))),
             Lam(p, b) => Box::new(Lam(self.param(p), self.term(b))),
@@ -85,8 +82,10 @@ impl<'a> Normalizer<'a> {
         }
     }
 
-    pub fn with(&mut self, tm: Box<Term>, rho: &[(LocalVar, Box<Term>)]) -> Box<Term> {
+    pub fn with(&mut self, tm: Box<Term>, rho: &[(&LocalVar, &Box<Term>)]) -> Box<Term> {
         for (x, v) in rho {
+            let x = *x;
+            let v = *v;
             self.rho.insert(x.clone(), v.clone());
         }
         self.term(tm)

@@ -16,7 +16,7 @@ use crate::theory::conc::data::Expr;
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
 use crate::theory::Loc;
-use crate::Error::{ExpectedPi, Parsing, UnresolvedVar, IO};
+use crate::Error::{ExpectedPi, ExpectedSigma, NonUnifiable, Parsing, UnresolvedVar, IO};
 
 #[cfg(test)]
 mod tests;
@@ -33,8 +33,12 @@ pub enum Error {
     #[error("unresolved variable")]
     UnresolvedVar(Loc),
 
-    #[error("expected function type but got \"{1}\"")]
+    #[error("expected type \"{1}\", found \"{2}\"")]
+    NonUnifiable(Loc, Box<Term>, Box<Term>),
+    #[error("expected function type, got \"{1}\"")]
     ExpectedPi(Loc, Box<Term>),
+    #[error("expected tuple type, got \"{1}\"")]
+    ExpectedSigma(Loc, Box<Term>),
 }
 
 const PARSER_FAILED: &str = "failed while parsing";
@@ -42,7 +46,7 @@ const RESOLVER_FAILED: &str = "failed while resolving";
 const CHECKER_FAILED: &str = "failed while typechecking";
 
 impl Error {
-    fn print<F: AsRef<str>, S: AsRef<str>>(&self, file: F, source: S) {
+    pub fn print<F: AsRef<str>, S: AsRef<str>>(&self, file: F, source: S) {
         let (range, title, msg) = match self {
             IO(e) => (0..source.as_ref().len(), PARSER_FAILED, None),
             Parsing(e) => {
@@ -53,7 +57,9 @@ impl Error {
                 (range, PARSER_FAILED, Some(e.variant.message().to_string()))
             }
             UnresolvedVar(loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
+            NonUnifiable(loc, _, _) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             ExpectedPi(loc, _) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
+            ExpectedSigma(loc, _) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
         };
         let mut b = Report::build(ReportKind::Error, file.as_ref(), range.start)
             .with_message(title)

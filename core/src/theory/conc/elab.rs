@@ -1,19 +1,21 @@
 use crate::theory::abs::data::Term;
+use crate::theory::abs::def;
 use crate::theory::abs::def::Body::Fun;
-use crate::theory::abs::def::{Def, Gamma, Sigma};
+use crate::theory::abs::def::{Def, Gamma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
+use crate::theory::abs::unify::unify;
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::{
-    Big, BigInt, Boolean, False, If, Lam, Let, Num, Number, Resolved, Str, String, True, Unit,
-    Univ, TT,
+    Big, BigInt, Boolean, False, If, Lam, Let, Num, Number, Resolved, Str, String, True, Tuple,
+    Unit, Univ, TT,
 };
 use crate::theory::{LocalVar, Param};
 use crate::Error;
-use crate::Error::ExpectedPi;
+use crate::Error::{ExpectedPi, ExpectedSigma};
 
 pub struct Elaborator {
-    pub sigma: Sigma,
+    pub sigma: def::Sigma,
     gamma: Gamma,
 }
 
@@ -75,12 +77,27 @@ impl Elaborator {
                             var: var.clone(),
                             typ: ty_param.typ,
                         };
-                        let body_type = Normalizer::from(self as &_)
-                            .with(ty_body, &[(ty_param.var, Box::new(Term::Ref(var.clone())))]);
+                        let body_type = Normalizer::from(self as &_).with(
+                            ty_body,
+                            &[(&ty_param.var, &Box::new(Term::Ref(var.clone())))],
+                        );
                         let checked_body = self.guarded_check(&[&param], body, &body_type)?;
                         Box::new(Term::Lam(param, checked_body))
                     }
                     _ => return Err(ExpectedPi(loc, ty.clone())),
+                }
+            }
+            Tuple(loc, a, b) => {
+                let sig = Normalizer::from(self as &_).term(ty.clone());
+                match *sig {
+                    Term::Sigma(ty_param, ty_body) => {
+                        let a = self.check(a, &ty_param.typ)?;
+                        let body_type =
+                            Normalizer::from(self as &_).with(ty_body, &[(&ty_param.var, &a)]);
+                        let b = self.check(b, &body_type)?;
+                        Box::new(Term::Tuple(a, b))
+                    }
+                    _ => return Err(ExpectedSigma(loc, ty.clone())),
                 }
             }
             If(_, p, t, e) => Box::new(Term::If(
@@ -89,9 +106,12 @@ impl Elaborator {
                 self.check(e, ty)?,
             )),
             _ => {
-                let (tm, inferred_ty) = self.infer(e)?;
-                // TODO: Unification.
-                tm
+                let loc = e.loc();
+                let (inferred_tm, inferred_ty) = self.infer(e)?;
+                let inferred = Normalizer::from(self as &_).term(inferred_ty);
+                let expected = Normalizer::from(self as &_).term(ty.clone());
+                unify(loc, expected, inferred)?;
+                inferred_tm
             }
         })
     }

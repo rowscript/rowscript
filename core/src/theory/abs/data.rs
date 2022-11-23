@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use std::hash::Hash;
 
 use crate::theory::abs::data::Term::{Lam, Pi};
 use crate::theory::{LocalVar, Param, Syntax};
@@ -75,6 +76,34 @@ impl Syntax for Term {}
 
 impl Display for Term {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        use Term::*;
+        f.write_str(
+            match self {
+                Ref(r) => r.to_string(),
+                Let(p, a, b) => format!("let {p} = {a}; {b}"),
+                Univ => "type".to_string(),
+                Pi(p, b) => format!("{p} -> {b}"),
+                Lam(p, b) => format!("{p} => {b}"),
+                App(f, x) => format!("({f}) ({x})"),
+                Sigma(p, b) => format!("{p} * {b}"),
+                Tuple(a, b) => format!("({a}, {b})"),
+                TupleLet(p, q, a, b) => format!("let ({p}, {q}) = {a}; {b}"),
+                Unit => "unit".to_string(),
+                TT => "()".to_string(),
+                UnitLet(a, b) => format!("let _ = {a}; {b}"),
+                Boolean => "boolean".to_string(),
+                False => "false".to_string(),
+                True => "true".to_string(),
+                If(p, t, e) => format!("if {p} {{ {t} }} else {{ {e} }}"),
+                String => "string".to_string(),
+                Str(v) => v.clone(),
+                Number => "number".to_string(),
+                Num(v) => v.clone(),
+                BigInt => "bigint".to_string(),
+                Big(v) => v.clone(),
+                _ => todo!(),
+            }
+            .as_str(),
+        )
     }
 }

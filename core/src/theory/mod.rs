@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Display, Formatter, Write};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
@@ -87,10 +87,16 @@ impl Hash for LocalVar {
     }
 }
 
-pub trait Syntax {}
+pub trait Syntax: Display {}
 
 #[derive(Debug, Clone)]
 pub struct Param<T: Syntax> {
     var: LocalVar,
     typ: Box<T>,
+}
+
+impl<T: Syntax> Display for Param<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(format!("({}: {})", self.var, self.typ).as_str())
+    }
 }

@@ -38,10 +38,84 @@ pub enum Expr {
     Big(Loc, String),
 }
 
+impl Expr {
+    pub fn loc(&self) -> Loc {
+        use Expr::*;
+        match self {
+            Unresolved(loc, _) => loc,
+            Resolved(loc, _) => loc,
+            Let(loc, _, _, _, _) => loc,
+            Univ(loc) => loc,
+            Pi(loc, _, _) => loc,
+            TupledLam(loc, _, _) => loc,
+            Lam(loc, _, _) => loc,
+            App(loc, _, _) => loc,
+            Sigma(loc, _, _) => loc,
+            Tuple(loc, _, _) => loc,
+            TupleLet(loc, _, _, _, _) => loc,
+            Unit(loc) => loc,
+            TT(loc) => loc,
+            UnitLet(loc, _, _) => loc,
+            Boolean(loc) => loc,
+            False(loc) => loc,
+            True(loc) => loc,
+            If(loc, _, _, _) => loc,
+            String(loc) => loc,
+            Str(loc, _) => loc,
+            Number(loc) => loc,
+            Num(loc, _) => loc,
+            BigInt(loc) => loc,
+            Big(loc, _) => loc,
+        }
+        .clone()
+    }
+}
+
 impl Syntax for Expr {}
 
 impl Display for Expr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        use Expr::*;
+        f.write_str(
+            match self {
+                Unresolved(_, r) => r.to_string(),
+                Resolved(_, r) => r.to_string(),
+                Let(_, v, typ, a, b) => {
+                    if let Some(ty) = typ {
+                        format!("let {v}: {ty} = {a}; {b}")
+                    } else {
+                        format!("let {v} = {a}; {b}")
+                    }
+                }
+                Univ(_) => "type".to_string(),
+                Pi(_, p, b) => format!("{} -> {}", p, b),
+                TupledLam(_, vs, b) => format!(
+                    "({}) => {b}",
+                    vs.into_iter()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+                Lam(_, v, b) => format!("{v} => {b}"),
+                App(_, f, x) => format!("({f}) ({x})"),
+                Sigma(_, p, b) => format!("{p} * {b}"),
+                Tuple(_, a, b) => format!("({a}, {b})"),
+                TupleLet(_, x, y, a, b) => format!("let ({x}, {y}) = {a}; {b}"),
+                Unit(_) => "unit".to_string(),
+                TT(_) => "()".to_string(),
+                UnitLet(_, a, b) => format!("let _ = {a}; {b}"),
+                Boolean(_) => "boolean".to_string(),
+                False(_) => "false".to_string(),
+                True(_) => "true".to_string(),
+                If(_, p, t, e) => format!("if {p} {{ {t} }} else {{ {e} }}"),
+                String(_) => "string".to_string(),
+                Str(_, v) => v.clone(),
+                Number(_) => "number".to_string(),
+                Num(_, v) => v.clone(),
+                BigInt(_) => "bigint".to_string(),
+                Big(_, v) => v.clone(),
+            }
+            .as_str(),
+        )
     }
 }
