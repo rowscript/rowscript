@@ -68,17 +68,15 @@ impl Elaborator {
                 Box::new(Term::Let(param, tm, body))
             }
             Lam(loc, var, body) => {
-                let pi = Normalizer::from(self as &_).term(ty);
+                let pi = Normalizer::from(self as &_).term(ty.clone());
                 match *pi {
                     Term::Pi(ty_param, ty_body) => {
                         let param = Param {
                             var: var.clone(),
                             typ: ty_param.typ,
                         };
-                        let body_type = Normalizer::from(self as &_).with(
-                            &ty_body,
-                            &[(ty_param.var, Box::new(Term::Ref(var.clone())))],
-                        );
+                        let body_type = Normalizer::from(self as &_)
+                            .with(ty_body, &[(ty_param.var, Box::new(Term::Ref(var.clone())))]);
                         let checked_body = self.guarded_check(&[&param], body, &body_type)?;
                         Box::new(Term::Lam(param, checked_body))
                     }

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{
-    App, Big, BigInt, Boolean, False, If, Lam, Num, Number, Pi, Ref, Sigma, Str, String, True,
+    App, Big, BigInt, Boolean, False, If, Lam, Let, Num, Number, Pi, Ref, Sigma, Str, String, True,
     Tuple, TupleLet, Unit, UnitLet, Univ, TT,
 };
 use crate::theory::{LocalVar, Param};
@@ -19,6 +19,10 @@ impl Renamer {
     pub fn term(&mut self, tm: Box<Term>) -> Box<Term> {
         Box::new(match *tm {
             Ref(x) => self.0.get(&x).map_or(Ref(x), |y| Ref(y.to_owned())),
+            Let(p, a, b) => {
+                let a = self.term(a); // not guarded by `p`, rename it first
+                Let(self.param(p), a, self.term(b))
+            }
             Pi(p, c) => Pi(self.param(p), self.term(c)),
             Lam(p, b) => Lam(self.param(p), self.term(b)),
             App(f, x) => App(self.term(f), self.term(x)),
