@@ -1,4 +1,5 @@
 use crate::theory::abs::data::Term;
+use crate::theory::abs::data::Term::{App, Lam};
 use crate::theory::abs::def::{Rho, Sigma};
 use crate::theory::abs::rename::Renamer;
 use crate::theory::conc::elab::Elaborator;
@@ -10,6 +11,13 @@ pub struct Normalizer<'a> {
 }
 
 impl<'a> Normalizer<'a> {
+    pub fn new(sigma: &'a Sigma) -> Self {
+        Self {
+            sigma,
+            rho: Default::default(),
+        }
+    }
+
     pub fn term(&mut self, tm: Box<Term>) -> Box<Term> {
         use Term::*;
         match *tm {
@@ -22,7 +30,7 @@ impl<'a> Normalizer<'a> {
             }
             Let(p, a, b) => {
                 let a = self.term(a);
-                self.with(b, &[(&p.var, &a)])
+                self.with(&[(&p.var, &a)], b)
             }
             Pi(p, b) => Box::new(Pi(self.param(p), self.term(b))),
             Lam(p, b) => Box::new(Lam(self.param(p), self.term(b))),
@@ -82,13 +90,27 @@ impl<'a> Normalizer<'a> {
         }
     }
 
-    pub fn with(&mut self, tm: Box<Term>, rho: &[(&LocalVar, &Box<Term>)]) -> Box<Term> {
+    pub fn with(&mut self, rho: &[(&LocalVar, &Box<Term>)], tm: Box<Term>) -> Box<Term> {
         for (x, v) in rho {
             let x = *x;
             let v = *v;
             self.rho.insert(x.clone(), v.clone());
         }
         self.term(tm)
+    }
+
+    pub fn apply(f: Box<Term>, args: &[&Box<Term>]) -> Box<Term> {
+        let mut ret = f.clone();
+        for &x in args {
+            match *ret {
+                Lam(p, b) => {
+                    let sig = Sigma::default();
+                    ret = Normalizer::new(&sig).with(&[(&p.var, x)], b);
+                }
+                _ => ret = Box::new(App(ret, x.clone())),
+            }
+        }
+        ret
     }
 
     fn param(&mut self, p: Param<Term>) -> Param<Term> {
@@ -101,9 +123,6 @@ impl<'a> Normalizer<'a> {
 
 impl<'a> From<&'a Elaborator> for Normalizer<'a> {
     fn from(e: &'a Elaborator) -> Self {
-        Self {
-            sigma: &e.sigma,
-            rho: Default::default(),
-        }
+        Self::new(&e.sigma)
     }
 }

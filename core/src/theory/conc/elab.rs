@@ -74,8 +74,8 @@ impl Elaborator {
                             typ: ty_param.typ,
                         };
                         let body_type = Normalizer::from(self as &_).with(
-                            ty_body,
                             &[(&ty_param.var, &Box::new(Term::Ref(var.clone())))],
+                            ty_body,
                         );
                         let checked_body = self.guarded_check(&[&param], body, &body_type)?;
                         Box::new(Term::Lam(param, checked_body))
@@ -89,7 +89,7 @@ impl Elaborator {
                     Term::Sigma(ty_param, ty_body) => {
                         let a = self.check(a, &ty_param.typ)?;
                         let body_type =
-                            Normalizer::from(self as &_).with(ty_body, &[(&ty_param.var, &a)]);
+                            Normalizer::from(self as &_).with(&[(&ty_param.var, &a)], ty_body);
                         let b = self.check(b, &body_type)?;
                         Box::new(Term::Tuple(a, b))
                     }
@@ -100,26 +100,25 @@ impl Elaborator {
                 let (a, a_ty) = self.infer(a)?;
                 let sig = Normalizer::from(self as &_).term(a_ty);
                 match *sig {
-                    Term::Sigma(ty_param, ty_body) => self.guarded_check(
-                        &[
-                            &Param {
-                                var: x,
-                                typ: ty_param.typ,
-                            },
-                            &Param {
-                                var: y,
-                                typ: ty_body,
-                            },
-                        ],
-                        b,
-                        ty,
-                    )?,
+                    Term::Sigma(ty_param, ty_body) => {
+                        let x = Param {
+                            var: x,
+                            typ: ty_param.typ,
+                        };
+                        let y = Param {
+                            var: y,
+                            typ: ty_body,
+                        };
+                        let b = self.guarded_check(&[&x, &y], b, ty)?;
+                        Box::new(Term::TupleLet(x, y, a, b))
+                    }
                     _ => return Err(ExpectedSigma(loc, ty.clone())),
                 }
             }
-            UnitLet(loc, a, b) => {
-                Term::UnitLet(self.check(a, &Box::new(Term::Unit))?, self.check(b, ty)?)
-            }
+            UnitLet(loc, a, b) => Box::new(Term::UnitLet(
+                self.check(a, &Box::new(Term::Unit))?,
+                self.check(b, ty)?,
+            )),
             If(_, p, t, e) => Box::new(Term::If(
                 self.check(p, &Box::new(Term::Boolean))?,
                 self.check(t, ty)?,
@@ -151,6 +150,40 @@ impl Elaborator {
                         ),
                     }
                 }
+            }
+            App(_, f, x) => {
+                let f_loc = f.loc();
+                let (f, f_ty) = self.infer(f)?;
+                match *f_ty {
+                    Term::Pi(p, b) => {
+                        let x = self.guarded_check(
+                            &[&Param {
+                                var: p.var.clone(),
+                                typ: p.typ.clone(),
+                            }],
+                            x,
+                            &p.typ,
+                        )?;
+                        let applied = Normalizer::apply(f, &[&x]);
+                        let applied_ty = Normalizer::from(self as &_).with(&[(&p.var, &x)], b);
+                        (applied, applied_ty)
+                    }
+                    _ => return Err(ExpectedPi(f_loc, f)),
+                }
+            }
+            Tuple(_, a, b) => {
+                let (a, a_ty) = self.infer(a)?;
+                let (b, b_ty) = self.infer(b)?;
+                (
+                    Box::new(Term::Tuple(a, b)),
+                    Box::new(Term::Sigma(
+                        Param {
+                            var: LocalVar::unbound(),
+                            typ: a_ty,
+                        },
+                        b_ty,
+                    )),
+                )
             }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
