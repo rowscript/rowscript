@@ -4,9 +4,6 @@ use std::rc::Rc;
 use crate::theory::abs::def::Body::Fun;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
-use crate::theory::conc::data::Expr::{
-    App, If, Let, Pi, Resolved, Sigma, Tuple, TupleLet, TupledLam, UnitLet, Unresolved,
-};
 use crate::theory::{LocalVar, Param};
 use crate::Error;
 use crate::Error::UnresolvedVar;
@@ -93,6 +90,7 @@ impl Resolver {
     }
 
     fn expr(&mut self, e: Box<Expr>) -> Result<Box<Expr>, Error> {
+        use Expr::*;
         Ok(Box::new(match *e {
             Unresolved(loc, r) => {
                 if let Some(v) = self.0.get(r.name.as_ref()) {
@@ -119,9 +117,30 @@ impl Resolver {
                 let var = p.var.clone();
                 Pi(loc, self.param(p)?, self.bodied(b, &[var])?)
             }
-            TupledLam(loc, vs, b) => {
-                let vars = vs.clone();
-                TupledLam(loc, vs, self.bodied(b, vars.as_slice())?)
+            TupledLam(loc, vars, b) => {
+                let mut untupled_vars: Vec<Expr> = vec![Unresolved(loc, LocalVar::tupled())];
+                for x in vars.iter() {
+                    untupled_vars.push(match x {
+                        Unresolved(l, r) => Unresolved(l.clone(), r.untupled_right()),
+                        _ => unreachable!(),
+                    });
+                }
+                let mut desugared = b;
+                for (i, v) in vars.into_iter().rev().enumerate() {
+                    let (loc, lhs, rhs) = match (v, untupled_vars.get(i + 1).unwrap()) {
+                        (Unresolved(loc, lhs), Unresolved(_, rhs)) => (loc, lhs, rhs),
+                        _ => unreachable!(),
+                    };
+                    let tm = untupled_vars.get(i).unwrap();
+                    desugared = Box::new(TupleLet(
+                        loc,
+                        lhs,
+                        rhs.clone(),
+                        Box::new(tm.clone()),
+                        desugared,
+                    ));
+                }
+                *self.expr(desugared)?
             }
             App(loc, f, x) => App(loc, self.expr(f)?, self.expr(x)?),
             Sigma(loc, p, b) => {

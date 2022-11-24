@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display, Formatter, Write};
+use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
@@ -62,6 +62,10 @@ impl LocalVar {
 
     pub fn tupled() -> Self {
         Self::new("_tupled")
+    }
+
+    pub fn untupled_right(&self) -> Self {
+        Self::new(format!("_untupled_{}", self.name))
     }
 
     pub fn id(&self) -> usize {

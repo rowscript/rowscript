@@ -11,7 +11,7 @@ pub enum Expr {
     Univ(Loc),
 
     Pi(Loc, Param<Self>, Box<Self>),
-    TupledLam(Loc, Vec<LocalVar>, Box<Self>),
+    TupledLam(Loc, Vec<Self>, Box<Self>),
     Lam(Loc, LocalVar, Box<Self>),
     App(Loc, Box<Self>, Box<Self>),
 

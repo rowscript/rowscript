@@ -48,7 +48,7 @@ const CHECKER_FAILED: &str = "failed while typechecking";
 impl Error {
     pub fn print<F: AsRef<str>, S: AsRef<str>>(&self, file: F, source: S) {
         let (range, title, msg) = match self {
-            IO(e) => (0..source.as_ref().len(), PARSER_FAILED, None),
+            IO(_) => (0..source.as_ref().len(), PARSER_FAILED, None),
             Parsing(e) => {
                 let range = match e.location {
                     InputLocation::Pos(start) => start..source.as_ref().len(),

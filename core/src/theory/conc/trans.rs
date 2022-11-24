@@ -105,11 +105,13 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
         }
         Rule::lambda_expr => {
             let pairs = p.into_inner();
-            let mut vars: Vec<LocalVar> = Default::default();
+            let mut vars: Vec<Expr> = Default::default();
             let mut body: Option<Expr> = None;
             for p in pairs {
                 match p.as_rule() {
-                    Rule::param_id => vars.push(LocalVar::from(p)),
+                    Rule::param_id => {
+                        vars.push(Unresolved(Loc::from(p.as_span()), LocalVar::from(p)))
+                    }
                     Rule::lambda_body => {
                         let b = p.into_inner().next().unwrap();
                         body = Some(match b.as_rule() {
