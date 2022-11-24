@@ -1,6 +1,6 @@
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Body::Fun;
-use crate::theory::abs::def::{Def, Gamma, GammaGuard, Sigma};
+use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::unify;
@@ -20,6 +20,7 @@ impl Elaborator {
         for d in defs {
             let name = d.name.clone();
             let checked = self.def(d)?;
+            println!("{}", checked);
             self.sigma.insert(name, checked);
         }
         Ok(())
@@ -72,8 +73,7 @@ impl Elaborator {
                     self.infer(a)?
                 };
                 let param = Param { var, typ };
-                GammaGuard::new(&mut self.gamma, &[&param]);
-                let body = self.check(b, ty)?;
+                let body = self.guarded_check(&[&param], b, ty)?;
                 Box::new(Term::Let(param, tm, body))
             }
             Lam(loc, var, body) => {
@@ -84,13 +84,10 @@ impl Elaborator {
                             var: var.clone(),
                             typ: ty_param.typ,
                         };
-                        let body_type = Normalizer::default().with(
-                            &[(&ty_param.var, &Box::new(Term::Ref(var.clone())))],
-                            ty_body,
-                        );
-                        GammaGuard::new(&mut self.gamma, &[&param]);
-                        let checked_body = self.check(body, &body_type)?;
-                        Box::new(Term::Lam(param, checked_body))
+                        let body_type = Normalizer::default()
+                            .with(&[(&ty_param.var, &Box::new(Term::Ref(var)))], ty_body);
+                        let checked_body = self.guarded_check(&[&param], body, &body_type)?;
+                        Box::new(Term::Lam(param.clone(), checked_body))
                     }
                     _ => return Err(ExpectedPi(ty.clone(), loc)),
                 }
@@ -120,8 +117,7 @@ impl Elaborator {
                             var: y,
                             typ: ty_body,
                         };
-                        GammaGuard::new(&mut self.gamma, &[&x, &y]);
-                        let b = self.check(b, ty)?;
+                        let b = self.guarded_check(&[&x, &y], b, ty)?;
                         Box::new(Term::TupleLet(x, y, a, b))
                     }
                     _ => return Err(ExpectedSigma(ty.clone(), loc)),
@@ -171,8 +167,7 @@ impl Elaborator {
                     var: p.var,
                     typ: param_ty,
                 };
-                GammaGuard::new(&mut self.gamma, &[&param]);
-                let (b, b_ty) = self.infer(b)?;
+                let (b, b_ty) = self.guarded_infer(&[&param], b)?;
                 (Box::new(Term::Pi(param, b)), b_ty)
             }
             App(_, f, x) => {
@@ -180,14 +175,14 @@ impl Elaborator {
                 let (f, f_ty) = self.infer(f)?;
                 match *f_ty {
                     Term::Pi(p, b) => {
-                        GammaGuard::new(
-                            &mut self.gamma,
+                        let x = self.guarded_check(
                             &[&Param {
                                 var: p.var.clone(),
                                 typ: p.typ.clone(),
                             }],
-                        );
-                        let x = self.check(x, &p.typ)?;
+                            x,
+                            &p.typ,
+                        )?;
                         let applied = Normalizer::apply(f, &[&x]);
                         let applied_ty = Normalizer::default().with(&[(&p.var, &x)], b);
                         (applied, applied_ty)
@@ -201,8 +196,7 @@ impl Elaborator {
                     var: p.var,
                     typ: param_ty,
                 };
-                GammaGuard::new(&mut self.gamma, &[&param]);
-                let (b, b_ty) = self.infer(b)?;
+                let (b, b_ty) = self.guarded_infer(&[&param], b)?;
                 (Box::new(Term::Sigma(param, b)), b_ty)
             }
             Tuple(_, a, b) => {
@@ -238,6 +232,37 @@ impl Elaborator {
 
             _ => unreachable!(),
         })
+    }
+
+    fn guarded_check(
+        &mut self,
+        ps: &[&Param<Term>],
+        e: Box<Expr>,
+        ty: &Box<Term>,
+    ) -> Result<Box<Term>, Error> {
+        for &p in ps {
+            self.gamma.insert(p.var.clone(), p.typ.clone());
+        }
+        let ret = self.check(e, ty)?;
+        for p in ps {
+            self.gamma.remove(&p.var);
+        }
+        Ok(ret)
+    }
+
+    fn guarded_infer(
+        &mut self,
+        ps: &[&Param<Term>],
+        e: Box<Expr>,
+    ) -> Result<(Box<Term>, Box<Term>), Error> {
+        for &p in ps {
+            self.gamma.insert(p.var.clone(), p.typ.clone());
+        }
+        let ret = self.infer(e)?;
+        for p in ps {
+            self.gamma.remove(&p.var);
+        }
+        Ok(ret)
     }
 }
 

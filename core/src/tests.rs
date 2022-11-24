@@ -15,7 +15,6 @@ fn test_fn() {
     function f(): () -> unit {
         let id: (n: number) -> number = n => n;
         let a: number = id(42);
-        let b: number = (n => n)(69);
         return () => ()
     }
     ",
@@ -64,6 +63,3 @@ fn test_resolve_err() {
     ",
     )
 }
-
-#[test]
-fn test_elab() {}

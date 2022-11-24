@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::rc::Rc;
 
 use crate::theory::abs::def::Body::Fun;
 use crate::theory::abs::def::Def;
@@ -8,7 +7,7 @@ use crate::theory::{LocalVar, Param};
 use crate::Error;
 use crate::Error::UnresolvedVar;
 
-pub struct Resolver(HashMap<Rc<String>, LocalVar>);
+pub struct Resolver(HashMap<String, LocalVar>);
 
 impl Default for Resolver {
     fn default() -> Self {
@@ -23,7 +22,10 @@ impl Resolver {
 
         let mut tele: Vec<Param<Expr>> = Default::default();
         for p in d.tele {
-            if let Some(old) = self.0.insert(p.var.name.clone(), p.var.clone()) {
+            if let Some(old) = self
+                .0
+                .insert(p.var.name.as_str().to_string(), p.var.clone())
+            {
                 recoverable.push(old);
             } else {
                 removable.push(p.var.clone());
@@ -38,10 +40,10 @@ impl Resolver {
         d = self.body(d)?;
 
         for x in removable {
-            self.0.remove(&x.name);
+            self.0.remove(&*x.name);
         }
         for x in recoverable {
-            self.0.insert(x.name.clone(), x);
+            self.0.insert(x.name.as_str().to_string(), x);
         }
 
         Ok(d)
@@ -64,18 +66,17 @@ impl Resolver {
         let mut olds: Vec<Option<LocalVar>> = Default::default();
 
         for &v in vars {
-            olds.push(self.0.insert(v.name.clone(), v.clone()));
+            olds.push(self.0.insert(v.name.as_str().to_string(), v.clone()));
         }
 
         let ret = self.expr(e)?;
 
         for i in 0..vars.len() {
             let old = olds.get(i).unwrap();
-            let var = vars.get(i).unwrap();
             if let Some(v) = old {
-                self.0.insert(v.name.clone(), v.clone());
+                self.0.insert(v.name.as_str().to_string(), v.clone());
             } else {
-                self.0.remove(&var.name.as_str().to_string());
+                self.0.remove(&*vars.get(i).unwrap().name);
             }
         }
 
@@ -93,14 +94,14 @@ impl Resolver {
         use Expr::*;
         Ok(Box::new(match *e {
             Unresolved(loc, r) => {
-                if let Some(v) = self.0.get(r.name.as_ref()) {
+                if let Some(v) = self.0.get(&*r.name) {
                     Resolved(loc, v.clone())
                 } else {
                     return Err(UnresolvedVar(loc));
                 }
             }
             Let(loc, x, typ, a, b) => {
-                let b = self.bodied(b, &[&x])?;
+                let vx = x.clone();
                 Let(
                     loc,
                     x,
@@ -110,15 +111,16 @@ impl Resolver {
                         None
                     },
                     self.expr(a)?,
-                    b,
+                    self.bodied(b, &[&vx])?,
                 )
             }
             Pi(loc, p, b) => {
-                let b = self.bodied(b, &[&p.var])?;
-                Pi(loc, self.param(p)?, b)
+                let x = p.var.clone();
+                Pi(loc, self.param(p)?, self.bodied(b, &[&x])?)
             }
             TupledLam(loc, vars, b) => {
-                let mut untupled_vars: Vec<Expr> = vec![Unresolved(loc, LocalVar::tupled())];
+                let untupled = LocalVar::tupled();
+                let mut untupled_vars: Vec<Expr> = vec![Unresolved(loc, untupled.clone())];
                 for x in vars.iter() {
                     untupled_vars.push(match x {
                         Unresolved(l, r) => Unresolved(l.clone(), r.untupled_right()),
@@ -140,22 +142,23 @@ impl Resolver {
                         desugared_body,
                     ));
                 }
-                let desugared = Box::new(Lam(loc, LocalVar::unbound(), desugared_body));
-                *self.expr(desugared)?
+                let desugared = Box::new(Lam(loc, LocalVar::tupled(), desugared_body));
+                *self.bodied(desugared, &[&untupled])?
             }
-            Lam(loc, v, b) => {
-                let b = self.bodied(b, &[&v])?;
-                Lam(loc, v, b)
+            Lam(loc, x, b) => {
+                let vx = x.clone();
+                Lam(loc, x, self.bodied(b, &[&vx])?)
             }
             App(loc, f, x) => App(loc, self.expr(f)?, self.expr(x)?),
             Sigma(loc, p, b) => {
-                let b = self.bodied(b, &[&p.var])?;
-                Sigma(loc, self.param(p)?, b)
+                let x = p.var.clone();
+                Sigma(loc, self.param(p)?, self.bodied(b, &[&x])?)
             }
             Tuple(loc, a, b) => Tuple(loc, self.expr(a)?, self.expr(b)?),
             TupleLet(loc, x, y, a, b) => {
-                let b = self.bodied(b, &[&x, &y])?;
-                TupleLet(loc, x, y, self.expr(a)?, b)
+                let vx = x.clone();
+                let vy = y.clone();
+                TupleLet(loc, x, y, self.expr(a)?, self.bodied(b, &[&vx, &vy])?)
             }
             UnitLet(loc, a, b) => UnitLet(loc, self.expr(a)?, self.expr(b)?),
             If(loc, p, t, e) => If(loc, self.expr(p)?, self.expr(t)?, self.expr(e)?),

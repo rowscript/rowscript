@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter};
 
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Body::Fun;
@@ -9,28 +9,6 @@ pub type Sigma = HashMap<LocalVar, Def<Term>>;
 pub type Gamma = HashMap<LocalVar, Box<Term>>;
 pub type Rho = HashMap<LocalVar, Box<Term>>;
 
-pub struct GammaGuard<'a> {
-    gamma: &'a mut Gamma,
-    ps: &'a [&'a Param<Term>],
-}
-
-impl<'a> GammaGuard<'a> {
-    pub fn new(gamma: &'a mut Gamma, ps: &'a [&'a Param<Term>]) -> Self {
-        for &p in ps {
-            gamma.insert(p.var.clone(), p.typ.clone());
-        }
-        Self { gamma, ps }
-    }
-}
-
-impl<'a> Drop for GammaGuard<'a> {
-    fn drop(&mut self) {
-        for p in self.ps {
-            self.gamma.remove(&p.var);
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct Def<T: Syntax> {
     pub loc: Loc,
@@ -38,6 +16,27 @@ pub struct Def<T: Syntax> {
     pub tele: Vec<Param<T>>,
     pub ret: Box<T>,
     pub body: Body<T>,
+}
+
+impl<T: Syntax> Display for Def<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(
+            match &self.body {
+                Fun(f) => format!(
+                    "function {}{}: {} {{\n\t{}\n}}",
+                    self.name,
+                    self.tele
+                        .iter()
+                        .map(|p| p.to_string())
+                        .collect::<Vec<_>>()
+                        .join(" "),
+                    self.ret,
+                    f
+                ),
+            }
+            .as_str(),
+        )
+    }
 }
 
 #[derive(Debug)]
