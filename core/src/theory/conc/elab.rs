@@ -7,7 +7,7 @@ use crate::theory::abs::unify::unify;
 use crate::theory::conc::data::Expr;
 use crate::theory::{LocalVar, Param};
 use crate::Error;
-use crate::Error::{ExpectedPi, ExpectedSigma};
+use crate::Error::{ExpectedPi, ExpectedSigma, NonUnifiable};
 
 pub struct Elaborator {
     pub sigma: Sigma,
@@ -132,7 +132,9 @@ impl Elaborator {
                 let (inferred_tm, inferred_ty) = self.infer(e)?;
                 let inferred = Normalizer::from(self as &_).term(inferred_ty);
                 let expected = Normalizer::from(self as &_).term(ty.clone());
-                unify(loc, expected, inferred)?;
+                if !unify(&expected, &inferred) {
+                    return Err(NonUnifiable(loc, expected, inferred));
+                }
                 inferred_tm
             }
         })

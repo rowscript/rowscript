@@ -1,11 +1,11 @@
 use crate::theory::abs::data::Term;
-use crate::theory::Loc;
-use crate::Error;
-use crate::Error::NonUnifiable;
 
-pub fn unify(loc: Loc, expected: Box<Term>, inferred: Box<Term>) -> Result<(), Error> {
+pub fn unify(expected: &Term, inferred: &Term) -> bool {
     use Term::*;
-    if match (&*expected, &*inferred) {
+    match (expected, inferred) {
+        (Let(p, a, b), Let(q, x, y)) => unify(&p.typ, &q.typ) && unify(a, x) && unify(b, y),
+        (Pi(p, a), Pi(q, b)) => unify(&p.typ, &q.typ) && unify(a, b),
+
         (Ref(a), Ref(b)) => a == b,
         (Str(a), Str(b)) => a == b,
         (Num(_, a), Num(_, b)) => a == b,
@@ -22,9 +22,5 @@ pub fn unify(loc: Loc, expected: Box<Term>, inferred: Box<Term>) -> Result<(), E
         (BigInt, BigInt) => true,
 
         _ => false,
-    } {
-        Ok(())
-    } else {
-        Err(NonUnifiable(loc, expected, inferred))
     }
 }
