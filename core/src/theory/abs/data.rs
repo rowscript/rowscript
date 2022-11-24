@@ -37,7 +37,7 @@ pub enum Term {
     Str(String),
 
     Number,
-    Num(String),
+    Num(String, f64),
 
     BigInt,
     Big(String),
@@ -97,7 +97,7 @@ impl Display for Term {
                 String => "string".to_string(),
                 Str(v) => v.clone(),
                 Number => "number".to_string(),
-                Num(v) => v.clone(),
+                Num(v, _) => v.clone(),
                 BigInt => "bigint".to_string(),
                 Big(v) => v.clone(),
                 _ => todo!(),

@@ -218,7 +218,10 @@ impl Elaborator {
             String(_) => (Box::new(Term::String), Box::new(Term::Univ)),
             Str(_, v) => (Box::new(Term::Str(v)), Box::new(Term::String)),
             Number(_) => (Box::new(Term::Number), Box::new(Term::Univ)),
-            Num(_, v) => (Box::new(Term::Num(v)), Box::new(Term::Number)),
+            Num(_, r) => {
+                let v = r.parse().unwrap();
+                (Box::new(Term::Num(r, v)), Box::new(Term::Number))
+            }
             BigInt(_) => (Box::new(Term::BigInt), Box::new(Term::Univ)),
             Big(_, v) => (Box::new(Term::Big(v)), Box::new(Term::BigInt)),
 

@@ -1,10 +1,6 @@
 use std::collections::HashMap;
 
 use crate::theory::abs::data::Term;
-use crate::theory::abs::data::Term::{
-    App, Big, BigInt, Boolean, False, If, Lam, Let, Num, Number, Pi, Ref, Sigma, Str, String, True,
-    Tuple, TupleLet, Unit, UnitLet, Univ, TT,
-};
 use crate::theory::{LocalVar, Param};
 
 pub struct Renamer(HashMap<LocalVar, LocalVar>);
@@ -17,6 +13,7 @@ impl Default for Renamer {
 
 impl Renamer {
     pub fn term(&mut self, tm: Box<Term>) -> Box<Term> {
+        use Term::*;
         Box::new(match *tm {
             Ref(x) => self.0.get(&x).map_or(Ref(x), |y| Ref(y.to_owned())),
             Let(p, a, b) => {
@@ -43,7 +40,7 @@ impl Renamer {
             String => String,
             Str(v) => Str(v),
             Number => Number,
-            Num(v) => Num(v),
+            Num(r, v) => Num(r, v),
             BigInt => BigInt,
             Big(v) => Big(v),
 

@@ -82,7 +82,7 @@ impl<'a> Normalizer<'a> {
             String => Box::new(String),
             Str(v) => Box::new(Str(v)),
             Number => Box::new(Number),
-            Num(v) => Box::new(Num(v)),
+            Num(r, v) => Box::new(Num(r, v)),
             BigInt => Box::new(BigInt),
             Big(v) => Box::new(Big(v)),
 
