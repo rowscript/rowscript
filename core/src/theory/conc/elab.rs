@@ -9,13 +9,23 @@ use crate::theory::{LocalVar, Param};
 use crate::Error;
 use crate::Error::{ExpectedPi, ExpectedSigma, NonUnifiable};
 
+#[derive(Debug)]
 pub struct Elaborator {
     pub sigma: Sigma,
     gamma: Gamma,
 }
 
 impl Elaborator {
-    pub fn def(&mut self, d: Def<Expr>) -> Result<Def<Term>, Error> {
+    pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<(), Error> {
+        for d in defs {
+            let name = d.name.clone();
+            let checked = self.def(d)?;
+            self.sigma.insert(name, checked);
+        }
+        Ok(())
+    }
+
+    fn def(&mut self, d: Def<Expr>) -> Result<Def<Term>, Error> {
         let mut checked: Vec<LocalVar> = Default::default();
         let mut tele: Vec<Param<Term>> = Default::default();
         for p in d.tele {

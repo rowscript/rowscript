@@ -64,3 +64,6 @@ fn test_resolve_err() {
     ",
     )
 }
+
+#[test]
+fn test_elab() {}

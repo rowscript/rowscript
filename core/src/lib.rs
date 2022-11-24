@@ -13,6 +13,7 @@ use thiserror::Error;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
+use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
 use crate::theory::Loc;
@@ -114,7 +115,10 @@ impl<'a> Driver<'a> {
             resolved.push(r.def(d)?);
         }
 
-        dbg!(resolved);
+        let mut e = Elaborator::default();
+        e.defs(resolved)?;
+        dbg!(e);
+
         Ok(())
     }
 }
