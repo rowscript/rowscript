@@ -77,14 +77,14 @@ impl Elaborator {
                 Box::new(Term::Let(param, tm, body))
             }
             Lam(loc, var, body) => {
-                let pi = Normalizer::from(self as &_).term(ty.clone());
+                let pi = Normalizer::default().term(ty.clone());
                 match *pi {
                     Term::Pi(ty_param, ty_body) => {
                         let param = Param {
                             var: var.clone(),
                             typ: ty_param.typ,
                         };
-                        let body_type = Normalizer::from(self as &_).with(
+                        let body_type = Normalizer::default().with(
                             &[(&ty_param.var, &Box::new(Term::Ref(var.clone())))],
                             ty_body,
                         );
@@ -92,25 +92,24 @@ impl Elaborator {
                         let checked_body = self.check(body, &body_type)?;
                         Box::new(Term::Lam(param, checked_body))
                     }
-                    _ => return Err(ExpectedPi(loc, ty.clone())),
+                    _ => return Err(ExpectedPi(ty.clone(), loc)),
                 }
             }
             Tuple(loc, a, b) => {
-                let sig = Normalizer::from(self as &_).term(ty.clone());
+                let sig = Normalizer::default().term(ty.clone());
                 match *sig {
                     Term::Sigma(ty_param, ty_body) => {
                         let a = self.check(a, &ty_param.typ)?;
-                        let body_type =
-                            Normalizer::from(self as &_).with(&[(&ty_param.var, &a)], ty_body);
+                        let body_type = Normalizer::default().with(&[(&ty_param.var, &a)], ty_body);
                         let b = self.check(b, &body_type)?;
                         Box::new(Term::Tuple(a, b))
                     }
-                    _ => return Err(ExpectedSigma(loc, ty.clone())),
+                    _ => return Err(ExpectedSigma(ty.clone(), loc)),
                 }
             }
             TupleLet(loc, x, y, a, b) => {
                 let (a, a_ty) = self.infer(a)?;
-                let sig = Normalizer::from(self as &_).term(a_ty);
+                let sig = Normalizer::default().term(a_ty);
                 match *sig {
                     Term::Sigma(ty_param, ty_body) => {
                         let x = Param {
@@ -125,7 +124,7 @@ impl Elaborator {
                         let b = self.check(b, ty)?;
                         Box::new(Term::TupleLet(x, y, a, b))
                     }
-                    _ => return Err(ExpectedSigma(loc, ty.clone())),
+                    _ => return Err(ExpectedSigma(ty.clone(), loc)),
                 }
             }
             UnitLet(_, a, b) => Box::new(Term::UnitLet(
@@ -140,10 +139,10 @@ impl Elaborator {
             _ => {
                 let loc = e.loc();
                 let (inferred_tm, inferred_ty) = self.infer(e)?;
-                let inferred = Normalizer::from(self as &_).term(inferred_ty);
-                let expected = Normalizer::from(self as &_).term(ty.clone());
+                let inferred = Normalizer::default().term(inferred_ty);
+                let expected = Normalizer::default().term(ty.clone());
                 if !unify(&expected, &inferred) {
-                    return Err(NonUnifiable(loc, expected, inferred));
+                    return Err(NonUnifiable(expected, inferred, loc));
                 }
                 inferred_tm
             }
@@ -190,10 +189,10 @@ impl Elaborator {
                         );
                         let x = self.check(x, &p.typ)?;
                         let applied = Normalizer::apply(f, &[&x]);
-                        let applied_ty = Normalizer::from(self as &_).with(&[(&p.var, &x)], b);
+                        let applied_ty = Normalizer::default().with(&[(&p.var, &x)], b);
                         (applied, applied_ty)
                     }
-                    _ => return Err(ExpectedPi(f_loc, f)),
+                    _ => return Err(ExpectedPi(f, f_loc)),
                 }
             }
             Sigma(_, p, b) => {

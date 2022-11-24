@@ -60,10 +60,10 @@ impl Resolver {
         })
     }
 
-    fn bodied(&mut self, e: Box<Expr>, vars: &[LocalVar]) -> Result<Box<Expr>, Error> {
+    fn bodied(&mut self, e: Box<Expr>, vars: &[&LocalVar]) -> Result<Box<Expr>, Error> {
         let mut olds: Vec<Option<LocalVar>> = Default::default();
 
-        for v in vars {
+        for &v in vars {
             olds.push(self.0.insert(v.name.clone(), v.clone()));
         }
 
@@ -100,7 +100,7 @@ impl Resolver {
                 }
             }
             Let(loc, x, typ, a, b) => {
-                let v = x.clone();
+                let b = self.bodied(b, &[&x])?;
                 Let(
                     loc,
                     x,
@@ -110,12 +110,12 @@ impl Resolver {
                         None
                     },
                     self.expr(a)?,
-                    self.bodied(b, &[v])?,
+                    b,
                 )
             }
             Pi(loc, p, b) => {
-                let var = p.var.clone();
-                Pi(loc, self.param(p)?, self.bodied(b, &[var])?)
+                let b = self.bodied(b, &[&p.var])?;
+                Pi(loc, self.param(p)?, b)
             }
             TupledLam(loc, vars, b) => {
                 let mut untupled_vars: Vec<Expr> = vec![Unresolved(loc, LocalVar::tupled())];
@@ -125,33 +125,37 @@ impl Resolver {
                         _ => unreachable!(),
                     });
                 }
-                let mut desugared = b;
+                let mut desugared_body = b;
                 for (i, v) in vars.into_iter().rev().enumerate() {
                     let (loc, lhs, rhs) = match (v, untupled_vars.get(i + 1).unwrap()) {
                         (Unresolved(loc, lhs), Unresolved(_, rhs)) => (loc, lhs, rhs),
                         _ => unreachable!(),
                     };
                     let tm = untupled_vars.get(i).unwrap();
-                    desugared = Box::new(TupleLet(
+                    desugared_body = Box::new(TupleLet(
                         loc,
                         lhs,
                         rhs.clone(),
                         Box::new(tm.clone()),
-                        desugared,
+                        desugared_body,
                     ));
                 }
+                let desugared = Box::new(Lam(loc, LocalVar::unbound(), desugared_body));
                 *self.expr(desugared)?
+            }
+            Lam(loc, v, b) => {
+                let b = self.bodied(b, &[&v])?;
+                Lam(loc, v, b)
             }
             App(loc, f, x) => App(loc, self.expr(f)?, self.expr(x)?),
             Sigma(loc, p, b) => {
-                let var = p.var.clone();
-                Sigma(loc, self.param(p)?, self.bodied(b, &[var])?)
+                let b = self.bodied(b, &[&p.var])?;
+                Sigma(loc, self.param(p)?, b)
             }
             Tuple(loc, a, b) => Tuple(loc, self.expr(a)?, self.expr(b)?),
             TupleLet(loc, x, y, a, b) => {
-                let vx = x.clone();
-                let vy = y.clone();
-                TupleLet(loc, x, y, self.expr(a)?, self.bodied(b, &[vx, vy])?)
+                let b = self.bodied(b, &[&x, &y])?;
+                TupleLet(loc, x, y, self.expr(a)?, b)
             }
             UnitLet(loc, a, b) => UnitLet(loc, self.expr(a)?, self.expr(b)?),
             If(loc, p, t, e) => If(loc, self.expr(p)?, self.expr(t)?, self.expr(e)?),

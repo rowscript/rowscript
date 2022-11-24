@@ -1,23 +1,14 @@
 use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{App, Lam};
-use crate::theory::abs::def::{Rho, Sigma};
+use crate::theory::abs::def::Rho;
 use crate::theory::abs::rename::Renamer;
-use crate::theory::conc::elab::Elaborator;
 use crate::theory::{LocalVar, Param};
 
-pub struct Normalizer<'a> {
-    sigma: &'a Sigma,
+pub struct Normalizer {
     rho: Rho,
 }
 
-impl<'a> Normalizer<'a> {
-    pub fn new(sigma: &'a Sigma) -> Self {
-        Self {
-            sigma,
-            rho: Default::default(),
-        }
-    }
-
+impl Normalizer {
     pub fn term(&mut self, tm: Box<Term>) -> Box<Term> {
         use Term::*;
         match *tm {
@@ -104,8 +95,7 @@ impl<'a> Normalizer<'a> {
         for &x in args {
             match *ret {
                 Lam(p, b) => {
-                    let sig = Sigma::default();
-                    ret = Normalizer::new(&sig).with(&[(&p.var, x)], b);
+                    ret = Normalizer::default().with(&[(&p.var, x)], b);
                 }
                 _ => ret = Box::new(App(ret, x.clone())),
             }
@@ -121,8 +111,10 @@ impl<'a> Normalizer<'a> {
     }
 }
 
-impl<'a> From<&'a Elaborator> for Normalizer<'a> {
-    fn from(e: &'a Elaborator) -> Self {
-        Self::new(&e.sigma)
+impl Default for Normalizer {
+    fn default() -> Self {
+        Self {
+            rho: Default::default(),
+        }
     }
 }
