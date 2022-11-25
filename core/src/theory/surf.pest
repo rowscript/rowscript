@@ -91,9 +91,9 @@ paren_primary_expr = { "(" ~ primary_expr ~ ")" }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
 lambda_params = _{ "()" | param_id | "(" ~ param_id ~ ("," ~ param_id)+ ~ ")" }
 lambda_body = { primary_expr | fn_body_block }
-app = { ("(" ~ primary_expr ~ ")" | idref) ~ type_args? ~ args }
+app = { ("(" ~ primary_expr ~ ")" | idref) ~ type_args? ~ args+ }
 type_args = _{ "<" ~ type_expr ~ ("," ~ type_expr)* ~ ">" }
-args = _{ "(" ~ primary_expr ~ ("," ~ primary_expr)* ~ ")" }
+args = { "()" | "(" ~ primary_expr ~ ("," ~ primary_expr)* ~ ")" }
 boolean_false = { "false" }
 boolean_true = { "true" }
 boolean_if =

@@ -17,6 +17,10 @@ fn test_fn() {
         let a: number = id(42);
         return () => ()
     }
+
+    function g() {
+        return f()()
+    }
     ",
     )
 }
@@ -25,7 +29,7 @@ fn test_fn() {
 fn test_bool() {
     check(
         "
-    function f() {
+    function f(): number {
         let a: number = if (true) {
             let b = 42;
             b
@@ -33,7 +37,11 @@ fn test_bool() {
             let c: number = 69;
             c
         };
-        return
+        return a
+    }
+
+    function g(): number {
+        return f()
     }
     ",
     )

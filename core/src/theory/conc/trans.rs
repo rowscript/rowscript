@@ -129,28 +129,21 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
         Rule::app => {
             let mut pairs = p.into_inner();
             let f = pairs.next().unwrap();
-            let floc = Loc::from(f.as_span());
             let f = match f.as_rule() {
                 Rule::primary_expr => primary_expr(f),
                 Rule::idref => Unresolved(Loc::from(f.as_span()), LocalVar::from(f)),
                 _ => unreachable!(),
             };
-            let mut type_args: Vec<Expr> = Default::default();
-            let mut untupled_args: Vec<Expr> = Default::default();
-            for arg in pairs {
-                match arg.as_rule() {
-                    Rule::type_expr => type_args.push(type_expr(arg)),
-                    Rule::primary_expr => untupled_args.push(primary_expr(arg)),
-                    _ => unreachable!(),
-                }
-            }
-            let app = type_args
-                .into_iter()
-                .fold(f, |a, x| App(floc, Box::new(a), Box::new(x)));
-            let tupled_arg = untupled_args
-                .into_iter()
-                .rfold(TT(floc), |a, x| Tuple(floc, Box::new(x), Box::new(a)));
-            App(floc, Box::new(app), Box::new(tupled_arg))
+            pairs
+                .map(|arg| {
+                    let loc = Loc::from(arg.as_span());
+                    match arg.as_rule() {
+                        Rule::type_expr => (loc, type_expr(arg)),
+                        Rule::args => (loc, tupled_args(loc, &mut arg.into_inner())),
+                        _ => unreachable!(),
+                    }
+                })
+                .fold(f, |a, (loc, x)| App(loc, Box::new(a), Box::new(x)))
         }
         Rule::tt => TT(loc),
         Rule::idref => Unresolved(loc, LocalVar::from(p)),
@@ -178,6 +171,17 @@ fn implicit(p: Pair<Rule>) -> Param<Expr> {
         var: LocalVar::new(p.as_str()),
         typ: Box::new(Univ(Loc::from(p.as_span()))),
     }
+}
+
+fn tupled_args(tt_loc: Loc, pairs: &mut Pairs<Rule>) -> Expr {
+    pairs
+        .map(|pair| match pair.as_rule() {
+            Rule::primary_expr => (Loc::from(pair.as_span()), primary_expr(pair)),
+            _ => unreachable!(),
+        })
+        .rfold(TT(tt_loc), |a, (loc, x)| {
+            Tuple(loc, Box::new(x), Box::new(a))
+        })
 }
 
 fn partial_let(pairs: &mut Pairs<Rule>) -> (LocalVar, Option<Box<Expr>>, Box<Expr>) {

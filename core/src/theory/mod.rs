@@ -40,7 +40,7 @@ type Name = Rc<String>;
 
 #[derive(Clone, Eq)]
 pub struct LocalVar {
-    pub name: Name,
+    name: Name,
 }
 
 impl LocalVar {
@@ -64,6 +64,14 @@ impl LocalVar {
 
     pub fn id(&self) -> usize {
         Rc::as_ptr(&self.name) as _
+    }
+
+    pub fn as_str(&self) -> &str {
+        self.name.as_str()
+    }
+
+    pub fn to_string(&self) -> String {
+        self.as_str().to_string()
     }
 }
 

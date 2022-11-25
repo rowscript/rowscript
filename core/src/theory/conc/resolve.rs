@@ -22,10 +22,7 @@ impl Resolver {
 
         let mut tele: Vec<Param<Expr>> = Default::default();
         for p in d.tele {
-            if let Some(old) = self
-                .0
-                .insert(p.var.name.as_str().to_string(), p.var.clone())
-            {
+            if let Some(old) = self.0.insert(p.var.to_string(), p.var.clone()) {
                 recoverable.push(old);
             } else {
                 removable.push(p.var.clone());
@@ -40,10 +37,10 @@ impl Resolver {
         d = self.body(d)?;
 
         for x in removable {
-            self.0.remove(&*x.name);
+            self.0.remove(x.as_str());
         }
         for x in recoverable {
-            self.0.insert(x.name.as_str().to_string(), x);
+            self.0.insert(x.to_string(), x);
         }
 
         Ok(d)
@@ -51,6 +48,8 @@ impl Resolver {
 
     fn body(&mut self, d: Def<Expr>) -> Result<Def<Expr>, Error> {
         // TODO: Self-referencing definition.
+        let name = d.name.clone();
+        self.0.insert(name.to_string(), name);
         Ok(Def {
             loc: d.loc,
             name: d.name,
@@ -66,7 +65,7 @@ impl Resolver {
         let mut olds: Vec<Option<LocalVar>> = Default::default();
 
         for &v in vars {
-            olds.push(self.0.insert(v.name.as_str().to_string(), v.clone()));
+            olds.push(self.0.insert(v.to_string(), v.clone()));
         }
 
         let ret = self.expr(e)?;
@@ -74,7 +73,7 @@ impl Resolver {
         for i in 0..vars.len() {
             let old = olds.get(i).unwrap();
             if let Some(v) = old {
-                self.0.insert(v.name.as_str().to_string(), v.clone());
+                self.0.insert(v.to_string(), v.clone());
             } else {
                 self.0.remove(&*vars.get(i).unwrap().name);
             }
