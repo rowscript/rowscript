@@ -33,13 +33,13 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
     }
     tele.push(Param::from(untupled));
 
-    Def::fun(
-        loc,
-        LocalVar::from(name),
-        tele,
-        Box::new(ret),
-        Box::new(body.unwrap()),
-    )
+    let name = LocalVar::from(name);
+    let ret = Box::new(ret);
+    if let Some(body) = body {
+        Def::fun(loc, name, tele, ret, Box::new(body))
+    } else {
+        Def::postulate(loc, name, tele, ret)
+    }
 }
 
 fn type_expr(t: Pair<Rule>) -> Expr {

@@ -48,6 +48,11 @@ fn test_bool() {
 }
 
 #[test]
+fn test_fn_postulate() {
+    check("function f(a: number): number;")
+}
+
+#[test]
 #[should_panic]
 fn test_parse_err() {
     check("function f() {}")

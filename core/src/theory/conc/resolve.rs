@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::theory::abs::def::Body::Fun;
+use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
 use crate::theory::{LocalVar, Param};
@@ -48,6 +48,7 @@ impl Resolver {
 
     fn body(&mut self, d: Def<Expr>) -> Result<Def<Expr>, Error> {
         // TODO: Self-referencing definition.
+        use Body::*;
         let name = d.name.clone();
         self.0.insert(name.to_string(), name);
         Ok(Def {
@@ -57,6 +58,7 @@ impl Resolver {
             ret: self.expr(d.ret)?,
             body: match d.body {
                 Fun(f) => Fun(self.expr(f)?),
+                Postulate => Postulate,
             },
         })
     }

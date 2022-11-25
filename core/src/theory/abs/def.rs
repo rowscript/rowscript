@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::theory::abs::data::Term;
-use crate::theory::abs::def::Body::Fun;
+use crate::theory::abs::def::Body::Postulate;
 use crate::theory::{Loc, LocalVar, Param, Syntax};
 
 pub type Sigma = HashMap<LocalVar, Def<Term>>;
@@ -20,6 +20,7 @@ pub struct Def<T: Syntax> {
 
 impl<T: Syntax> Display for Def<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        use Body::*;
         f.write_str(
             match &self.body {
                 Fun(f) => format!(
@@ -33,6 +34,16 @@ impl<T: Syntax> Display for Def<T> {
                     self.ret,
                     f
                 ),
+                Postulate => format!(
+                    "function {}{}: {};",
+                    self.name,
+                    self.tele
+                        .iter()
+                        .map(|p| p.to_string())
+                        .collect::<Vec<_>>()
+                        .join(" "),
+                    self.ret,
+                ),
             }
             .as_str(),
         )
@@ -42,6 +53,7 @@ impl<T: Syntax> Display for Def<T> {
 #[derive(Debug)]
 pub enum Body<T: Syntax> {
     Fun(Box<T>),
+    Postulate,
 }
 
 impl<T: Syntax> Def<T> {
@@ -51,7 +63,17 @@ impl<T: Syntax> Def<T> {
             name,
             tele,
             ret,
-            body: Fun(body),
+            body: Body::Fun(body),
+        }
+    }
+
+    pub fn postulate(loc: Loc, name: LocalVar, tele: Vec<Param<T>>, ret: Box<T>) -> Self {
+        Self {
+            loc,
+            name,
+            tele,
+            ret,
+            body: Postulate,
         }
     }
 }

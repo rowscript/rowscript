@@ -111,7 +111,7 @@ fn_def =
   ~ implicits?
   ~ params
   ~ (":" ~ type_expr)?
-  ~ fn_body_block
+  ~ (fn_body_block | ";")
   }
 fn_body_block = _{ "{" ~ fn_body ~ "}" }
 fn_body = { fn_body_let | fn_body_ret }

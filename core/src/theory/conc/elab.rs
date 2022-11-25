@@ -1,5 +1,5 @@
 use crate::theory::abs::data::Term;
-use crate::theory::abs::def::Body::Fun;
+use crate::theory::abs::def::Body;
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
@@ -27,6 +27,7 @@ impl Elaborator {
     }
 
     fn def(&mut self, d: Def<Expr>) -> Result<Def<Term>, Error> {
+        use Body::*;
         let mut checked: Vec<LocalVar> = Default::default();
         let mut tele: Vec<Param<Term>> = Default::default();
         for p in d.tele {
@@ -45,6 +46,7 @@ impl Elaborator {
         let ret = self.check(d.ret, &Box::new(Term::Univ))?;
         let body = match d.body {
             Fun(f) => Fun(self.check(f, &ret)?),
+            Postulate => Postulate,
         };
 
         let d = Def {
@@ -146,6 +148,7 @@ impl Elaborator {
     }
 
     fn infer(&mut self, e: Box<Expr>) -> Result<(Box<Term>, Box<Term>), Error> {
+        use Body::*;
         use Expr::*;
         Ok(match *e {
             Resolved(_, v) => {
@@ -158,6 +161,7 @@ impl Elaborator {
                             rename(Term::new_lam(&d.tele, f.clone())),
                             Term::new_pi(&d.tele, d.ret.clone()),
                         ),
+                        Postulate => (Box::new(Term::Ref(v)), Term::new_pi(&d.tele, d.ret.clone())),
                     }
                 }
             }
