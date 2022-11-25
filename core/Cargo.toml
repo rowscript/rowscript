@@ -15,4 +15,3 @@ version = "1.0.37"
 
 [dependencies.ariadne]
 version = "0.1.5"
-
