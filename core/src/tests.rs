@@ -49,7 +49,12 @@ fn test_bool() {
 
 #[test]
 fn test_fn_postulate() {
-    check("function f(a: number): number;")
+    check(
+        "
+    function f(a: number): number;
+    function g();
+    ",
+    )
 }
 
 #[test]
