@@ -9,11 +9,13 @@ priv_camel_id = @{ "_" ~ pub_camel_id }
 
 fn_id = { pub_camelback_id | priv_camelback_id }
 implicit_id = { pub_camel_id }
+row_id = @{ "'" ~ pub_camel_id }
 param_id = { pub_camelback_id }
 let_id = { pub_camelback_id }
 idref =
   { fn_id
   | implicit_id
+  | row_id
   | param_id
   | let_id
   }
@@ -50,7 +52,13 @@ decimal_digits = @{ ASCII_DIGIT ~ ("_"? ~ ASCII_DIGIT)* }
 exponent_part = @{ ("e" | "E")? ~ ("-" | "+")? ~ decimal_digits }
 decimal_integer = @{ "0" | "0"? ~ ASCII_NONZERO_DIGIT ~ ("_"? ~ decimal_digits)? }
 
-implicits = _{ "<" ~ implicit_id ~ ("," ~ implicit_id)* ~ ">" }
+implicit_ids = _{ implicit_id ~ ("," ~ implicit_id)* }
+row_ids = _{ row_id ~ ("," ~ row_id)* }
+implicits =
+ _{ "<" ~ implicit_ids ~ ">"
+  | "<" ~ row_ids ~ ">"
+  | "<" ~ row_ids ~ "," ~ implicit_ids ~ ">"
+  }
 
 param = { param_id ~ ":" ~ type_expr }
 params = _{ "()" | "(" ~ param ~ ("," ~ param)* ~ ")" }

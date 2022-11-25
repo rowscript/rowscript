@@ -18,7 +18,7 @@ fn test_fn() {
         return () => ()
     }
 
-    function g() {
+    function g<T>() {
         return f()()
     }
     ",
@@ -40,7 +40,7 @@ fn test_bool() {
         return a
     }
 
-    function g(): number {
+    function g<T>(): number {
         return f()
     }
     ",
@@ -53,6 +53,17 @@ fn test_fn_postulate() {
         "
     function f(a: number): number;
     function g();
+    ",
+    )
+}
+
+#[test]
+fn test_row() {
+    check(
+        "
+    function f<T, U>() { return }
+    function g<'A, 'B>() { return }
+    function h<'A, T>() { return }
     ",
     )
 }

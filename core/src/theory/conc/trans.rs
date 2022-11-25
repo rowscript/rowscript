@@ -22,6 +22,7 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
     for p in pairs {
         match p.as_rule() {
             Rule::implicit_id => tele.push(implicit(p)),
+            Rule::row_id => todo!(),
             Rule::param => untupled.push(Loc::from(p.as_span()), param(p)),
             Rule::type_expr => ret = Box::new(type_expr(p)),
             Rule::fn_body => {

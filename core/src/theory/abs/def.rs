@@ -24,7 +24,7 @@ impl<T: Syntax> Display for Def<T> {
         f.write_str(
             match &self.body {
                 Fun(f) => format!(
-                    "function {}{}: {} {{\n\t{}\n}}",
+                    "function {} {}: {} {{\n\t{}\n}}",
                     self.name,
                     self.tele
                         .iter()
