@@ -15,7 +15,7 @@ impl Renamer {
     pub fn term(&mut self, tm: Box<Term>) -> Box<Term> {
         use Term::*;
         Box::new(match *tm {
-            Ref(x) => self.0.get(&x).map_or(Ref(x), |y| Ref(y.to_owned())),
+            Ref(x) => self.0.get(&x).map_or(Ref(x), |y| Ref(y.clone())),
             Let(p, a, b) => {
                 let a = self.term(a); // not guarded by `p`, rename it first
                 Let(self.param(p), a, self.term(b))
@@ -50,7 +50,7 @@ impl Renamer {
 
     fn param(&mut self, p: Param<Term>) -> Param<Term> {
         let var = LocalVar::new(p.var.name.as_str());
-        self.0.insert(p.var, var.to_owned());
+        self.0.insert(p.var, var.clone());
         Param {
             var,
             typ: self.term(p.typ),

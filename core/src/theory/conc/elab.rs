@@ -30,12 +30,12 @@ impl Elaborator {
         let mut checked: Vec<LocalVar> = Default::default();
         let mut tele: Vec<Param<Term>> = Default::default();
         for p in d.tele {
-            let gamma_var = p.var.to_owned();
-            let checked_var = p.var.to_owned();
-            let var = p.var.to_owned();
+            let gamma_var = p.var.clone();
+            let checked_var = p.var.clone();
+            let var = p.var.clone();
 
             let gamma_typ = self.check(p.typ, &Box::new(Term::Univ))?;
-            let typ = gamma_typ.to_owned();
+            let typ = gamma_typ.clone();
 
             self.gamma.insert(gamma_var, gamma_typ);
             checked.push(checked_var);
@@ -150,13 +150,13 @@ impl Elaborator {
         Ok(match *e {
             Resolved(_, v) => {
                 if let Some(ty) = self.gamma.get(&v) {
-                    (Box::new(Term::Ref(v)), ty.to_owned())
+                    (Box::new(Term::Ref(v)), ty.clone())
                 } else {
                     let d = self.sigma.get(&v).unwrap();
                     match &d.body {
                         Fun(f) => (
-                            rename(Term::new_lam(&d.tele, f.to_owned())),
-                            Term::new_pi(&d.tele, d.ret.to_owned()),
+                            rename(Term::new_lam(&d.tele, f.clone())),
+                            Term::new_pi(&d.tele, d.ret.clone()),
                         ),
                     }
                 }

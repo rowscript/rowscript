@@ -63,11 +63,11 @@ pub enum Term {
 
 impl Term {
     pub fn new_lam(tele: &Vec<Param<Term>>, tm: Box<Term>) -> Box<Term> {
-        tele.iter().rfold(tm, |b, p| Box::new(Lam(p.to_owned(), b)))
+        tele.iter().rfold(tm, |b, p| Box::new(Lam(p.clone(), b)))
     }
 
     pub fn new_pi(tele: &Vec<Param<Term>>, tm: Box<Term>) -> Box<Term> {
-        tele.iter().rfold(tm, |b, p| Box::new(Pi(p.to_owned(), b)))
+        tele.iter().rfold(tm, |b, p| Box::new(Pi(p.clone(), b)))
     }
 }
 
