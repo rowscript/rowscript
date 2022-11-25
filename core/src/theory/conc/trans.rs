@@ -13,17 +13,17 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
     let loc = Loc::from(f.as_span());
     let mut pairs = f.into_inner();
 
-    let name = pairs.next().unwrap();
+    let name = LocalVar::from(pairs.next().unwrap());
     let mut tele: Vec<Param<Expr>> = Default::default();
     let mut untupled = UntupledParams::new(loc);
-    let mut ret = Unit(loc);
+    let mut ret = Box::new(Unit(loc));
     let mut body: Option<Expr> = None;
 
     for p in pairs {
         match p.as_rule() {
             Rule::implicit_id => tele.push(implicit(p)),
             Rule::param => untupled.push(Loc::from(p.as_span()), param(p)),
-            Rule::type_expr => ret = type_expr(p),
+            Rule::type_expr => ret = Box::new(type_expr(p)),
             Rule::fn_body => {
                 body = Some(fn_body(p));
                 break;
@@ -33,13 +33,26 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
     }
     tele.push(Param::from(untupled));
 
-    let name = LocalVar::from(name);
-    let ret = Box::new(ret);
-    if let Some(body) = body {
-        Def::fun(loc, name, tele, ret, Box::new(body))
-    } else {
-        Def::postulate(loc, name, tele, ret)
+    Def::fun(loc, name, tele, ret, Box::new(body.unwrap()))
+}
+
+pub fn fn_postulate(f: Pair<Rule>) -> Def<Expr> {
+    let loc = Loc::from(f.as_span());
+    let mut pairs = f.into_inner();
+
+    let name = LocalVar::from(pairs.next().unwrap());
+    let mut untupled = UntupledParams::new(loc);
+    let mut ret = Box::new(Unit(loc));
+
+    for p in pairs {
+        match p.as_rule() {
+            Rule::param => untupled.push(Loc::from(p.as_span()), param(p)),
+            Rule::type_expr => ret = Box::new(type_expr(p)),
+            _ => unreachable!(),
+        }
     }
+
+    Def::postulate(loc, name, vec![Param::from(untupled)], ret)
 }
 
 fn type_expr(t: Pair<Rule>) -> Expr {

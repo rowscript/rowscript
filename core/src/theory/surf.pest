@@ -111,11 +111,24 @@ fn_def =
   ~ implicits?
   ~ params
   ~ (":" ~ type_expr)?
-  ~ (fn_body_block | ";")
+  ~ fn_body_block
   }
 fn_body_block = _{ "{" ~ fn_body ~ "}" }
 fn_body = { fn_body_let | fn_body_ret }
 fn_body_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ primary_expr ~ ";" ~ fn_body }
 fn_body_ret = { "return" ~ primary_expr? }
 
-file = { SOI ~ fn_def* ~ EOI }
+fn_postulate =
+  { "function"
+  ~ fn_id
+  ~ params
+  ~ (":" ~ type_expr)?
+  ~ ";"
+  }
+
+decl =
+ _{ fn_def
+  | fn_postulate
+  }
+
+file = { SOI ~ decl* ~ EOI }

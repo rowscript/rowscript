@@ -17,7 +17,6 @@ use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
 use crate::theory::Loc;
-use crate::Error::{ExpectedPi, ExpectedSigma, NonUnifiable, Parsing, UnresolvedVar, IO};
 
 #[cfg(test)]
 mod tests;
@@ -48,6 +47,7 @@ const CHECKER_FAILED: &str = "failed while typechecking";
 
 impl Error {
     pub fn print<F: AsRef<str>, S: AsRef<str>>(&self, file: F, source: S) {
+        use Error::*;
         let (range, title, msg) = match self {
             IO(_) => (0..source.as_ref().len(), PARSER_FAILED, None),
             Parsing(e) => {
@@ -97,11 +97,13 @@ impl<'a> Driver<'a> {
     }
 
     pub fn check_text(self, src: &str) -> Result<(), Error> {
+        use trans::*;
         let file = RowsParser::parse(Rule::file, src)?.next().unwrap();
         let defs = file
             .into_inner()
             .map(|d| match d.as_rule() {
-                Rule::fn_def => Some(trans::fn_def(d)),
+                Rule::fn_def => Some(fn_def(d)),
+                Rule::fn_postulate => Some(fn_postulate(d)),
                 Rule::EOI => None,
                 _ => unreachable!(),
             })
