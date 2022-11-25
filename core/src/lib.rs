@@ -1,6 +1,5 @@
 extern crate core;
 
-use std::convert::identity;
 use std::fs::read_to_string;
 use std::io;
 
@@ -98,18 +97,17 @@ impl<'a> Driver<'a> {
 
     pub fn check_text(self, src: &str) -> Result<(), Error> {
         use trans::*;
+
+        let mut defs: Vec<Def<Expr>> = Default::default();
         let file = RowsParser::parse(Rule::file, src)?.next().unwrap();
-        let defs = file
-            .into_inner()
-            .map(|d| match d.as_rule() {
-                Rule::fn_def => Some(fn_def(d)),
-                Rule::fn_postulate => Some(fn_postulate(d)),
-                Rule::EOI => None,
+        for d in file.into_inner() {
+            match d.as_rule() {
+                Rule::fn_def => defs.push(fn_def(d)),
+                Rule::fn_postulate => defs.push(fn_postulate(d)),
+                Rule::EOI => {}
                 _ => unreachable!(),
-            })
-            .into_iter()
-            .filter_map(identity)
-            .collect::<Vec<_>>();
+            }
+        }
 
         let mut r: Resolver = Default::default();
         let mut resolved: Vec<Def<Expr>> = Default::default();
