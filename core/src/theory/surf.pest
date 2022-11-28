@@ -84,10 +84,7 @@ number_type = { "number" }
 bigint_type = { "bigint" }
 boolean_type = { "boolean" }
 unit_type = { "unit" }
-object_type =
-  { object_ref
-  | simple_object
-  }
+object_type = { object_ref | simple_object }
 object_ref = { "{" ~ row_id ~ "}" }
 simple_object = { "{" ~ field ~ ("," ~ field)* ~ "}" }
 

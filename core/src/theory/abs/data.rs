@@ -48,11 +48,11 @@ pub enum Term {
     RowCont(Dir, Box<Self>, Box<Self>),
     RowSat,
 
-    Row(Vec<(String, Self)>),
+    Fields(Vec<(String, Self)>),
     Label(String, Box<Self>),
     Unlabel(Box<Self>, String),
 
-    Record(Box<Self>),
+    Object(Box<Self>),
     Prj(Dir, Box<Self>),
     Concat(Box<Self>, Box<Self>),
 

@@ -2,14 +2,12 @@ use pest::iterators::{Pair, Pairs};
 
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
-use crate::theory::conc::data::Expr::{
-    App, Big, BigInt, Boolean, False, If, Let, Num, Number, Pi, Sigma, Str, String, True, Tuple,
-    TupledLam, Unit, Univ, Unresolved, TT,
-};
 use crate::theory::{Loc, LocalVar, Param};
 use crate::Rule;
 
 pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
+    use Expr::*;
+
     let loc = Loc::from(f.as_span());
     let mut pairs = f.into_inner();
 
@@ -22,7 +20,7 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
     for p in pairs {
         match p.as_rule() {
             Rule::implicit_id => tele.push(implicit(p)),
-            Rule::row_id => todo!(),
+            Rule::row_id => tele.push(row_param(p)),
             Rule::param => untupled.push(Loc::from(p.as_span()), param(p)),
             Rule::type_expr => ret = Box::new(type_expr(p)),
             Rule::fn_body => {
@@ -38,6 +36,8 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
 }
 
 pub fn fn_postulate(f: Pair<Rule>) -> Def<Expr> {
+    use Expr::*;
+
     let loc = Loc::from(f.as_span());
     let mut pairs = f.into_inner();
 
@@ -57,6 +57,8 @@ pub fn fn_postulate(f: Pair<Rule>) -> Def<Expr> {
 }
 
 fn type_expr(t: Pair<Rule>) -> Expr {
+    use Expr::*;
+
     let p = t.into_inner().next().unwrap();
     let loc = Loc::from(p.as_span());
     match p.as_rule() {
@@ -79,6 +81,19 @@ fn type_expr(t: Pair<Rule>) -> Expr {
         Rule::bigint_type => BigInt(Loc::from(p.as_span())),
         Rule::boolean_type => Boolean(Loc::from(p.as_span())),
         Rule::unit_type => Unit(Loc::from(p.as_span())),
+        Rule::object_type => {
+            let p = p.into_inner().next().unwrap();
+            match p.as_rule() {
+                Rule::object_ref => {
+                    let loc = Loc::from(p.as_span());
+                    let p = p.into_inner().next().unwrap();
+                    let r = Box::new(Unresolved(Loc::from(p.as_span()), LocalVar::from(p)));
+                    Object(loc, r)
+                }
+                Rule::simple_object => fields(p),
+                _ => unreachable!(),
+            }
+        }
         Rule::idref => Unresolved(Loc::from(p.as_span()), LocalVar::from(p)),
         Rule::paren_type_expr => type_expr(p.into_inner().next().unwrap()),
         _ => unreachable!(),
@@ -86,6 +101,8 @@ fn type_expr(t: Pair<Rule>) -> Expr {
 }
 
 fn fn_body(b: Pair<Rule>) -> Expr {
+    use Expr::*;
+
     let p = b.into_inner().next().unwrap();
     let loc = Loc::from(p.as_span());
     match p.as_rule() {
@@ -100,6 +117,8 @@ fn fn_body(b: Pair<Rule>) -> Expr {
 }
 
 fn primary_expr(e: Pair<Rule>) -> Expr {
+    use Expr::*;
+
     let p = e.into_inner().next().unwrap();
     let loc = Loc::from(p.as_span());
     match p.as_rule() {
@@ -167,6 +186,8 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
 }
 
 fn branch(b: Pair<Rule>) -> Expr {
+    use Expr::*;
+
     let pair = b.into_inner().next().unwrap();
     let loc = Loc::from(pair.as_span());
     match pair.as_rule() {
@@ -181,13 +202,47 @@ fn branch(b: Pair<Rule>) -> Expr {
 }
 
 fn implicit(p: Pair<Rule>) -> Param<Expr> {
+    use Expr::*;
     Param {
         var: LocalVar::new(p.as_str()),
         typ: Box::new(Univ(Loc::from(p.as_span()))),
     }
 }
 
+fn row_param(p: Pair<Rule>) -> Param<Expr> {
+    use Expr::*;
+    Param {
+        var: LocalVar::new(p.as_str()),
+        typ: Box::new(Row(Loc::from(p.as_span()))),
+    }
+}
+
+fn param(p: Pair<Rule>) -> Param<Expr> {
+    let mut pairs = p.into_inner();
+    Param {
+        var: LocalVar::from(pairs.next().unwrap()),
+        typ: Box::new(type_expr(pairs.next().unwrap())),
+    }
+}
+
+fn fields(p: Pair<Rule>) -> Expr {
+    use Expr::Fields;
+
+    let loc = Loc::from(p.as_span());
+
+    let mut fields: Vec<(String, Expr)> = Default::default();
+    for pair in p.into_inner() {
+        let mut f = pair.into_inner();
+        let id = f.next().unwrap().as_str().to_string();
+        let typ = type_expr(f.next().unwrap());
+        fields.push((id, typ));
+    }
+
+    Fields(loc, fields)
+}
+
 fn tupled_args(tt_loc: Loc, pairs: &mut Pairs<Rule>) -> Expr {
+    use Expr::*;
     pairs
         .map(|pair| match pair.as_rule() {
             Rule::primary_expr => (Loc::from(pair.as_span()), primary_expr(pair)),
@@ -213,14 +268,6 @@ fn partial_let(pairs: &mut Pairs<Rule>) -> (LocalVar, Option<Box<Expr>>, Box<Exp
     (id, typ, Box::new(tm))
 }
 
-fn param(p: Pair<Rule>) -> Param<Expr> {
-    let mut pairs = p.into_inner();
-    Param {
-        var: LocalVar::from(pairs.next().unwrap()),
-        typ: Box::new(type_expr(pairs.next().unwrap())),
-    }
-}
-
 struct UntupledParams(Loc, Vec<(Loc, Param<Expr>)>);
 
 impl UntupledParams {
@@ -235,6 +282,7 @@ impl UntupledParams {
 
 impl From<UntupledParams> for Param<Expr> {
     fn from(ps: UntupledParams) -> Self {
+        use Expr::*;
         let mut ret = Unit(ps.0);
         for p in ps.1.into_iter().rev() {
             ret = Sigma(p.0, p.1, Box::new(ret));

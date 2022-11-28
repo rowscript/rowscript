@@ -36,6 +36,11 @@ pub enum Expr {
 
     BigInt(Loc),
     Big(Loc, String),
+
+    Row(Loc),
+    Fields(Loc, Vec<(String, Self)>),
+
+    Object(Loc, Box<Self>),
 }
 
 impl Expr {
@@ -66,6 +71,9 @@ impl Expr {
             Num(loc, _) => loc,
             BigInt(loc) => loc,
             Big(loc, _) => loc,
+            Row(loc) => loc,
+            Fields(loc, _) => loc,
+            Object(loc, _) => loc,
         }
         .clone()
     }
@@ -114,6 +122,13 @@ impl Display for Expr {
                 Num(_, v) => v.clone(),
                 BigInt(_) => "bigint".to_string(),
                 Big(_, v) => v.clone(),
+                Row(_) => "row".to_string(),
+                Fields(_, fields) => fields
+                    .into_iter()
+                    .map(|(n, t)| format!("{n}: {t}"))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                Object(_, r) => format!("{{{r}}}"),
             }
             .as_str(),
         )
