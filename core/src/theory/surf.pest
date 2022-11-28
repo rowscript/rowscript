@@ -10,6 +10,7 @@ priv_camel_id = @{ "_" ~ pub_camel_id }
 fn_id = { pub_camelback_id | priv_camelback_id }
 implicit_id = { pub_camel_id }
 row_id = @{ "'" ~ pub_camel_id }
+field_id = { pub_camelback_id | priv_camelback_id }
 param_id = { pub_camelback_id }
 let_id = { pub_camelback_id }
 idref =
@@ -63,14 +64,16 @@ implicits =
 param = { param_id ~ ":" ~ type_expr }
 params = _{ "()" | "(" ~ param ~ ("," ~ param)* ~ ")" }
 
+field = { field_id ~ ":" ~ type_expr }
+
 type_expr =
   { fn_type
-  // TODO: Objects and variants.
   | string_type
   | number_type
   | bigint_type
   | boolean_type
   | unit_type
+  | object_type
   | idref
   | paren_type_expr
   }
@@ -81,6 +84,12 @@ number_type = { "number" }
 bigint_type = { "bigint" }
 boolean_type = { "boolean" }
 unit_type = { "unit" }
+object_type =
+  { object_ref
+  | simple_object
+  }
+object_ref = { "{" ~ row_id ~ "}" }
+simple_object = { "{" ~ field ~ ("," ~ field)* ~ "}" }
 
 primary_expr =
   { string
@@ -113,12 +122,31 @@ branch = { branch_let | primary_expr }
 branch_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ primary_expr ~ ";" ~ branch }
 tt = { "()" }
 
+row_pred =
+  { row_contain
+  | row_let
+  }
+row_contain = { row_expr ~ (row_lt | row_gt) ~ row_expr }
+row_let = { row_id ~ "=" ~ row_expr ~ "+" ~ row_expr }
+row_expr =
+  { idref
+  | paren_fields
+  | row_concat
+  | paren_row_expr
+  }
+row_lt = { "<" }
+row_gt = { ">" }
+paren_fields = { "(" ~ field ~ ("," ~ field)* ~ ")" }
+row_concat = { "(" ~ row_expr ~ "+" ~ row_expr ~ ")" }
+paren_row_expr = { "(" ~ row_expr ~ ")" }
+
 fn_def =
   { "function"
   ~ fn_id
   ~ implicits?
   ~ params
   ~ (":" ~ type_expr)?
+  ~ ("where" ~ row_pred ~ ("and" ~ row_pred)*)?
   ~ fn_body_block
   }
 fn_body_block = _{ "{" ~ fn_body ~ "}" }

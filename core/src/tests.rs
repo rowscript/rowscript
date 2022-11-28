@@ -29,21 +29,21 @@ fn test_fn() {
 fn test_bool() {
     check(
         "
-    function f(): number {
-        let a: number = if (true) {
-            let b = 42;
-            b
-        } else {
-            let c: number = 69;
-            c
-        };
-        return a
-    }
+function f(): number {
+    let a: number = if (true) {
+        let b = 42;
+        b
+    } else {
+        let c: number = 69;
+        c
+    };
+    return a
+}
 
-    function g<T>(): number {
-        return f()
-    }
-    ",
+function g<T>(): number {
+    return f()
+}
+",
     )
 }
 
@@ -51,9 +51,9 @@ fn test_bool() {
 fn test_fn_postulate() {
     check(
         "
-    function f(a: number): number;
-    function g();
-    ",
+function f(a: number): number;
+function g();
+",
     )
 }
 
@@ -61,10 +61,25 @@ fn test_fn_postulate() {
 fn test_row() {
     check(
         "
-    function f<T, U>() { return }
-    function g<'A, 'B>() { return }
-    function h<'A, T>() { return }
-    ",
+function f<T, U>() { return }
+function g<'A, 'B>() { return }
+function h<'A, T>() { return }
+
+function foo<'A, 'B>(a: {'A}, b: {'B}): number
+    where (n: number) < ('A + 'B)
+{
+    // TODO: Extract field `n` from `a` or `b`.
+    return 42
+}
+
+function foo<'A, 'B, 'C>(a: {'A}, b: {'B}): {'C}
+    where 'C = 'A + 'B
+      and (n: number) < 'C
+{
+    // TODO: Assign field `n` to the return type.
+    return
+}
+",
     )
 }
 
@@ -79,16 +94,16 @@ fn test_parse_err() {
 fn test_resolve_err() {
     check(
         "
-    function f() {
-        let a: number = if (true) {
-            let b = 42;
-            b
-        } else {
-            let c: number = 69;
-            c1
-        };
-        return
-    }
-    ",
+function f() {
+    let a: number = if (true) {
+        let b = 42;
+        b
+    } else {
+        let c: number = 69;
+        c1
+    };
+    return
+}
+",
     )
 }

@@ -158,10 +158,10 @@ impl Elaborator {
                     let d = self.sigma.get(&v).unwrap();
                     match &d.body {
                         Fun(f) => (
-                            rename(Term::new_lam(&d.tele, f.clone())),
-                            Term::new_pi(&d.tele, d.ret.clone()),
+                            rename(Term::lam(&d.tele, f.clone())),
+                            Term::pi(&d.tele, d.ret.clone()),
                         ),
-                        Postulate => (Box::new(Term::Ref(v)), Term::new_pi(&d.tele, d.ret.clone())),
+                        Postulate => (Box::new(Term::Ref(v)), Term::pi(&d.tele, d.ret.clone())),
                     }
                 }
             }
