@@ -1,0 +1,18 @@
+function f<T, U>() { return }
+function g<'A, 'B>() { return }
+function h<'A, T>() { return }
+
+function foo<'A, 'B>(a: {'A}, b: {'B}): number
+    where (n: number) < ('A + 'B)
+{
+    // TODO: Extract field `n` from `a` or `b`.
+    return 42
+}
+
+function foo<'A, 'B, 'C>(a: {'A}, b: {'B}): {'C}
+    where 'C = 'A + 'B
+      and (n: number) < 'C
+{
+    // TODO: Assign field `n` to the return type.
+    return
+}
