@@ -63,7 +63,7 @@ impl Resolver {
         })
     }
 
-    fn bodied(&mut self, e: Box<Expr>, vars: &[&LocalVar]) -> Result<Box<Expr>, Error> {
+    fn bodied(&mut self, vars: &[&LocalVar], e: Box<Expr>) -> Result<Box<Expr>, Error> {
         let mut olds: Vec<Option<LocalVar>> = Default::default();
 
         for &v in vars {
@@ -112,12 +112,12 @@ impl Resolver {
                         None
                     },
                     self.expr(a)?,
-                    self.bodied(b, &[&vx])?,
+                    self.bodied(&[&vx], b)?,
                 )
             }
             Pi(loc, p, b) => {
                 let x = p.var.clone();
-                Pi(loc, self.param(p)?, self.bodied(b, &[&x])?)
+                Pi(loc, self.param(p)?, self.bodied(&[&x], b)?)
             }
             TupledLam(loc, vars, b) => {
                 let untupled = LocalVar::tupled();
@@ -144,22 +144,22 @@ impl Resolver {
                     ));
                 }
                 let desugared = Box::new(Lam(loc, LocalVar::tupled(), desugared_body));
-                *self.bodied(desugared, &[&untupled])?
+                *self.bodied(&[&untupled], desugared)?
             }
             Lam(loc, x, b) => {
                 let vx = x.clone();
-                Lam(loc, x, self.bodied(b, &[&vx])?)
+                Lam(loc, x, self.bodied(&[&vx], b)?)
             }
             App(loc, f, x) => App(loc, self.expr(f)?, self.expr(x)?),
             Sigma(loc, p, b) => {
                 let x = p.var.clone();
-                Sigma(loc, self.param(p)?, self.bodied(b, &[&x])?)
+                Sigma(loc, self.param(p)?, self.bodied(&[&x], b)?)
             }
             Tuple(loc, a, b) => Tuple(loc, self.expr(a)?, self.expr(b)?),
             TupleLet(loc, x, y, a, b) => {
                 let vx = x.clone();
                 let vy = y.clone();
-                TupleLet(loc, x, y, self.expr(a)?, self.bodied(b, &[&vx, &vy])?)
+                TupleLet(loc, x, y, self.expr(a)?, self.bodied(&[&vx, &vy], b)?)
             }
             UnitLet(loc, a, b) => UnitLet(loc, self.expr(a)?, self.expr(b)?),
             If(loc, p, t, e) => If(loc, self.expr(p)?, self.expr(t)?, self.expr(e)?),
