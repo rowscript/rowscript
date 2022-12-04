@@ -1,7 +1,9 @@
 use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::data::Term::{Lam, Pi};
-use crate::theory::{LocalVar, Param, Syntax};
+use crate::theory::{LocalVar, Param, ParamInfo, Syntax, Tele};
+
+pub type Spine = Vec<(ParamInfo, Term)>;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Dir {
@@ -12,6 +14,7 @@ pub enum Dir {
 #[derive(Debug, Clone)]
 pub enum Term {
     Ref(LocalVar),
+    MetaRef(LocalVar, Spine),
 
     Let(Param<Self>, Box<Self>, Box<Self>),
 
@@ -63,12 +66,18 @@ pub enum Term {
 }
 
 impl Term {
-    pub fn lam(tele: &Vec<Param<Term>>, tm: Box<Term>) -> Box<Term> {
+    pub fn lam(tele: &Tele<Term>, tm: Box<Term>) -> Box<Term> {
         tele.iter().rfold(tm, |b, p| Box::new(Lam(p.clone(), b)))
     }
 
-    pub fn pi(tele: &Vec<Param<Term>>, tm: Box<Term>) -> Box<Term> {
+    pub fn pi(tele: &Tele<Term>, tm: Box<Term>) -> Box<Term> {
         tele.iter().rfold(tm, |b, p| Box::new(Pi(p.clone(), b)))
+    }
+
+    pub fn tele_to_spine(tele: &Tele<Term>) -> Spine {
+        tele.into_iter()
+            .map(|p| (p.info, Self::Ref(p.var.clone())))
+            .collect()
     }
 }
 
@@ -80,6 +89,18 @@ impl Display for Term {
         f.write_str(
             match self {
                 Ref(r) => r.to_string(),
+                MetaRef(r, sp) => {
+                    let mut s = vec![r.to_string()];
+                    s.extend(
+                        sp.into_iter()
+                            .map(|(i, tm)| match i {
+                                ParamInfo::Explicit => tm.to_string(),
+                                ParamInfo::Implicit => format!("{{{}}}", tm.to_string()),
+                            })
+                            .collect::<Vec<_>>(),
+                    );
+                    format!("({})", s.join(" "))
+                }
                 Let(p, a, b) => format!("let {p} = {a}; {b}"),
                 Univ => "type".to_string(),
                 Pi(p, b) => format!("{p} -> {b}"),

@@ -1,48 +1,89 @@
 use crate::theory::abs::data::Term;
+use crate::theory::abs::def::Body;
+use crate::theory::abs::def::Sigma;
 use crate::theory::abs::normalize::Normalizer;
+use crate::theory::LocalVar;
 
-pub fn unify(expected: &Term, inferred: &Term) -> bool {
-    use Term::*;
-    match (expected, inferred) {
-        (Let(p, a, b), Let(q, x, y)) => unify(&p.typ, &q.typ) && unify(a, x) && unify(b, y),
-        (Pi(p, a), Pi(q, b)) => unify(&p.typ, &q.typ) && unify(a, b),
-        (Lam(p, a), Lam(q, _)) => {
-            let b = Normalizer::apply(Box::new(inferred.clone()), &[&Box::new(Ref(p.var.clone()))]);
-            unify(&p.typ, &q.typ) && unify(a, &b)
+pub struct Unifier<'a> {
+    sigma: &'a mut Sigma,
+}
+
+impl<'a> Unifier<'a> {
+    pub fn new(sigma: &'a mut Sigma) -> Self {
+        Self { sigma }
+    }
+
+    pub fn unify(&mut self, lhs: &Term, rhs: &Term) -> bool {
+        use Term::*;
+        match (lhs, rhs) {
+            (MetaRef(v, _), rhs) => {
+                self.solve(v, rhs);
+                true
+            }
+            (lhs, MetaRef(v, _)) => {
+                self.solve(v, lhs);
+                true
+            }
+
+            (Let(p, a, b), Let(q, x, y)) => {
+                self.unify(&p.typ, &q.typ) && self.unify(a, x) && self.unify(b, y)
+            }
+            (Pi(p, a), Pi(q, b)) => self.unify(&p.typ, &q.typ) && self.unify(a, b),
+            (Lam(p, a), Lam(q, _)) => {
+                let b = Normalizer::new(self.sigma)
+                    .apply(Box::new(rhs.clone()), &[&Box::new(Ref(p.var.clone()))]);
+                self.unify(&p.typ, &q.typ) && self.unify(a, &b)
+            }
+            (App(f, x), App(g, y)) => self.unify(f, g) && self.unify(x, y),
+            (Sigma(p, a), Sigma(q, b)) => {
+                let rho = &[(&q.var, &Box::new(Ref(p.var.clone())))];
+                let b = Normalizer::new(self.sigma).with(rho, b.clone());
+                self.unify(&p.typ, &q.typ) && self.unify(a, &b)
+            }
+            (Tuple(a, b), Tuple(x, y)) => self.unify(a, x) && self.unify(b, y),
+            (TupleLet(p, q, a, b), TupleLet(r, s, x, y)) => {
+                let rho = &[
+                    (&r.var, &Box::new(Ref(p.var.clone()))),
+                    (&s.var, &Box::new(Ref(q.var.clone()))),
+                ];
+                let y = Normalizer::new(self.sigma).with(rho, y.clone());
+                self.unify(a, x) && self.unify(b, &y)
+            }
+            (UnitLet(a, b), UnitLet(x, y)) => self.unify(a, x) && self.unify(b, y),
+            (If(a, b, c), If(x, y, z)) => self.unify(a, x) && self.unify(b, y) && self.unify(c, z),
+
+            (Ref(a), Ref(b)) => a == b,
+            (Str(a), Str(b)) => a == b,
+            (Num(_, a), Num(_, b)) => a == b,
+            (Big(a), Big(b)) => a == b,
+
+            (Univ, Univ) => true,
+            (Unit, Unit) => true,
+            (TT, TT) => true,
+            (Boolean, Boolean) => true,
+            (False, False) => true,
+            (True, True) => true,
+            (String, String) => true,
+            (Number, Number) => true,
+            (BigInt, BigInt) => true,
+
+            _ => false,
         }
-        (App(f, x), App(g, y)) => unify(f, g) && unify(x, y),
-        (Sigma(p, a), Sigma(q, b)) => {
-            let rho = &[(&q.var, &Box::new(Ref(p.var.clone())))];
-            let b = Normalizer::default().with(rho, b.clone());
-            unify(&p.typ, &q.typ) && unify(a, &b)
+    }
+
+    fn solve(&mut self, meta_var: &LocalVar, tm: &Term) -> bool {
+        use Body::*;
+
+        let def = self.sigma.get_mut(meta_var).unwrap();
+        match &def.body {
+            Meta(s) => {
+                if let Some(_) = s {
+                    return true;
+                }
+                def.body = Meta(Some(tm.clone()));
+                true
+            }
+            _ => unreachable!(),
         }
-        (Tuple(a, b), Tuple(x, y)) => unify(a, x) && unify(b, y),
-        (TupleLet(p, q, a, b), TupleLet(r, s, x, y)) => {
-            let rho = &[
-                (&r.var, &Box::new(Ref(p.var.clone()))),
-                (&s.var, &Box::new(Ref(q.var.clone()))),
-            ];
-            let y = Normalizer::default().with(rho, y.clone());
-            unify(a, x) && unify(b, &y)
-        }
-        (UnitLet(a, b), UnitLet(x, y)) => unify(a, x) && unify(b, y),
-        (If(a, b, c), If(x, y, z)) => unify(a, x) && unify(b, y) && unify(c, z),
-
-        (Ref(a), Ref(b)) => a == b,
-        (Str(a), Str(b)) => a == b,
-        (Num(_, a), Num(_, b)) => a == b,
-        (Big(a), Big(b)) => a == b,
-
-        (Univ, Univ) => true,
-        (Unit, Unit) => true,
-        (TT, TT) => true,
-        (Boolean, Boolean) => true,
-        (False, False) => true,
-        (True, True) => true,
-        (String, String) => true,
-        (Number, Number) => true,
-        (BigInt, BigInt) => true,
-
-        _ => false,
     }
 }

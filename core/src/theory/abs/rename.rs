@@ -11,6 +11,12 @@ impl Renamer {
         use Term::*;
         Box::new(match *tm {
             Ref(x) => self.0.get(&x).map_or(Ref(x), |y| Ref(y.clone())),
+            MetaRef(r, sp) => MetaRef(
+                r,
+                sp.into_iter()
+                    .map(|(i, tm)| (i, *self.term(Box::new(tm))))
+                    .collect(),
+            ),
             Let(p, a, b) => {
                 let a = self.term(a); // not guarded by `p`, rename it first
                 Let(self.param(p), a, self.term(b))

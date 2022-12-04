@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
-use crate::theory::{LocalVar, Param};
+use crate::theory::{LocalVar, Param, Tele};
 use crate::Error;
 use crate::Error::UnresolvedVar;
 
@@ -15,7 +15,7 @@ impl Resolver {
         let mut recoverable: Vec<LocalVar> = Default::default();
         let mut removable: Vec<LocalVar> = Default::default();
 
-        let mut tele: Vec<Param<Expr>> = Default::default();
+        let mut tele: Tele<Expr> = Default::default();
         for p in d.tele {
             if let Some(old) = self.0.insert(p.var.to_string(), p.var.clone()) {
                 recoverable.push(old);
@@ -55,6 +55,7 @@ impl Resolver {
             body: match d.body {
                 Fun(f) => Fun(self.expr(f)?),
                 Postulate => Postulate,
+                Meta(_) => todo!(),
             },
         })
     }

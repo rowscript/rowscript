@@ -32,20 +32,22 @@ pub enum Error {
     #[error("unresolved variable")]
     UnresolvedVar(Loc),
 
-    #[error("expected type \"{0}\", found \"{1}\"")]
-    NonUnifiable(Box<Term>, Box<Term>, Loc),
     #[error("expected function type, got \"{0}\"")]
     ExpectedPi(Box<Term>, Loc),
     #[error("expected tuple type, got \"{0}\"")]
     ExpectedSigma(Box<Term>, Loc),
+
+    #[error("expected \"{0}\", found \"{1}\"")]
+    NonUnifiable(Box<Term>, Box<Term>, Loc),
 }
 
 const PARSER_FAILED: &str = "failed while parsing";
 const RESOLVER_FAILED: &str = "failed while resolving";
 const CHECKER_FAILED: &str = "failed while typechecking";
+const UNIFIER_FAILED: &str = "failed while unifying";
 
 impl Error {
-    pub fn print<F: AsRef<str>, S: AsRef<str>>(&self, file: F, source: S) {
+    fn print<F: AsRef<str>, S: AsRef<str>>(&self, file: F, source: S) {
         use Error::*;
         let (range, title, msg) = match self {
             IO(_) => (0..source.as_ref().len(), PARSER_FAILED, None),
@@ -57,9 +59,9 @@ impl Error {
                 (range, PARSER_FAILED, Some(e.variant.message().to_string()))
             }
             UnresolvedVar(loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
-            NonUnifiable(_, _, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             ExpectedPi(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             ExpectedSigma(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
+            NonUnifiable(_, _, loc) => (loc.start..loc.end, UNIFIER_FAILED, Some(self.to_string())),
         };
         let mut b = Report::build(ReportKind::Error, file.as_ref(), range.start)
             .with_message(title)
@@ -91,11 +93,15 @@ impl<'a> Driver<'a> {
     }
 
     pub fn check(self) -> Result<(), Error> {
+        let file = self.file.clone();
         let src = read_to_string(self.file)?;
-        self.check_text(src.as_str())
+        self.check_text(src.as_str()).map_err(|e| {
+            e.print(file, src);
+            e
+        })
     }
 
-    pub fn check_text(self, src: &str) -> Result<(), Error> {
+    fn check_text(self, src: &str) -> Result<(), Error> {
         use trans::*;
 
         let mut defs: Vec<Def<Expr>> = Default::default();
@@ -109,14 +115,15 @@ impl<'a> Driver<'a> {
             }
         }
 
-        let mut r: Resolver = Default::default();
+        let mut r = Resolver::default();
         let mut resolved: Vec<Def<Expr>> = Default::default();
         for d in defs {
             resolved.push(r.def(d)?);
         }
-        dbg!(&resolved);
 
-        Elaborator::default().defs(resolved)?;
+        let mut e = Elaborator::default();
+        e.defs(resolved)?;
+        dbg!(&e);
 
         Ok(())
     }

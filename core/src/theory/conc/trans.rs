@@ -1,9 +1,10 @@
 use pest::iterators::{Pair, Pairs};
 
+use crate::theory::abs::def::Body::{Fun, Postulate};
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
-use crate::theory::PiInfo::{Explicit, Implicit};
-use crate::theory::{Loc, LocalVar, Param};
+use crate::theory::ParamInfo::{Explicit, Implicit};
+use crate::theory::{Loc, LocalVar, Param, Tele};
 use crate::Rule;
 
 pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
@@ -13,7 +14,7 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
     let mut pairs = f.into_inner();
 
     let name = LocalVar::from(pairs.next().unwrap());
-    let mut tele: Vec<Param<Expr>> = Default::default();
+    let mut tele: Tele<Expr> = Default::default();
     let mut untupled = UntupledParams::new(loc);
     let mut ret = Box::new(Unit(loc));
     let mut body: Option<Expr> = None;
@@ -33,7 +34,13 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
     }
     tele.push(Param::from(untupled));
 
-    Def::fun(loc, name, tele, ret, Box::new(body.unwrap()))
+    Def {
+        loc,
+        name,
+        tele,
+        ret,
+        body: Fun(Box::new(body.unwrap())),
+    }
 }
 
 pub fn fn_postulate(f: Pair<Rule>) -> Def<Expr> {
@@ -54,7 +61,13 @@ pub fn fn_postulate(f: Pair<Rule>) -> Def<Expr> {
         }
     }
 
-    Def::postulate(loc, name, vec![Param::from(untupled)], ret)
+    Def {
+        loc,
+        name,
+        tele: vec![Param::from(untupled)],
+        ret,
+        body: Postulate,
+    }
 }
 
 fn type_expr(t: Pair<Rule>) -> Expr {
@@ -77,11 +90,11 @@ fn type_expr(t: Pair<Rule>) -> Expr {
             }
             unreachable!()
         }
-        Rule::string_type => String(Loc::from(p.as_span())),
-        Rule::number_type => Number(Loc::from(p.as_span())),
-        Rule::bigint_type => BigInt(Loc::from(p.as_span())),
-        Rule::boolean_type => Boolean(Loc::from(p.as_span())),
-        Rule::unit_type => Unit(Loc::from(p.as_span())),
+        Rule::string_type => String(loc),
+        Rule::number_type => Number(loc),
+        Rule::bigint_type => BigInt(loc),
+        Rule::boolean_type => Boolean(loc),
+        Rule::unit_type => Unit(loc),
         Rule::object_type => {
             let p = p.into_inner().next().unwrap();
             match p.as_rule() {
@@ -95,8 +108,9 @@ fn type_expr(t: Pair<Rule>) -> Expr {
                 _ => unreachable!(),
             }
         }
-        Rule::idref => Unresolved(Loc::from(p.as_span()), LocalVar::from(p)),
+        Rule::idref => Unresolved(loc, LocalVar::from(p)),
         Rule::paren_type_expr => type_expr(p.into_inner().next().unwrap()),
+        Rule::hole => Hole(loc),
         _ => unreachable!(),
     }
 }
@@ -182,6 +196,7 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
         Rule::tt => TT(loc),
         Rule::idref => Unresolved(loc, LocalVar::from(p)),
         Rule::paren_primary_expr => primary_expr(p.into_inner().next().unwrap()),
+        Rule::hole => Hole(loc),
         _ => unreachable!(),
     }
 }

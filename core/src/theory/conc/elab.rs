@@ -1,19 +1,21 @@
 use crate::theory::abs::data::Term;
-use crate::theory::abs::def::Body;
+use crate::theory::abs::def::{gamma_to_tele, Body};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
-use crate::theory::abs::unify::unify;
+use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::Expr;
-use crate::theory::PiInfo::Explicit;
-use crate::theory::{LocalVar, Param};
+use crate::theory::ParamInfo::Explicit;
+use crate::theory::{LocalVar, Param, Tele, VarGen};
 use crate::Error;
 use crate::Error::{ExpectedPi, ExpectedSigma, NonUnifiable};
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Elaborator {
     sigma: Sigma,
     gamma: Gamma,
+    ug: VarGen,
+    ig: VarGen,
 }
 
 impl Elaborator {
@@ -21,8 +23,10 @@ impl Elaborator {
         for d in defs {
             let name = d.name.clone();
             let checked = self.def(d)?;
-            println!("{}", checked);
             self.sigma.insert(name, checked);
+        }
+        for (_, d) in &self.sigma {
+            println!("{}", d);
         }
         Ok(())
     }
@@ -30,7 +34,7 @@ impl Elaborator {
     fn def(&mut self, d: Def<Expr>) -> Result<Def<Term>, Error> {
         use Body::*;
         let mut checked: Vec<LocalVar> = Default::default();
-        let mut tele: Vec<Param<Term>> = Default::default();
+        let mut tele: Tele<Term> = Default::default();
         for p in d.tele {
             let gamma_var = p.var.clone();
             let checked_var = p.var.clone();
@@ -52,6 +56,7 @@ impl Elaborator {
         let body = match d.body {
             Fun(f) => Fun(self.check(f, &ret)?),
             Postulate => Postulate,
+            Meta(_) => todo!(),
         };
 
         let d = Def {
@@ -71,6 +76,7 @@ impl Elaborator {
 
     fn check(&mut self, e: Box<Expr>, ty: &Box<Term>) -> Result<Box<Term>, Error> {
         use Expr::*;
+
         Ok(match *e {
             Let(_, var, maybe_typ, a, b) => {
                 let (tm, typ) = if let Some(t) = maybe_typ {
@@ -88,7 +94,7 @@ impl Elaborator {
                 Box::new(Term::Let(param, tm, body))
             }
             Lam(loc, var, body) => {
-                let pi = Normalizer::default().term(ty.clone());
+                let pi = Normalizer::new(&mut self.sigma).term(ty.clone());
                 match *pi {
                     Term::Pi(ty_param, ty_body) => {
                         let param = Param {
@@ -96,7 +102,7 @@ impl Elaborator {
                             info: Explicit,
                             typ: ty_param.typ,
                         };
-                        let body_type = Normalizer::default()
+                        let body_type = Normalizer::new(&mut self.sigma)
                             .with(&[(&ty_param.var, &Box::new(Term::Ref(var)))], ty_body);
                         let checked_body = self.guarded_check(&[&param], body, &body_type)?;
                         Box::new(Term::Lam(param.clone(), checked_body))
@@ -105,11 +111,12 @@ impl Elaborator {
                 }
             }
             Tuple(loc, a, b) => {
-                let sig = Normalizer::default().term(ty.clone());
+                let sig = Normalizer::new(&mut self.sigma).term(ty.clone());
                 match *sig {
                     Term::Sigma(ty_param, ty_body) => {
                         let a = self.check(a, &ty_param.typ)?;
-                        let body_type = Normalizer::default().with(&[(&ty_param.var, &a)], ty_body);
+                        let body_type =
+                            Normalizer::new(&mut self.sigma).with(&[(&ty_param.var, &a)], ty_body);
                         let b = self.check(b, &body_type)?;
                         Box::new(Term::Tuple(a, b))
                     }
@@ -118,7 +125,7 @@ impl Elaborator {
             }
             TupleLet(loc, x, y, a, b) => {
                 let (a, a_ty) = self.infer(a)?;
-                let sig = Normalizer::default().term(a_ty);
+                let sig = Normalizer::new(&mut self.sigma).term(a_ty);
                 match *sig {
                     Term::Sigma(ty_param, ty_body) => {
                         let x = Param {
@@ -149,9 +156,10 @@ impl Elaborator {
             _ => {
                 let loc = e.loc();
                 let (inferred_tm, inferred_ty) = self.infer(e)?;
-                let inferred = Normalizer::default().term(inferred_ty);
-                let expected = Normalizer::default().term(ty.clone());
-                if !unify(&expected, &inferred) {
+                let inferred = Normalizer::new(&mut self.sigma).term(inferred_ty);
+                let expected = Normalizer::new(&mut self.sigma).term(ty.clone());
+                let mut u = Unifier::new(&mut self.sigma);
+                if !u.unify(&expected, &inferred) {
                     return Err(NonUnifiable(expected, inferred, loc));
                 }
                 inferred_tm
@@ -174,8 +182,38 @@ impl Elaborator {
                             Term::pi(&d.tele, d.ret.clone()),
                         ),
                         Postulate => (Box::new(Term::Ref(v)), Term::pi(&d.tele, d.ret.clone())),
+                        _ => unreachable!(),
                     }
                 }
+            }
+            Hole(loc) => {
+                let ty_meta_var = self.ig.fresh();
+                self.sigma.insert(
+                    ty_meta_var.clone(),
+                    Def {
+                        loc,
+                        name: ty_meta_var.clone(),
+                        tele: Default::default(),
+                        ret: Box::new(Term::Univ),
+                        body: Meta(None),
+                    },
+                );
+                let ty = Box::new(Term::MetaRef(ty_meta_var, Default::default()));
+
+                let tm_meta_var = self.ug.fresh();
+                let tele = gamma_to_tele(&self.gamma);
+                let spine = Term::tele_to_spine(&tele);
+                self.sigma.insert(
+                    tm_meta_var.clone(),
+                    Def {
+                        loc,
+                        name: tm_meta_var.clone(),
+                        tele,
+                        ret: ty.clone(),
+                        body: Meta(None),
+                    },
+                );
+                (Box::new(Term::MetaRef(tm_meta_var, spine)), ty)
             }
             Pi(_, p, b) => {
                 let (param_ty, _) = self.infer(p.typ)?;
@@ -201,8 +239,8 @@ impl Elaborator {
                             x,
                             &p.typ,
                         )?;
-                        let applied = Normalizer::apply(f, &[&x]);
-                        let applied_ty = Normalizer::default().with(&[(&p.var, &x)], b);
+                        let applied = Normalizer::new(&mut self.sigma).apply(f, &[&x]);
+                        let applied_ty = Normalizer::new(&mut self.sigma).with(&[(&p.var, &x)], b);
                         (applied, applied_ty)
                     }
                     _ => return Err(ExpectedPi(f, f_loc)),
@@ -283,5 +321,16 @@ impl Elaborator {
             self.gamma.remove(&p.var);
         }
         Ok(ret)
+    }
+}
+
+impl Default for Elaborator {
+    fn default() -> Self {
+        Self {
+            sigma: Default::default(),
+            gamma: Default::default(),
+            ug: VarGen::user_meta(),
+            ig: VarGen::inserted_meta(),
+        }
     }
 }

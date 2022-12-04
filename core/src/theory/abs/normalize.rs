@@ -1,15 +1,22 @@
 use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{App, Lam};
-use crate::theory::abs::def::Rho;
-use crate::theory::abs::rename::Renamer;
+use crate::theory::abs::def::{Body, Rho, Sigma};
+use crate::theory::abs::rename::{rename, Renamer};
 use crate::theory::{LocalVar, Param};
 
-#[derive(Default)]
-pub struct Normalizer {
+pub struct Normalizer<'a> {
+    sigma: &'a mut Sigma,
     rho: Rho,
 }
 
-impl Normalizer {
+impl<'a> Normalizer<'a> {
+    pub fn new(sigma: &'a mut Sigma) -> Self {
+        Self {
+            sigma,
+            rho: Default::default(),
+        }
+    }
+
     pub fn term(&mut self, tm: Box<Term>) -> Box<Term> {
         use Term::*;
         match *tm {
@@ -18,6 +25,23 @@ impl Normalizer {
                     self.term(Renamer::default().term(y.clone()))
                 } else {
                     tm.clone()
+                }
+            }
+            MetaRef(x, sp) => {
+                let def = self.sigma.get_mut(&x).unwrap();
+                match &def.body {
+                    Body::Meta(s) => {
+                        if let Some(solved) = s {
+                            let mut ret = rename(Term::lam(&def.tele, Box::new(solved.clone())));
+                            for (_, x) in sp {
+                                ret = Box::new(App(ret, Box::new(x)))
+                            }
+                            self.term(ret)
+                        } else {
+                            Box::new(MetaRef(x, sp))
+                        }
+                    }
+                    _ => unreachable!(),
                 }
             }
             Let(p, a, b) => {
@@ -91,12 +115,12 @@ impl Normalizer {
         self.term(tm)
     }
 
-    pub fn apply(f: Box<Term>, args: &[&Box<Term>]) -> Box<Term> {
+    pub fn apply(&mut self, f: Box<Term>, args: &[&Box<Term>]) -> Box<Term> {
         let mut ret = f.clone();
         for &x in args {
             match *ret {
                 Lam(p, b) => {
-                    ret = Normalizer::default().with(&[(&p.var, x)], b);
+                    ret = self.with(&[(&p.var, x)], b);
                 }
                 _ => ret = Box::new(App(ret, x.clone())),
             }

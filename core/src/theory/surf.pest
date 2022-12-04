@@ -21,6 +21,8 @@ idref =
   | let_id
   }
 
+hole = { "?" }
+
 string = @{ "\"" ~ (unescaped_string_fragment | escaped_string_fragment)* ~ "\"" }
 unescaped_string_fragment = @{ (!("\"" | "\\") ~ ANY)+ }
 escaped_string_fragment =
@@ -76,6 +78,7 @@ type_expr =
   | object_type
   | idref
   | paren_type_expr
+  | hole
   }
 paren_type_expr = { "(" ~ type_expr ~ ")" }
 fn_type = { params ~ "->" ~ type_expr }
@@ -100,6 +103,7 @@ primary_expr =
   | tt
   | idref
   | paren_primary_expr
+  | hole
   }
 paren_primary_expr = { "(" ~ primary_expr ~ ")" }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }

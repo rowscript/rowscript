@@ -105,10 +105,28 @@ impl Hash for LocalVar {
     }
 }
 
+#[derive(Debug)]
+pub struct VarGen(&'static str, u32);
+
+impl VarGen {
+    pub fn user_meta() -> Self {
+        Self("?u", Default::default())
+    }
+
+    pub fn inserted_meta() -> Self {
+        Self("?i", Default::default())
+    }
+
+    pub fn fresh(&mut self) -> LocalVar {
+        self.1 += 1;
+        LocalVar::new(format!("{}{}", self.0, self.1))
+    }
+}
+
 pub trait Syntax: Display {}
 
 #[derive(Debug, Copy, Clone)]
-pub enum PiInfo {
+pub enum ParamInfo {
     Explicit,
     Implicit,
 }
@@ -116,16 +134,27 @@ pub enum PiInfo {
 #[derive(Debug, Clone)]
 pub struct Param<T: Syntax> {
     var: LocalVar,
-    info: PiInfo,
+    info: ParamInfo,
     typ: Box<T>,
+}
+
+pub type Tele<T> = Vec<Param<T>>;
+
+impl<T: Syntax> Param<T> {
+    pub fn tele_to_string(tele: &Tele<T>) -> String {
+        tele.iter()
+            .map(|p| p.to_string())
+            .collect::<Vec<_>>()
+            .join(" ")
+    }
 }
 
 impl<T: Syntax> Display for Param<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(
             match self.info {
-                PiInfo::Explicit => format!("({}: {})", self.var, self.typ),
-                PiInfo::Implicit => format!("{{{}: {}}}", self.var, self.typ),
+                ParamInfo::Explicit => format!("({}: {})", self.var, self.typ),
+                ParamInfo::Implicit => format!("{{{}: {}}}", self.var, self.typ),
             }
             .as_str(),
         )

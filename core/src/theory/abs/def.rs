@@ -2,18 +2,28 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::theory::abs::data::Term;
-use crate::theory::abs::def::Body::Postulate;
-use crate::theory::{Loc, LocalVar, Param, Syntax};
+use crate::theory::ParamInfo::Explicit;
+use crate::theory::{Loc, LocalVar, Param, Syntax, Tele};
 
 pub type Sigma = HashMap<LocalVar, Def<Term>>;
 pub type Gamma = HashMap<LocalVar, Box<Term>>;
 pub type Rho = HashMap<LocalVar, Box<Term>>;
 
+pub fn gamma_to_tele(g: &Gamma) -> Tele<Term> {
+    g.into_iter()
+        .map(|(v, typ)| Param {
+            var: v.clone(),
+            info: Explicit,
+            typ: typ.clone(),
+        })
+        .collect()
+}
+
 #[derive(Debug)]
 pub struct Def<T: Syntax> {
     pub loc: Loc,
     pub name: LocalVar,
-    pub tele: Vec<Param<T>>,
+    pub tele: Tele<T>,
     pub ret: Box<T>,
     pub body: Body<T>,
 }
@@ -26,24 +36,27 @@ impl<T: Syntax> Display for Def<T> {
                 Fun(f) => format!(
                     "function {} {}: {} {{\n\t{}\n}}",
                     self.name,
-                    self.tele
-                        .iter()
-                        .map(|p| p.to_string())
-                        .collect::<Vec<_>>()
-                        .join(" "),
+                    Param::tele_to_string(&self.tele),
                     self.ret,
                     f
                 ),
                 Postulate => format!(
                     "function {}{}: {};",
                     self.name,
-                    self.tele
-                        .iter()
-                        .map(|p| p.to_string())
-                        .collect::<Vec<_>>()
-                        .join(" "),
+                    Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
+                Meta(s) => {
+                    let tele = Param::tele_to_string(&self.tele);
+                    if let Some(solved) = s {
+                        format!(
+                            "meta {} {}: {} {{\n\t{}\n}}",
+                            self.name, tele, self.ret, solved
+                        )
+                    } else {
+                        format!("meta {} {}: {};", self.name, tele, self.ret,)
+                    }
+                }
             }
             .as_str(),
         )
@@ -54,26 +67,5 @@ impl<T: Syntax> Display for Def<T> {
 pub enum Body<T: Syntax> {
     Fun(Box<T>),
     Postulate,
-}
-
-impl<T: Syntax> Def<T> {
-    pub fn fun(loc: Loc, name: LocalVar, tele: Vec<Param<T>>, ret: Box<T>, body: Box<T>) -> Self {
-        Self {
-            loc,
-            name,
-            tele,
-            ret,
-            body: Body::Fun(body),
-        }
-    }
-
-    pub fn postulate(loc: Loc, name: LocalVar, tele: Vec<Param<T>>, ret: Box<T>) -> Self {
-        Self {
-            loc,
-            name,
-            tele,
-            ret,
-            body: Postulate,
-        }
-    }
+    Meta(Option<T>),
 }
