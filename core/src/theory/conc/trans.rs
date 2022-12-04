@@ -2,6 +2,7 @@ use pest::iterators::{Pair, Pairs};
 
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
+use crate::theory::PiInfo::{Explicit, Implicit};
 use crate::theory::{Loc, LocalVar, Param};
 use crate::Rule;
 
@@ -205,6 +206,7 @@ fn implicit(p: Pair<Rule>) -> Param<Expr> {
     use Expr::*;
     Param {
         var: LocalVar::new(p.as_str()),
+        info: Implicit,
         typ: Box::new(Univ(Loc::from(p.as_span()))),
     }
 }
@@ -213,6 +215,7 @@ fn row_param(p: Pair<Rule>) -> Param<Expr> {
     use Expr::*;
     Param {
         var: LocalVar::new(p.as_str()),
+        info: Implicit,
         typ: Box::new(Row(Loc::from(p.as_span()))),
     }
 }
@@ -221,6 +224,7 @@ fn param(p: Pair<Rule>) -> Param<Expr> {
     let mut pairs = p.into_inner();
     Param {
         var: LocalVar::from(pairs.next().unwrap()),
+        info: Explicit,
         typ: Box::new(type_expr(pairs.next().unwrap())),
     }
 }
@@ -289,6 +293,7 @@ impl From<UntupledParams> for Param<Expr> {
         }
         Self {
             var: LocalVar::tupled(),
+            info: Explicit,
             typ: Box::new(ret),
         }
     }

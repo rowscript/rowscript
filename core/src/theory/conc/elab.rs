@@ -3,15 +3,17 @@ use crate::theory::abs::def::Body;
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
-use crate::theory::abs::unify::unify;
+use crate::theory::abs::unify::{unify, MetaSigma};
 use crate::theory::conc::data::Expr;
+use crate::theory::PiInfo::Explicit;
 use crate::theory::{LocalVar, Param};
 use crate::Error;
 use crate::Error::{ExpectedPi, ExpectedSigma, NonUnifiable};
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct Elaborator {
-    pub sigma: Sigma,
+    metas: MetaSigma,
+    sigma: Sigma,
     gamma: Gamma,
 }
 
@@ -40,7 +42,11 @@ impl Elaborator {
 
             self.gamma.insert(gamma_var, gamma_typ);
             checked.push(checked_var);
-            tele.push(Param { var, typ })
+            tele.push(Param {
+                var,
+                info: p.info,
+                typ,
+            })
         }
 
         let ret = self.check(d.ret, &Box::new(Term::Univ))?;
@@ -74,7 +80,11 @@ impl Elaborator {
                 } else {
                     self.infer(a)?
                 };
-                let param = Param { var, typ };
+                let param = Param {
+                    var,
+                    info: Explicit,
+                    typ,
+                };
                 let body = self.guarded_check(&[&param], b, ty)?;
                 Box::new(Term::Let(param, tm, body))
             }
@@ -84,6 +94,7 @@ impl Elaborator {
                     Term::Pi(ty_param, ty_body) => {
                         let param = Param {
                             var: var.clone(),
+                            info: Explicit,
                             typ: ty_param.typ,
                         };
                         let body_type = Normalizer::default()
@@ -113,10 +124,12 @@ impl Elaborator {
                     Term::Sigma(ty_param, ty_body) => {
                         let x = Param {
                             var: x,
+                            info: Explicit,
                             typ: ty_param.typ,
                         };
                         let y = Param {
                             var: y,
+                            info: Explicit,
                             typ: ty_body,
                         };
                         let b = self.guarded_check(&[&x, &y], b, ty)?;
@@ -169,6 +182,7 @@ impl Elaborator {
                 let (param_ty, _) = self.infer(p.typ)?;
                 let param = Param {
                     var: p.var,
+                    info: p.info,
                     typ: param_ty,
                 };
                 let (b, b_ty) = self.guarded_infer(&[&param], b)?;
@@ -182,6 +196,7 @@ impl Elaborator {
                         let x = self.guarded_check(
                             &[&Param {
                                 var: p.var.clone(),
+                                info: p.info,
                                 typ: p.typ.clone(),
                             }],
                             x,
@@ -198,6 +213,7 @@ impl Elaborator {
                 let (param_ty, _) = self.infer(p.typ)?;
                 let param = Param {
                     var: p.var,
+                    info: p.info,
                     typ: param_ty,
                 };
                 let (b, b_ty) = self.guarded_infer(&[&param], b)?;
@@ -211,6 +227,7 @@ impl Elaborator {
                     Box::new(Term::Sigma(
                         Param {
                             var: LocalVar::unbound(),
+                            info: Explicit,
                             typ: a_ty,
                         },
                         b_ty,
@@ -267,14 +284,5 @@ impl Elaborator {
             self.gamma.remove(&p.var);
         }
         Ok(ret)
-    }
-}
-
-impl Default for Elaborator {
-    fn default() -> Self {
-        Self {
-            sigma: Default::default(),
-            gamma: Default::default(),
-        }
     }
 }

@@ -3,13 +3,8 @@ use std::collections::HashMap;
 use crate::theory::abs::data::Term;
 use crate::theory::{LocalVar, Param};
 
+#[derive(Default)]
 pub struct Renamer(HashMap<LocalVar, LocalVar>);
-
-impl Default for Renamer {
-    fn default() -> Self {
-        Self(Default::default())
-    }
-}
 
 impl Renamer {
     pub fn term(&mut self, tm: Box<Term>) -> Box<Term> {
@@ -53,6 +48,7 @@ impl Renamer {
         self.0.insert(p.var, var.clone());
         Param {
             var,
+            info: p.info,
             typ: self.term(p.typ),
         }
     }

@@ -7,13 +7,8 @@ use crate::theory::{LocalVar, Param};
 use crate::Error;
 use crate::Error::UnresolvedVar;
 
+#[derive(Default)]
 pub struct Resolver(HashMap<String, LocalVar>);
-
-impl Default for Resolver {
-    fn default() -> Self {
-        Self(Default::default())
-    }
-}
 
 impl Resolver {
     pub fn def(&mut self, mut d: Def<Expr>) -> Result<Def<Expr>, Error> {
@@ -29,6 +24,7 @@ impl Resolver {
             }
             tele.push(Param {
                 var: p.var,
+                info: p.info,
                 typ: self.expr(p.typ)?,
             });
         }
@@ -87,6 +83,7 @@ impl Resolver {
     fn param(&mut self, p: Param<Expr>) -> Result<Param<Expr>, Error> {
         Ok(Param {
             var: p.var,
+            info: p.info,
             typ: self.expr(p.typ)?,
         })
     }

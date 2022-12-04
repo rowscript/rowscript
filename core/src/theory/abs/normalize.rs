@@ -4,6 +4,7 @@ use crate::theory::abs::def::Rho;
 use crate::theory::abs::rename::Renamer;
 use crate::theory::{LocalVar, Param};
 
+#[derive(Default)]
 pub struct Normalizer {
     rho: Rho,
 }
@@ -106,15 +107,8 @@ impl Normalizer {
     fn param(&mut self, p: Param<Term>) -> Param<Term> {
         Param {
             var: p.var,
+            info: p.info,
             typ: self.term(p.typ),
-        }
-    }
-}
-
-impl Default for Normalizer {
-    fn default() -> Self {
-        Self {
-            rho: Default::default(),
         }
     }
 }

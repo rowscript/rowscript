@@ -6,6 +6,7 @@ use crate::theory::{Loc, LocalVar, Param, Syntax};
 pub enum Expr {
     Unresolved(Loc, LocalVar),
     Resolved(Loc, LocalVar),
+
     Let(Loc, LocalVar, Option<Box<Self>>, Box<Self>, Box<Self>),
 
     Univ(Loc),

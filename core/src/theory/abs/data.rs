@@ -12,6 +12,7 @@ pub enum Dir {
 #[derive(Debug, Clone)]
 pub enum Term {
     Ref(LocalVar),
+
     Let(Param<Self>, Box<Self>, Box<Self>),
 
     Univ,
