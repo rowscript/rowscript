@@ -3,7 +3,7 @@ use crate::theory::abs::def::Body;
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
-use crate::theory::abs::unify::{unify, MetaSigma};
+use crate::theory::abs::unify::unify;
 use crate::theory::conc::data::Expr;
 use crate::theory::PiInfo::Explicit;
 use crate::theory::{LocalVar, Param};
@@ -12,7 +12,6 @@ use crate::Error::{ExpectedPi, ExpectedSigma, NonUnifiable};
 
 #[derive(Default, Debug)]
 pub struct Elaborator {
-    metas: MetaSigma,
     sigma: Sigma,
     gamma: Gamma,
 }

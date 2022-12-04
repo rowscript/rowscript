@@ -1,11 +1,5 @@
-use std::collections::HashMap;
-
 use crate::theory::abs::data::Term;
 use crate::theory::abs::normalize::Normalizer;
-use crate::theory::LocalVar;
-
-#[derive(Default, Debug)]
-pub struct MetaSigma(HashMap<LocalVar, Option<Term>>);
 
 pub fn unify(expected: &Term, inferred: &Term) -> bool {
     use Term::*;
