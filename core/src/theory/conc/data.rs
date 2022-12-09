@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 
+use crate::theory::abs::data::Dir;
 use crate::theory::{Loc, LocalVar, Param, Syntax};
 
 #[derive(Debug, Clone)]
@@ -42,6 +43,13 @@ pub enum Expr {
 
     Row(Loc),
     Fields(Loc, Vec<(String, Self)>),
+    Concat(Loc, Box<Self>, Box<Self>),
+
+    RowOrd(Loc, Box<Self>, Dir, Box<Self>),
+    RowSat(Loc),
+
+    RowEq(Loc, Box<Self>, Box<Self>),
+    RowRefl(Loc),
 
     Object(Loc, Box<Self>),
 }
@@ -77,6 +85,11 @@ impl Expr {
             Big(loc, _) => loc,
             Row(loc) => loc,
             Fields(loc, _) => loc,
+            Concat(loc, _, _) => loc,
+            RowOrd(loc, _, _, _) => loc,
+            RowSat(loc) => loc,
+            RowEq(loc, _, _) => loc,
+            RowRefl(loc) => loc,
             Object(loc, _) => loc,
         }
         .clone()
@@ -133,6 +146,11 @@ impl Display for Expr {
                     .map(|(n, t)| format!("{n}: {t}"))
                     .collect::<Vec<_>>()
                     .join(", "),
+                Concat(_, a, b) => format!("{a} + {b}"),
+                RowOrd(_, a, dir, b) => format!("{a} {dir} {b}"),
+                RowSat(_) => "sat".to_string(),
+                RowEq(_, a, b) => format!("{a} = {b}"),
+                RowRefl(_) => "refl".to_string(),
                 Object(_, r) => format!("{{{r}}}"),
             }
             .as_str(),

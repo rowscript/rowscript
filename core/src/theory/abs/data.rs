@@ -7,8 +7,17 @@ pub type Spine = Vec<(ParamInfo, Term)>;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Dir {
-    Left,
-    Right,
+    Lt,
+    Gt,
+}
+
+impl Display for Dir {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Dir::Lt => "<",
+            Dir::Gt => ">",
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -46,11 +55,11 @@ pub enum Term {
     BigInt,
     Big(String),
 
-    RowConcatEq(Box<Self>, Box<Self>, Box<Self>),
-    RowRefl,
-
-    RowCont(Dir, Box<Self>, Box<Self>),
+    RowOrd(Box<Self>, Dir, Box<Self>),
     RowSat,
+
+    RowEq(Box<Self>, Box<Self>),
+    RowRefl,
 
     Fields(Vec<(String, Self)>),
     Label(String, Box<Self>),

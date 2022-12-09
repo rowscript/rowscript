@@ -124,21 +124,24 @@ branch_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ primary_expr ~ ";" 
 tt = { "()" }
 
 row_pred =
-  { row_contain
-  | row_let
+  { row_ord
+  | row_eq
   }
-row_contain = { row_expr ~ (row_lt | row_gt) ~ row_expr }
-row_let = { row_id ~ "=" ~ row_expr ~ "+" ~ row_expr }
-row_expr =
-  { idref
-  | paren_fields
-  | row_concat
-  | paren_row_expr
-  }
+row_ord = { row_expr ~ (row_lt | row_gt) ~ row_expr }
 row_lt = { "<" }
 row_gt = { ">" }
+row_eq = { row_expr ~ "=" ~ row_expr }
+row_expr =
+  { row_concat
+  | row_primary_expr
+  }
+row_primary_expr =
+  { idref
+  | paren_fields
+  | paren_row_expr
+  }
 paren_fields = { "(" ~ field ~ ("," ~ field)* ~ ")" }
-row_concat = { "(" ~ row_expr ~ "+" ~ row_expr ~ ")" }
+row_concat = { row_primary_expr ~ "+" ~ row_expr }
 paren_row_expr = { "(" ~ row_expr ~ ")" }
 
 fn_def =

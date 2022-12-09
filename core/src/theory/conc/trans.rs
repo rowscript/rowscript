@@ -1,8 +1,10 @@
 use pest::iterators::{Pair, Pairs};
 
+use crate::theory::abs::data::Dir;
 use crate::theory::abs::def::Body::{Fun, Postulate};
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
+use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, LocalVar, Param, Tele};
 use crate::Rule;
@@ -29,6 +31,7 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
                 body = Some(fn_body(p));
                 break;
             }
+            Rule::row_pred => tele.push(row_pred(p)),
             _ => unreachable!(),
         }
     }
@@ -101,17 +104,74 @@ fn type_expr(t: Pair<Rule>) -> Expr {
                 Rule::object_ref => {
                     let loc = Loc::from(p.as_span());
                     let p = p.into_inner().next().unwrap();
-                    let r = Box::new(Unresolved(Loc::from(p.as_span()), LocalVar::from(p)));
+                    let r = Box::new(unresolved(p));
                     Object(loc, r)
                 }
                 Rule::simple_object => fields(p),
                 _ => unreachable!(),
             }
         }
-        Rule::idref => Unresolved(loc, LocalVar::from(p)),
+        Rule::idref => unresolved(p),
         Rule::paren_type_expr => type_expr(p.into_inner().next().unwrap()),
         Rule::hole => Hole(loc),
         _ => unreachable!(),
+    }
+}
+
+fn row_pred(pred: Pair<Rule>) -> Param<Expr> {
+    use Expr::*;
+
+    fn row_expr(e: Pair<Rule>) -> Expr {
+        let p = e.into_inner().next().unwrap();
+        let loc = Loc::from(p.as_span());
+        match p.as_rule() {
+            Rule::row_concat => {
+                let mut p = p.into_inner();
+                let lhs = row_primary_expr(p.next().unwrap());
+                let rhs = row_expr(p.next().unwrap());
+                Concat(loc, Box::new(lhs), Box::new(rhs))
+            }
+            Rule::row_primary_expr => row_primary_expr(p),
+            _ => unreachable!(),
+        }
+    }
+
+    fn row_primary_expr(e: Pair<Rule>) -> Expr {
+        let p = e.into_inner().next().unwrap();
+        match p.as_rule() {
+            Rule::idref => unresolved(p),
+            Rule::paren_fields => fields(p),
+            Rule::paren_row_expr => row_expr(p.into_inner().next().unwrap()),
+            _ => unreachable!(),
+        }
+    }
+
+    let p = pred.into_inner().next().unwrap();
+    let loc = Loc::from(p.as_span());
+    Param {
+        var: LocalVar::unbound(),
+        info: Implicit,
+        typ: match p.as_rule() {
+            Rule::row_ord => {
+                let mut p = p.into_inner();
+                let lhs = row_expr(p.next().unwrap());
+                let dir = p.next().unwrap();
+                let dir = match dir.as_rule() {
+                    Rule::row_lt => Dir::Lt,
+                    Rule::row_gt => Dir::Gt,
+                    _ => unreachable!(),
+                };
+                let rhs = row_expr(p.next().unwrap());
+                Box::new(RowOrd(loc, Box::new(lhs), dir, Box::new(rhs)))
+            }
+            Rule::row_eq => {
+                let mut p = p.into_inner();
+                let lhs = row_expr(p.next().unwrap());
+                let rhs = row_expr(p.next().unwrap());
+                Box::new(RowEq(loc, Box::new(lhs), Box::new(rhs)))
+            }
+            _ => unreachable!(),
+        },
     }
 }
 
@@ -126,7 +186,7 @@ fn fn_body(b: Pair<Rule>) -> Expr {
             let (id, typ, tm) = partial_let(&mut l);
             Let(loc, id, typ, tm, Box::new(fn_body(l.next().unwrap())))
         }
-        Rule::fn_body_ret => p.into_inner().next().map_or(Unit(loc), primary_expr),
+        Rule::fn_body_ret => p.into_inner().next().map_or(TT(loc), primary_expr),
         _ => unreachable!(),
     }
 }
@@ -143,6 +203,20 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
         Rule::boolean_false => False(loc),
         Rule::boolean_true => True(loc),
         Rule::boolean_if => {
+            fn branch(b: Pair<Rule>) -> Expr {
+                let pair = b.into_inner().next().unwrap();
+                let loc = Loc::from(pair.as_span());
+                match pair.as_rule() {
+                    Rule::branch_let => {
+                        let mut l = pair.into_inner();
+                        let (id, typ, tm) = partial_let(&mut l);
+                        Let(loc, id, typ, tm, Box::new(branch(l.next().unwrap())))
+                    }
+                    Rule::primary_expr => primary_expr(pair),
+                    _ => unreachable!(),
+                }
+            }
+
             let mut pairs = p.into_inner();
             If(
                 loc,
@@ -157,9 +231,7 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
             let mut body: Option<Expr> = None;
             for p in pairs {
                 match p.as_rule() {
-                    Rule::param_id => {
-                        vars.push(Unresolved(Loc::from(p.as_span()), LocalVar::from(p)))
-                    }
+                    Rule::param_id => vars.push(unresolved(p)),
                     Rule::lambda_body => {
                         let b = p.into_inner().next().unwrap();
                         body = Some(match b.as_rule() {
@@ -179,7 +251,7 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
             let f = pairs.next().unwrap();
             let f = match f.as_rule() {
                 Rule::primary_expr => primary_expr(f),
-                Rule::idref => Unresolved(Loc::from(f.as_span()), LocalVar::from(f)),
+                Rule::idref => unresolved(f),
                 _ => unreachable!(),
             };
             pairs
@@ -194,27 +266,15 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
                 .fold(f, |a, (loc, x)| App(loc, Box::new(a), Box::new(x)))
         }
         Rule::tt => TT(loc),
-        Rule::idref => Unresolved(loc, LocalVar::from(p)),
+        Rule::idref => unresolved(p),
         Rule::paren_primary_expr => primary_expr(p.into_inner().next().unwrap()),
         Rule::hole => Hole(loc),
         _ => unreachable!(),
     }
 }
 
-fn branch(b: Pair<Rule>) -> Expr {
-    use Expr::*;
-
-    let pair = b.into_inner().next().unwrap();
-    let loc = Loc::from(pair.as_span());
-    match pair.as_rule() {
-        Rule::branch_let => {
-            let mut l = pair.into_inner();
-            let (id, typ, tm) = partial_let(&mut l);
-            Let(loc, id, typ, tm, Box::new(branch(l.next().unwrap())))
-        }
-        Rule::primary_expr => primary_expr(pair),
-        _ => unreachable!(),
-    }
+fn unresolved(p: Pair<Rule>) -> Expr {
+    Unresolved(Loc::from(p.as_span()), LocalVar::from(p))
 }
 
 fn implicit(p: Pair<Rule>) -> Param<Expr> {
