@@ -3,15 +3,17 @@ function g<'A, 'B>() { return }
 function h<'A, T>() { return }
 
 function foo<'A, 'B>(a: {'A}, b: {'B}): number
-    but (n: number) <: 'A + 'B
+where
+    (n: number) <: 'A + 'B
 {
     // TODO: Extract field `n` from `a` or `b`.
     return 42
 }
 
 function foo<'A, 'B, 'C>(a: {'A}, b: {'B}): {'C}
-    but 'C = 'A + 'B
-    but (n: number) <: 'C
+where
+    'C = 'A + 'B,
+    (n: number) <: 'C
 {
     // TODO: Assign field `n` to the return type.
     return {m: 42}

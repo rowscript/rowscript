@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
-use crate::Error;
-use crate::Error::{ExpectedObject, ExpectedPi, ExpectedSigma, NonUnifiable};
-use crate::theory::{LocalVar, Param, Tele, VarGen};
 use crate::theory::abs::data::Term;
-use crate::theory::abs::def::{Body, gamma_to_tele};
+use crate::theory::abs::def::{gamma_to_tele, Body};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::Expr;
 use crate::theory::ParamInfo::Explicit;
+use crate::theory::{LocalVar, Param, Tele, VarGen};
+use crate::Error;
+use crate::Error::{ExpectedObject, ExpectedPi, ExpectedSigma, NonUnifiable};
 
 #[derive(Debug)]
 pub struct Elaborator {
@@ -161,7 +161,7 @@ impl Elaborator {
                     Term::Object(row) => {
                         todo!()
                     }
-                    _ => return Err(ExpectedObject(ty.clone(), loc))
+                    _ => return Err(ExpectedObject(ty.clone(), loc)),
                 }
             }
             _ => {
