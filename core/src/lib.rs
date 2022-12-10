@@ -1,5 +1,6 @@
 extern crate core;
 
+use std::collections::HashSet;
 use std::fs::read_to_string;
 use std::io;
 
@@ -16,6 +17,7 @@ use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans::Translator;
 use crate::theory::Loc;
+use crate::Error::DuplicateDef;
 
 #[cfg(test)]
 mod tests;
@@ -31,6 +33,8 @@ pub enum Error {
 
     #[error("unresolved variable")]
     UnresolvedVar(Loc),
+    #[error("duplicate definition")]
+    DuplicateDef(Loc),
     #[error("duplicate field \"{0}\"")]
     DuplicateField(String, Loc),
 
@@ -63,6 +67,7 @@ impl Error {
                 (range, PARSER_FAILED, Some(e.variant.message().to_string()))
             }
             UnresolvedVar(loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
+            DuplicateDef(loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
             DuplicateField(_, loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
             ExpectedPi(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             ExpectedSigma(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
@@ -122,8 +127,14 @@ impl<'a> Driver<'a> {
 
         let mut r = Resolver::default();
         let mut resolved = Vec::default();
+        let mut names = HashSet::<String>::default();
         for d in defs {
+            let loc = d.loc;
+            let name = d.name.to_string();
             resolved.push(r.def(d)?);
+            if !names.insert(name) {
+                return Err(DuplicateDef(loc));
+            }
         }
 
         let mut e = Elaborator::default();

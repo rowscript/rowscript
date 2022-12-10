@@ -55,7 +55,7 @@ impl Resolver {
             body: match d.body {
                 Fun(f) => Fun(self.expr(f)?),
                 Postulate => Postulate,
-                Meta(_) => todo!(),
+                _ => unreachable!(),
             },
         })
     }

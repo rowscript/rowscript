@@ -59,7 +59,7 @@ impl Elaborator {
         let body = match d.body {
             Fun(f) => Fun(self.check(f, &ret)?),
             Postulate => Postulate,
-            Meta(_) => todo!(),
+            _ => unreachable!(),
         };
 
         let d = Def {
