@@ -152,7 +152,7 @@ fn_def =
   ~ implicits?
   ~ params
   ~ (":" ~ type_expr)?
-  ~ ("where" ~ row_pred ~ ("and" ~ row_pred)*)?
+  ~ ("but" ~ row_pred)*
   ~ fn_body_block
   }
 fn_body_block = _{ "{" ~ fn_body ~ "}" }
