@@ -14,7 +14,7 @@ use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::resolve::Resolver;
-use crate::theory::conc::trans;
+use crate::theory::conc::trans::Translator;
 use crate::theory::Loc;
 
 #[cfg(test)]
@@ -108,14 +108,13 @@ impl<'a> Driver<'a> {
     }
 
     fn check_text(self, src: &str) -> Result<(), Error> {
-        use trans::*;
-
         let mut defs: Vec<Def<Expr>> = Default::default();
         let file = RowsParser::parse(Rule::file, src)?.next().unwrap();
         for d in file.into_inner() {
+            let mut t = Translator::default();
             match d.as_rule() {
-                Rule::fn_def => defs.push(fn_def(d)),
-                Rule::fn_postulate => defs.push(fn_postulate(d)),
+                Rule::fn_def => defs.push(t.fn_def(d)),
+                Rule::fn_postulate => defs.push(t.fn_postulate(d)),
                 Rule::EOI => {}
                 _ => unreachable!(),
             }

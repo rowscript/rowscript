@@ -62,6 +62,10 @@ impl LocalVar {
         Self::new(format!("_untupled_{}", self.name))
     }
 
+    pub fn local_hole(name: &Self, hole: &Self) -> Self {
+        Self::new(format!("?{name}{hole}"))
+    }
+
     pub fn id(&self) -> usize {
         Rc::as_ptr(&self.name) as _
     }

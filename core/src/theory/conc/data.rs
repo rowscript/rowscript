@@ -8,7 +8,7 @@ pub enum Expr {
     Unresolved(Loc, LocalVar),
     Resolved(Loc, LocalVar),
 
-    Hole(Loc),
+    Hole(Loc, Option<LocalVar>),
 
     Let(Loc, LocalVar, Option<Box<Self>>, Box<Self>, Box<Self>),
 
@@ -61,7 +61,7 @@ impl Expr {
         match self {
             Unresolved(loc, _) => loc,
             Resolved(loc, _) => loc,
-            Hole(loc) => loc,
+            Hole(loc, _) => loc,
             Let(loc, _, _, _, _) => loc,
             Univ(loc) => loc,
             Pi(loc, _, _) => loc,
@@ -107,7 +107,11 @@ impl Display for Expr {
             match self {
                 Unresolved(_, r) => r.to_string(),
                 Resolved(_, r) => r.to_string(),
-                Hole(_) => "?".to_string(),
+                Hole(_, n) => match n {
+                    None => "?",
+                    Some(n) => n.as_str(),
+                }
+                .to_string(),
                 Let(_, v, typ, a, b) => {
                     if let Some(ty) = typ {
                         format!("let {v}: {ty} = {a}; {b}")

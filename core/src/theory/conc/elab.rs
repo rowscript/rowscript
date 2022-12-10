@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::string;
 
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{gamma_to_tele, Body};
@@ -10,7 +11,7 @@ use crate::theory::conc::data::Expr;
 use crate::theory::ParamInfo::Explicit;
 use crate::theory::{LocalVar, Param, Tele, VarGen};
 use crate::Error;
-use crate::Error::{ExpectedObject, ExpectedPi, ExpectedSigma, NonUnifiable};
+use crate::Error::{ExpectedPi, ExpectedSigma, NonUnifiable};
 
 #[derive(Debug)]
 pub struct Elaborator {
@@ -155,15 +156,6 @@ impl Elaborator {
                 self.check(t, ty)?,
                 self.check(e, ty)?,
             )),
-            Obj(loc, fields) => {
-                let object = Normalizer::new(&mut self.sigma).term(ty.clone());
-                match *object {
-                    Term::Object(row) => {
-                        todo!()
-                    }
-                    _ => return Err(ExpectedObject(ty.clone(), loc)),
-                }
-            }
             _ => {
                 let loc = e.loc();
                 let (inferred_tm, inferred_ty) = self.infer(e)?;
@@ -197,8 +189,11 @@ impl Elaborator {
                     }
                 }
             }
-            Hole(loc) => {
-                let ty_meta_var = self.ig.fresh();
+            Hole(loc, n) => {
+                let ty_meta_var = match n {
+                    None => self.ig.fresh(),
+                    Some(n) => n,
+                };
                 self.sigma.insert(
                     ty_meta_var.clone(),
                     Def {
@@ -308,6 +303,19 @@ impl Elaborator {
             Object(_, r) => {
                 let r = self.check(r, &Box::new(Term::Row))?;
                 (Box::new(Term::Object(r)), Box::new(Term::Univ))
+            }
+            Obj(_, fields) => {
+                let mut inferred_tm = HashMap::<string::String, Term>::default();
+                let mut inferred_ty = HashMap::<string::String, Term>::default();
+                for (f, e) in fields {
+                    let (tm, ty) = self.infer(Box::new(e))?;
+                    inferred_tm.insert(f.clone(), *tm);
+                    inferred_ty.insert(f, *ty);
+                }
+                (
+                    Box::new(Term::Obj(Box::new(Term::Fields(inferred_tm)))),
+                    Box::new(Term::Object(Box::new(Term::Fields(inferred_ty)))),
+                )
             }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
