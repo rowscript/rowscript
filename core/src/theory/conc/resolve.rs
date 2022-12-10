@@ -166,7 +166,7 @@ impl Resolver {
                 let mut resolved = Vec::default();
                 for (f, typ) in fields {
                     if !names.insert(f.clone()) {
-                        return Err(DuplicateField(loc));
+                        return Err(DuplicateField(loc, f));
                     }
                     resolved.push((f, *self.expr(Box::new(typ))?));
                 }
