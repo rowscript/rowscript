@@ -57,7 +57,10 @@ impl Elaborator {
 
         let ret = self.check(d.ret, &Box::new(Term::Univ))?;
         let body = match d.body {
-            Fun(f) => Fun(self.check(f, &ret)?),
+            Fun { local_holes, f } => Fun {
+                local_holes,
+                f: self.check(f, &ret)?,
+            },
             Postulate => Postulate,
             _ => unreachable!(),
         };
@@ -180,7 +183,7 @@ impl Elaborator {
                 } else {
                     let d = self.sigma.get(&v).unwrap();
                     match &d.body {
-                        Fun(f) => (
+                        Fun { local_holes: _, f } => (
                             rename(Term::lam(&d.tele, f.clone())),
                             Term::pi(&d.tele, d.ret.clone()),
                         ),
@@ -190,10 +193,7 @@ impl Elaborator {
                 }
             }
             Hole(loc, n) => {
-                let ty_meta_var = match n {
-                    None => self.ig.fresh(),
-                    Some(n) => n,
-                };
+                let ty_meta_var = self.ig.fresh();
                 self.sigma.insert(
                     ty_meta_var.clone(),
                     Def {
@@ -206,7 +206,10 @@ impl Elaborator {
                 );
                 let ty = Box::new(Term::MetaRef(ty_meta_var, Default::default()));
 
-                let tm_meta_var = self.ug.fresh();
+                let tm_meta_var = match n {
+                    None => self.ug.fresh(),
+                    Some(n) => n,
+                };
                 let tele = gamma_to_tele(&self.gamma);
                 let spine = Term::tele_to_spine(&tele);
                 self.sigma.insert(
@@ -335,10 +338,7 @@ impl Elaborator {
             Big(_, v) => (Box::new(Term::Big(v)), Box::new(Term::BigInt)),
             Row(_) => (Box::new(Term::Row), Box::new(Term::Univ)),
 
-            e => {
-                dbg!(&e);
-                unreachable!()
-            }
+            _ => unreachable!(),
         })
     }
 

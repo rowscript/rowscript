@@ -26,15 +26,16 @@ impl Translator {
         let name = LocalVar::from(pairs.next().unwrap());
         self.name = Some(name.clone());
 
-        let mut tele: Tele<Expr> = Default::default();
+        let mut tele = Tele::<Expr>::default();
+        let mut local_holes = Vec::default();
         let mut untupled = UntupledParams::new(loc);
         let mut ret = Box::new(Unit(loc));
-        let mut body: Option<Expr> = None;
+        let mut body = None;
 
         for p in pairs {
             match p.as_rule() {
                 Rule::implicit_id => tele.push(Self::implicit(p)),
-                Rule::row_id => tele.push(Self::row_param(p)),
+                Rule::row_hole => local_holes.push(LocalVar::local_hole(name.clone(), p.as_str())),
                 Rule::param => untupled.push(Loc::from(p.as_span()), self.param(p)),
                 Rule::type_expr => ret = Box::new(self.type_expr(p)),
                 Rule::fn_body => {
@@ -52,7 +53,10 @@ impl Translator {
             name,
             tele,
             ret,
-            body: Fun(Box::new(body.unwrap())),
+            body: Fun {
+                local_holes,
+                f: Box::new(body.unwrap()),
+            },
         }
     }
 
@@ -114,10 +118,13 @@ impl Translator {
                 let p = p.into_inner().next().unwrap();
                 match p.as_rule() {
                     Rule::object_ref => {
+                        let name = self.name.clone().unwrap();
                         let loc = Loc::from(p.as_span());
-                        let p = p.into_inner().next().unwrap();
-                        let r = Box::new(Self::unresolved(p));
-                        Object(loc, r)
+                        let hole = p.into_inner().next().unwrap().as_str();
+                        Object(
+                            loc,
+                            Box::new(Hole(loc, Some(LocalVar::local_hole(name, hole)))),
+                        )
                     }
                     Rule::object_type_literal => self.fields(p),
                     _ => unreachable!(),
@@ -180,9 +187,15 @@ impl Translator {
     }
 
     fn row_primary_expr(&self, e: Pair<Rule>) -> Expr {
+        use Expr::*;
+
         let p = e.into_inner().next().unwrap();
+        let loc = Loc::from(p.as_span());
         match p.as_rule() {
-            Rule::idref => Self::unresolved(p),
+            Rule::row_hole => {
+                let name = self.name.clone().unwrap();
+                Hole(loc, Some(LocalVar::local_hole(name, p.as_str())))
+            }
             Rule::paren_fields => self.fields(p),
             Rule::paren_row_expr => self.row_expr(p.into_inner().next().unwrap()),
             _ => unreachable!(),
@@ -303,15 +316,6 @@ impl Translator {
             var: LocalVar::new(p.as_str()),
             info: Implicit,
             typ: Box::new(Univ(Loc::from(p.as_span()))),
-        }
-    }
-
-    fn row_param(p: Pair<Rule>) -> Param<Expr> {
-        use Expr::*;
-        Param {
-            var: LocalVar::new(p.as_str()),
-            info: Implicit,
-            typ: Box::new(Row(Loc::from(p.as_span()))),
         }
     }
 

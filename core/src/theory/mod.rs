@@ -62,7 +62,7 @@ impl LocalVar {
         Self::new(format!("_untupled_{}", self.name))
     }
 
-    pub fn local_hole(name: &Self, hole: &Self) -> Self {
+    pub fn local_hole(name: Self, hole: &str) -> Self {
         Self::new(format!("?{name}{hole}"))
     }
 

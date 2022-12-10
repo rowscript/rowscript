@@ -115,10 +115,7 @@ impl<'a> Normalizer<'a> {
             Big(v) => Box::new(Big(v)),
             Row => Box::new(Row),
 
-            e => {
-                dbg!(&e);
-                unreachable!()
-            }
+            _ => unreachable!(),
         }
     }
 

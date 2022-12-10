@@ -51,6 +51,9 @@ impl<'a> Unifier<'a> {
             }
             (UnitLet(a, b), UnitLet(x, y)) => self.unify(a, x) && self.unify(b, y),
             (If(a, b, c), If(x, y, z)) => self.unify(a, x) && self.unify(b, y) && self.unify(c, z),
+            (Fields(a), Fields(b)) => todo!(),
+            (Object(a), Object(b)) => self.unify(a, b),
+            (Obj(a), Obj(b)) => self.unify(a, b),
 
             (Ref(a), Ref(b)) => a == b,
             (Str(a), Str(b)) => a == b,

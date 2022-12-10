@@ -146,12 +146,11 @@ impl Display for Term {
                 ),
                 Combine(a, b) => format!("{a} + {b}"),
                 RowOrd(a, d, b) => format!("{a} {d} {b}"),
+                RowEq(a, b) => format!("{a} = {b}"),
                 Object(r) => format!("{{{r}}}"),
+                Obj(r) => format!("{{{r}}}"),
 
-                e => {
-                    dbg!(e);
-                    todo!()
-                }
+                _ => todo!(),
             }
             .as_str(),
         )

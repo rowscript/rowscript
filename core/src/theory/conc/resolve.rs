@@ -11,6 +11,12 @@ use crate::Error::{DuplicateField, UnresolvedVar};
 pub struct Resolver(HashMap<String, LocalVar>);
 
 impl Resolver {
+    pub fn extend(&mut self, names: &[LocalVar]) {
+        for v in names {
+            self.0.insert(v.to_string(), v.clone());
+        }
+    }
+
     pub fn def(&mut self, mut d: Def<Expr>) -> Result<Def<Expr>, Error> {
         let mut recoverable: Vec<LocalVar> = Default::default();
         let mut removable: Vec<LocalVar> = Default::default();
@@ -53,7 +59,13 @@ impl Resolver {
             tele: d.tele,
             ret: self.expr(d.ret)?,
             body: match d.body {
-                Fun(f) => Fun(self.expr(f)?),
+                Fun { local_holes, f } => {
+                    self.extend(local_holes.as_slice());
+                    Fun {
+                        local_holes,
+                        f: self.expr(f)?,
+                    }
+                }
                 Postulate => Postulate,
                 _ => unreachable!(),
             },
