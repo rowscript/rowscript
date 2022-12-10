@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::theory::abs::data::Term;
@@ -8,6 +8,7 @@ use crate::theory::{Loc, LocalVar, Param, Syntax, Tele};
 pub type Sigma = HashMap<LocalVar, Def<Term>>;
 pub type Gamma = HashMap<LocalVar, Box<Term>>;
 pub type Rho = HashMap<LocalVar, Box<Term>>;
+pub type NameSet = HashSet<String>;
 
 pub fn gamma_to_tele(g: &Gamma) -> Tele<Term> {
     g.into_iter()

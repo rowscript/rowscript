@@ -31,6 +31,8 @@ pub enum Error {
 
     #[error("unresolved variable")]
     UnresolvedVar(Loc),
+    #[error("duplicate field(s)")]
+    DuplicateField(Loc),
 
     #[error("expected function type, got \"{0}\"")]
     ExpectedPi(Box<Term>, Loc),
@@ -59,6 +61,7 @@ impl Error {
                 (range, PARSER_FAILED, Some(e.variant.message().to_string()))
             }
             UnresolvedVar(loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
+            DuplicateField(loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
             ExpectedPi(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             ExpectedSigma(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             NonUnifiable(_, _, loc) => (loc.start..loc.end, UNIFIER_FAILED, Some(self.to_string())),
@@ -116,7 +119,7 @@ impl<'a> Driver<'a> {
         }
 
         let mut r = Resolver::default();
-        let mut resolved: Vec<Def<Expr>> = Default::default();
+        let mut resolved = Vec::default();
         for d in defs {
             resolved.push(r.def(d)?);
         }

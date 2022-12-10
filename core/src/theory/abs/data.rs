@@ -61,6 +61,7 @@ pub enum Term {
     RowEq(Box<Self>, Box<Self>),
     RowRefl,
 
+    Row,
     Fields(Vec<(String, Self)>),
     Label(String, Box<Self>),
     Unlabel(Box<Self>, String),

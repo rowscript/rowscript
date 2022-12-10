@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Def;
+use crate::theory::abs::def::{Body, NameSet};
 use crate::theory::conc::data::Expr;
 use crate::theory::{LocalVar, Param, Tele};
 use crate::Error;
-use crate::Error::UnresolvedVar;
+use crate::Error::{DuplicateField, UnresolvedVar};
 
 #[derive(Default)]
 pub struct Resolver(HashMap<String, LocalVar>);
@@ -161,6 +161,21 @@ impl Resolver {
             }
             UnitLet(loc, a, b) => UnitLet(loc, self.expr(a)?, self.expr(b)?),
             If(loc, p, t, e) => If(loc, self.expr(p)?, self.expr(t)?, self.expr(e)?),
+            Fields(loc, fields) => {
+                let mut names = NameSet::default();
+                let mut resolved = Vec::default();
+                for (f, typ) in fields {
+                    if !names.insert(f.clone()) {
+                        return Err(DuplicateField(loc));
+                    }
+                    resolved.push((f, *self.expr(Box::new(typ))?));
+                }
+                Fields(loc, resolved)
+            }
+            Concat(loc, a, b) => Concat(loc, self.expr(a)?, self.expr(b)?),
+            RowOrd(loc, a, d, b) => RowOrd(loc, self.expr(a)?, d, self.expr(b)?),
+            RowEq(loc, a, b) => RowEq(loc, self.expr(a)?, self.expr(b)?),
+            Object(loc, o) => Object(loc, self.expr(o)?),
             e => e,
         }))
     }
