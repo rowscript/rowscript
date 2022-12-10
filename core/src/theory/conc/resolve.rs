@@ -172,7 +172,7 @@ impl Resolver {
                 }
                 Fields(loc, resolved)
             }
-            Concat(loc, a, b) => Concat(loc, self.expr(a)?, self.expr(b)?),
+            Combine(loc, a, b) => Combine(loc, self.expr(a)?, self.expr(b)?),
             RowOrd(loc, a, d, b) => RowOrd(loc, self.expr(a)?, d, self.expr(b)?),
             RowEq(loc, a, b) => RowEq(loc, self.expr(a)?, self.expr(b)?),
             Object(loc, o) => Object(loc, self.expr(o)?),

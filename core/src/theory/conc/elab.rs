@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{gamma_to_tele, Body};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
@@ -271,6 +273,33 @@ impl Elaborator {
                     )),
                 )
             }
+            Fields(_, fields) => {
+                let mut inferred = HashMap::default();
+                for (f, e) in fields {
+                    let typ = self.check(Box::new(e), &Box::new(Term::Univ))?;
+                    inferred.insert(f, *typ);
+                }
+                (Box::new(Term::Fields(inferred)), Box::new(Term::Row))
+            }
+            Combine(_, a, b) => {
+                let a = self.check(a, &Box::new(Term::Row))?;
+                let b = self.check(b, &Box::new(Term::Row))?;
+                (Box::new(Term::Combine(a, b)), Box::new(Term::Row))
+            }
+            RowOrd(_, a, d, b) => {
+                let a = self.check(a, &Box::new(Term::Row))?;
+                let b = self.check(b, &Box::new(Term::Row))?;
+                (Box::new(Term::RowOrd(a, d, b)), Box::new(Term::Univ))
+            }
+            RowEq(_, a, b) => {
+                let a = self.check(a, &Box::new(Term::Row))?;
+                let b = self.check(b, &Box::new(Term::Row))?;
+                (Box::new(Term::RowEq(a, b)), Box::new(Term::Univ))
+            }
+            Object(_, r) => {
+                let r = self.check(r, &Box::new(Term::Row))?;
+                (Box::new(Term::Object(r)), Box::new(Term::Univ))
+            }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
             Unit(_) => (Box::new(Term::Unit), Box::new(Term::Univ)),
@@ -287,8 +316,12 @@ impl Elaborator {
             }
             BigInt(_) => (Box::new(Term::BigInt), Box::new(Term::Univ)),
             Big(_, v) => (Box::new(Term::Big(v)), Box::new(Term::BigInt)),
+            Row(_) => (Box::new(Term::Row), Box::new(Term::Univ)),
 
-            _ => unreachable!(),
+            e => {
+                dbg!(&e);
+                unreachable!()
+            }
         })
     }
 

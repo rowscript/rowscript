@@ -129,7 +129,7 @@ fn row_pred(pred: Pair<Rule>) -> Param<Expr> {
                 let mut p = p.into_inner();
                 let lhs = row_primary_expr(p.next().unwrap());
                 let rhs = row_expr(p.next().unwrap());
-                Concat(loc, Box::new(lhs), Box::new(rhs))
+                Combine(loc, Box::new(lhs), Box::new(rhs))
             }
             Rule::row_primary_expr => row_primary_expr(p),
             _ => unreachable!(),
@@ -157,8 +157,8 @@ fn row_pred(pred: Pair<Rule>) -> Param<Expr> {
                 let lhs = row_expr(p.next().unwrap());
                 let dir = p.next().unwrap();
                 let dir = match dir.as_rule() {
-                    Rule::row_lt => Dir::Lt,
-                    Rule::row_gt => Dir::Gt,
+                    Rule::row_le => Dir::Le,
+                    Rule::row_ge => Dir::Ge,
                     _ => unreachable!(),
                 };
                 let rhs = row_expr(p.next().unwrap());

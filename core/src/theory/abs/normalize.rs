@@ -101,8 +101,13 @@ impl<'a> Normalizer<'a> {
             Num(r, v) => Box::new(Num(r, v)),
             BigInt => Box::new(BigInt),
             Big(v) => Box::new(Big(v)),
+            Row => Box::new(Row),
+            Object(r) => Box::new(Object(r)),
 
-            _ => unreachable!(),
+            e => {
+                dbg!(&e);
+                unreachable!()
+            }
         }
     }
 

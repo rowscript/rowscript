@@ -66,6 +66,7 @@ impl<'a> Unifier<'a> {
             (String, String) => true,
             (Number, Number) => true,
             (BigInt, BigInt) => true,
+            (Row, Row) => true,
 
             _ => false,
         }

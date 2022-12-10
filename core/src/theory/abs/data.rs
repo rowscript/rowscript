@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::data::Term::{Lam, Pi};
@@ -7,15 +8,15 @@ pub type Spine = Vec<(ParamInfo, Term)>;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Dir {
-    Lt,
-    Gt,
+    Le,
+    Ge,
 }
 
 impl Display for Dir {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            Dir::Lt => "<",
-            Dir::Gt => ">",
+            Dir::Le => "<=",
+            Dir::Ge => ">=",
         })
     }
 }
@@ -55,16 +56,17 @@ pub enum Term {
     BigInt,
     Big(String),
 
+    Row,
+    Fields(HashMap<String, Self>),
+    Combine(Box<Self>, Box<Self>),
+    Label(String, Box<Self>),
+    Unlabel(Box<Self>, String),
+
     RowOrd(Box<Self>, Dir, Box<Self>),
     RowSat,
 
     RowEq(Box<Self>, Box<Self>),
     RowRefl,
-
-    Row,
-    Fields(Vec<(String, Self)>),
-    Label(String, Box<Self>),
-    Unlabel(Box<Self>, String),
 
     Object(Box<Self>),
     Prj(Dir, Box<Self>),
@@ -132,7 +134,23 @@ impl Display for Term {
                 Num(v, _) => v.clone(),
                 BigInt => "bigint".to_string(),
                 Big(v) => v.clone(),
-                _ => todo!(),
+                Row => "row".to_string(),
+                Fields(fields) => format!(
+                    "({})",
+                    fields
+                        .into_iter()
+                        .map(|(f, typ)| format!("{f}: {typ}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+                Combine(a, b) => format!("{a} + {b}"),
+                RowOrd(a, d, b) => format!("{a} {d} {b}"),
+                Object(r) => format!("{{{r}}}"),
+
+                e => {
+                    dbg!(e);
+                    todo!()
+                }
             }
             .as_str(),
         )

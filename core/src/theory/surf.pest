@@ -127,9 +127,9 @@ row_pred =
   { row_ord
   | row_eq
   }
-row_ord = { row_expr ~ (row_lt | row_gt) ~ row_expr }
-row_lt = { "<" }
-row_gt = { ">" }
+row_ord = { row_expr ~ (row_le | row_ge) ~ row_expr }
+row_le = { "<=" }
+row_ge = { ">=" }
 row_eq = { row_expr ~ "=" ~ row_expr }
 row_expr =
   { row_concat
