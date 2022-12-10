@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::string;
+
 use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{App, Lam};
 use crate::theory::abs::def::{Body, Rho, Sigma};
@@ -88,6 +91,15 @@ impl<'a> Normalizer<'a> {
                     _ => unreachable!(),
                 }
             }
+            Fields(fields) => {
+                let mut nf = HashMap::<string::String, Term>::default();
+                for (f, tm) in fields {
+                    nf.insert(f, *self.term(Box::new(tm.clone())));
+                }
+                Box::new(Fields(nf))
+            }
+            Object(r) => Box::new(Object(self.term(r))),
+            Obj(a) => Box::new(Obj(self.term(a))),
 
             Univ => Box::new(Univ),
             Unit => Box::new(Unit),
@@ -102,7 +114,6 @@ impl<'a> Normalizer<'a> {
             BigInt => Box::new(BigInt),
             Big(v) => Box::new(Big(v)),
             Row => Box::new(Row),
-            Object(r) => Box::new(Object(r)),
 
             e => {
                 dbg!(&e);

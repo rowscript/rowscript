@@ -14,5 +14,5 @@ function foo<'A, 'B, 'C>(a: {'A}, b: {'B}): {'C}
       and (n: number) <: 'C
 {
     // TODO: Assign field `n` to the return type.
-    return
+    return {n: 42}
 }

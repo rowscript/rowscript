@@ -1,3 +1,5 @@
+use std::string;
+
 use pest::iterators::{Pair, Pairs};
 
 use crate::theory::abs::data::Dir;
@@ -107,7 +109,7 @@ fn type_expr(t: Pair<Rule>) -> Expr {
                     let r = Box::new(unresolved(p));
                     Object(loc, r)
                 }
-                Rule::simple_object => fields(p),
+                Rule::object_type_literal => fields(p),
                 _ => unreachable!(),
             }
         }
@@ -186,12 +188,12 @@ fn fn_body(b: Pair<Rule>) -> Expr {
             let (id, typ, tm) = partial_let(&mut l);
             Let(loc, id, typ, tm, Box::new(fn_body(l.next().unwrap())))
         }
-        Rule::fn_body_ret => p.into_inner().next().map_or(TT(loc), primary_expr),
+        Rule::fn_body_ret => p.into_inner().next().map_or(TT(loc), expr),
         _ => unreachable!(),
     }
 }
 
-fn primary_expr(e: Pair<Rule>) -> Expr {
+fn expr(e: Pair<Rule>) -> Expr {
     use Expr::*;
 
     let p = e.into_inner().next().unwrap();
@@ -212,7 +214,7 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
                         let (id, typ, tm) = partial_let(&mut l);
                         Let(loc, id, typ, tm, Box::new(branch(l.next().unwrap())))
                     }
-                    Rule::primary_expr => primary_expr(pair),
+                    Rule::expr => expr(pair),
                     _ => unreachable!(),
                 }
             }
@@ -220,7 +222,7 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
             let mut pairs = p.into_inner();
             If(
                 loc,
-                Box::new(primary_expr(pairs.next().unwrap())),
+                Box::new(expr(pairs.next().unwrap())),
                 Box::new(branch(pairs.next().unwrap())),
                 Box::new(branch(pairs.next().unwrap())),
             )
@@ -235,7 +237,7 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
                     Rule::lambda_body => {
                         let b = p.into_inner().next().unwrap();
                         body = Some(match b.as_rule() {
-                            Rule::primary_expr => primary_expr(b),
+                            Rule::expr => expr(b),
                             Rule::fn_body => fn_body(b),
                             _ => unreachable!(),
                         });
@@ -250,7 +252,7 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
             let mut pairs = p.into_inner();
             let f = pairs.next().unwrap();
             let f = match f.as_rule() {
-                Rule::primary_expr => primary_expr(f),
+                Rule::expr => expr(f),
                 Rule::idref => unresolved(f),
                 _ => unreachable!(),
             };
@@ -266,8 +268,18 @@ fn primary_expr(e: Pair<Rule>) -> Expr {
                 .fold(f, |a, (loc, x)| App(loc, Box::new(a), Box::new(x)))
         }
         Rule::tt => TT(loc),
+        Rule::labels => {
+            fn label(l: Pair<Rule>) -> (string::String, Expr) {
+                let mut p = l.into_inner();
+                (
+                    p.next().unwrap().as_str().to_string(),
+                    expr(p.next().unwrap()),
+                )
+            }
+            Obj(loc, p.into_inner().map(|l| label(l)).collect::<Vec<_>>())
+        }
         Rule::idref => unresolved(p),
-        Rule::paren_primary_expr => primary_expr(p.into_inner().next().unwrap()),
+        Rule::paren_expr => expr(p.into_inner().next().unwrap()),
         Rule::hole => Hole(loc),
         _ => unreachable!(),
     }
@@ -324,7 +336,7 @@ fn tupled_args(tt_loc: Loc, pairs: &mut Pairs<Rule>) -> Expr {
     use Expr::*;
     pairs
         .map(|pair| match pair.as_rule() {
-            Rule::primary_expr => (Loc::from(pair.as_span()), primary_expr(pair)),
+            Rule::expr => (Loc::from(pair.as_span()), expr(pair)),
             _ => unreachable!(),
         })
         .rfold(TT(tt_loc), |a, (loc, x)| {
@@ -335,13 +347,13 @@ fn tupled_args(tt_loc: Loc, pairs: &mut Pairs<Rule>) -> Expr {
 fn partial_let(pairs: &mut Pairs<Rule>) -> (LocalVar, Option<Box<Expr>>, Box<Expr>) {
     let id = LocalVar::from(pairs.next().unwrap());
     let mut typ = None;
-    let type_or_primary_expr = pairs.next().unwrap();
-    let tm = match type_or_primary_expr.as_rule() {
+    let type_or_expr = pairs.next().unwrap();
+    let tm = match type_or_expr.as_rule() {
         Rule::type_expr => {
-            typ = Some(Box::new(type_expr(type_or_primary_expr)));
-            primary_expr(pairs.next().unwrap())
+            typ = Some(Box::new(type_expr(type_or_expr)));
+            expr(pairs.next().unwrap())
         }
-        Rule::primary_expr => primary_expr(type_or_primary_expr),
+        Rule::expr => expr(type_or_expr),
         _ => unreachable!(),
     };
     (id, typ, Box::new(tm))

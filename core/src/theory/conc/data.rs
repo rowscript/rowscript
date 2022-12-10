@@ -52,6 +52,7 @@ pub enum Expr {
     RowRefl(Loc),
 
     Object(Loc, Box<Self>),
+    Obj(Loc, Vec<(String, Self)>),
 }
 
 impl Expr {
@@ -91,6 +92,7 @@ impl Expr {
             RowEq(loc, _, _) => loc,
             RowRefl(loc) => loc,
             Object(loc, _) => loc,
+            Obj(loc, _) => loc,
         }
         .clone()
     }
@@ -141,17 +143,28 @@ impl Display for Expr {
                 BigInt(_) => "bigint".to_string(),
                 Big(_, v) => v.clone(),
                 Row(_) => "row".to_string(),
-                Fields(_, fields) => fields
-                    .into_iter()
-                    .map(|(n, t)| format!("{n}: {t}"))
-                    .collect::<Vec<_>>()
-                    .join(", "),
+                Fields(_, fields) => format!(
+                    "({})",
+                    fields
+                        .into_iter()
+                        .map(|(n, t)| format!("{n}: {t}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
                 Combine(_, a, b) => format!("{a} + {b}"),
                 RowOrd(_, a, dir, b) => format!("{a} {dir} {b}"),
                 RowSat(_) => "sat".to_string(),
                 RowEq(_, a, b) => format!("{a} = {b}"),
                 RowRefl(_) => "refl".to_string(),
                 Object(_, r) => format!("{{{r}}}"),
+                Obj(_, fields) => format!(
+                    "{{{}}}",
+                    fields
+                        .into_iter()
+                        .map(|(n, t)| format!("{n}: {t}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
             }
             .as_str(),
         )

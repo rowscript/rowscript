@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::string;
 
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{gamma_to_tele, Body};
@@ -299,6 +300,20 @@ impl Elaborator {
             Object(_, r) => {
                 let r = self.check(r, &Box::new(Term::Row))?;
                 (Box::new(Term::Object(r)), Box::new(Term::Univ))
+            }
+            Obj(_, fields) => {
+                // FIXME: Should check, not infer.
+                let mut inferred_tm = HashMap::<string::String, Term>::default();
+                let mut inferred_ty = HashMap::<string::String, Term>::default();
+                for (f, e) in fields {
+                    let (tm, typ) = self.infer(Box::new(e))?;
+                    inferred_tm.insert(f.clone(), *tm);
+                    inferred_ty.insert(f, *typ);
+                }
+                (
+                    Box::new(Term::Obj(Box::new(Term::Fields(inferred_tm)))),
+                    Box::new(Term::Object(Box::new(Term::Fields(inferred_ty)))),
+                )
             }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
