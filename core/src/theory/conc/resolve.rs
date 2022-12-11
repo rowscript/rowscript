@@ -1,25 +1,27 @@
 use std::collections::HashMap;
 
+use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Def;
-use crate::theory::abs::def::{Body, NameSet};
 use crate::theory::conc::data::Expr;
-use crate::theory::{LocalVar, Param, Tele};
+use crate::theory::{Param, RawNameSet, Tele, Var};
 use crate::Error;
 use crate::Error::{DuplicateField, UnresolvedVar};
 
 #[derive(Default)]
-pub struct Resolver(HashMap<String, LocalVar>);
+pub struct Resolver(HashMap<String, Var>);
 
 impl Resolver {
-    pub fn extend(&mut self, names: &[LocalVar]) {
-        for v in names {
-            self.0.insert(v.to_string(), v.clone());
-        }
-    }
-
     pub fn def(&mut self, mut d: Def<Expr>) -> Result<Def<Expr>, Error> {
-        let mut recoverable: Vec<LocalVar> = Default::default();
-        let mut removable: Vec<LocalVar> = Default::default();
+        use Body::*;
+
+        let mut recoverable: Vec<Var> = Default::default();
+        let mut removable: Vec<Var> = Default::default();
+
+        if let Fun { local_holes, f: _ } = &d.body {
+            for (_, v) in local_holes {
+                self.0.insert(v.to_string(), v.clone());
+            }
+        }
 
         let mut tele: Tele<Expr> = Default::default();
         for p in d.tele {
@@ -59,21 +61,18 @@ impl Resolver {
             tele: d.tele,
             ret: self.expr(d.ret)?,
             body: match d.body {
-                Fun { local_holes, f } => {
-                    self.extend(local_holes.as_slice());
-                    Fun {
-                        local_holes,
-                        f: self.expr(f)?,
-                    }
-                }
+                Fun { local_holes, f } => Fun {
+                    local_holes,
+                    f: self.expr(f)?,
+                },
                 Postulate => Postulate,
                 _ => unreachable!(),
             },
         })
     }
 
-    fn bodied(&mut self, vars: &[&LocalVar], e: Box<Expr>) -> Result<Box<Expr>, Error> {
-        let mut olds: Vec<Option<LocalVar>> = Default::default();
+    fn bodied(&mut self, vars: &[&Var], e: Box<Expr>) -> Result<Box<Expr>, Error> {
+        let mut olds: Vec<Option<Var>> = Default::default();
 
         for &v in vars {
             olds.push(self.0.insert(v.to_string(), v.clone()));
@@ -111,6 +110,7 @@ impl Resolver {
                     return Err(UnresolvedVar(loc));
                 }
             }
+            RowHole(loc, r) => RowHole(loc, self.0.get(&*r.name).unwrap().clone()),
             Let(loc, x, typ, a, b) => {
                 let vx = x.clone();
                 Let(
@@ -130,7 +130,7 @@ impl Resolver {
                 Pi(loc, self.param(p)?, self.bodied(&[&x], b)?)
             }
             TupledLam(loc, vars, b) => {
-                let untupled = LocalVar::tupled();
+                let untupled = Var::tupled();
                 let mut untupled_vars: Vec<Expr> = vec![Unresolved(loc, untupled.clone())];
                 for x in vars.iter() {
                     untupled_vars.push(match x {
@@ -153,7 +153,7 @@ impl Resolver {
                         desugared_body,
                     ));
                 }
-                let desugared = Box::new(Lam(loc, LocalVar::tupled(), desugared_body));
+                let desugared = Box::new(Lam(loc, Var::tupled(), desugared_body));
                 *self.bodied(&[&untupled], desugared)?
             }
             Lam(loc, x, b) => {
@@ -174,7 +174,7 @@ impl Resolver {
             UnitLet(loc, a, b) => UnitLet(loc, self.expr(a)?, self.expr(b)?),
             If(loc, p, t, e) => If(loc, self.expr(p)?, self.expr(t)?, self.expr(e)?),
             Fields(loc, fields) => {
-                let mut names = NameSet::default();
+                let mut names = RawNameSet::default();
                 let mut resolved = Vec::default();
                 for (f, typ) in fields {
                     if !names.insert(f.clone()) {

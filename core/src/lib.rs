@@ -125,13 +125,12 @@ impl<'a> Driver<'a> {
             }
         }
 
-        let mut r = Resolver::default();
         let mut resolved = Vec::default();
         let mut names = HashSet::<String>::default();
         for d in defs {
             let loc = d.loc;
             let name = d.name.to_string();
-            resolved.push(r.def(d)?);
+            resolved.push(Resolver::default().def(d)?);
             if !names.insert(name) {
                 return Err(DuplicateDef(loc));
             }

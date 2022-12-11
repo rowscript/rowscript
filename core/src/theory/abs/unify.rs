@@ -2,7 +2,7 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Sigma;
 use crate::theory::abs::normalize::Normalizer;
-use crate::theory::LocalVar;
+use crate::theory::Var;
 
 pub struct Unifier<'a> {
     sigma: &'a mut Sigma,
@@ -75,7 +75,7 @@ impl<'a> Unifier<'a> {
         }
     }
 
-    fn solve(&mut self, meta_var: &LocalVar, tm: &Term) -> bool {
+    fn solve(&mut self, meta_var: &Var, tm: &Term) -> bool {
         use Body::*;
 
         let def = self.sigma.get_mut(meta_var).unwrap();

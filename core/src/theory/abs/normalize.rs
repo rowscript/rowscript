@@ -5,7 +5,7 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{App, Lam};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::rename::{rename, Renamer};
-use crate::theory::{LocalVar, Param};
+use crate::theory::{Param, Var};
 
 pub struct Normalizer<'a> {
     sigma: &'a mut Sigma,
@@ -119,7 +119,7 @@ impl<'a> Normalizer<'a> {
         }
     }
 
-    pub fn with(&mut self, rho: &[(&LocalVar, &Box<Term>)], tm: Box<Term>) -> Box<Term> {
+    pub fn with(&mut self, rho: &[(&Var, &Box<Term>)], tm: Box<Term>) -> Box<Term> {
         for (x, v) in rho {
             let x = *x;
             let v = *v;

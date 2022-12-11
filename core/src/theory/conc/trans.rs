@@ -8,12 +8,12 @@ use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Loc, LocalVar, Param, Tele};
+use crate::theory::{Loc, Param, Tele, Var, VarMap};
 use crate::Rule;
 
 #[derive(Default)]
 pub struct Translator {
-    name: Option<LocalVar>,
+    name: Option<Var>,
 }
 
 impl Translator {
@@ -23,11 +23,11 @@ impl Translator {
         let loc = Loc::from(f.as_span());
         let mut pairs = f.into_inner();
 
-        let name = LocalVar::from(pairs.next().unwrap());
+        let name = Var::from(pairs.next().unwrap());
         self.name = Some(name.clone());
 
         let mut tele = Tele::<Expr>::default();
-        let mut local_holes = Vec::default();
+        let mut local_holes = VarMap::default();
         let mut untupled = UntupledParams::new(loc);
         let mut ret = Box::new(Unit(loc));
         let mut body = None;
@@ -35,7 +35,10 @@ impl Translator {
         for p in pairs {
             match p.as_rule() {
                 Rule::implicit_id => tele.push(Self::implicit(p)),
-                Rule::row_hole => local_holes.push(LocalVar::local_hole(name.clone(), p.as_str())),
+                Rule::row_hole => {
+                    let hole = Var::local_hole(name.clone(), p.as_str());
+                    local_holes.insert(hole.name.to_string(), hole);
+                }
                 Rule::param => untupled.push(Loc::from(p.as_span()), self.param(p)),
                 Rule::type_expr => ret = Box::new(self.type_expr(p)),
                 Rule::fn_body => {
@@ -66,7 +69,7 @@ impl Translator {
         let loc = Loc::from(f.as_span());
         let mut pairs = f.into_inner();
 
-        let name = LocalVar::from(pairs.next().unwrap());
+        let name = Var::from(pairs.next().unwrap());
         self.name = Some(name.clone());
 
         let mut untupled = UntupledParams::new(loc);
@@ -118,12 +121,14 @@ impl Translator {
                 let p = p.into_inner().next().unwrap();
                 match p.as_rule() {
                     Rule::object_ref => {
+                        let p = p.into_inner().next().unwrap();
                         let name = self.name.clone().unwrap();
-                        let loc = Loc::from(p.as_span());
-                        let hole = p.into_inner().next().unwrap().as_str();
                         Object(
                             loc,
-                            Box::new(Hole(loc, Some(LocalVar::local_hole(name, hole)))),
+                            Box::new(RowHole(
+                                Loc::from(p.as_span()),
+                                Var::local_hole(name, p.as_str()),
+                            )),
                         )
                     }
                     Rule::object_type_literal => self.fields(p),
@@ -132,7 +137,7 @@ impl Translator {
             }
             Rule::idref => Self::unresolved(p),
             Rule::paren_type_expr => self.type_expr(p.into_inner().next().unwrap()),
-            Rule::hole => Hole(loc, None),
+            Rule::hole => Hole(loc),
             _ => unreachable!(),
         }
     }
@@ -143,7 +148,7 @@ impl Translator {
         let p = pred.into_inner().next().unwrap();
         let loc = Loc::from(p.as_span());
         Param {
-            var: LocalVar::unbound(),
+            var: Var::unbound(),
             info: Implicit,
             typ: match p.as_rule() {
                 Rule::row_ord => {
@@ -194,7 +199,7 @@ impl Translator {
         match p.as_rule() {
             Rule::row_hole => {
                 let name = self.name.clone().unwrap();
-                Hole(loc, Some(LocalVar::local_hole(name, p.as_str())))
+                RowHole(loc, Var::local_hole(name, p.as_str()))
             }
             Rule::paren_fields => self.fields(p),
             Rule::paren_row_expr => self.row_expr(p.into_inner().next().unwrap()),
@@ -285,7 +290,7 @@ impl Translator {
             ),
             Rule::idref => Self::unresolved(p),
             Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),
-            Rule::hole => Hole(loc, None),
+            Rule::hole => Hole(loc),
             _ => unreachable!(),
         }
     }
@@ -307,13 +312,13 @@ impl Translator {
     }
 
     fn unresolved(p: Pair<Rule>) -> Expr {
-        Unresolved(Loc::from(p.as_span()), LocalVar::from(p))
+        Unresolved(Loc::from(p.as_span()), Var::from(p))
     }
 
     fn implicit(p: Pair<Rule>) -> Param<Expr> {
         use Expr::*;
         Param {
-            var: LocalVar::new(p.as_str()),
+            var: Var::new(p.as_str()),
             info: Implicit,
             typ: Box::new(Univ(Loc::from(p.as_span()))),
         }
@@ -322,7 +327,7 @@ impl Translator {
     fn param(&self, p: Pair<Rule>) -> Param<Expr> {
         let mut pairs = p.into_inner();
         Param {
-            var: LocalVar::from(pairs.next().unwrap()),
+            var: Var::from(pairs.next().unwrap()),
             info: Explicit,
             typ: Box::new(self.type_expr(pairs.next().unwrap())),
         }
@@ -364,8 +369,8 @@ impl Translator {
             })
     }
 
-    fn partial_let(&self, pairs: &mut Pairs<Rule>) -> (LocalVar, Option<Box<Expr>>, Box<Expr>) {
-        let id = LocalVar::from(pairs.next().unwrap());
+    fn partial_let(&self, pairs: &mut Pairs<Rule>) -> (Var, Option<Box<Expr>>, Box<Expr>) {
+        let id = Var::from(pairs.next().unwrap());
         let mut typ = None;
         let type_or_expr = pairs.next().unwrap();
         let tm = match type_or_expr.as_rule() {
@@ -400,7 +405,7 @@ impl From<UntupledParams> for Param<Expr> {
             ret = Sigma(p.0, p.1, Box::new(ret));
         }
         Self {
-            var: LocalVar::tupled(),
+            var: Var::tupled(),
             info: Explicit,
             typ: Box::new(ret),
         }

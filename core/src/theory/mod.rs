@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
@@ -38,14 +39,17 @@ impl<'a> From<Span<'a>> for Loc {
 
 type Name = Rc<String>;
 
+pub type RawNameSet = HashSet<String>;
+pub type VarMap = HashMap<String, Var>;
+
 #[derive(Clone, Eq)]
-pub struct LocalVar {
+pub struct Var {
     name: Name,
 }
 
-impl LocalVar {
+impl Var {
     fn new<S: AsRef<str>>(name: S) -> Self {
-        LocalVar {
+        Self {
             name: Rc::new(name.as_ref().to_string()),
         }
     }
@@ -79,31 +83,31 @@ impl LocalVar {
     }
 }
 
-impl Debug for LocalVar {
+impl Debug for Var {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(format!("LocalVar(\"{}\", {})", self.name, self.id()).as_str())
+        f.write_str(format!("Var(\"{}\", {})", self.name, self.id()).as_str())
     }
 }
 
-impl Display for LocalVar {
+impl Display for Var {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.name.as_str())
     }
 }
 
-impl<'a> From<Pair<'a, Rule>> for LocalVar {
+impl<'a> From<Pair<'a, Rule>> for Var {
     fn from(p: Pair<'a, Rule>) -> Self {
         Self::new(p.as_str())
     }
 }
 
-impl PartialEq<Self> for LocalVar {
+impl PartialEq<Self> for Var {
     fn eq(&self, other: &Self) -> bool {
         self.id() == other.id()
     }
 }
 
-impl Hash for LocalVar {
+impl Hash for Var {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id().hash(state)
     }
@@ -121,9 +125,9 @@ impl VarGen {
         Self("?i", Default::default())
     }
 
-    pub fn fresh(&mut self) -> LocalVar {
+    pub fn fresh(&mut self) -> Var {
         self.1 += 1;
-        LocalVar::new(format!("{}{}", self.0, self.1))
+        Var::new(format!("{}{}", self.0, self.1))
     }
 }
 
@@ -137,7 +141,7 @@ pub enum ParamInfo {
 
 #[derive(Debug, Clone)]
 pub struct Param<T: Syntax> {
-    var: LocalVar,
+    var: Var,
     info: ParamInfo,
     typ: Box<T>,
 }

@@ -1,27 +1,28 @@
 use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::data::Dir;
-use crate::theory::{Loc, LocalVar, Param, Syntax};
+use crate::theory::{Loc, Param, Syntax, Var};
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-    Unresolved(Loc, LocalVar),
-    Resolved(Loc, LocalVar),
+    Unresolved(Loc, Var),
+    Resolved(Loc, Var),
 
-    Hole(Loc, Option<LocalVar>),
+    Hole(Loc),
+    RowHole(Loc, Var),
 
-    Let(Loc, LocalVar, Option<Box<Self>>, Box<Self>, Box<Self>),
+    Let(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
 
     Univ(Loc),
 
     Pi(Loc, Param<Self>, Box<Self>),
     TupledLam(Loc, Vec<Self>, Box<Self>),
-    Lam(Loc, LocalVar, Box<Self>),
+    Lam(Loc, Var, Box<Self>),
     App(Loc, Box<Self>, Box<Self>),
 
     Sigma(Loc, Param<Self>, Box<Self>),
     Tuple(Loc, Box<Self>, Box<Self>),
-    TupleLet(Loc, LocalVar, LocalVar, Box<Self>, Box<Self>),
+    TupleLet(Loc, Var, Var, Box<Self>, Box<Self>),
 
     Unit(Loc),
     TT(Loc),
@@ -61,7 +62,8 @@ impl Expr {
         match self {
             Unresolved(loc, _) => loc,
             Resolved(loc, _) => loc,
-            Hole(loc, _) => loc,
+            Hole(loc) => loc,
+            RowHole(loc, _) => loc,
             Let(loc, _, _, _, _) => loc,
             Univ(loc) => loc,
             Pi(loc, _, _) => loc,
@@ -107,11 +109,8 @@ impl Display for Expr {
             match self {
                 Unresolved(_, r) => r.to_string(),
                 Resolved(_, r) => r.to_string(),
-                Hole(_, n) => match n {
-                    None => "?",
-                    Some(n) => n.as_str(),
-                }
-                .to_string(),
+                Hole(_) => "?".to_string(),
+                RowHole(_, r) => r.to_string(),
                 Let(_, v, typ, a, b) => {
                     if let Some(ty) = typ {
                         format!("let {v}: {ty} = {a}; {b}")

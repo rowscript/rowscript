@@ -1,14 +1,14 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::theory::abs::data::Term;
+use crate::theory::abs::def::Body::Meta;
 use crate::theory::ParamInfo::Explicit;
-use crate::theory::{Loc, LocalVar, Param, Syntax, Tele};
+use crate::theory::{Loc, Param, Syntax, Tele, Var};
 
-pub type Sigma = HashMap<LocalVar, Def<Term>>;
-pub type Gamma = HashMap<LocalVar, Box<Term>>;
-pub type Rho = HashMap<LocalVar, Box<Term>>;
-pub type NameSet = HashSet<String>;
+pub type Sigma = HashMap<Var, Def<Term>>;
+pub type Gamma = HashMap<Var, Box<Term>>;
+pub type Rho = HashMap<Var, Box<Term>>;
 
 pub fn gamma_to_tele(g: &Gamma) -> Tele<Term> {
     g.into_iter()
@@ -23,10 +23,22 @@ pub fn gamma_to_tele(g: &Gamma) -> Tele<Term> {
 #[derive(Debug)]
 pub struct Def<T: Syntax> {
     pub loc: Loc,
-    pub name: LocalVar,
+    pub name: Var,
     pub tele: Tele<T>,
     pub ret: Box<T>,
     pub body: Body<T>,
+}
+
+impl<T: Syntax> Def<T> {
+    pub fn new_constant_constraint(loc: Loc, name: Var, ret: Box<T>) -> Self {
+        Self {
+            loc,
+            name,
+            tele: Default::default(),
+            ret,
+            body: Meta(None),
+        }
+    }
 }
 
 impl<T: Syntax> Display for Def<T> {
@@ -42,7 +54,7 @@ impl<T: Syntax> Display for Def<T> {
                             "<{}> ",
                             local_holes
                                 .into_iter()
-                                .map(|h| h.to_string())
+                                .map(|(h, _)| h.clone())
                                 .collect::<Vec<_>>()
                                 .join(", ")
                         )
@@ -79,7 +91,7 @@ impl<T: Syntax> Display for Def<T> {
 #[derive(Debug)]
 pub enum Body<T: Syntax> {
     Fun {
-        local_holes: Vec<LocalVar>,
+        local_holes: HashMap<String, Var>,
         f: Box<T>,
     },
     Postulate,

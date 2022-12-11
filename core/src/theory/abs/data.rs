@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::data::Term::{Lam, Pi};
-use crate::theory::{LocalVar, Param, ParamInfo, Syntax, Tele};
+use crate::theory::{Param, ParamInfo, Syntax, Tele, Var};
 
 pub type Spine = Vec<(ParamInfo, Term)>;
 
@@ -23,8 +23,8 @@ impl Display for Dir {
 
 #[derive(Debug, Clone)]
 pub enum Term {
-    Ref(LocalVar),
-    MetaRef(LocalVar, Spine),
+    Ref(Var),
+    MetaRef(Var, Spine),
 
     Let(Param<Self>, Box<Self>, Box<Self>),
 

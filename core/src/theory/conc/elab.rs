@@ -9,7 +9,7 @@ use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::Expr;
 use crate::theory::ParamInfo::Explicit;
-use crate::theory::{LocalVar, Param, Tele, VarGen};
+use crate::theory::{Param, Tele, Var, VarGen};
 use crate::Error;
 use crate::Error::{ExpectedPi, ExpectedSigma, NonUnifiable};
 
@@ -36,7 +36,8 @@ impl Elaborator {
 
     fn def(&mut self, d: Def<Expr>) -> Result<Def<Term>, Error> {
         use Body::*;
-        let mut checked: Vec<LocalVar> = Default::default();
+
+        let mut checked: Vec<Var> = Default::default();
         let mut tele: Tele<Term> = Default::default();
         for p in d.tele {
             let gamma_var = p.var.clone();
@@ -57,10 +58,19 @@ impl Elaborator {
 
         let ret = self.check(d.ret, &Box::new(Term::Univ))?;
         let body = match d.body {
-            Fun { local_holes, f } => Fun {
-                local_holes,
-                f: self.check(f, &ret)?,
-            },
+            Fun { local_holes, f } => {
+                for (_, hole) in &local_holes {
+                    let loc = f.loc();
+                    self.sigma.insert(
+                        hole.clone(),
+                        Def::new_constant_constraint(loc, hole.clone(), Box::new(Term::Row)),
+                    );
+                }
+                Fun {
+                    local_holes,
+                    f: self.check(f, &ret)?,
+                }
+            }
             Postulate => Postulate,
             _ => unreachable!(),
         };
@@ -192,24 +202,15 @@ impl Elaborator {
                     }
                 }
             }
-            Hole(loc, n) => {
+            Hole(loc) => {
                 let ty_meta_var = self.ig.fresh();
                 self.sigma.insert(
                     ty_meta_var.clone(),
-                    Def {
-                        loc,
-                        name: ty_meta_var.clone(),
-                        tele: Default::default(),
-                        ret: Box::new(Term::Univ),
-                        body: Meta(None),
-                    },
+                    Def::new_constant_constraint(loc, ty_meta_var.clone(), Box::new(Term::Univ)),
                 );
                 let ty = Box::new(Term::MetaRef(ty_meta_var, Default::default()));
 
-                let tm_meta_var = match n {
-                    None => self.ug.fresh(),
-                    Some(n) => n,
-                };
+                let tm_meta_var = self.ug.fresh();
                 let tele = gamma_to_tele(&self.gamma);
                 let spine = Term::tele_to_spine(&tele);
                 self.sigma.insert(
@@ -224,6 +225,10 @@ impl Elaborator {
                 );
                 (Box::new(Term::MetaRef(tm_meta_var, spine)), ty)
             }
+            RowHole(_, r) => (
+                Box::new(Term::MetaRef(r, Default::default())),
+                Box::new(Term::Row),
+            ),
             Pi(_, p, b) => {
                 let (param_ty, _) = self.infer(p.typ)?;
                 let param = Param {
@@ -272,7 +277,7 @@ impl Elaborator {
                     Box::new(Term::Tuple(a, b)),
                     Box::new(Term::Sigma(
                         Param {
-                            var: LocalVar::unbound(),
+                            var: Var::unbound(),
                             info: Explicit,
                             typ: a_ty,
                         },
