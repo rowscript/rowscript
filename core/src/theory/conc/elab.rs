@@ -341,11 +341,22 @@ impl Elaborator {
                 let r = self.check(r, &Box::new(Term::Row))?;
                 (Box::new(Term::Object(r)), Box::new(Term::Univ))
             }
-            Obj(_, r) => {
-                // FIXME: Fields labelled with values should be inferred into fields with types.
-                let r = self.check(r, &Box::new(Term::Row))?;
-                (Box::new(Term::Obj(r.clone())), Box::new(Term::Object(r)))
-            }
+            Obj(_, r) => match *r {
+                Fields(_, fields) => {
+                    let mut tm_fields = HashMap::default();
+                    let mut ty_fields = HashMap::default();
+                    for (n, e) in fields {
+                        let (tm, ty) = self.infer(Box::new(e))?;
+                        tm_fields.insert(n.clone(), *tm);
+                        ty_fields.insert(n, *ty);
+                    }
+                    (
+                        Box::new(Term::Obj(Box::new(Term::Fields(tm_fields)))),
+                        Box::new(Term::Object(Box::new(Term::Fields(ty_fields)))),
+                    )
+                }
+                _ => unreachable!(),
+            },
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
             Unit(_) => (Box::new(Term::Unit), Box::new(Term::Univ)),
