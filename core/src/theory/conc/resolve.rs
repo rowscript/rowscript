@@ -161,7 +161,7 @@ impl Resolver {
                 let vx = x.clone();
                 Lam(loc, x, self.bodied(&[&vx], b)?)
             }
-            App(loc, f, x) => App(loc, self.expr(f)?, self.expr(x)?),
+            App(loc, i, f, x) => App(loc, i, self.expr(f)?, self.expr(x)?),
             Sigma(loc, p, b) => {
                 let x = p.var.clone();
                 Sigma(loc, self.param(p)?, self.bodied(&[&x], b)?)

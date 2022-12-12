@@ -281,7 +281,9 @@ impl Translator {
                             _ => unreachable!(),
                         }
                     })
-                    .fold(f, |a, (loc, x)| App(loc, Box::new(a), Box::new(x)))
+                    .fold(f, |a, (loc, x)| {
+                        App(loc, Explicit, Box::new(a), Box::new(x))
+                    })
             }
             Rule::tt => TT(loc),
             Rule::labels => Obj(

@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::data::Dir;
-use crate::theory::{Loc, Param, Syntax, Var};
+use crate::theory::{Loc, Param, ParamInfo, Syntax, Var};
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -18,7 +18,7 @@ pub enum Expr {
     Pi(Loc, Param<Self>, Box<Self>),
     TupledLam(Loc, Vec<Self>, Box<Self>),
     Lam(Loc, Var, Box<Self>),
-    App(Loc, Box<Self>, Box<Self>),
+    App(Loc, ParamInfo, Box<Self>, Box<Self>),
 
     Sigma(Loc, Param<Self>, Box<Self>),
     Tuple(Loc, Box<Self>, Box<Self>),
@@ -69,7 +69,7 @@ impl Expr {
             Pi(loc, _, _) => loc,
             TupledLam(loc, _, _) => loc,
             Lam(loc, _, _) => loc,
-            App(loc, _, _) => loc,
+            App(loc, _, _, _) => loc,
             Sigma(loc, _, _) => loc,
             Tuple(loc, _, _) => loc,
             TupleLet(loc, _, _, _, _) => loc,
@@ -105,6 +105,8 @@ impl Syntax for Expr {}
 impl Display for Expr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         use Expr::*;
+        use ParamInfo::*;
+
         f.write_str(
             match self {
                 Unresolved(_, r) => r.to_string(),
@@ -128,7 +130,10 @@ impl Display for Expr {
                         .join(", ")
                 ),
                 Lam(_, v, b) => format!("{v} => {b}"),
-                App(_, f, x) => format!("({f}) ({x})"),
+                App(_, i, f, x) => match i {
+                    Explicit => format!("({f}) ({x})"),
+                    Implicit => format!("({f}) {{{x}}}"),
+                },
                 Sigma(_, p, b) => format!("{p} * {b}"),
                 Tuple(_, a, b) => format!("({a}, {b})"),
                 TupleLet(_, x, y, a, b) => format!("let ({x}, {y}) = {a}; {b}"),
