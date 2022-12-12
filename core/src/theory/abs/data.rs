@@ -15,8 +15,8 @@ pub enum Dir {
 impl Display for Dir {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            Dir::Le => "<=",
-            Dir::Ge => ">=",
+            Dir::Le => "<:",
+            Dir::Ge => ":>",
         })
     }
 }

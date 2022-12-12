@@ -31,6 +31,17 @@ impl Renamer {
             }
             UnitLet(a, b) => UnitLet(self.term(a), self.term(b)),
             If(p, t, e) => If(self.term(p), self.term(t), self.term(e)),
+            Fields(fields) => {
+                let mut renamed = HashMap::default();
+                for (f, tm) in fields {
+                    renamed.insert(f, *self.term(Box::new(tm)));
+                }
+                Fields(renamed)
+            }
+            RowOrd(a, d, b) => RowOrd(self.term(a), d, self.term(b)),
+            RowEq(a, b) => RowEq(self.term(a), self.term(b)),
+            Object(f) => Object(self.term(f)),
+            Obj(f) => Object(self.term(f)),
 
             Univ => Univ,
             Unit => Unit,
@@ -44,6 +55,9 @@ impl Renamer {
             Num(r, v) => Num(r, v),
             BigInt => BigInt,
             Big(v) => Big(v),
+            Row => Row,
+            RowSat => RowSat,
+            RowRefl => RowRefl,
 
             _ => unreachable!(),
         })

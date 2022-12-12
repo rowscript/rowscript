@@ -1,0 +1,7 @@
+function f<'A>(): {'A} where (n: number) <: 'A {
+    return {m: 42}
+}
+
+function g(): {n: number, m: string} {
+    return f()
+}

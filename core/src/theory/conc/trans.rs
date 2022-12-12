@@ -131,7 +131,7 @@ impl Translator {
                             )),
                         )
                     }
-                    Rule::object_type_literal => self.fields(p),
+                    Rule::object_type_literal => Object(loc, Box::new(self.fields(p))),
                     _ => unreachable!(),
                 }
             }
@@ -286,7 +286,7 @@ impl Translator {
             Rule::tt => TT(loc),
             Rule::labels => Obj(
                 loc,
-                p.into_inner().map(|l| self.label(l)).collect::<Vec<_>>(),
+                Box::new(Fields(loc, p.into_inner().map(|l| self.label(l)).collect())),
             ),
             Rule::idref => Self::unresolved(p),
             Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),

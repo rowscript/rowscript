@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::string;
 
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{gamma_to_tele, Body};
@@ -288,8 +287,8 @@ impl Elaborator {
             Fields(_, fields) => {
                 let mut inferred = HashMap::default();
                 for (f, e) in fields {
-                    let typ = self.check(Box::new(e), &Box::new(Term::Univ))?;
-                    inferred.insert(f, *typ);
+                    let (tm, _) = self.infer(Box::new(e))?;
+                    inferred.insert(f, *tm);
                 }
                 (Box::new(Term::Fields(inferred)), Box::new(Term::Row))
             }
@@ -312,18 +311,9 @@ impl Elaborator {
                 let r = self.check(r, &Box::new(Term::Row))?;
                 (Box::new(Term::Object(r)), Box::new(Term::Univ))
             }
-            Obj(_, fields) => {
-                let mut inferred_tm = HashMap::<string::String, Term>::default();
-                let mut inferred_ty = HashMap::<string::String, Term>::default();
-                for (f, e) in fields {
-                    let (tm, ty) = self.infer(Box::new(e))?;
-                    inferred_tm.insert(f.clone(), *tm);
-                    inferred_ty.insert(f, *ty);
-                }
-                (
-                    Box::new(Term::Obj(Box::new(Term::Fields(inferred_tm)))),
-                    Box::new(Term::Object(Box::new(Term::Fields(inferred_ty)))),
-                )
+            Obj(_, r) => {
+                let r = self.check(r, &Box::new(Term::Row))?;
+                (Box::new(Term::Obj(r.clone())), Box::new(Term::Object(r)))
             }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),

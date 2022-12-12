@@ -53,7 +53,7 @@ pub enum Expr {
     RowRefl(Loc),
 
     Object(Loc, Box<Self>),
-    Obj(Loc, Vec<(String, Self)>),
+    Obj(Loc, Box<Self>),
 }
 
 impl Expr {
@@ -160,14 +160,7 @@ impl Display for Expr {
                 RowEq(_, a, b) => format!("{a} = {b}"),
                 RowRefl(_) => "refl".to_string(),
                 Object(_, r) => format!("{{{r}}}"),
-                Obj(_, fields) => format!(
-                    "{{{}}}",
-                    fields
-                        .into_iter()
-                        .map(|(n, t)| format!("{n}: {t}"))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
+                Obj(_, r) => format!("{{{r}}}"),
             }
             .as_str(),
         )

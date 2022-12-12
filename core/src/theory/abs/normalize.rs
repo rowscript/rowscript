@@ -98,6 +98,8 @@ impl<'a> Normalizer<'a> {
                 }
                 Box::new(Fields(nf))
             }
+            RowOrd(a, d, b) => Box::new(RowOrd(self.term(a), d, self.term(b))),
+            RowEq(a, b) => Box::new(RowEq(self.term(a), self.term(b))),
             Object(r) => Box::new(Object(self.term(r))),
             Obj(a) => Box::new(Obj(self.term(a))),
 
@@ -114,6 +116,8 @@ impl<'a> Normalizer<'a> {
             BigInt => Box::new(BigInt),
             Big(v) => Box::new(Big(v)),
             Row => Box::new(Row),
+            RowSat => Box::new(RowSat),
+            RowRefl => Box::new(RowRefl),
 
             _ => unreachable!(),
         }

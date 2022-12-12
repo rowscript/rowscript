@@ -20,6 +20,7 @@ impl Resolver {
         if let Fun { local_holes, f: _ } = &d.body {
             for (_, v) in local_holes {
                 self.0.insert(v.to_string(), v.clone());
+                removable.push(v.clone());
             }
         }
 
