@@ -7,7 +7,7 @@ use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::Expr;
-use crate::theory::ParamInfo::Explicit;
+use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Param, Tele, Var, VarGen};
 use crate::Error;
 use crate::Error::{ExpectedPi, ExpectedSigma, NonUnifiable};
@@ -243,6 +243,34 @@ impl Elaborator {
                 let (f, f_ty) = self.infer(f)?;
                 match *f_ty {
                     Term::Pi(p, b) => {
+                        let (p, b, f) = match p.info {
+                            Implicit => {
+                                let name = self.ig.fresh();
+                                let tele = gamma_to_tele(&self.gamma);
+                                let spine = Term::tele_to_spine(&tele);
+                                self.sigma.insert(
+                                    name.clone(),
+                                    Def {
+                                        loc,
+                                        name: name.clone(),
+                                        tele,
+                                        ret: p.typ,
+                                        body: Meta(None),
+                                    },
+                                );
+                                let meta = Box::new(Term::MetaRef(name, spine));
+                                let f_ty =
+                                    Normalizer::new(&mut self.sigma).with(&[(&p.var, &meta)], b);
+                                let app = Box::new(Term::App(f, meta));
+                                let f = Normalizer::new(&mut self.sigma).term(app);
+
+                                match *f_ty {
+                                    Term::Pi(p, b) => (p, b, f),
+                                    _ => return Err(ExpectedPi(f, loc)),
+                                }
+                            }
+                            Explicit => (p, b, f),
+                        };
                         let x = self.guarded_check(
                             &[&Param {
                                 var: p.var.clone(),
@@ -332,7 +360,6 @@ impl Elaborator {
             BigInt(_) => (Box::new(Term::BigInt), Box::new(Term::Univ)),
             Big(_, v) => (Box::new(Term::Big(v)), Box::new(Term::BigInt)),
             Row(_) => (Box::new(Term::Row), Box::new(Term::Univ)),
-
             _ => unreachable!(),
         })
     }

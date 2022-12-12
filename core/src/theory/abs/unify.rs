@@ -51,7 +51,21 @@ impl<'a> Unifier<'a> {
             }
             (UnitLet(a, b), UnitLet(x, y)) => self.unify(a, x) && self.unify(b, y),
             (If(a, b, c), If(x, y, z)) => self.unify(a, x) && self.unify(b, y) && self.unify(c, z),
-            (Fields(a), Fields(b)) => todo!(),
+            (Fields(a), Fields(b)) => {
+                if a.len() != b.len() {
+                    return false;
+                }
+                for (n, x) in a {
+                    if let Some(y) = b.get(n) {
+                        if !self.unify(x, y) {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+                true
+            }
             (Object(a), Object(b)) => self.unify(a, b),
             (Obj(a), Obj(b)) => self.unify(a, b),
 
