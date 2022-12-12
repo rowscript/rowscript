@@ -328,11 +328,13 @@ impl Elaborator {
             RowOrd(_, a, d, b) => {
                 let a = self.check(a, &Box::new(Term::Row))?;
                 let b = self.check(b, &Box::new(Term::Row))?;
+                // TODO: Containment check here?
                 (Box::new(Term::RowOrd(a, d, b)), Box::new(Term::Univ))
             }
             RowEq(_, a, b) => {
                 let a = self.check(a, &Box::new(Term::Row))?;
                 let b = self.check(b, &Box::new(Term::Row))?;
+                // TODO: Equivalence check here?
                 (Box::new(Term::RowEq(a, b)), Box::new(Term::Univ))
             }
             Object(_, r) => {
@@ -340,6 +342,7 @@ impl Elaborator {
                 (Box::new(Term::Object(r)), Box::new(Term::Univ))
             }
             Obj(_, r) => {
+                // FIXME: Fields labelled with values should be inferred into fields with types.
                 let r = self.check(r, &Box::new(Term::Row))?;
                 (Box::new(Term::Obj(r.clone())), Box::new(Term::Object(r)))
             }
