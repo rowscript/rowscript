@@ -36,6 +36,16 @@ impl Elaborator {
     fn def(&mut self, d: Def<Expr>) -> Result<Def<Term>, Error> {
         use Body::*;
 
+        if let Fun { local_holes, f } = &d.body {
+            for (_, hole) in local_holes {
+                let loc = f.loc();
+                self.sigma.insert(
+                    hole.clone(),
+                    Def::new_constant_constraint(loc, hole.clone(), Box::new(Term::Row)),
+                );
+            }
+        }
+
         let mut checked: Vec<Var> = Default::default();
         let mut tele: Tele<Term> = Default::default();
         for p in d.tele {
@@ -57,19 +67,10 @@ impl Elaborator {
 
         let ret = self.check(d.ret, &Box::new(Term::Univ))?;
         let body = match d.body {
-            Fun { local_holes, f } => {
-                for (_, hole) in &local_holes {
-                    let loc = f.loc();
-                    self.sigma.insert(
-                        hole.clone(),
-                        Def::new_constant_constraint(loc, hole.clone(), Box::new(Term::Row)),
-                    );
-                }
-                Fun {
-                    local_holes,
-                    f: self.check(f, &ret)?,
-                }
-            }
+            Fun { local_holes, f } => Fun {
+                local_holes,
+                f: self.check(f, &ret)?,
+            },
             Postulate => Postulate,
             _ => unreachable!(),
         };

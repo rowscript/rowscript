@@ -41,7 +41,11 @@ impl<'a> Normalizer<'a> {
                             }
                             self.term(ret)
                         } else {
-                            Box::new(MetaRef(x, sp))
+                            Box::new(match &*def.ret {
+                                RowEq(_, _) => RowRefl,
+                                RowOrd(_, _, _) => RowSat,
+                                _ => MetaRef(x, sp),
+                            })
                         }
                     }
                     _ => unreachable!(),
