@@ -49,14 +49,19 @@ impl<'a> Normalizer<'a> {
             }
             Let(p, a, b) => {
                 let a = self.term(a);
-                self.with(&[(&p.var, &a)], b)
+                match &*a {
+                    MetaRef(_, _) => Box::new(Let(p, a, b)),
+                    _ => self.with(&[(&p.var, &a)], b),
+                }
             }
             Pi(p, b) => Box::new(Pi(self.param(p), self.term(b))),
             Lam(p, b) => Box::new(Lam(self.param(p), self.term(b))),
             App(f, x) => {
                 let f = self.term(f);
                 let x = self.term(x);
-                if let Lam(p, b) = *f {
+                if let MetaRef(_, _) = &*x {
+                    Box::new(App(f, x))
+                } else if let Lam(p, b) = *f {
                     self.rho.insert(p.var, x);
                     self.term(b)
                 } else {
@@ -67,7 +72,9 @@ impl<'a> Normalizer<'a> {
             Tuple(a, b) => Box::new(Tuple(self.term(a), self.term(b))),
             TupleLet(p, q, a, b) => {
                 let a = self.term(a);
-                if let Tuple(x, y) = *a {
+                if let MetaRef(_, _) = &*a {
+                    Box::new(TupleLet(p, q, a, b))
+                } else if let Tuple(x, y) = *a {
                     self.rho.insert(p.var, x);
                     self.rho.insert(q.var, y);
                     self.term(b)
@@ -77,7 +84,9 @@ impl<'a> Normalizer<'a> {
             }
             UnitLet(a, b) => {
                 let a = self.term(a);
-                if let TT = *a {
+                if let MetaRef(_, _) = &*a {
+                    Box::new(UnitLet(a, b))
+                } else if let TT = *a {
                     self.term(b)
                 } else {
                     Box::new(UnitLet(a, b))
@@ -88,7 +97,7 @@ impl<'a> Normalizer<'a> {
                 match *p {
                     True => self.term(t),
                     False => self.term(e),
-                    _ => unreachable!(),
+                    _ => Box::new(If(p, t, e)),
                 }
             }
             Fields(fields) => {
