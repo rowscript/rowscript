@@ -146,7 +146,9 @@ impl Display for Term {
                 ),
                 Combine(a, b) => format!("{a} + {b}"),
                 RowOrd(a, d, b) => format!("{a} {d} {b}"),
+                RowSat => "sat".to_string(),
                 RowEq(a, b) => format!("{a} = {b}"),
+                RowRefl => "refl".to_string(),
                 Object(r) => format!("{{{r}}}"),
                 Obj(r) => format!("{{{r}}}"),
 

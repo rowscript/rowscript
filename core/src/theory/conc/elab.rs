@@ -36,6 +36,7 @@ impl Elaborator {
     fn def(&mut self, d: Def<Expr>) -> Result<Def<Term>, Error> {
         use Body::*;
 
+        // FIXME: Local holes seem wrong, the original function should be generic, not concretely solved.
         if let Fun { local_holes, f } = &d.body {
             for (_, hole) in local_holes {
                 let loc = f.loc();
@@ -281,6 +282,7 @@ impl Elaborator {
                             x,
                             &p.typ,
                         )?;
+                        // dbg!(&f, &x);
                         let applied = Normalizer::new(&mut self.sigma).apply(f, &[&x]);
                         let applied_ty = Normalizer::new(&mut self.sigma).with(&[(&p.var, &x)], b);
                         (applied, applied_ty)
@@ -330,12 +332,14 @@ impl Elaborator {
                 let a = self.check(a, &Box::new(Term::Row))?;
                 let b = self.check(b, &Box::new(Term::Row))?;
                 // TODO: Containment check here?
+                dbg!(&self.sigma, &a, &d, &b);
                 (Box::new(Term::RowOrd(a, d, b)), Box::new(Term::Univ))
             }
             RowEq(_, a, b) => {
                 let a = self.check(a, &Box::new(Term::Row))?;
                 let b = self.check(b, &Box::new(Term::Row))?;
                 // TODO: Equivalence check here?
+                // dbg!(&self.sigma, &a, &b);
                 (Box::new(Term::RowEq(a, b)), Box::new(Term::Univ))
             }
             Object(_, r) => {

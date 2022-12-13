@@ -21,7 +21,9 @@ impl<'a> Normalizer<'a> {
     }
 
     pub fn term(&mut self, tm: Box<Term>) -> Box<Term> {
+        use Body::*;
         use Term::*;
+
         match *tm {
             Ref(ref x) => {
                 if let Some(y) = self.rho.get(&x) {
@@ -31,9 +33,10 @@ impl<'a> Normalizer<'a> {
                 }
             }
             MetaRef(x, sp) => {
-                let def = self.sigma.get_mut(&x).unwrap();
-                match &def.body {
-                    Body::Meta(s) => {
+                let mut def = self.sigma.get(&x).unwrap().clone();
+                def.ret = self.term(def.ret);
+                let ret = match &def.body {
+                    Meta(s) => {
                         if let Some(solved) = s {
                             let mut ret = rename(Term::lam(&def.tele, Box::new(solved.clone())));
                             for (_, x) in sp {
@@ -41,15 +44,19 @@ impl<'a> Normalizer<'a> {
                             }
                             self.term(ret)
                         } else {
-                            Box::new(match &*def.ret {
-                                RowEq(_, _) => RowRefl,
-                                RowOrd(_, _, _) => RowSat,
-                                _ => MetaRef(x, sp),
-                            })
+                            Box::new(Self::auto_implicit(&*def.ret).map_or_else(
+                                || MetaRef(x.clone(), sp),
+                                |tm| {
+                                    def.body = Meta(Some(tm.clone()));
+                                    tm
+                                },
+                            ))
                         }
                     }
                     _ => unreachable!(),
-                }
+                };
+                self.sigma.insert(x, def);
+                ret
             }
             Let(p, a, b) => {
                 let a = self.term(a);
@@ -163,6 +170,15 @@ impl<'a> Normalizer<'a> {
             var: p.var,
             info: p.info,
             typ: self.term(p.typ),
+        }
+    }
+
+    fn auto_implicit(tm: &Term) -> Option<Term> {
+        use Term::*;
+        match tm {
+            RowEq(_, _) => Some(RowRefl),
+            RowOrd(_, _, _) => Some(RowSat),
+            _ => None,
         }
     }
 }

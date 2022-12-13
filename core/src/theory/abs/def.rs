@@ -20,7 +20,7 @@ pub fn gamma_to_tele(g: &Gamma) -> Tele<Term> {
         .collect()
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Def<T: Syntax> {
     pub loc: Loc,
     pub name: Var,
@@ -88,7 +88,7 @@ impl<T: Syntax> Display for Def<T> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Body<T: Syntax> {
     Fun {
         local_holes: HashMap<String, Var>,
