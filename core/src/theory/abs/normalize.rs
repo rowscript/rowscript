@@ -118,7 +118,9 @@ impl<'a> Normalizer<'a> {
                 }
                 Box::new(Fields(nf))
             }
+            // TODO: Satisfiability check here?
             RowOrd(a, d, b) => Box::new(RowOrd(self.term(a), d, self.term(b))),
+            // TODO: Equivalence check here?
             RowEq(a, b) => Box::new(RowEq(self.term(a), self.term(b))),
             Object(r) => Box::new(Object(self.term(r))),
             Obj(a) => Box::new(Obj(self.term(a))),

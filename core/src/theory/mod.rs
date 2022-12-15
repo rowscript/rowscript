@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
@@ -38,9 +38,7 @@ impl<'a> From<Span<'a>> for Loc {
 }
 
 type Name = Rc<String>;
-
 pub type RawNameSet = HashSet<String>;
-pub type VarMap = HashMap<String, Var>;
 
 #[derive(Clone, Eq)]
 pub struct Var {
@@ -64,10 +62,6 @@ impl Var {
 
     pub fn untupled_right(&self) -> Self {
         Self::new(format!("_untupled_{}", self.name))
-    }
-
-    pub fn local_hole(name: Self, hole: &str) -> Self {
-        Self::new(format!("?{name}{hole}"))
     }
 
     pub fn id(&self) -> usize {

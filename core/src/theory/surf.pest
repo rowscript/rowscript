@@ -8,6 +8,7 @@ pub_camel_id = @{ ASCII_ALPHA_UPPER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
 priv_camel_id = @{ "_" ~ pub_camel_id }
 
 fn_id = { pub_camelback_id | priv_camelback_id }
+row_id = @{ "'" ~ pub_camel_id }
 implicit_id = { pub_camel_id }
 field_id = { pub_camelback_id | priv_camelback_id }
 param_id = { pub_camelback_id }
@@ -20,7 +21,6 @@ idref =
   }
 
 hole = { "?" }
-row_hole = @{ "'" ~ pub_camel_id }
 
 string = @{ "\"" ~ (unescaped_string_fragment | escaped_string_fragment)* ~ "\"" }
 unescaped_string_fragment = @{ (!("\"" | "\\") ~ ANY)+ }
@@ -55,7 +55,7 @@ exponent_part = @{ ("e" | "E")? ~ ("-" | "+")? ~ decimal_digits }
 decimal_integer = @{ "0" | "0"? ~ ASCII_NONZERO_DIGIT ~ ("_"? ~ decimal_digits)? }
 
 implicit_ids = _{ implicit_id ~ ("," ~ implicit_id)* }
-row_ids = _{ row_hole ~ ("," ~ row_hole)* }
+row_ids = _{ row_id ~ ("," ~ row_id)* }
 implicits =
  _{ "<" ~ implicit_ids ~ ">"
   | "<" ~ row_ids ~ ">"
@@ -79,7 +79,7 @@ type_expr =
   | idref
   | paren_type_expr
   | hole
-  | row_hole
+  | row_id
   }
 paren_type_expr = { "(" ~ type_expr ~ ")" }
 fn_type = { params ~ "->" ~ type_expr }
@@ -89,7 +89,7 @@ bigint_type = { "bigint" }
 boolean_type = { "boolean" }
 unit_type = { "unit" }
 object_type = { object_ref | object_type_literal }
-object_ref = { "{" ~ row_hole ~ "}" }
+object_ref = { "{" ~ row_id ~ "}" }
 object_type_literal = { "{" ~ field ~ ("," ~ field)* ~ "}" }
 
 expr =
@@ -139,7 +139,7 @@ row_expr =
   | row_primary_expr
   }
 row_primary_expr =
-  { row_hole
+  { row_id
   | paren_fields
   | paren_row_expr
   }

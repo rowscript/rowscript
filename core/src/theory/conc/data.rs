@@ -9,7 +9,6 @@ pub enum Expr {
     Resolved(Loc, Var),
 
     Hole(Loc),
-    RowHole(Loc, Var),
 
     Let(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
 
@@ -63,7 +62,6 @@ impl Expr {
             Unresolved(loc, _) => loc,
             Resolved(loc, _) => loc,
             Hole(loc) => loc,
-            RowHole(loc, _) => loc,
             Let(loc, _, _, _, _) => loc,
             Univ(loc) => loc,
             Pi(loc, _, _) => loc,
@@ -112,7 +110,6 @@ impl Display for Expr {
                 Unresolved(_, r) => r.to_string(),
                 Resolved(_, r) => r.to_string(),
                 Hole(_) => "?".to_string(),
-                RowHole(_, r) => r.to_string(),
                 Let(_, v, typ, a, b) => {
                     if let Some(ty) = typ {
                         format!("let {v}: {ty} = {a}; {b}")

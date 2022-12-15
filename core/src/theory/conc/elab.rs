@@ -36,17 +36,6 @@ impl Elaborator {
     fn def(&mut self, d: Def<Expr>) -> Result<Def<Term>, Error> {
         use Body::*;
 
-        // FIXME: Local holes seem wrong, the original function should be generic, not concretely solved.
-        if let Fun { local_holes, f } = &d.body {
-            for (_, hole) in local_holes {
-                let loc = f.loc();
-                self.sigma.insert(
-                    hole.clone(),
-                    Def::new_constant_constraint(loc, hole.clone(), Box::new(Term::Row)),
-                );
-            }
-        }
-
         let mut checked: Vec<Var> = Default::default();
         let mut tele: Tele<Term> = Default::default();
         for p in d.tele {
@@ -68,10 +57,7 @@ impl Elaborator {
 
         let ret = self.check(d.ret, &Box::new(Term::Univ))?;
         let body = match d.body {
-            Fun { local_holes, f } => Fun {
-                local_holes,
-                f: self.check(f, &ret)?,
-            },
+            Fun(f) => Fun(self.check(f, &ret)?),
             Postulate => Postulate,
             _ => unreachable!(),
         };
@@ -194,7 +180,7 @@ impl Elaborator {
                 } else {
                     let d = self.sigma.get(&v).unwrap();
                     match &d.body {
-                        Fun { local_holes: _, f } => (
+                        Fun(f) => (
                             rename(Term::lam(&d.tele, f.clone())),
                             Term::pi(&d.tele, d.ret.clone()),
                         ),
@@ -226,10 +212,6 @@ impl Elaborator {
                 );
                 (Box::new(Term::MetaRef(tm_meta_var, spine)), ty)
             }
-            RowHole(_, r) => (
-                Box::new(Term::MetaRef(r, Default::default())),
-                Box::new(Term::Row),
-            ),
             Pi(_, p, b) => {
                 let (param_ty, _) = self.infer(p.typ)?;
                 let param = Param {
@@ -331,15 +313,11 @@ impl Elaborator {
             RowOrd(_, a, d, b) => {
                 let a = self.check(a, &Box::new(Term::Row))?;
                 let b = self.check(b, &Box::new(Term::Row))?;
-                // TODO: Containment check here?
-                dbg!(&self.sigma, &a, &d, &b);
                 (Box::new(Term::RowOrd(a, d, b)), Box::new(Term::Univ))
             }
             RowEq(_, a, b) => {
                 let a = self.check(a, &Box::new(Term::Row))?;
                 let b = self.check(b, &Box::new(Term::Row))?;
-                // TODO: Equivalence check here?
-                // dbg!(&self.sigma, &a, &b);
                 (Box::new(Term::RowEq(a, b)), Box::new(Term::Univ))
             }
             Object(_, r) => {

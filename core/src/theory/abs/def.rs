@@ -46,21 +46,9 @@ impl<T: Syntax> Display for Def<T> {
         use Body::*;
         f.write_str(
             match &self.body {
-                Fun { local_holes, f } => format!(
-                    "function {} {}{}: {} {{\n\t{}\n}}",
+                Fun(f) => format!(
+                    "function {} {}: {} {{\n\t{}\n}}",
                     self.name,
-                    if !local_holes.is_empty() {
-                        format!(
-                            "<{}> ",
-                            local_holes
-                                .into_iter()
-                                .map(|(h, _)| h.clone())
-                                .collect::<Vec<_>>()
-                                .join(", ")
-                        )
-                    } else {
-                        "".to_string()
-                    },
                     Param::tele_to_string(&self.tele),
                     self.ret,
                     f
@@ -90,10 +78,7 @@ impl<T: Syntax> Display for Def<T> {
 
 #[derive(Clone, Debug)]
 pub enum Body<T: Syntax> {
-    Fun {
-        local_holes: HashMap<String, Var>,
-        f: Box<T>,
-    },
+    Fun(Box<T>),
     Postulate,
     Meta(Option<T>),
 }

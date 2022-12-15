@@ -12,17 +12,8 @@ pub struct Resolver(HashMap<String, Var>);
 
 impl Resolver {
     pub fn def(&mut self, mut d: Def<Expr>) -> Result<Def<Expr>, Error> {
-        use Body::*;
-
         let mut recoverable: Vec<Var> = Default::default();
         let mut removable: Vec<Var> = Default::default();
-
-        if let Fun { local_holes, f: _ } = &d.body {
-            for (_, v) in local_holes {
-                self.0.insert(v.to_string(), v.clone());
-                removable.push(v.clone());
-            }
-        }
 
         let mut tele: Tele<Expr> = Default::default();
         for p in d.tele {
@@ -62,10 +53,7 @@ impl Resolver {
             tele: d.tele,
             ret: self.expr(d.ret)?,
             body: match d.body {
-                Fun { local_holes, f } => Fun {
-                    local_holes,
-                    f: self.expr(f)?,
-                },
+                Fun(f) => Fun(self.expr(f)?),
                 Postulate => Postulate,
                 _ => unreachable!(),
             },
@@ -111,7 +99,6 @@ impl Resolver {
                     return Err(UnresolvedVar(loc));
                 }
             }
-            RowHole(loc, r) => RowHole(loc, self.0.get(&*r.name).unwrap().clone()),
             Let(loc, x, typ, a, b) => {
                 let vx = x.clone();
                 Let(
