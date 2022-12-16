@@ -38,6 +38,7 @@ impl Renamer {
                 }
                 Fields(renamed)
             }
+            Combine(a, b) => Combine(self.term(a), self.term(b)),
             RowOrd(a, d, b) => RowOrd(self.term(a), d, self.term(b)),
             RowEq(a, b) => RowEq(self.term(a), self.term(b)),
             Object(f) => Object(self.term(f)),

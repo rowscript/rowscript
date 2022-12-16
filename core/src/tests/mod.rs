@@ -9,7 +9,7 @@ mod ok_bool;
 mod ok_fn;
 mod ok_hole;
 mod ok_postulate;
-mod ok_rowpoly_aedt;
+mod ok_rowpoly;
 
 fn check_helper(mod_path: &str) -> Result<(), Error> {
     let mut pkg = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
