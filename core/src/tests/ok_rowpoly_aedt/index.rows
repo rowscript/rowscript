@@ -5,12 +5,3 @@ where
     // TODO: Extract field `n` from `a` or `b`.
     return 42
 }
-
-function bar<'A, 'B, 'C>(a: {'A}, b: {'B}): {'C}
-where
-    'C = 'A + 'B,
-    (n: number) <: 'C
-{
-    // TODO: Assign field `n` to the return type.
-    return {m: 42}
-}
