@@ -4,6 +4,12 @@ use crate::theory::abs::data::Dir;
 use crate::theory::{Loc, Param, ParamInfo, Syntax, Var};
 
 #[derive(Debug, Clone)]
+pub enum AppInfo {
+    Unnamed(ParamInfo),
+    Named(Var),
+}
+
+#[derive(Debug, Clone)]
 pub enum Expr {
     Unresolved(Loc, Var),
     Resolved(Loc, Var),
@@ -17,7 +23,7 @@ pub enum Expr {
     Pi(Loc, Param<Self>, Box<Self>),
     TupledLam(Loc, Vec<Self>, Box<Self>),
     Lam(Loc, Var, Box<Self>),
-    App(Loc, ParamInfo, Box<Self>, Box<Self>),
+    App(Loc, Box<Self>, AppInfo, Box<Self>),
 
     Sigma(Loc, Param<Self>, Box<Self>),
     Tuple(Loc, Box<Self>, Box<Self>),
@@ -127,9 +133,12 @@ impl Display for Expr {
                         .join(", ")
                 ),
                 Lam(_, v, b) => format!("{v} => {b}"),
-                App(_, i, f, x) => match i {
-                    Explicit => format!("({f}) ({x})"),
-                    Implicit => format!("({f}) {{{x}}}"),
+                App(_, f, i, x) => match i {
+                    AppInfo::Unnamed(i) => match i {
+                        Explicit => format!("({f} {x})"),
+                        Implicit => format!("({f} {{{x}}})"),
+                    },
+                    AppInfo::Named(r) => format!("({f} {{{r} = {x}}}"),
                 },
                 Sigma(_, p, b) => format!("{p} * {b}"),
                 Tuple(_, a, b) => format!("({a}, {b})"),

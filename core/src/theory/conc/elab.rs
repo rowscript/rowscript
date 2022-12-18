@@ -222,7 +222,7 @@ impl Elaborator {
                 let (b, b_ty) = self.guarded_infer(&[&param], b)?;
                 (Box::new(Term::Pi(param, b)), b_ty)
             }
-            App(_, _, f, x) => {
+            App(_, f, _, x) => {
                 let loc = f.loc();
                 let (f, f_ty) = self.infer(f)?;
                 match *f_ty {

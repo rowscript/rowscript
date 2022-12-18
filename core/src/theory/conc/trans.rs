@@ -5,6 +5,7 @@ use pest::iterators::{Pair, Pairs};
 use crate::theory::abs::data::Dir;
 use crate::theory::abs::def::Body::{Fun, Postulate};
 use crate::theory::abs::def::Def;
+use crate::theory::conc::data::AppInfo::Unnamed;
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::ParamInfo::{Explicit, Implicit};
@@ -259,7 +260,7 @@ fn expr(e: Pair<Rule>) -> Expr {
                     }
                 })
                 .fold(f, |a, (loc, x)| {
-                    App(loc, Explicit, Box::new(a), Box::new(x))
+                    App(loc, Box::new(a), Unnamed(Explicit), Box::new(x))
                 })
         }
         Rule::tt => TT(loc),
