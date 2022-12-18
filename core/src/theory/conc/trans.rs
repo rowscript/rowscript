@@ -21,6 +21,7 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
 
     let mut tele = Tele::<Expr>::default();
     let mut untupled = UntupledParams::new(loc);
+    let mut row_preds = Tele::<Expr>::default();
     let mut ret = Box::new(Unit(loc));
     let mut body = None;
 
@@ -34,11 +35,12 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
                 body = Some(fn_body(p));
                 break;
             }
-            Rule::row_pred => tele.push(row_pred(p)),
+            Rule::row_pred => row_preds.push(row_pred(p)),
             _ => unreachable!(),
         }
     }
     tele.push(Param::from(untupled));
+    tele.extend(row_preds);
 
     Def {
         loc,
