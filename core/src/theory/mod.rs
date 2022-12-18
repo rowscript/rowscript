@@ -127,7 +127,7 @@ impl VarGen {
 
 pub trait Syntax: Display {}
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ParamInfo {
     Explicit,
     Implicit,

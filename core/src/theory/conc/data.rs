@@ -4,9 +4,10 @@ use crate::theory::abs::data::Dir;
 use crate::theory::{Loc, Param, ParamInfo, Syntax, Var};
 
 #[derive(Debug, Clone)]
-pub enum AppInfo {
-    Unnamed(ParamInfo),
-    Named(Var),
+pub enum ArgInfo {
+    UnnamedExplicit,
+    UnnamedImplicit,
+    NamedImplicit(Var),
 }
 
 #[derive(Debug, Clone)]
@@ -23,7 +24,7 @@ pub enum Expr {
     Pi(Loc, Param<Self>, Box<Self>),
     TupledLam(Loc, Vec<Self>, Box<Self>),
     Lam(Loc, Var, Box<Self>),
-    App(Loc, Box<Self>, AppInfo, Box<Self>),
+    App(Loc, Box<Self>, ArgInfo, Box<Self>),
 
     Sigma(Loc, Param<Self>, Box<Self>),
     Tuple(Loc, Box<Self>, Box<Self>),
@@ -108,6 +109,7 @@ impl Syntax for Expr {}
 
 impl Display for Expr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        use ArgInfo::*;
         use Expr::*;
         use ParamInfo::*;
 
@@ -134,11 +136,9 @@ impl Display for Expr {
                 ),
                 Lam(_, v, b) => format!("{v} => {b}"),
                 App(_, f, i, x) => match i {
-                    AppInfo::Unnamed(i) => match i {
-                        Explicit => format!("({f} {x})"),
-                        Implicit => format!("({f} {{{x}}})"),
-                    },
-                    AppInfo::Named(r) => format!("({f} {{{r} = {x}}}"),
+                    UnnamedExplicit => format!("({f} {x})"),
+                    UnnamedImplicit => format!("({f} {{{x}}})"),
+                    NamedImplicit(r) => format!("({f} {{{r} = {x}}}"),
                 },
                 Sigma(_, p, b) => format!("{p} * {b}"),
                 Tuple(_, a, b) => format!("({a}, {b})"),
