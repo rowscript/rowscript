@@ -57,8 +57,8 @@ decimal_integer = @{ "0" | "0"? ~ ASCII_NONZERO_DIGIT ~ ("_"? ~ decimal_digits)?
 implicit_ids = _{ implicit_id ~ ("," ~ implicit_id)* }
 row_ids = _{ row_id ~ ("," ~ row_id)* }
 implicits =
- _{ "<" ~ implicit_ids ~ ">"
-  | "<" ~ row_ids ~ ">"
+ _{ "<" ~ row_ids ~ ">"
+  | "<" ~ implicit_ids ~ ">"
   | "<" ~ row_ids ~ "," ~ implicit_ids ~ ">"
   }
 
@@ -119,8 +119,15 @@ branch_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" ~ branch
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
 lambda_params = _{ "()" | param_id | "(" ~ param_id ~ ("," ~ param_id)+ ~ ")" }
 lambda_body = { expr | fn_body_block }
-app = { ("(" ~ expr ~ ")" | idref) ~ type_args? ~ args+ }
-type_args = _{ "<" ~ type_expr ~ ("," ~ type_expr)* ~ ">" }
+app = { ("(" ~ expr ~ ")" | idref) ~ implicit_args? ~ args+ }
+implicit_args =
+ _{ "<" ~ row_args ~ ">"
+  | "<" ~ type_args ~ ">"
+  | "<" ~ row_args ~ "," ~ type_args ~ ">"
+  }
+type_args = _{ type_expr ~ ("," ~ type_expr)* }
+row_args = _{ row_arg ~ ("," ~ row_arg)* }
+row_arg = { (idref ~ "=")? ~ paren_fields }
 args = { "()" | "(" ~ expr ~ ("," ~ expr)* ~ ")" }
 tt = { "()" }
 labels = { "{" ~ label ~ ("," ~ label)* ~ "}" }
