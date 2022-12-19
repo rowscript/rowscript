@@ -7,6 +7,6 @@ where
 }
 
 function g() {
-    let n: number = f();
+    let n: number = f({m: 42}, {n: 69});
     return
 }

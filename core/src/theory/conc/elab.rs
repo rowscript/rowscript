@@ -6,8 +6,10 @@ use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
-use crate::theory::conc::data::Expr;
-use crate::theory::ParamInfo::Explicit;
+use crate::theory::conc::data::ArgInfo::{UnnamedExplicit, UnnamedImplicit};
+use crate::theory::conc::data::Expr::{App, InsertedHole};
+use crate::theory::conc::data::{ArgInfo, Expr};
+use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var, VarGen};
 use crate::Error;
 use crate::Error::{ExpectedPi, ExpectedSigma, NonUnifiable};
@@ -189,29 +191,8 @@ impl Elaborator {
                     }
                 }
             }
-            Hole(loc) => {
-                let ty_meta_var = self.ig.fresh();
-                self.sigma.insert(
-                    ty_meta_var.clone(),
-                    Def::new_constant_constraint(loc, ty_meta_var.clone(), Box::new(Term::Univ)),
-                );
-                let ty = Box::new(Term::MetaRef(ty_meta_var, Default::default()));
-
-                let tm_meta_var = self.ug.fresh();
-                let tele = gamma_to_tele(&self.gamma);
-                let spine = Term::tele_to_spine(&tele);
-                self.sigma.insert(
-                    tm_meta_var.clone(),
-                    Def {
-                        loc,
-                        name: tm_meta_var.clone(),
-                        tele,
-                        ret: ty.clone(),
-                        body: Meta(None),
-                    },
-                );
-                (Box::new(Term::MetaRef(tm_meta_var, spine)), ty)
-            }
+            Hole(loc) => self.insert_meta(loc, true),
+            InsertedHole(loc) => self.insert_meta(loc, false),
             Pi(_, p, b) => {
                 let (param_ty, _) = self.infer(p.typ)?;
                 let param = Param {
@@ -224,7 +205,11 @@ impl Elaborator {
             }
             App(_, f, i, x) => {
                 let loc = f.loc();
+                let f_e = f.clone();
                 let (f, f_ty) = self.infer(f)?;
+                if let Some(f_e) = Self::app_insert_hole(f_e, i, &*f_ty) {
+                    return self.infer(Box::new(App(loc, f_e, UnnamedExplicit, x)));
+                }
                 match *f_ty {
                     Term::Pi(p, b) => {
                         let x = self.guarded_check(
@@ -363,8 +348,49 @@ impl Elaborator {
         Ok(ret)
     }
 
-    fn implicit_app_meta(&mut self, loc: Loc, ty: Box<Term>) -> Box<Term> {
-        todo!()
+    fn insert_meta(&mut self, loc: Loc, is_user: bool) -> (Box<Term>, Box<Term>) {
+        use Body::*;
+
+        let ty_meta_var = self.ig.fresh();
+        self.sigma.insert(
+            ty_meta_var.clone(),
+            Def::new_constant_constraint(loc, ty_meta_var.clone(), Box::new(Term::Univ)),
+        );
+        let ty = Box::new(Term::MetaRef(ty_meta_var, Default::default()));
+
+        let tm_meta_var = if is_user {
+            self.ug.fresh()
+        } else {
+            self.ig.fresh()
+        };
+        let tele = gamma_to_tele(&self.gamma);
+        let spine = Term::tele_to_spine(&tele);
+        self.sigma.insert(
+            tm_meta_var.clone(),
+            Def {
+                loc,
+                name: tm_meta_var.clone(),
+                tele,
+                ret: ty.clone(),
+                body: Meta(None),
+            },
+        );
+        (Box::new(Term::MetaRef(tm_meta_var, spine)), ty)
+    }
+
+    fn app_insert_hole(f: Box<Expr>, arg_info: ArgInfo, f_ty: &Term) -> Option<Box<Expr>> {
+        match f_ty {
+            Term::Pi(p, _) if arg_info == UnnamedExplicit && p.info == Implicit => {
+                let loc = f.loc();
+                Some(Box::new(App(
+                    loc,
+                    f,
+                    UnnamedImplicit,
+                    Box::new(InsertedHole(loc)),
+                )))
+            }
+            _ => None,
+        }
     }
 }
 
