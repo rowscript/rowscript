@@ -47,6 +47,8 @@ pub enum Error {
 
     #[error("expected \"{0}\", found \"{1}\"")]
     NonUnifiable(Box<Term>, Box<Term>, Loc),
+    #[error("field(s) \"{0}\" not contained in \"{1}\"")]
+    NonRowSat(Box<Term>, Box<Term>, Loc),
 }
 
 const PARSER_FAILED: &str = "failed while parsing";
@@ -73,6 +75,7 @@ impl Error {
             ExpectedSigma(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             ExpectedObject(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             NonUnifiable(_, _, loc) => (loc.start..loc.end, UNIFIER_FAILED, Some(self.to_string())),
+            NonRowSat(_, _, loc) => (loc.start..loc.end, UNIFIER_FAILED, Some(self.to_string())),
         };
         let mut b = Report::build(ReportKind::Error, file.as_ref(), range.start)
             .with_message(title)

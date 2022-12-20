@@ -97,7 +97,7 @@ impl Elaborator {
                 Box::new(Term::Let(param, tm, body))
             }
             Lam(loc, var, body) => {
-                let pi = Normalizer::new(&mut self.sigma).term(ty.clone())?;
+                let pi = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
                 match *pi {
                     Term::Pi(ty_param, ty_body) => {
                         let param = Param {
@@ -105,7 +105,7 @@ impl Elaborator {
                             info: Explicit,
                             typ: ty_param.typ,
                         };
-                        let body_type = Normalizer::new(&mut self.sigma)
+                        let body_type = Normalizer::new(&mut self.sigma, loc)
                             .with(&[(&ty_param.var, &Box::new(Term::Ref(var)))], ty_body)?;
                         let checked_body = self.guarded_check(&[&param], body, &body_type)?;
                         Box::new(Term::Lam(param.clone(), checked_body))
@@ -114,11 +114,11 @@ impl Elaborator {
                 }
             }
             Tuple(loc, a, b) => {
-                let sig = Normalizer::new(&mut self.sigma).term(ty.clone())?;
+                let sig = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
                 match *sig {
                     Term::Sigma(ty_param, ty_body) => {
                         let a = self.check(a, &ty_param.typ)?;
-                        let body_type = Normalizer::new(&mut self.sigma)
+                        let body_type = Normalizer::new(&mut self.sigma, loc)
                             .with(&[(&ty_param.var, &a)], ty_body)?;
                         let b = self.check(b, &body_type)?;
                         Box::new(Term::Tuple(a, b))
@@ -128,7 +128,7 @@ impl Elaborator {
             }
             TupleLet(loc, x, y, a, b) => {
                 let (a, a_ty) = self.infer(a)?;
-                let sig = Normalizer::new(&mut self.sigma).term(a_ty)?;
+                let sig = Normalizer::new(&mut self.sigma, loc).term(a_ty)?;
                 match *sig {
                     Term::Sigma(ty_param, ty_body) => {
                         let x = Param {
@@ -165,10 +165,9 @@ impl Elaborator {
                     inferred_tm = new_tm;
                     inferred_ty = new_ty;
                 }
-                let inferred = Normalizer::new(&mut self.sigma).term(inferred_ty)?;
-                let expected = Normalizer::new(&mut self.sigma).term(ty.clone())?;
-                let mut u = Unifier::new(&mut self.sigma);
-                u.unify(loc, &expected, &inferred)?;
+                let inferred = Normalizer::new(&mut self.sigma, loc).term(inferred_ty)?;
+                let expected = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
+                Unifier::new(&mut self.sigma, loc).unify(&expected, &inferred)?;
                 inferred_tm
             }
         })
@@ -223,9 +222,9 @@ impl Elaborator {
                             x,
                             &p.typ,
                         )?;
-                        let applied = Normalizer::new(&mut self.sigma).apply(f, &[&x])?;
+                        let applied = Normalizer::new(&mut self.sigma, loc).apply(f, &[&x])?;
                         let applied_ty =
-                            Normalizer::new(&mut self.sigma).with(&[(&p.var, &x)], b)?;
+                            Normalizer::new(&mut self.sigma, loc).with(&[(&p.var, &x)], b)?;
                         (applied, applied_ty)
                     }
                     _ => return Err(ExpectedPi(f, loc)),

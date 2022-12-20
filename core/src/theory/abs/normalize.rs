@@ -1,20 +1,23 @@
 use crate::theory::abs::data::Term::{App, Lam};
-use crate::theory::abs::data::{FieldMap, Term};
+use crate::theory::abs::data::{Dir, FieldMap, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::rename::{rename, Renamer};
-use crate::theory::{Param, Var};
+use crate::theory::abs::unify::Unifier;
+use crate::theory::{Loc, Param, Var};
 use crate::Error;
 
 pub struct Normalizer<'a> {
     sigma: &'a mut Sigma,
     rho: Rho,
+    loc: Loc,
 }
 
 impl<'a> Normalizer<'a> {
-    pub fn new(sigma: &'a mut Sigma) -> Self {
+    pub fn new(sigma: &'a mut Sigma, loc: Loc) -> Self {
         Self {
             sigma,
             rho: Default::default(),
+            loc,
         }
     }
 
@@ -136,8 +139,13 @@ impl<'a> Normalizer<'a> {
             RowOrd(a, d, b) => {
                 let a = self.term(a)?;
                 let b = self.term(b)?;
-                // FIXME: Ordering check here.
-                dbg!(&a, &b);
+                if let (Fields(_), Fields(_)) = (&*a, &*b) {
+                    let mut u = Unifier::new(&mut self.sigma, self.loc);
+                    match d {
+                        Dir::Le => u.unify_fields_ord(&*a, &*b)?,
+                        Dir::Ge => u.unify_fields_ord(&*b, &*a)?,
+                    };
+                }
                 Box::new(RowOrd(a, d, b))
             }
             RowEq(a, b) => {
