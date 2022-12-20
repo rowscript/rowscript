@@ -66,6 +66,7 @@ pub enum Expr {
 impl Expr {
     pub fn loc(&self) -> Loc {
         use Expr::*;
+
         match self {
             Unresolved(loc, _) => loc,
             Resolved(loc, _) => loc,
@@ -104,6 +105,36 @@ impl Expr {
             Obj(loc, _) => loc,
         }
         .clone()
+    }
+
+    pub fn wrap_tuple_lets(x: &Var, vars: Vec<Self>, b: Box<Self>) -> Box<Self> {
+        use Expr::*;
+
+        let mut untupled_vars: Vec<Expr> = vec![Unresolved(b.loc(), x.clone())];
+        for x in vars.iter() {
+            untupled_vars.push(match x {
+                Unresolved(l, r) => Unresolved(l.clone(), r.untupled_right()),
+                _ => unreachable!(),
+            });
+        }
+
+        let mut wrapped = b;
+        for (i, v) in vars.into_iter().rev().enumerate() {
+            let (loc, lhs, rhs) = match (v, untupled_vars.get(i + 1).unwrap()) {
+                (Unresolved(loc, lhs), Unresolved(_, rhs)) => (loc, lhs, rhs),
+                _ => unreachable!(),
+            };
+            let tm = untupled_vars.get(i).unwrap();
+            wrapped = Box::new(TupleLet(
+                loc,
+                lhs,
+                rhs.clone(),
+                Box::new(tm.clone()),
+                wrapped,
+            ));
+        }
+
+        wrapped
     }
 }
 

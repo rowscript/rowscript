@@ -119,31 +119,10 @@ impl Resolver {
                 Pi(loc, self.param(p)?, self.bodied(&[&x], b)?)
             }
             TupledLam(loc, vars, b) => {
-                let untupled = Var::tupled();
-                let mut untupled_vars: Vec<Expr> = vec![Unresolved(loc, untupled.clone())];
-                for x in vars.iter() {
-                    untupled_vars.push(match x {
-                        Unresolved(l, r) => Unresolved(l.clone(), r.untupled_right()),
-                        _ => unreachable!(),
-                    });
-                }
-                let mut desugared_body = b;
-                for (i, v) in vars.into_iter().rev().enumerate() {
-                    let (loc, lhs, rhs) = match (v, untupled_vars.get(i + 1).unwrap()) {
-                        (Unresolved(loc, lhs), Unresolved(_, rhs)) => (loc, lhs, rhs),
-                        _ => unreachable!(),
-                    };
-                    let tm = untupled_vars.get(i).unwrap();
-                    desugared_body = Box::new(TupleLet(
-                        loc,
-                        lhs,
-                        rhs.clone(),
-                        Box::new(tm.clone()),
-                        desugared_body,
-                    ));
-                }
-                let desugared = Box::new(Lam(loc, Var::tupled(), desugared_body));
-                *self.bodied(&[&untupled], desugared)?
+                let x = Var::tupled();
+                let wrapped = Expr::wrap_tuple_lets(&x, vars, b);
+                let desugared = Box::new(Lam(loc, Var::tupled(), wrapped));
+                *self.bodied(&[&x], desugared)?
             }
             Lam(loc, x, b) => {
                 let vx = x.clone();
