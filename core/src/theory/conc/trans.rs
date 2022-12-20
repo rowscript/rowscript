@@ -40,7 +40,14 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
             _ => unreachable!(),
         }
     }
-    tele.push(Param::from(untupled));
+    let untupled_vars = untupled.unresolved();
+    let tupled_param = Param::from(untupled);
+    let body = Fun(Expr::wrap_tuple_lets(
+        &tupled_param.var,
+        untupled_vars,
+        Box::new(body.unwrap()),
+    ));
+    tele.push(tupled_param);
     tele.extend(row_preds);
 
     Def {
@@ -48,7 +55,7 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
         name,
         tele,
         ret,
-        body: Fun(Box::new(body.unwrap())),
+        body,
     }
 }
 
@@ -401,6 +408,13 @@ impl UntupledParams {
 
     fn push(&mut self, loc: Loc, param: Param<Expr>) {
         self.1.push((loc, param))
+    }
+
+    fn unresolved(&self) -> Vec<Expr> {
+        self.1
+            .iter()
+            .map(|(loc, p)| Unresolved(*loc, p.var.clone()))
+            .collect()
     }
 }
 

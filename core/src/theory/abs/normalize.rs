@@ -151,8 +151,9 @@ impl<'a> Normalizer<'a> {
             RowEq(a, b) => {
                 let a = self.term(a)?;
                 let b = self.term(b)?;
-                // FIXME: Equality check here.
-                dbg!(&a, &b);
+                if let (Fields(_), Fields(_)) = (&*a, &*b) {
+                    Unifier::new(&mut self.sigma, self.loc).unify_fields_eq(&*a, &*b)?;
+                }
                 Box::new(RowEq(a, b))
             }
             Object(r) => Box::new(Object(self.term(r)?)),
