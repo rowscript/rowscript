@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use crate::theory::abs::data::Term;
+use crate::theory::abs::data::{FieldMap, Term};
 use crate::theory::abs::def::{gamma_to_tele, Body};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
@@ -12,7 +10,7 @@ use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var, VarGen};
 use crate::Error;
-use crate::Error::{ExpectedPi, ExpectedSigma, NonUnifiable};
+use crate::Error::{ExpectedPi, ExpectedSigma};
 
 #[derive(Debug)]
 pub struct Elaborator {
@@ -99,7 +97,7 @@ impl Elaborator {
                 Box::new(Term::Let(param, tm, body))
             }
             Lam(loc, var, body) => {
-                let pi = Normalizer::new(&mut self.sigma).term(ty.clone());
+                let pi = Normalizer::new(&mut self.sigma).term(ty.clone())?;
                 match *pi {
                     Term::Pi(ty_param, ty_body) => {
                         let param = Param {
@@ -108,7 +106,7 @@ impl Elaborator {
                             typ: ty_param.typ,
                         };
                         let body_type = Normalizer::new(&mut self.sigma)
-                            .with(&[(&ty_param.var, &Box::new(Term::Ref(var)))], ty_body);
+                            .with(&[(&ty_param.var, &Box::new(Term::Ref(var)))], ty_body)?;
                         let checked_body = self.guarded_check(&[&param], body, &body_type)?;
                         Box::new(Term::Lam(param.clone(), checked_body))
                     }
@@ -116,12 +114,12 @@ impl Elaborator {
                 }
             }
             Tuple(loc, a, b) => {
-                let sig = Normalizer::new(&mut self.sigma).term(ty.clone());
+                let sig = Normalizer::new(&mut self.sigma).term(ty.clone())?;
                 match *sig {
                     Term::Sigma(ty_param, ty_body) => {
                         let a = self.check(a, &ty_param.typ)?;
-                        let body_type =
-                            Normalizer::new(&mut self.sigma).with(&[(&ty_param.var, &a)], ty_body);
+                        let body_type = Normalizer::new(&mut self.sigma)
+                            .with(&[(&ty_param.var, &a)], ty_body)?;
                         let b = self.check(b, &body_type)?;
                         Box::new(Term::Tuple(a, b))
                     }
@@ -130,7 +128,7 @@ impl Elaborator {
             }
             TupleLet(loc, x, y, a, b) => {
                 let (a, a_ty) = self.infer(a)?;
-                let sig = Normalizer::new(&mut self.sigma).term(a_ty);
+                let sig = Normalizer::new(&mut self.sigma).term(a_ty)?;
                 match *sig {
                     Term::Sigma(ty_param, ty_body) => {
                         let x = Param {
@@ -167,12 +165,10 @@ impl Elaborator {
                     inferred_tm = new_tm;
                     inferred_ty = new_ty;
                 }
-                let inferred = Normalizer::new(&mut self.sigma).term(inferred_ty);
-                let expected = Normalizer::new(&mut self.sigma).term(ty.clone());
+                let inferred = Normalizer::new(&mut self.sigma).term(inferred_ty)?;
+                let expected = Normalizer::new(&mut self.sigma).term(ty.clone())?;
                 let mut u = Unifier::new(&mut self.sigma);
-                if !u.unify(&expected, &inferred) {
-                    return Err(NonUnifiable(expected, inferred, loc));
-                }
+                u.unify(loc, &expected, &inferred)?;
                 inferred_tm
             }
         })
@@ -227,8 +223,9 @@ impl Elaborator {
                             x,
                             &p.typ,
                         )?;
-                        let applied = Normalizer::new(&mut self.sigma).apply(f, &[&x]);
-                        let applied_ty = Normalizer::new(&mut self.sigma).with(&[(&p.var, &x)], b);
+                        let applied = Normalizer::new(&mut self.sigma).apply(f, &[&x])?;
+                        let applied_ty =
+                            Normalizer::new(&mut self.sigma).with(&[(&p.var, &x)], b)?;
                         (applied, applied_ty)
                     }
                     _ => return Err(ExpectedPi(f, loc)),
@@ -260,7 +257,7 @@ impl Elaborator {
                 )
             }
             Fields(_, fields) => {
-                let mut inferred = HashMap::default();
+                let mut inferred = FieldMap::default();
                 for (f, e) in fields {
                     let (tm, _) = self.infer(Box::new(e))?;
                     inferred.insert(f, *tm);
@@ -275,13 +272,11 @@ impl Elaborator {
             RowOrd(_, a, d, b) => {
                 let a = self.check(a, &Box::new(Term::Row))?;
                 let b = self.check(b, &Box::new(Term::Row))?;
-                // FIXME: Ordering check here.
                 (Box::new(Term::RowOrd(a, d, b)), Box::new(Term::Univ))
             }
             RowEq(_, a, b) => {
                 let a = self.check(a, &Box::new(Term::Row))?;
                 let b = self.check(b, &Box::new(Term::Row))?;
-                // FIXME: Equality check here.
                 (Box::new(Term::RowEq(a, b)), Box::new(Term::Univ))
             }
             Object(_, r) => {
@@ -290,8 +285,8 @@ impl Elaborator {
             }
             Obj(_, r) => match *r {
                 Fields(_, fields) => {
-                    let mut tm_fields = HashMap::default();
-                    let mut ty_fields = HashMap::default();
+                    let mut tm_fields = FieldMap::default();
+                    let mut ty_fields = FieldMap::default();
                     for (n, e) in fields {
                         let (tm, ty) = self.infer(Box::new(e))?;
                         tm_fields.insert(n.clone(), *tm);

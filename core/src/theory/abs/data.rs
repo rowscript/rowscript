@@ -21,6 +21,8 @@ impl Display for Dir {
     }
 }
 
+pub type FieldMap = HashMap<String, Term>;
+
 #[derive(Debug, Clone)]
 pub enum Term {
     Ref(Var),
@@ -57,7 +59,7 @@ pub enum Term {
     Big(String),
 
     Row,
-    Fields(HashMap<String, Self>),
+    Fields(FieldMap),
     Combine(Box<Self>, Box<Self>),
     Label(String, Box<Self>),
     Unlabel(Box<Self>, String),

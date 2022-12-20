@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::data::Dir;
-use crate::theory::{Loc, Param, ParamInfo, Syntax, Var};
+use crate::theory::{Loc, Param, Syntax, Var};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ArgInfo {
@@ -113,7 +113,6 @@ impl Display for Expr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         use ArgInfo::*;
         use Expr::*;
-        use ParamInfo::*;
 
         f.write_str(
             match self {

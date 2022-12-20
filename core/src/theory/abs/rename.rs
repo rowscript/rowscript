@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::theory::abs::data::Term;
+use crate::theory::abs::data::{FieldMap, Term};
 use crate::theory::{Param, Var};
 
 #[derive(Default)]
@@ -32,11 +32,11 @@ impl Renamer {
             UnitLet(a, b) => UnitLet(self.term(a), self.term(b)),
             If(p, t, e) => If(self.term(p), self.term(t), self.term(e)),
             Fields(fields) => {
-                let mut renamed = HashMap::default();
+                let mut m = FieldMap::default();
                 for (f, tm) in fields {
-                    renamed.insert(f, *self.term(Box::new(tm)));
+                    m.insert(f, *self.term(Box::new(tm)));
                 }
-                Fields(renamed)
+                Fields(m)
             }
             Combine(a, b) => Combine(self.term(a), self.term(b)),
             RowOrd(a, d, b) => RowOrd(self.term(a), d, self.term(b)),
