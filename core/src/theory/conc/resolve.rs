@@ -96,6 +96,7 @@ impl Resolver {
                 if let Some(v) = self.0.get(&*r.name) {
                     Resolved(loc, v.clone())
                 } else {
+                    dbg!(&self.0);
                     return Err(UnresolvedVar(loc));
                 }
             }

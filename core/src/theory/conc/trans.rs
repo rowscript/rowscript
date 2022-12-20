@@ -5,9 +5,9 @@ use pest::iterators::{Pair, Pairs};
 use crate::theory::abs::data::Dir;
 use crate::theory::abs::def::Body::{Fun, Postulate};
 use crate::theory::abs::def::Def;
-use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
-use crate::theory::conc::data::Expr;
+use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::data::Expr::Unresolved;
+use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var};
 use crate::Rule;
@@ -185,6 +185,19 @@ fn row_primary_expr(e: Pair<Rule>) -> Expr {
     }
 }
 
+fn row_arg(a: Pair<Rule>) -> (ArgInfo, Expr) {
+    let mut p = a.into_inner();
+    let id_or_fields = p.next().unwrap();
+    match id_or_fields.as_rule() {
+        Rule::paren_fields => (UnnamedImplicit, fields(id_or_fields)),
+        Rule::idref => (
+            NamedImplicit(Var::from(id_or_fields)),
+            fields(p.next().unwrap()),
+        ),
+        _ => unreachable!(),
+    }
+}
+
 fn fn_body(b: Pair<Rule>) -> Expr {
     use Expr::*;
 
@@ -254,14 +267,20 @@ fn expr(e: Pair<Rule>) -> Expr {
                 .map(|arg| {
                     let loc = Loc::from(arg.as_span());
                     match arg.as_rule() {
-                        Rule::type_expr => (loc, type_expr(arg)),
-                        Rule::args => (loc, tupled_args(loc, &mut arg.into_inner())),
+                        Rule::type_expr => (loc, UnnamedImplicit, type_expr(arg)),
+                        Rule::args => (
+                            loc,
+                            UnnamedExplicit,
+                            tupled_args(loc, &mut arg.into_inner()),
+                        ),
+                        Rule::row_arg => {
+                            let (i, e) = row_arg(arg);
+                            (loc, i, e)
+                        }
                         _ => unreachable!(),
                     }
                 })
-                .fold(f, |a, (loc, x)| {
-                    App(loc, Box::new(a), UnnamedExplicit, Box::new(x))
-                })
+                .fold(f, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
         }
         Rule::tt => TT(loc),
         Rule::labels => Obj(

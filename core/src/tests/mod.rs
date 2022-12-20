@@ -8,6 +8,7 @@ mod fail_resolve;
 mod ok_bool;
 mod ok_fn;
 mod ok_hole;
+mod ok_implicit;
 mod ok_postulate;
 mod ok_rowpoly;
 
