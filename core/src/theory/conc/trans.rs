@@ -41,8 +41,10 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
         }
     }
     let untupled_vars = untupled.unresolved();
+    let untupled_loc = untupled.0;
     let tupled_param = Param::from(untupled);
     let body = Fun(Expr::wrap_tuple_lets(
+        untupled_loc,
         &tupled_param.var,
         untupled_vars,
         Box::new(body.unwrap()),
