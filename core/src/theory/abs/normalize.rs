@@ -123,7 +123,14 @@ impl<'a> Normalizer<'a> {
                 let b = self.term(b);
                 match (&*a, &*b) {
                     (Fields(a), Fields(b)) => {
-                        todo!()
+                        let mut m = HashMap::default();
+                        for (n, x) in a {
+                            m.insert(n.clone(), x.clone());
+                        }
+                        for (n, x) in b {
+                            m.insert(n.clone(), x.clone());
+                        }
+                        Box::new(Fields(m))
                     }
                     _ => Box::new(Combine(a, b)),
                 }

@@ -160,7 +160,13 @@ impl Elaborator {
             )),
             _ => {
                 let loc = e.loc();
-                let (inferred_tm, inferred_ty) = self.infer(e)?;
+                let f_e = e.clone();
+                let (mut inferred_tm, mut inferred_ty) = self.infer(e)?;
+                if let Some(f_e) = Self::app_insert_hole(f_e, UnnamedExplicit, &*inferred_ty) {
+                    let (new_tm, new_ty) = self.infer(f_e)?;
+                    inferred_tm = new_tm;
+                    inferred_ty = new_ty;
+                }
                 let inferred = Normalizer::new(&mut self.sigma).term(inferred_ty);
                 let expected = Normalizer::new(&mut self.sigma).term(ty.clone());
                 let mut u = Unifier::new(&mut self.sigma);
@@ -269,11 +275,13 @@ impl Elaborator {
             RowOrd(_, a, d, b) => {
                 let a = self.check(a, &Box::new(Term::Row))?;
                 let b = self.check(b, &Box::new(Term::Row))?;
+                // FIXME: Ordering check here.
                 (Box::new(Term::RowOrd(a, d, b)), Box::new(Term::Univ))
             }
             RowEq(_, a, b) => {
                 let a = self.check(a, &Box::new(Term::Row))?;
                 let b = self.check(b, &Box::new(Term::Row))?;
+                // FIXME: Equality check here.
                 (Box::new(Term::RowEq(a, b)), Box::new(Term::Univ))
             }
             Object(_, r) => {
