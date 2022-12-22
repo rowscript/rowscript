@@ -7,7 +7,7 @@ use crate::theory::{Loc, Param, Syntax, Var};
 pub enum ArgInfo {
     UnnamedExplicit,
     UnnamedImplicit,
-    NamedImplicit(Var),
+    NamedImplicit(String),
 }
 
 #[derive(Debug, Clone)]
@@ -136,6 +136,13 @@ impl Expr {
         }
 
         wrapped
+    }
+
+    pub fn holed_app(f: Box<Self>) -> Box<Self> {
+        use ArgInfo::*;
+        use Expr::*;
+        let loc = f.loc();
+        Box::new(App(loc, f, UnnamedImplicit, Box::new(InsertedHole(loc))))
     }
 }
 

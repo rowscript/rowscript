@@ -3,5 +3,9 @@ function f0<'C, A, B>(a: A, b: B, c: {'C}): A {
 }
 
 function f1(): number {
-    return f0<A = number, string>(42, "foo", {n: number})
+    return f0<'C = (n: number), number, string>(42, "foo", {n: 69})
 }
+
+//function f2(): number {
+//    return f0<A = number, string>(42, "foo", {n: 69})
+//}

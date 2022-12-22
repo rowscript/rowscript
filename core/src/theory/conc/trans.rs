@@ -200,7 +200,7 @@ fn type_arg(a: Pair<Rule>) -> (ArgInfo, Expr) {
     match id_or_type.as_rule() {
         Rule::type_expr => (UnnamedImplicit, type_expr(id_or_type)),
         Rule::idref => (
-            NamedImplicit(Var::from(id_or_type)),
+            NamedImplicit(id_or_type.as_str().to_string()),
             type_expr(p.next().unwrap()),
         ),
         _ => unreachable!(),
@@ -212,8 +212,8 @@ fn row_arg(a: Pair<Rule>) -> (ArgInfo, Expr) {
     let id_or_fields = p.next().unwrap();
     match id_or_fields.as_rule() {
         Rule::paren_fields => (UnnamedImplicit, fields(id_or_fields)),
-        Rule::idref => (
-            NamedImplicit(Var::from(id_or_fields)),
+        Rule::row_id => (
+            NamedImplicit(id_or_fields.as_str().to_string()),
             fields(p.next().unwrap()),
         ),
         _ => unreachable!(),

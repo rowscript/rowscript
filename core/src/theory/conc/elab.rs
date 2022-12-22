@@ -4,8 +4,7 @@ use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
-use crate::theory::conc::data::ArgInfo::{UnnamedExplicit, UnnamedImplicit};
-use crate::theory::conc::data::Expr::{App, InsertedHole};
+use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var, VarGen};
@@ -382,15 +381,17 @@ impl Elaborator {
 
     fn app_insert_hole(f: Box<Expr>, arg_info: ArgInfo, f_ty: &Term) -> Option<Box<Expr>> {
         match f_ty {
-            Term::Pi(p, _) if arg_info == UnnamedExplicit && p.info == Implicit => {
-                let loc = f.loc();
-                Some(Box::new(App(
-                    loc,
-                    f,
-                    UnnamedImplicit,
-                    Box::new(InsertedHole(loc)),
-                )))
-            }
+            Term::Pi(p, _) if p.info == Implicit => match arg_info {
+                UnnamedExplicit => Some(Expr::holed_app(f)),
+                NamedImplicit(n) => {
+                    if *p.var.name == n {
+                        None
+                    } else {
+                        todo!()
+                    }
+                }
+                _ => None,
+            },
             _ => None,
         }
     }

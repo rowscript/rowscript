@@ -128,7 +128,7 @@ implicit_args =
 type_args = _{ type_arg ~ ("," ~ type_arg)* }
 type_arg = { (idref ~ "=")? ~ type_expr }
 row_args = _{ row_arg ~ ("," ~ row_arg)* }
-row_arg = { (idref ~ "=")? ~ paren_fields }
+row_arg = { (row_id ~ "=")? ~ paren_fields }
 args = { "()" | "(" ~ expr ~ ("," ~ expr)* ~ ")" }
 tt = { "()" }
 labels = { "{" ~ label ~ ("," ~ label)* ~ "}" }
