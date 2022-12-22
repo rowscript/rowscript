@@ -125,7 +125,8 @@ implicit_args =
   | "<" ~ type_args ~ ">"
   | "<" ~ row_args ~ "," ~ type_args ~ ">"
   }
-type_args = _{ type_expr ~ ("," ~ type_expr)* }
+type_args = _{ type_arg ~ ("," ~ type_arg)* }
+type_arg = { (idref ~ "=")? ~ type_expr }
 row_args = _{ row_arg ~ ("," ~ row_arg)* }
 row_arg = { (idref ~ "=")? ~ paren_fields }
 args = { "()" | "(" ~ expr ~ ("," ~ expr)* ~ ")" }

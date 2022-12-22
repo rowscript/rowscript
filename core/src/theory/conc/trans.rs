@@ -29,7 +29,7 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
     for p in pairs {
         match p.as_rule() {
             Rule::row_id => tele.push(row_param(p)),
-            Rule::implicit_id => tele.push(implicit(p)),
+            Rule::implicit_id => tele.push(implicit_param(p)),
             Rule::param => untupled.push(Loc::from(p.as_span()), param(p)),
             Rule::type_expr => ret = Box::new(type_expr(p)),
             Rule::fn_body => {
@@ -194,6 +194,19 @@ fn row_primary_expr(e: Pair<Rule>) -> Expr {
     }
 }
 
+fn type_arg(a: Pair<Rule>) -> (ArgInfo, Expr) {
+    let mut p = a.into_inner();
+    let id_or_type = p.next().unwrap();
+    match id_or_type.as_rule() {
+        Rule::type_expr => (UnnamedImplicit, type_expr(id_or_type)),
+        Rule::idref => (
+            NamedImplicit(Var::from(id_or_type)),
+            type_expr(p.next().unwrap()),
+        ),
+        _ => unreachable!(),
+    }
+}
+
 fn row_arg(a: Pair<Rule>) -> (ArgInfo, Expr) {
     let mut p = a.into_inner();
     let id_or_fields = p.next().unwrap();
@@ -276,16 +289,19 @@ fn expr(e: Pair<Rule>) -> Expr {
                 .map(|arg| {
                     let loc = Loc::from(arg.as_span());
                     match arg.as_rule() {
-                        Rule::type_expr => (loc, UnnamedImplicit, type_expr(arg)),
+                        Rule::row_arg => {
+                            let (i, e) = row_arg(arg);
+                            (loc, i, e)
+                        }
+                        Rule::type_arg => {
+                            let (i, e) = type_arg(arg);
+                            (loc, i, e)
+                        }
                         Rule::args => (
                             loc,
                             UnnamedExplicit,
                             tupled_args(loc, &mut arg.into_inner()),
                         ),
-                        Rule::row_arg => {
-                            let (i, e) = row_arg(arg);
-                            (loc, i, e)
-                        }
                         _ => unreachable!(),
                     }
                 })
@@ -332,7 +348,7 @@ fn row_param(p: Pair<Rule>) -> Param<Expr> {
     }
 }
 
-fn implicit(p: Pair<Rule>) -> Param<Expr> {
+fn implicit_param(p: Pair<Rule>) -> Param<Expr> {
     use Expr::*;
     Param {
         var: Var::new(p.as_str()),
