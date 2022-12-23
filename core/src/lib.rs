@@ -38,6 +38,8 @@ pub enum Error {
     #[error("duplicate field \"{0}\"")]
     DuplicateField(String, Loc),
 
+    #[error("unresolved implicit parameter \"{0}\"")]
+    UnresolvedImplicitParam(String, Loc),
     #[error("expected function type, got \"{0}\"")]
     ExpectedPi(Box<Term>, Loc),
     #[error("expected tuple type, got \"{0}\"")]
@@ -68,12 +70,18 @@ impl Error {
                 };
                 (range, PARSER_FAILED, Some(e.variant.message().to_string()))
             }
+
             UnresolvedVar(loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
             DuplicateDef(loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
             DuplicateField(_, loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
+
+            UnresolvedImplicitParam(_, loc) => {
+                (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string()))
+            }
             ExpectedPi(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             ExpectedSigma(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             ExpectedObject(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
+
             NonUnifiable(_, _, loc) => (loc.start..loc.end, UNIFIER_FAILED, Some(self.to_string())),
             NonRowSat(_, _, loc) => (loc.start..loc.end, UNIFIER_FAILED, Some(self.to_string())),
         };

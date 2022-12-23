@@ -9,7 +9,7 @@ use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var, VarGen};
 use crate::Error;
-use crate::Error::{ExpectedPi, ExpectedSigma};
+use crate::Error::{ExpectedPi, ExpectedSigma, UnresolvedImplicitParam};
 
 #[derive(Debug)]
 pub struct Elaborator {
@@ -159,7 +159,7 @@ impl Elaborator {
                 let loc = e.loc();
                 let f_e = e.clone();
                 let (mut inferred_tm, mut inferred_ty) = self.infer(e)?;
-                if let Some(f_e) = Self::app_insert_hole(f_e, UnnamedExplicit, &*inferred_ty) {
+                if let Some(f_e) = Self::app_insert_holes(f_e, UnnamedExplicit, &*inferred_ty)? {
                     let (new_tm, new_ty) = self.infer(f_e)?;
                     inferred_tm = new_tm;
                     inferred_ty = new_ty;
@@ -207,8 +207,8 @@ impl Elaborator {
                 let loc = f.loc();
                 let f_e = f.clone();
                 let (f, f_ty) = self.infer(f)?;
-                if let Some(f_e) = Self::app_insert_hole(f_e, i, &*f_ty) {
-                    return self.infer(Box::new(App(loc, f_e, UnnamedExplicit, x)));
+                if let Some(f_e) = Self::app_insert_holes(f_e, i.clone(), &*f_ty)? {
+                    return self.infer(Box::new(App(loc, f_e, i, x)));
                 }
                 match *f_ty {
                     Term::Pi(p, b) => {
@@ -379,21 +379,43 @@ impl Elaborator {
         (Box::new(Term::MetaRef(tm_meta_var, spine)), ty)
     }
 
-    fn app_insert_hole(f: Box<Expr>, arg_info: ArgInfo, f_ty: &Term) -> Option<Box<Expr>> {
-        match f_ty {
-            Term::Pi(p, _) if p.info == Implicit => match arg_info {
+    fn app_insert_holes(f: Box<Expr>, i: ArgInfo, f_ty: &Term) -> Result<Option<Box<Expr>>, Error> {
+        fn n_to_insert(n: usize, loc: Loc, name: String, ty: &Term) -> Result<usize, Error> {
+            match ty {
+                Term::Pi(p, b) => {
+                    if p.info == Implicit {
+                        if *p.var.name == name {
+                            Ok(n)
+                        } else {
+                            n_to_insert(n + 1, loc, name, &*b)
+                        }
+                    } else {
+                        Err(UnresolvedImplicitParam(name, loc))
+                    }
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        Ok(match f_ty {
+            Term::Pi(p, _) if p.info == Implicit => match i {
                 UnnamedExplicit => Some(Expr::holed_app(f)),
-                NamedImplicit(n) => {
-                    if *p.var.name == n {
+                NamedImplicit(name) => {
+                    let n = n_to_insert(0, f.loc(), name, f_ty)?;
+                    if n == 0 {
                         None
                     } else {
-                        todo!()
+                        let mut ret = Expr::holed_app(f);
+                        for _ in 1..n {
+                            ret = Expr::holed_app(ret);
+                        }
+                        Some(ret)
                     }
                 }
                 _ => None,
             },
             _ => None,
-        }
+        })
     }
 }
 
