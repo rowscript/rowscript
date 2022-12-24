@@ -72,12 +72,6 @@ pub enum Term {
 
     Object(Box<Self>),
     Obj(Box<Self>),
-    Prj(Dir, Box<Self>),
-    Concat(Box<Self>, Box<Self>),
-
-    Enumeration(Box<Self>),
-    Inj(Dir, Box<Self>),
-    Branch(Box<Self>, Box<Self>),
 }
 
 impl Term {

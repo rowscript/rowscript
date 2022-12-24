@@ -312,6 +312,12 @@ fn expr(e: Pair<Rule>) -> Expr {
             loc,
             Box::new(Fields(loc, p.into_inner().map(label).collect())),
         ),
+        Rule::object_concat => {
+            let mut pairs = p.into_inner();
+            let a = object_operand(pairs.next().unwrap());
+            let b = object_operand(pairs.next().unwrap());
+            Concat(loc, Box::new(a), Box::new(b))
+        }
         Rule::idref => unresolved(p),
         Rule::paren_expr => expr(p.into_inner().next().unwrap()),
         Rule::hole => Hole(loc),
@@ -388,6 +394,10 @@ fn label(l: Pair<Rule>) -> (String, Expr) {
         p.next().unwrap().as_str().to_string(),
         expr(p.next().unwrap()),
     )
+}
+
+fn object_operand(o: Pair<Rule>) -> Expr {
+    todo!()
 }
 
 fn tupled_args(tt_loc: Loc, pairs: &mut Pairs<Rule>) -> Expr {

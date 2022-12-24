@@ -61,6 +61,7 @@ pub enum Expr {
 
     Object(Loc, Box<Self>),
     Obj(Loc, Box<Self>),
+    Concat(Loc, Box<Self>, Box<Self>),
 }
 
 impl Expr {
@@ -103,6 +104,7 @@ impl Expr {
             RowRefl(loc) => loc,
             Object(loc, _) => loc,
             Obj(loc, _) => loc,
+            Concat(loc, _, _) => loc,
         }
         .clone()
     }
@@ -213,6 +215,7 @@ impl Display for Expr {
                 RowRefl(_) => "refl".to_string(),
                 Object(_, r) => format!("{{{r}}}"),
                 Obj(_, r) => format!("{{{r}}}"),
+                Concat(_, a, b) => format!("{a}...{b}"),
             }
             .as_str(),
         )
