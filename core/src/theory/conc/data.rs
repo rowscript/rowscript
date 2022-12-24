@@ -62,6 +62,7 @@ pub enum Expr {
     Object(Loc, Box<Self>),
     Obj(Loc, Box<Self>),
     Concat(Loc, Box<Self>, Box<Self>),
+    Access(Loc, Box<Self>, String),
 }
 
 impl Expr {
@@ -105,6 +106,7 @@ impl Expr {
             Object(loc, _) => loc,
             Obj(loc, _) => loc,
             Concat(loc, _, _) => loc,
+            Access(loc, _, _) => loc,
         }
         .clone()
     }
@@ -216,6 +218,7 @@ impl Display for Expr {
                 Object(_, r) => format!("{{{r}}}"),
                 Obj(_, r) => format!("{{{r}}}"),
                 Concat(_, a, b) => format!("{a}...{b}"),
+                Access(_, a, n) => format!("{a}.{n}"),
             }
             .as_str(),
         )

@@ -103,9 +103,9 @@ expr =
   | lambda_expr
   | app
   | tt
-  | object_labels
+  | object_literal
   | object_concat
-  | object_unlabel
+  | object_access
   | idref
   | paren_expr
   | hole
@@ -134,12 +134,12 @@ row_args = _{ row_arg ~ ("," ~ row_arg)* }
 row_arg = { (row_id ~ "=")? ~ paren_fields }
 args = { "()" | "(" ~ expr ~ ("," ~ expr)* ~ ")" }
 tt = { "()" }
-object_labels = { "{" ~ label ~ ("," ~ label)* ~ "}" }
+object_literal = { "{" ~ label ~ ("," ~ label)* ~ "}" }
 object_concat = { object_operand ~ "..." ~ object_operand }
-object_unlabel = { object_operand ~ "." ~ field_id }
+object_access = { object_operand ~ "." ~ field_id }
 object_operand =
   { idref
-  | object_labels
+  | object_literal
   | paren_expr
   }
 paren_expr = { "(" ~ expr ~ ")" }

@@ -308,15 +308,18 @@ fn expr(e: Pair<Rule>) -> Expr {
                 .fold(f, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
         }
         Rule::tt => TT(loc),
-        Rule::object_labels => Obj(
-            loc,
-            Box::new(Fields(loc, p.into_inner().map(label).collect())),
-        ),
+        Rule::object_literal => object_literal(p),
         Rule::object_concat => {
             let mut pairs = p.into_inner();
             let a = object_operand(pairs.next().unwrap());
             let b = object_operand(pairs.next().unwrap());
             Concat(loc, Box::new(a), Box::new(b))
+        }
+        Rule::object_access => {
+            let mut pairs = p.into_inner();
+            let a = object_operand(pairs.next().unwrap());
+            let n = pairs.next().unwrap().as_str().to_string();
+            Access(loc, Box::new(a), n)
         }
         Rule::idref => unresolved(p),
         Rule::paren_expr => expr(p.into_inner().next().unwrap()),
@@ -396,8 +399,23 @@ fn label(l: Pair<Rule>) -> (String, Expr) {
     )
 }
 
+fn object_literal(l: Pair<Rule>) -> Expr {
+    use Expr::*;
+    let loc = Loc::from(l.as_span());
+    Obj(
+        loc,
+        Box::new(Fields(loc, l.into_inner().map(label).collect())),
+    )
+}
+
 fn object_operand(o: Pair<Rule>) -> Expr {
-    todo!()
+    let p = o.into_inner().next().unwrap();
+    match p.as_rule() {
+        Rule::idref => unresolved(p),
+        Rule::object_literal => object_literal(p),
+        Rule::paren_expr => expr(p.into_inner().next().unwrap()),
+        _ => unreachable!(),
+    }
 }
 
 fn tupled_args(tt_loc: Loc, pairs: &mut Pairs<Rule>) -> Expr {
