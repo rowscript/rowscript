@@ -18,6 +18,7 @@ idref =
   | implicit_id
   | param_id
   | let_id
+  | field_id
   }
 
 hole = { "?" }
@@ -102,7 +103,9 @@ expr =
   | lambda_expr
   | app
   | tt
-  | labels
+  | object_labels
+  | object_concat
+  | object_unlabel
   | idref
   | paren_expr
   | hole
@@ -131,7 +134,14 @@ row_args = _{ row_arg ~ ("," ~ row_arg)* }
 row_arg = { (row_id ~ "=")? ~ paren_fields }
 args = { "()" | "(" ~ expr ~ ("," ~ expr)* ~ ")" }
 tt = { "()" }
-labels = { "{" ~ label ~ ("," ~ label)* ~ "}" }
+object_labels = { "{" ~ label ~ ("," ~ label)* ~ "}" }
+object_concat = { object_operand ~ "..." ~ object_operand }
+object_unlabel = { object_operand ~ "." ~ field_id }
+object_operand =
+  { idref
+  | object_labels
+  | paren_expr
+  }
 paren_expr = { "(" ~ expr ~ ")" }
 
 row_pred =

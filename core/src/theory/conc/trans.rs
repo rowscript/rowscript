@@ -308,7 +308,7 @@ fn expr(e: Pair<Rule>) -> Expr {
                 .fold(f, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
         }
         Rule::tt => TT(loc),
-        Rule::labels => Obj(
+        Rule::object_labels => Obj(
             loc,
             Box::new(Fields(loc, p.into_inner().map(label).collect())),
         ),
