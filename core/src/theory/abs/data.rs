@@ -61,8 +61,6 @@ pub enum Term {
     Row,
     Fields(FieldMap),
     Combine(Box<Self>, Box<Self>),
-    Label(String, Box<Self>),
-    Unlabel(Box<Self>, String),
 
     RowOrd(Box<Self>, Dir, Box<Self>),
     RowSat,
@@ -147,8 +145,6 @@ impl Display for Term {
                 RowRefl => "refl".to_string(),
                 Object(r) => format!("{{{r}}}"),
                 Obj(r) => format!("{{{r}}}"),
-
-                _ => todo!(),
             }
             .as_str(),
         )

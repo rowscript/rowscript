@@ -59,8 +59,6 @@ impl Renamer {
             Row => Row,
             RowSat => RowSat,
             RowRefl => RowRefl,
-
-            _ => unreachable!(),
         })
     }
 
