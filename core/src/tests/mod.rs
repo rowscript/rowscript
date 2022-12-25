@@ -10,6 +10,7 @@ mod ok_fn;
 mod ok_hole;
 mod ok_implicit_named;
 mod ok_implicit_unnamed;
+mod ok_object;
 mod ok_postulate;
 mod ok_rowpoly;
 

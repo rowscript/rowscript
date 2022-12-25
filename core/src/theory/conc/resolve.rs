@@ -157,7 +157,6 @@ impl Resolver {
             Object(loc, o) => Object(loc, self.expr(o)?),
             Obj(loc, a) => Obj(loc, self.expr(a)?),
             Concat(loc, a, b) => Concat(loc, self.expr(a)?, self.expr(b)?),
-            Access(loc, a, n) => Access(loc, self.expr(a)?, n),
 
             Resolved(loc, r) => Resolved(loc, r),
             Hole(loc) => Hole(loc),
@@ -177,6 +176,7 @@ impl Resolver {
             Row(loc) => Row(loc),
             RowSat(loc) => RowSat(loc),
             RowRefl(loc) => RowRefl(loc),
+            Access(loc, n) => Access(loc, n),
         }))
     }
 }

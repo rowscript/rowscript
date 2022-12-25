@@ -1,3 +1,4 @@
+use crate::theory::abs::data::Dir::Le;
 use crate::theory::abs::data::{FieldMap, Term};
 use crate::theory::abs::def::{gamma_to_tele, Body};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
@@ -297,7 +298,7 @@ impl Elaborator {
                 }
                 _ => unreachable!(),
             },
-            Concat(loc, a, b) => {
+            Concat(_, a, b) => {
                 let x_loc = a.loc();
                 let y_loc = b.loc();
                 let (x, x_ty) = self.infer(a)?;
@@ -311,10 +312,43 @@ impl Elaborator {
                 };
                 (Box::new(Term::Concat(x, y)), ty)
             }
-            Access(_, a, n) => {
-                let (x, ty) = self.infer(a)?;
-                dbg!(&x, &ty);
-                todo!()
+            Access(_, n) => {
+                let t = Var::new("T");
+                let a = Var::new("'A");
+                let o = Var::new("o");
+                let tele = vec![
+                    Param {
+                        var: t.clone(),
+                        info: Implicit,
+                        typ: Box::new(Term::Univ),
+                    },
+                    Param {
+                        var: a.clone(),
+                        info: Implicit,
+                        typ: Box::new(Term::Row),
+                    },
+                    Param {
+                        var: o.clone(),
+                        info: Explicit,
+                        typ: Box::new(Term::Object(Box::new(Term::Ref(a.clone())))),
+                    },
+                    Param {
+                        var: Var::unbound(),
+                        info: Implicit,
+                        typ: Box::new(Term::RowOrd(
+                            Box::new(Term::Fields(FieldMap::from([(
+                                n.clone(),
+                                Term::Ref(t.clone()),
+                            )]))),
+                            Le,
+                            Box::new(Term::Ref(a)),
+                        )),
+                    },
+                ];
+                (
+                    Term::lam(&tele, Box::new(Term::Access(Box::new(Term::Ref(o)), n))),
+                    Term::pi(&tele, Box::new(Term::Ref(t))),
+                )
             }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),

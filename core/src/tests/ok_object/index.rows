@@ -1,0 +1,7 @@
+function f0(a: {n: number}, b: {m: number}): number {
+    return (a...b).m
+}
+
+function f1(): number {
+    return f0({n: 42}, {m: 69})
+}

@@ -319,7 +319,7 @@ fn expr(e: Pair<Rule>) -> Expr {
             let mut pairs = p.into_inner();
             let a = object_operand(pairs.next().unwrap());
             let n = pairs.next().unwrap().as_str().to_string();
-            Access(loc, Box::new(a), n)
+            App(loc, Box::new(Access(loc, n)), UnnamedExplicit, Box::new(a))
         }
         Rule::idref => unresolved(p),
         Rule::paren_expr => expr(p.into_inner().next().unwrap()),

@@ -158,8 +158,33 @@ impl<'a> Normalizer<'a> {
             }
             Object(r) => Box::new(Object(self.term(r)?)),
             Obj(a) => Box::new(Obj(self.term(a)?)),
-            Concat(a, b) => todo!(),
-            Access(a, n) => todo!(),
+            Concat(a, b) => {
+                let a = self.term(a)?;
+                let b = self.term(b)?;
+                Box::new(match (&*a, &*b) {
+                    (Obj(x), Obj(y)) => match (&**x, &**y) {
+                        (Fields(x), Fields(y)) => {
+                            let mut m = x.clone();
+                            for (n, t) in y {
+                                m.insert(n.clone(), t.clone());
+                            }
+                            Obj(Box::new(Fields(m)))
+                        }
+                        _ => Concat(a, b),
+                    },
+                    _ => Concat(a, b),
+                })
+            }
+            Access(a, n) => {
+                let a = self.term(a)?;
+                match &*a {
+                    Obj(x) => match &**x {
+                        Fields(fields) => Box::new(fields.get(&n).unwrap().clone()),
+                        _ => Box::new(Access(a, n)),
+                    },
+                    _ => Box::new(Access(a, n)),
+                }
+            }
 
             Univ => Box::new(Univ),
             Unit => Box::new(Unit),
