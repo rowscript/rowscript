@@ -9,7 +9,7 @@ use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var, VarGen};
 use crate::Error;
-use crate::Error::{ExpectedPi, ExpectedSigma, UnresolvedImplicitParam};
+use crate::Error::{ExpectedObject, ExpectedPi, ExpectedSigma, UnresolvedImplicitParam};
 
 #[derive(Debug)]
 pub struct Elaborator {
@@ -297,6 +297,25 @@ impl Elaborator {
                 }
                 _ => unreachable!(),
             },
+            Concat(loc, a, b) => {
+                let x_loc = a.loc();
+                let y_loc = b.loc();
+                let (x, x_ty) = self.infer(a)?;
+                let (y, y_ty) = self.infer(b)?;
+                let ty = match (*x_ty, *y_ty) {
+                    (Term::Object(rx), Term::Object(ry)) => {
+                        Box::new(Term::Object(Box::new(Term::Combine(rx, ry))))
+                    }
+                    (Term::Object(_), y_ty) => return Err(ExpectedObject(Box::new(y_ty), y_loc)),
+                    (x_ty, _) => return Err(ExpectedObject(Box::new(x_ty), x_loc)),
+                };
+                (Box::new(Term::Concat(x, y)), ty)
+            }
+            Access(_, a, n) => {
+                let (x, ty) = self.infer(a)?;
+                dbg!(&x, &ty);
+                todo!()
+            }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
             Unit(_) => (Box::new(Term::Unit), Box::new(Term::Univ)),
@@ -314,6 +333,7 @@ impl Elaborator {
             BigInt(_) => (Box::new(Term::BigInt), Box::new(Term::Univ)),
             Big(_, v) => (Box::new(Term::Big(v)), Box::new(Term::BigInt)),
             Row(_) => (Box::new(Term::Row), Box::new(Term::Univ)),
+
             _ => unreachable!(),
         })
     }

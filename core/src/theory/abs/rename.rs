@@ -43,6 +43,8 @@ impl Renamer {
             RowEq(a, b) => RowEq(self.term(a), self.term(b)),
             Object(f) => Object(self.term(f)),
             Obj(f) => Object(self.term(f)),
+            Concat(a, b) => Concat(self.term(a), self.term(b)),
+            Access(a, n) => Access(self.term(a), n),
 
             Univ => Univ,
             Unit => Unit,

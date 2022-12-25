@@ -70,6 +70,8 @@ pub enum Term {
 
     Object(Box<Self>),
     Obj(Box<Self>),
+    Concat(Box<Self>, Box<Self>),
+    Access(Box<Self>, String),
 }
 
 impl Term {
@@ -145,6 +147,8 @@ impl Display for Term {
                 RowRefl => "refl".to_string(),
                 Object(r) => format!("{{{r}}}"),
                 Obj(r) => format!("{{{r}}}"),
+                Concat(a, b) => format!("{a}...{b}"),
+                Access(a, n) => format!("{a}.{n}"),
             }
             .as_str(),
         )

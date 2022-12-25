@@ -158,6 +158,8 @@ impl<'a> Normalizer<'a> {
             }
             Object(r) => Box::new(Object(self.term(r)?)),
             Obj(a) => Box::new(Obj(self.term(a)?)),
+            Concat(a, b) => todo!(),
+            Access(a, n) => todo!(),
 
             Univ => Box::new(Univ),
             Unit => Box::new(Unit),
