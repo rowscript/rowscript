@@ -106,6 +106,7 @@ expr =
   | object_literal
   | object_concat
   | object_access
+  | object_cast
   | idref
   | paren_expr
   | hole
@@ -137,6 +138,7 @@ tt = { "()" }
 object_literal = { "{" ~ label ~ ("," ~ label)* ~ "}" }
 object_concat = { object_operand ~ "..." ~ object_operand }
 object_access = { object_operand ~ "." ~ field_id }
+object_cast = { "{" ~ object_operand ~ "..." ~ "}" }
 object_operand =
   { idref
   | object_literal

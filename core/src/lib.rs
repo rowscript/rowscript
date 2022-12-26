@@ -151,7 +151,6 @@ impl<'a> Driver<'a> {
 
         let mut e = Elaborator::default();
         e.defs(resolved)?;
-        dbg!(&e);
 
         Ok(())
     }

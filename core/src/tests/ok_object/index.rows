@@ -5,3 +5,11 @@ function f0(a: {n: number}, b: {m: number}): number {
 function f1(): number {
     return f0({n: 42}, {m: 69})
 }
+
+function g0(a: {n: number, m: number}): {n: number} {
+    return {a...}
+}
+
+function g1(): {n: number} {
+    return g0({n: 42, m: 69})
+}

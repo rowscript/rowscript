@@ -177,13 +177,31 @@ impl<'a> Normalizer<'a> {
             }
             Access(a, n) => {
                 let a = self.term(a)?;
-                match &*a {
+                Box::new(match &*a {
                     Obj(x) => match &**x {
-                        Fields(fields) => Box::new(fields.get(&n).unwrap().clone()),
-                        _ => Box::new(Access(a, n)),
+                        Fields(fields) => fields.get(&n).unwrap().clone(),
+                        _ => Access(a, n),
                     },
-                    _ => Box::new(Access(a, n)),
-                }
+                    _ => Access(a, n),
+                })
+            }
+            Cast(a, ty) => {
+                let a = self.term(a)?;
+                Box::new(match (&*a, &*ty) {
+                    (Obj(o), Object(t)) => match (&**o, &**t) {
+                        (Fields(x), Fields(y)) => {
+                            let mut m = FieldMap::default();
+                            for (n, _) in y {
+                                if let Some(tm) = x.get(n) {
+                                    m.insert(n.clone(), tm.clone());
+                                }
+                            }
+                            Obj(Box::new(Fields(m)))
+                        }
+                        _ => Cast(a, ty),
+                    },
+                    _ => Cast(a, ty),
+                })
             }
 
             Univ => Box::new(Univ),

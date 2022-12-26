@@ -156,6 +156,34 @@ impl Elaborator {
                 self.check(t, ty)?,
                 self.check(e, ty)?,
             )),
+            Cast(loc, a) => {
+                let b_ty = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
+                let (a, a_ty) = self.infer(a)?;
+                match (&*a_ty, &*b_ty) {
+                    (Term::Object(from), Term::Object(to)) => {
+                        let o = Var::new("o");
+                        let tele = vec![
+                            Param {
+                                var: o.clone(),
+                                info: Explicit,
+                                typ: Box::new(Term::Object(from.clone())),
+                            },
+                            Param {
+                                var: Var::unbound(),
+                                info: Implicit,
+                                typ: Box::new(Term::RowOrd(to.clone(), Le, from.clone())),
+                            },
+                        ];
+                        let f = Term::lam(
+                            &tele,
+                            Box::new(Term::Cast(Box::new(Term::Ref(o)), to.clone())),
+                        );
+                        Box::new(Term::App(f, a))
+                    }
+                    (Term::Object(_), _) => return Err(ExpectedObject(b_ty, loc)),
+                    _ => return Err(ExpectedObject(a_ty, loc)),
+                }
+            }
             _ => {
                 let loc = e.loc();
                 let f_e = e.clone();

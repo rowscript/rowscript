@@ -321,6 +321,11 @@ fn expr(e: Pair<Rule>) -> Expr {
             let n = pairs.next().unwrap().as_str().to_string();
             App(loc, Box::new(Access(loc, n)), UnnamedExplicit, Box::new(a))
         }
+        Rule::object_cast => {
+            let loc = Loc::from(p.as_span());
+            let a = object_operand(p.into_inner().next().unwrap());
+            Cast(loc, Box::new(a))
+        }
         Rule::idref => unresolved(p),
         Rule::paren_expr => expr(p.into_inner().next().unwrap()),
         Rule::hole => Hole(loc),

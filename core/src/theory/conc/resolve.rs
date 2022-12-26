@@ -157,6 +157,7 @@ impl Resolver {
             Object(loc, o) => Object(loc, self.expr(o)?),
             Obj(loc, a) => Obj(loc, self.expr(a)?),
             Concat(loc, a, b) => Concat(loc, self.expr(a)?, self.expr(b)?),
+            Cast(loc, a) => Cast(loc, self.expr(a)?),
 
             Resolved(loc, r) => Resolved(loc, r),
             Hole(loc) => Hole(loc),
