@@ -2,7 +2,7 @@ function f<'A, 'B>(a: {'A}, b: {'B}): number
 where
     (n: number) <: 'A + 'B
 {
-    return 42
+    return (a...b).n
 }
 
 function g() {
