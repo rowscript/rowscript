@@ -154,10 +154,12 @@ impl Resolver {
             Combine(loc, a, b) => Combine(loc, self.expr(a)?, self.expr(b)?),
             RowOrd(loc, a, d, b) => RowOrd(loc, self.expr(a)?, d, self.expr(b)?),
             RowEq(loc, a, b) => RowEq(loc, self.expr(a)?, self.expr(b)?),
-            Object(loc, o) => Object(loc, self.expr(o)?),
+            Object(loc, a) => Object(loc, self.expr(a)?),
             Obj(loc, a) => Obj(loc, self.expr(a)?),
             Concat(loc, a, b) => Concat(loc, self.expr(a)?, self.expr(b)?),
             Cast(loc, a) => Cast(loc, self.expr(a)?),
+            Enum(loc, a) => Enum(loc, self.expr(a)?),
+            Variant(loc, n, a) => Variant(loc, n, self.expr(a)?),
 
             Resolved(loc, r) => Resolved(loc, r),
             Hole(loc) => Hole(loc),

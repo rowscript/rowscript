@@ -64,6 +64,9 @@ pub enum Expr {
     Concat(Loc, Box<Self>, Box<Self>),
     Access(Loc, String),
     Cast(Loc, Box<Self>),
+
+    Enum(Loc, Box<Self>),
+    Variant(Loc, String, Box<Self>),
 }
 
 impl Expr {
@@ -109,6 +112,8 @@ impl Expr {
             Concat(loc, _, _) => loc,
             Access(loc, _) => loc,
             Cast(loc, _) => loc,
+            Enum(loc, _) => loc,
+            Variant(loc, _, _) => loc,
         }
         .clone()
     }
@@ -222,6 +227,8 @@ impl Display for Expr {
                 Concat(_, a, b) => format!("{a}...{b}"),
                 Access(_, n) => format!(".{n}"),
                 Cast(_, a) => format!("{{{a}...}}"),
+                Enum(_, r) => format!("[{r}]"),
+                Variant(_, n, a) => format!("{n}({a})"),
             }
             .as_str(),
         )

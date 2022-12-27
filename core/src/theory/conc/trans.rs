@@ -1,5 +1,3 @@
-use std::string;
-
 use pest::iterators::{Pair, Pairs};
 
 use crate::theory::abs::data::Dir;
@@ -114,21 +112,11 @@ fn type_expr(t: Pair<Rule>) -> Expr {
         Rule::bigint_type => BigInt(loc),
         Rule::boolean_type => Boolean(loc),
         Rule::unit_type => Unit(loc),
-        Rule::object_type => {
-            let p = p.into_inner().next().unwrap();
-            match p.as_rule() {
-                Rule::object_ref => {
-                    let p = p.into_inner().next().unwrap();
-                    Object(
-                        loc,
-                        Box::new(Unresolved(Loc::from(p.as_span()), Var::new(p.as_str()))),
-                    )
-                }
-                Rule::object_type_literal => Object(loc, Box::new(fields(p))),
-                _ => unreachable!(),
-            }
-        }
-        Rule::idref => unresolved(p),
+        Rule::object_type_ref => Object(loc, Box::new(unresolved(p.into_inner().next().unwrap()))),
+        Rule::object_type_literal => Object(loc, Box::new(fields(p))),
+        Rule::enum_type_ref => Enum(loc, Box::new(unresolved(p.into_inner().next().unwrap()))),
+        Rule::enum_type_literal => Enum(loc, Box::new(fields(p))),
+        Rule::tyref => unresolved(p),
         Rule::paren_type_expr => type_expr(p.into_inner().next().unwrap()),
         Rule::hole => Hole(loc),
         _ => unreachable!(),
@@ -321,10 +309,17 @@ fn expr(e: Pair<Rule>) -> Expr {
             let n = pairs.next().unwrap().as_str().to_string();
             App(loc, Box::new(Access(loc, n)), UnnamedExplicit, Box::new(a))
         }
-        Rule::object_cast => {
-            let loc = Loc::from(p.as_span());
-            let a = object_operand(p.into_inner().next().unwrap());
-            Cast(loc, Box::new(a))
+        Rule::object_cast => Cast(
+            loc,
+            Box::new(object_operand(p.into_inner().next().unwrap())),
+        ),
+        Rule::enum_variant => {
+            let mut pairs = p.into_inner();
+            let n = pairs.next().unwrap().as_str().to_string();
+            let a = pairs
+                .next()
+                .map_or(TT(loc), |p| expr(p.into_inner().next().unwrap()));
+            Variant(loc, n, Box::new(a))
         }
         Rule::idref => unresolved(p),
         Rule::paren_expr => expr(p.into_inner().next().unwrap()),
@@ -385,11 +380,11 @@ fn fields(p: Pair<Rule>) -> Expr {
 
     let loc = Loc::from(p.as_span());
 
-    let mut fields = Vec::<(string::String, Expr)>::default();
+    let mut fields = Vec::default();
     for pair in p.into_inner() {
         let mut f = pair.into_inner();
         let id = f.next().unwrap().as_str().to_string();
-        let typ = type_expr(f.next().unwrap());
+        let typ = f.next().map_or(Unit(loc), type_expr);
         fields.push((id, typ));
     }
 

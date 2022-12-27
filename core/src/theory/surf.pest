@@ -10,16 +10,19 @@ priv_camel_id = @{ "_" ~ pub_camel_id }
 fn_id = { pub_camelback_id | priv_camelback_id }
 row_id = @{ "'" ~ pub_camel_id }
 implicit_id = { pub_camel_id }
-field_id = { pub_camelback_id | priv_camelback_id }
+prop_id = { pub_camelback_id | priv_camelback_id }
+variant_id = { pub_camel_id | priv_camel_id }
+field_id = _{ prop_id | variant_id }
 param_id = { pub_camelback_id }
 let_id = { pub_camelback_id }
+
 idref =
   { fn_id
-  | implicit_id
   | param_id
   | let_id
-  | field_id
+  | prop_id
   }
+tyref = { implicit_id }
 
 hole = { "?" }
 
@@ -67,7 +70,9 @@ param = { param_id ~ ":" ~ type_expr }
 params = _{ "()" | "(" ~ param ~ ("," ~ param)* ~ ")" }
 
 field = { field_id ~ ":" ~ type_expr }
-label = { field_id ~ ":" ~ expr }
+property = { prop_id ~ ":" ~ type_expr }
+label = { prop_id ~ ":" ~ expr }
+variant = { variant_id ~ (":" ~ type_expr)? }
 
 type_expr =
   { fn_type
@@ -76,8 +81,11 @@ type_expr =
   | bigint_type
   | boolean_type
   | unit_type
-  | object_type
-  | idref
+  | object_type_ref
+  | object_type_literal
+  | enum_type_ref
+  | enum_type_literal
+  | tyref
   | paren_type_expr
   | hole
   | row_id
@@ -89,9 +97,10 @@ number_type = { "number" }
 bigint_type = { "bigint" }
 boolean_type = { "boolean" }
 unit_type = { "unit" }
-object_type = { object_ref | object_type_literal }
-object_ref = { "{" ~ row_id ~ "}" }
-object_type_literal = { "{" ~ field ~ ("," ~ field)* ~ "}" }
+object_type_ref = { "{" ~ row_id ~ "}" }
+object_type_literal = { "{" ~ property ~ ("," ~ property)* ~ "}" }
+enum_type_ref = { "{" ~ row_id ~ "}" }
+enum_type_literal = { "[" ~ variant ~ ("|" ~ variant)* ~ "]" }
 
 expr =
   { string
@@ -107,6 +116,7 @@ expr =
   | object_concat
   | object_access
   | object_cast
+  | enum_variant
   | idref
   | paren_expr
   | hole
@@ -137,13 +147,14 @@ args = { "()" | "(" ~ expr ~ ("," ~ expr)* ~ ")" }
 tt = { "()" }
 object_literal = { "{" ~ label ~ ("," ~ label)* ~ "}" }
 object_concat = { object_operand ~ "..." ~ object_operand }
-object_access = { object_operand ~ "." ~ field_id }
+object_access = { object_operand ~ "." ~ prop_id }
 object_cast = { "{" ~ object_operand ~ "..." ~ "}" }
 object_operand =
   { idref
   | object_literal
   | paren_expr
   }
+enum_variant = { variant_id ~ paren_expr? }
 paren_expr = { "(" ~ expr ~ ")" }
 
 row_pred =
