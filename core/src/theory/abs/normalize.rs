@@ -203,6 +203,8 @@ impl<'a> Normalizer<'a> {
                     _ => Cast(a, ty),
                 })
             }
+            Enum(r) => Box::new(Enum(self.term(r)?)),
+            Variant(r) => Box::new(Variant(self.term(r)?)),
 
             Univ => Box::new(Univ),
             Unit => Box::new(Unit),

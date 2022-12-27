@@ -73,6 +73,9 @@ pub enum Term {
     Concat(Box<Self>, Box<Self>),
     Access(Box<Self>, String),
     Cast(Box<Self>, Box<Self>),
+
+    Enum(Box<Self>),
+    Variant(Box<Self>),
 }
 
 impl Term {
@@ -151,6 +154,8 @@ impl Display for Term {
                 Concat(a, b) => format!("{a}...{b}"),
                 Access(a, n) => format!("{a}.{n}"),
                 Cast(a, _) => format!("{{{a}...}}"),
+                Enum(r) => format!("[{r}]"),
+                Variant(r) => format!("[{r}]"),
             }
             .as_str(),
         )

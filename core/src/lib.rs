@@ -46,6 +46,8 @@ pub enum Error {
     ExpectedSigma(Box<Term>, Loc),
     #[error("expected object type, got \"{0}\"")]
     ExpectedObject(Box<Term>, Loc),
+    #[error("expected enum type, got \"{0}\"")]
+    ExpectedEnum(Box<Term>, Loc),
 
     #[error("expected \"{0}\", found \"{1}\"")]
     NonUnifiable(Box<Term>, Box<Term>, Loc),
@@ -81,6 +83,7 @@ impl Error {
             ExpectedPi(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             ExpectedSigma(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             ExpectedObject(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
+            ExpectedEnum(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
 
             NonUnifiable(_, _, loc) => (loc.start..loc.end, UNIFIER_FAILED, Some(self.to_string())),
             NonRowSat(_, _, loc) => (loc.start..loc.end, UNIFIER_FAILED, Some(self.to_string())),

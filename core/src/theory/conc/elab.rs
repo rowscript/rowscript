@@ -10,7 +10,9 @@ use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var, VarGen};
 use crate::Error;
-use crate::Error::{ExpectedObject, ExpectedPi, ExpectedSigma, UnresolvedImplicitParam};
+use crate::Error::{
+    ExpectedEnum, ExpectedObject, ExpectedPi, ExpectedSigma, UnresolvedImplicitParam,
+};
 
 #[derive(Debug)]
 pub struct Elaborator {
@@ -371,6 +373,34 @@ impl Elaborator {
                     }
                     (Term::Object(_), _) => return Err(ExpectedObject(b_ty, loc)),
                     _ => return Err(ExpectedObject(a_ty, loc)),
+                }
+            }
+            Enum(_, r) => {
+                let r = self.check(r, &Box::new(Term::Row))?;
+                (Box::new(Term::Enum(r)), Box::new(Term::Univ))
+            }
+            Variant(loc, n, a) => {
+                let b_ty = Normalizer::new(&mut self.sigma, loc).term(hint.unwrap().clone())?;
+                let (a, a_ty) = self.infer(a, hint)?;
+                match &*b_ty {
+                    Term::Enum(to) => {
+                        let ty_fields = FieldMap::from([(n.clone(), *a_ty)]);
+                        let tm_fields = FieldMap::from([(n, *a)]);
+                        let from = Box::new(Term::Fields(ty_fields));
+                        let tele = vec![Param {
+                            var: Var::unbound(),
+                            info: Implicit,
+                            typ: Box::new(Term::RowOrd(from.clone(), Le, to.clone())),
+                        }];
+                        (
+                            Term::lam(
+                                &tele,
+                                Box::new(Term::Variant(Box::new(Term::Fields(tm_fields)))),
+                            ),
+                            Term::pi(&tele, Box::new(Term::Enum(to.clone()))),
+                        )
+                    }
+                    _ => return Err(ExpectedEnum(b_ty, loc)),
                 }
             }
 

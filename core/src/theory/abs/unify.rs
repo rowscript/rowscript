@@ -87,6 +87,8 @@ impl<'a> Unifier<'a> {
             (Fields(_), Fields(_)) => self.unify_fields_eq(lhs, rhs),
             (Object(a), Object(b)) => self.unify(a, b),
             (Obj(a), Obj(b)) => self.unify(a, b),
+            (Enum(a), Enum(b)) => self.unify(a, b),
+            (Variant(a), Variant(b)) => self.unify(a, b),
 
             (Ref(a), Ref(b)) if a == b => Ok(()),
             (Str(a), Str(b)) if a == b => Ok(()),
