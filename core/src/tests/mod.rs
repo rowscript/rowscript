@@ -6,6 +6,7 @@ use crate::{Driver, Error};
 mod fail_parse;
 mod fail_resolve;
 mod ok_bool;
+mod ok_enum;
 mod ok_fn;
 mod ok_hole;
 mod ok_implicit_named;
