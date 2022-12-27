@@ -188,8 +188,8 @@ impl<'a> Normalizer<'a> {
             Cast(a, ty) => {
                 let a = self.term(a)?;
                 Box::new(match (&*a, &*ty) {
-                    (Obj(o), Object(t)) => match (&**o, &**t) {
-                        (Fields(x), Fields(y)) => {
+                    (Obj(o), Fields(y)) => match &**o {
+                        Fields(x) => {
                             let mut m = FieldMap::default();
                             for (n, _) in y {
                                 if let Some(tm) = x.get(n) {
