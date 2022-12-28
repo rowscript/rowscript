@@ -7,7 +7,7 @@ function f1(): number {
 }
 
 function g0(a: {n: number, m: number}): {n: number} {
-    return {a...}
+    return {...a}
 }
 
 function g1(): {n: number} {

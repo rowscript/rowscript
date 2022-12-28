@@ -3,5 +3,5 @@ function f0(): [None | Some: number] {
 }
 
 function f1(): [None | Some: number | More: string] {
-    return [f0()...]
+    return [...f0()]
 }

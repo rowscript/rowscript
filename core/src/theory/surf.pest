@@ -117,6 +117,7 @@ expr =
   | object_access
   | object_cast
   | enum_variant
+  | enum_cast
   | idref
   | paren_expr
   | hole
@@ -140,7 +141,7 @@ implicit_args =
   | "<" ~ row_args ~ "," ~ type_args ~ ">"
   }
 type_args = _{ type_arg ~ ("," ~ type_arg)* }
-type_arg = { (idref ~ "=")? ~ type_expr }
+type_arg = { (tyref ~ "=")? ~ type_expr }
 row_args = _{ row_arg ~ ("," ~ row_arg)* }
 row_arg = { (row_id ~ "=")? ~ paren_fields }
 args = { "()" | "(" ~ expr ~ ("," ~ expr)* ~ ")" }
@@ -148,13 +149,21 @@ tt = { "()" }
 object_literal = { "{" ~ label ~ ("," ~ label)* ~ "}" }
 object_concat = { object_operand ~ "..." ~ object_operand }
 object_access = { object_operand ~ "." ~ prop_id }
-object_cast = { "{" ~ object_operand ~ "..." ~ "}" }
+object_cast = { "{" ~ "..." ~ object_operand ~ "}" }
 object_operand =
-  { idref
+  { app
   | object_literal
+  | idref
   | paren_expr
   }
 enum_variant = { variant_id ~ paren_expr? }
+enum_cast = { "[" ~ "..." ~ enum_operand ~ "]" }
+enum_operand =
+  { app
+  | enum_variant
+  | idref
+  | paren_expr
+  }
 paren_expr = { "(" ~ expr ~ ")" }
 
 row_pred =

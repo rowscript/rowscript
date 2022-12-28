@@ -187,7 +187,7 @@ fn type_arg(a: Pair<Rule>) -> (ArgInfo, Expr) {
     let id_or_type = p.next().unwrap();
     match id_or_type.as_rule() {
         Rule::type_expr => (UnnamedImplicit, type_expr(id_or_type)),
-        Rule::idref => (
+        Rule::tyref => (
             NamedImplicit(id_or_type.as_str().to_string()),
             type_expr(p.next().unwrap()),
         ),
@@ -265,36 +265,7 @@ fn expr(e: Pair<Rule>) -> Expr {
             }
             TupledLam(loc, vars, Box::new(body.unwrap()))
         }
-        Rule::app => {
-            let mut pairs = p.into_inner();
-            let f = pairs.next().unwrap();
-            let f = match f.as_rule() {
-                Rule::expr => expr(f),
-                Rule::idref => unresolved(f),
-                _ => unreachable!(),
-            };
-            pairs
-                .map(|arg| {
-                    let loc = Loc::from(arg.as_span());
-                    match arg.as_rule() {
-                        Rule::row_arg => {
-                            let (i, e) = row_arg(arg);
-                            (loc, i, e)
-                        }
-                        Rule::type_arg => {
-                            let (i, e) = type_arg(arg);
-                            (loc, i, e)
-                        }
-                        Rule::args => (
-                            loc,
-                            UnnamedExplicit,
-                            tupled_args(loc, &mut arg.into_inner()),
-                        ),
-                        _ => unreachable!(),
-                    }
-                })
-                .fold(f, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
-        }
+        Rule::app => app(p),
         Rule::tt => TT(loc),
         Rule::object_literal => object_literal(p),
         Rule::object_concat => {
@@ -342,6 +313,40 @@ fn branch(b: Pair<Rule>) -> Expr {
         Rule::expr => expr(pair),
         _ => unreachable!(),
     }
+}
+
+fn app(a: Pair<Rule>) -> Expr {
+    use Expr::*;
+
+    let mut pairs = a.into_inner();
+    let f = pairs.next().unwrap();
+    let f = match f.as_rule() {
+        Rule::expr => expr(f),
+        Rule::idref => unresolved(f),
+        _ => unreachable!(),
+    };
+
+    pairs
+        .map(|arg| {
+            let loc = Loc::from(arg.as_span());
+            match arg.as_rule() {
+                Rule::row_arg => {
+                    let (i, e) = row_arg(arg);
+                    (loc, i, e)
+                }
+                Rule::type_arg => {
+                    let (i, e) = type_arg(arg);
+                    (loc, i, e)
+                }
+                Rule::args => (
+                    loc,
+                    UnnamedExplicit,
+                    tupled_args(loc, &mut arg.into_inner()),
+                ),
+                _ => unreachable!(),
+            }
+        })
+        .fold(f, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
 }
 
 fn unresolved(p: Pair<Rule>) -> Expr {
@@ -411,8 +416,9 @@ fn object_literal(l: Pair<Rule>) -> Expr {
 fn object_operand(o: Pair<Rule>) -> Expr {
     let p = o.into_inner().next().unwrap();
     match p.as_rule() {
-        Rule::idref => unresolved(p),
+        Rule::app => app(p),
         Rule::object_literal => object_literal(p),
+        Rule::idref => unresolved(p),
         Rule::paren_expr => expr(p.into_inner().next().unwrap()),
         _ => unreachable!(),
     }
