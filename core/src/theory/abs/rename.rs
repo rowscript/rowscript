@@ -45,7 +45,7 @@ impl Renamer {
             Obj(f) => Obj(self.term(f)),
             Concat(a, b) => Concat(self.term(a), self.term(b)),
             Access(a, n) => Access(self.term(a), n),
-            Cast(a, ty) => Cast(self.term(a), self.term(ty)),
+            Downcast(a, ty) => Downcast(self.term(a), self.term(ty)),
             Enum(f) => Enum(self.term(f)),
             Variant(f) => Variant(self.term(f)),
 

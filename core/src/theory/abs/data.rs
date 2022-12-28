@@ -72,7 +72,7 @@ pub enum Term {
     Obj(Box<Self>),
     Concat(Box<Self>, Box<Self>),
     Access(Box<Self>, String),
-    Cast(Box<Self>, Box<Self>),
+    Downcast(Box<Self>, Box<Self>),
 
     Enum(Box<Self>),
     Variant(Box<Self>),
@@ -153,7 +153,7 @@ impl Display for Term {
                 Obj(r) => format!("{{{r}}}"),
                 Concat(a, b) => format!("{a}...{b}"),
                 Access(a, n) => format!("{a}.{n}"),
-                Cast(a, _) => format!("{{{a}...}}"),
+                Downcast(a, _) => format!("{{{a}...}}"),
                 Enum(r) => format!("[{r}]"),
                 Variant(r) => format!("[{r}]"),
             }

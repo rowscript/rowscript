@@ -185,7 +185,7 @@ impl<'a> Normalizer<'a> {
                     _ => Access(a, n),
                 })
             }
-            Cast(a, ty) => {
+            Downcast(a, ty) => {
                 let a = self.term(a)?;
                 Box::new(match (&*a, &*ty) {
                     (Obj(o), Fields(y)) => match &**o {
@@ -198,9 +198,9 @@ impl<'a> Normalizer<'a> {
                             }
                             Obj(Box::new(Fields(m)))
                         }
-                        _ => Cast(a, ty),
+                        _ => Downcast(a, ty),
                     },
-                    _ => Cast(a, ty),
+                    _ => Downcast(a, ty),
                 })
             }
             Enum(r) => Box::new(Enum(self.term(r)?)),

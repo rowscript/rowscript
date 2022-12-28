@@ -309,7 +309,7 @@ fn expr(e: Pair<Rule>) -> Expr {
             let n = pairs.next().unwrap().as_str().to_string();
             App(loc, Box::new(Access(loc, n)), UnnamedExplicit, Box::new(a))
         }
-        Rule::object_cast => Cast(
+        Rule::object_cast => Downcast(
             loc,
             Box::new(object_operand(p.into_inner().next().unwrap())),
         ),

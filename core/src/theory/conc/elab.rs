@@ -356,7 +356,7 @@ impl Elaborator {
                     Term::pi(&tele, Box::new(Term::Ref(t))),
                 )
             }
-            Cast(loc, a) => {
+            Downcast(loc, a) => {
                 let b_ty = Normalizer::new(&mut self.sigma, loc).term(hint.unwrap().clone())?;
                 let (a, a_ty) = self.infer(a, hint)?;
                 match (&*a_ty, &*b_ty) {
@@ -367,7 +367,7 @@ impl Elaborator {
                             typ: Box::new(Term::RowOrd(to.clone(), Le, from.clone())),
                         }];
                         (
-                            Term::lam(&tele, Box::new(Term::Cast(a, to.clone()))),
+                            Term::lam(&tele, Box::new(Term::Downcast(a, to.clone()))),
                             Term::pi(&tele, Box::new(Term::Object(to.clone()))),
                         )
                     }

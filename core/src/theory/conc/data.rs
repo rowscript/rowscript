@@ -63,7 +63,7 @@ pub enum Expr {
     Obj(Loc, Box<Self>),
     Concat(Loc, Box<Self>, Box<Self>),
     Access(Loc, String),
-    Cast(Loc, Box<Self>),
+    Downcast(Loc, Box<Self>),
 
     Enum(Loc, Box<Self>),
     Variant(Loc, String, Box<Self>),
@@ -111,7 +111,7 @@ impl Expr {
             Obj(loc, _) => loc,
             Concat(loc, _, _) => loc,
             Access(loc, _) => loc,
-            Cast(loc, _) => loc,
+            Downcast(loc, _) => loc,
             Enum(loc, _) => loc,
             Variant(loc, _, _) => loc,
         }
@@ -226,7 +226,7 @@ impl Display for Expr {
                 Obj(_, r) => format!("{{{r}}}"),
                 Concat(_, a, b) => format!("{a}...{b}"),
                 Access(_, n) => format!(".{n}"),
-                Cast(_, a) => format!("{{{a}...}}"),
+                Downcast(_, a) => format!("{{{a}...}}"),
                 Enum(_, r) => format!("[{r}]"),
                 Variant(_, n, a) => format!("{n}({a})"),
             }

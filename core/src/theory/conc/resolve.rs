@@ -157,7 +157,7 @@ impl Resolver {
             Object(loc, a) => Object(loc, self.expr(a)?),
             Obj(loc, a) => Obj(loc, self.expr(a)?),
             Concat(loc, a, b) => Concat(loc, self.expr(a)?, self.expr(b)?),
-            Cast(loc, a) => Cast(loc, self.expr(a)?),
+            Downcast(loc, a) => Downcast(loc, self.expr(a)?),
             Enum(loc, a) => Enum(loc, self.expr(a)?),
             Variant(loc, n, a) => Variant(loc, n, self.expr(a)?),
 

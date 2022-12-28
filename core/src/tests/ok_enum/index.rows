@@ -1,3 +1,7 @@
 function f0(): [None | Some: number] {
     return Some(42)
 }
+
+function f1(): [None | Some: number | More: string] {
+    return [f0()...]
+}
