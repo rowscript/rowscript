@@ -403,6 +403,25 @@ impl Elaborator {
                     _ => return Err(ExpectedEnum(b_ty, loc)),
                 }
             }
+            Upcast(loc, a) => {
+                let b_ty = Normalizer::new(&mut self.sigma, loc).term(hint.unwrap().clone())?;
+                let (a, a_ty) = self.infer(a, hint)?;
+                match (&*a_ty, &*b_ty) {
+                    (Term::Enum(from), Term::Enum(to)) => {
+                        let tele = vec![Param {
+                            var: Var::unbound(),
+                            info: Implicit,
+                            typ: Box::new(Term::RowOrd(from.clone(), Le, to.clone())),
+                        }];
+                        (
+                            Term::lam(&tele, Box::new(Term::Upcast(a, to.clone()))),
+                            Term::pi(&tele, Box::new(Term::Enum(to.clone()))),
+                        )
+                    }
+                    (Term::Enum(_), _) => return Err(ExpectedEnum(b_ty, loc)),
+                    _ => return Err(ExpectedEnum(a_ty, loc)),
+                }
+            }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
             Unit(_) => (Box::new(Term::Unit), Box::new(Term::Univ)),

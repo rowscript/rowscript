@@ -76,6 +76,7 @@ pub enum Term {
 
     Enum(Box<Self>),
     Variant(Box<Self>),
+    Upcast(Box<Self>, Box<Self>),
 }
 
 impl Term {
@@ -153,9 +154,10 @@ impl Display for Term {
                 Obj(r) => format!("{{{r}}}"),
                 Concat(a, b) => format!("{a}...{b}"),
                 Access(a, n) => format!("{a}.{n}"),
-                Downcast(a, _) => format!("{{{a}...}}"),
+                Downcast(a, _) => format!("{{...{a}}}"),
                 Enum(r) => format!("[{r}]"),
                 Variant(r) => format!("[{r}]"),
+                Upcast(a, _) => format!("[...{a}]"),
             }
             .as_str(),
         )

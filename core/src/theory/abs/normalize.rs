@@ -185,26 +185,32 @@ impl<'a> Normalizer<'a> {
                     _ => Access(a, n),
                 })
             }
-            Downcast(a, ty) => {
+            Downcast(a, f) => {
                 let a = self.term(a)?;
-                Box::new(match (&*a, &*ty) {
+                Box::new(match (&*a, &*f) {
                     (Obj(o), Fields(y)) => match &**o {
-                        Fields(x) => {
-                            let mut m = FieldMap::default();
-                            for (n, _) in y {
-                                if let Some(tm) = x.get(n) {
-                                    m.insert(n.clone(), tm.clone());
-                                }
-                            }
-                            Obj(Box::new(Fields(m)))
-                        }
-                        _ => Downcast(a, ty),
+                        Fields(x) => Obj(Box::new(Fields(
+                            y.iter().map(|(n, _)| (n.clone(), x[n].clone())).collect(),
+                        ))),
+                        _ => Downcast(a, f),
                     },
-                    _ => Downcast(a, ty),
+                    _ => Downcast(a, f),
                 })
             }
             Enum(r) => Box::new(Enum(self.term(r)?)),
             Variant(r) => Box::new(Variant(self.term(r)?)),
+            Upcast(a, f) => {
+                let a = self.term(a)?;
+                Box::new(match (&*a, &*f) {
+                    (Variant(o), Fields(y)) => match &**o {
+                        Fields(x) => Variant(Box::new(Fields(
+                            x.iter().map(|(n, _)| (n.clone(), y[n].clone())).collect(),
+                        ))),
+                        _ => Upcast(a, f),
+                    },
+                    _ => Upcast(a, f),
+                })
+            }
 
             Univ => Box::new(Univ),
             Unit => Box::new(Unit),

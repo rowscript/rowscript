@@ -160,6 +160,7 @@ impl Resolver {
             Downcast(loc, a) => Downcast(loc, self.expr(a)?),
             Enum(loc, a) => Enum(loc, self.expr(a)?),
             Variant(loc, n, a) => Variant(loc, n, self.expr(a)?),
+            Upcast(loc, a) => Upcast(loc, self.expr(a)?),
 
             Resolved(loc, r) => Resolved(loc, r),
             Hole(loc) => Hole(loc),

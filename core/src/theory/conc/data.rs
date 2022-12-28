@@ -67,6 +67,7 @@ pub enum Expr {
 
     Enum(Loc, Box<Self>),
     Variant(Loc, String, Box<Self>),
+    Upcast(Loc, Box<Self>),
 }
 
 impl Expr {
@@ -114,6 +115,7 @@ impl Expr {
             Downcast(loc, _) => loc,
             Enum(loc, _) => loc,
             Variant(loc, _, _) => loc,
+            Upcast(loc, _) => loc,
         }
         .clone()
     }
@@ -226,9 +228,10 @@ impl Display for Expr {
                 Obj(_, r) => format!("{{{r}}}"),
                 Concat(_, a, b) => format!("{a}...{b}"),
                 Access(_, n) => format!(".{n}"),
-                Downcast(_, a) => format!("{{{a}...}}"),
+                Downcast(_, a) => format!("{{...{a}}}"),
                 Enum(_, r) => format!("[{r}]"),
                 Variant(_, n, a) => format!("{n}({a})"),
+                Upcast(_, a) => format!("[...{a}]"),
             }
             .as_str(),
         )

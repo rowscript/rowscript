@@ -284,14 +284,8 @@ fn expr(e: Pair<Rule>) -> Expr {
             loc,
             Box::new(object_operand(p.into_inner().next().unwrap())),
         ),
-        Rule::enum_variant => {
-            let mut pairs = p.into_inner();
-            let n = pairs.next().unwrap().as_str().to_string();
-            let a = pairs
-                .next()
-                .map_or(TT(loc), |p| expr(p.into_inner().next().unwrap()));
-            Variant(loc, n, Box::new(a))
-        }
+        Rule::enum_variant => enum_variant(p),
+        Rule::enum_cast => Upcast(loc, Box::new(enum_operand(p.into_inner().next().unwrap()))),
         Rule::idref => unresolved(p),
         Rule::paren_expr => expr(p.into_inner().next().unwrap()),
         Rule::hole => Hole(loc),
@@ -418,6 +412,28 @@ fn object_operand(o: Pair<Rule>) -> Expr {
     match p.as_rule() {
         Rule::app => app(p),
         Rule::object_literal => object_literal(p),
+        Rule::idref => unresolved(p),
+        Rule::paren_expr => expr(p.into_inner().next().unwrap()),
+        _ => unreachable!(),
+    }
+}
+
+fn enum_variant(v: Pair<Rule>) -> Expr {
+    use Expr::*;
+    let loc = Loc::from(v.as_span());
+    let mut pairs = v.into_inner();
+    let n = pairs.next().unwrap().as_str().to_string();
+    let a = pairs
+        .next()
+        .map_or(TT(loc), |p| expr(p.into_inner().next().unwrap()));
+    Variant(loc, n, Box::new(a))
+}
+
+fn enum_operand(o: Pair<Rule>) -> Expr {
+    let p = o.into_inner().next().unwrap();
+    match p.as_rule() {
+        Rule::app => app(p),
+        Rule::enum_variant => enum_variant(p),
         Rule::idref => unresolved(p),
         Rule::paren_expr => expr(p.into_inner().next().unwrap()),
         _ => unreachable!(),
