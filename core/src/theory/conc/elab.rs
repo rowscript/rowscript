@@ -100,53 +100,55 @@ impl Elaborator {
             }
             Lam(loc, var, body) => {
                 let pi = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
-                match *pi {
+                match &*pi {
                     Term::Pi(ty_param, ty_body) => {
                         let param = Param {
                             var: var.clone(),
                             info: Explicit,
-                            typ: ty_param.typ,
+                            typ: ty_param.typ.clone(),
                         };
-                        let body_type = Normalizer::new(&mut self.sigma, loc)
-                            .with(&[(&ty_param.var, &Box::new(Term::Ref(var)))], ty_body)?;
+                        let body_type = Normalizer::new(&mut self.sigma, loc).with(
+                            &[(&ty_param.var, &Box::new(Term::Ref(var)))],
+                            ty_body.clone(),
+                        )?;
                         let checked_body = self.guarded_check(&[&param], body, &body_type)?;
                         Box::new(Term::Lam(param.clone(), checked_body))
                     }
-                    _ => return Err(ExpectedPi(ty.clone(), loc)),
+                    _ => return Err(ExpectedPi(pi, loc)),
                 }
             }
             Tuple(loc, a, b) => {
                 let sig = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
-                match *sig {
+                match &*sig {
                     Term::Sigma(ty_param, ty_body) => {
                         let a = self.check(a, &ty_param.typ)?;
                         let body_type = Normalizer::new(&mut self.sigma, loc)
-                            .with(&[(&ty_param.var, &a)], ty_body)?;
+                            .with(&[(&ty_param.var, &a)], ty_body.clone())?;
                         let b = self.check(b, &body_type)?;
                         Box::new(Term::Tuple(a, b))
                     }
-                    _ => return Err(ExpectedSigma(ty.clone(), loc)),
+                    _ => return Err(ExpectedSigma(sig, loc)),
                 }
             }
             TupleLet(loc, x, y, a, b) => {
                 let (a, a_ty) = self.infer(a, Some(ty))?;
                 let sig = Normalizer::new(&mut self.sigma, loc).term(a_ty)?;
-                match *sig {
+                match &*sig {
                     Term::Sigma(ty_param, ty_body) => {
                         let x = Param {
                             var: x,
                             info: Explicit,
-                            typ: ty_param.typ,
+                            typ: ty_param.typ.clone(),
                         };
                         let y = Param {
                             var: y,
                             info: Explicit,
-                            typ: ty_body,
+                            typ: ty_body.clone(),
                         };
                         let b = self.guarded_check(&[&x, &y], b, ty)?;
                         Box::new(Term::TupleLet(x, y, a, b))
                     }
-                    _ => return Err(ExpectedSigma(ty.clone(), loc)),
+                    _ => return Err(ExpectedSigma(sig, loc)),
                 }
             }
             UnitLet(_, a, b) => Box::new(Term::UnitLet(
@@ -158,6 +160,9 @@ impl Elaborator {
                 self.check(t, ty)?,
                 self.check(e, ty)?,
             )),
+            Switch(loc, a, cs) => {
+                todo!()
+            }
             _ => {
                 let loc = e.loc();
                 let f_e = e.clone();
