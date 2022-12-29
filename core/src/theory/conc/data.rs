@@ -68,6 +68,7 @@ pub enum Expr {
     Enum(Loc, Box<Self>),
     Variant(Loc, String, Box<Self>),
     Upcast(Loc, Box<Self>),
+    Switch(Loc, Box<Self>, Vec<(String, Self)>),
 }
 
 impl Expr {
@@ -116,6 +117,7 @@ impl Expr {
             Enum(loc, _) => loc,
             Variant(loc, _, _) => loc,
             Upcast(loc, _) => loc,
+            Switch(loc, _, _) => loc,
         }
         .clone()
     }
@@ -183,7 +185,7 @@ impl Display for Expr {
                 Pi(_, p, b) => format!("{} -> {}", p, b),
                 TupledLam(_, vs, b) => format!(
                     "({}) => {b}",
-                    vs.into_iter()
+                    vs.iter()
                         .map(|v| v.to_string())
                         .collect::<Vec<_>>()
                         .join(", ")
@@ -214,7 +216,7 @@ impl Display for Expr {
                 Fields(_, fields) => format!(
                     "({})",
                     fields
-                        .into_iter()
+                        .iter()
                         .map(|(n, t)| format!("{n}: {t}"))
                         .collect::<Vec<_>>()
                         .join(", ")
@@ -232,6 +234,13 @@ impl Display for Expr {
                 Enum(_, r) => format!("[{r}]"),
                 Variant(_, n, a) => format!("{n}({a})"),
                 Upcast(_, a) => format!("[...{a}]"),
+                Switch(_, a, cs) => format!(
+                    "switch ({a}) {{\n{}}}",
+                    cs.iter()
+                        .map(|(n, e)| format!("case {n}: {e}"))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                ),
             }
             .as_str(),
         )

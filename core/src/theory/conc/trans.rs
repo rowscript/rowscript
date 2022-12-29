@@ -263,6 +263,28 @@ fn expr(e: Pair<Rule>) -> Expr {
         ),
         Rule::enum_variant => enum_variant(p),
         Rule::enum_cast => Upcast(loc, Box::new(enum_operand(p.into_inner().next().unwrap()))),
+        Rule::enum_switch => {
+            let mut pairs = p.into_inner();
+            let e = expr(pairs.next().unwrap().into_inner().next().unwrap());
+            let mut cases = Vec::default();
+            for p in pairs {
+                let mut c = p.into_inner();
+                let name = c.next().unwrap();
+                let loc = Loc::from(name.as_span());
+                let param_or_expr = c.next().unwrap();
+                let case = match param_or_expr.as_rule() {
+                    Rule::param_id => Lam(
+                        loc,
+                        Var::from(param_or_expr),
+                        Box::new(expr(c.next().unwrap())),
+                    ),
+                    Rule::expr => Lam(loc, Var::unbound(), Box::new(expr(param_or_expr))),
+                    _ => unreachable!(),
+                };
+                cases.push((name.as_str().to_string(), case));
+            }
+            Switch(loc, Box::new(e), cases)
+        }
         Rule::lambda_expr => {
             let pairs = p.into_inner();
             let mut vars: Vec<Expr> = Default::default();

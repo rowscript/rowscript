@@ -161,6 +161,13 @@ impl Resolver {
             Enum(loc, a) => Enum(loc, self.expr(a)?),
             Variant(loc, n, a) => Variant(loc, n, self.expr(a)?),
             Upcast(loc, a) => Upcast(loc, self.expr(a)?),
+            Switch(loc, a, cs) => {
+                let mut new = Vec::default();
+                for (n, e) in cs {
+                    new.push((n, *self.expr(Box::new(e))?));
+                }
+                Switch(loc, self.expr(a)?, new)
+            }
 
             Resolved(loc, r) => Resolved(loc, r),
             Hole(loc) => Hole(loc),
