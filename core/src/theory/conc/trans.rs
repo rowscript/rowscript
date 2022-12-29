@@ -244,6 +244,25 @@ fn expr(e: Pair<Rule>) -> Expr {
                 Box::new(branch(pairs.next().unwrap())),
             )
         }
+        Rule::object_literal => object_literal(p),
+        Rule::object_concat => {
+            let mut pairs = p.into_inner();
+            let a = object_operand(pairs.next().unwrap());
+            let b = object_operand(pairs.next().unwrap());
+            Concat(loc, Box::new(a), Box::new(b))
+        }
+        Rule::object_access => {
+            let mut pairs = p.into_inner();
+            let a = object_operand(pairs.next().unwrap());
+            let n = pairs.next().unwrap().as_str().to_string();
+            App(loc, Box::new(Access(loc, n)), UnnamedExplicit, Box::new(a))
+        }
+        Rule::object_cast => Downcast(
+            loc,
+            Box::new(object_operand(p.into_inner().next().unwrap())),
+        ),
+        Rule::enum_variant => enum_variant(p),
+        Rule::enum_cast => Upcast(loc, Box::new(enum_operand(p.into_inner().next().unwrap()))),
         Rule::lambda_expr => {
             let pairs = p.into_inner();
             let mut vars: Vec<Expr> = Default::default();
@@ -267,25 +286,6 @@ fn expr(e: Pair<Rule>) -> Expr {
         }
         Rule::app => app(p),
         Rule::tt => TT(loc),
-        Rule::object_literal => object_literal(p),
-        Rule::object_concat => {
-            let mut pairs = p.into_inner();
-            let a = object_operand(pairs.next().unwrap());
-            let b = object_operand(pairs.next().unwrap());
-            Concat(loc, Box::new(a), Box::new(b))
-        }
-        Rule::object_access => {
-            let mut pairs = p.into_inner();
-            let a = object_operand(pairs.next().unwrap());
-            let n = pairs.next().unwrap().as_str().to_string();
-            App(loc, Box::new(Access(loc, n)), UnnamedExplicit, Box::new(a))
-        }
-        Rule::object_cast => Downcast(
-            loc,
-            Box::new(object_operand(p.into_inner().next().unwrap())),
-        ),
-        Rule::enum_variant => enum_variant(p),
-        Rule::enum_cast => Upcast(loc, Box::new(enum_operand(p.into_inner().next().unwrap()))),
         Rule::idref => unresolved(p),
         Rule::paren_expr => expr(p.into_inner().next().unwrap()),
         Rule::hole => Hole(loc),

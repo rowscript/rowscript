@@ -5,3 +5,10 @@ function f0(): [None | Some: number] {
 function f1(): [None | Some: number | More: string] {
     return [...f0()]
 }
+
+function f2(): number {
+    return switch (f0()) {
+    case None: 42
+    case Some(n): n
+    }
+}

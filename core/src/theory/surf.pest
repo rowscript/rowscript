@@ -109,15 +109,16 @@ expr =
   | boolean_false
   | boolean_true
   | boolean_if
-  | lambda_expr
-  | app
-  | tt
   | object_literal
   | object_concat
   | object_access
   | object_cast
   | enum_variant
   | enum_cast
+  | enum_switch
+  | lambda_expr
+  | app
+  | tt
   | idref
   | paren_expr
   | hole
@@ -164,6 +165,8 @@ enum_operand =
   | idref
   | paren_expr
   }
+enum_switch = { "switch" ~ "(" ~ expr ~ ")" ~ "{" ~ enum_case+ ~ "}" }
+enum_case = { "case" ~ variant_id ~ ("(" ~ param_id? ~ ")")? ~ ":" ~ expr }
 paren_expr = { "(" ~ expr ~ ")" }
 
 row_pred =
