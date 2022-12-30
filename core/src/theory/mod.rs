@@ -6,7 +6,7 @@ use std::rc::Rc;
 use pest::iterators::Pair;
 use pest::Span;
 
-use crate::Rule;
+use crate::{Error, Rule};
 
 pub mod abs;
 pub mod conc;
@@ -38,7 +38,22 @@ impl<'a> From<Span<'a>> for Loc {
 }
 
 type Name = Rc<String>;
-pub type RawNameSet = HashSet<String>;
+
+#[derive(Default)]
+pub struct RawNameSet(HashSet<String>);
+
+impl RawNameSet {
+    pub fn var(&mut self, loc: Loc, v: &Var) -> Result<(), Error> {
+        self.raw(loc, &v.to_string())
+    }
+
+    pub fn raw(&mut self, loc: Loc, f: &String) -> Result<(), Error> {
+        if !self.0.insert(f.clone()) {
+            return Err(Error::DuplicateName(loc));
+        }
+        Ok(())
+    }
+}
 
 #[derive(Clone, Eq)]
 pub struct Var {

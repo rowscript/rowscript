@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::theory::abs::data::{FieldMap, Term};
+use crate::theory::abs::data::{CaseMap, FieldMap, Term};
 use crate::theory::{Param, Var};
 
 #[derive(Default)]
@@ -49,6 +49,14 @@ impl Renamer {
             Enum(f) => Enum(self.term(f)),
             Variant(f) => Variant(self.term(f)),
             Upcast(a, f) => Upcast(self.term(a), self.term(f)),
+            Switch(a, cs) => {
+                let a = self.term(a);
+                let mut m = CaseMap::default();
+                for (n, (v, tm)) in cs {
+                    m.insert(n, (v, *self.term(Box::new(tm))));
+                }
+                Switch(a, m)
+            }
 
             Univ => Univ,
             Unit => Unit,

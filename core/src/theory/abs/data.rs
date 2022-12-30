@@ -22,6 +22,7 @@ impl Display for Dir {
 }
 
 pub type FieldMap = HashMap<String, Term>;
+pub type CaseMap = HashMap<String, (Var, Term)>;
 
 #[derive(Debug, Clone)]
 pub enum Term {
@@ -77,6 +78,7 @@ pub enum Term {
     Enum(Box<Self>),
     Variant(Box<Self>),
     Upcast(Box<Self>, Box<Self>),
+    Switch(Box<Self>, CaseMap),
 }
 
 impl Term {
@@ -115,17 +117,17 @@ impl Display for Term {
                     );
                     format!("({})", s.join(" "))
                 }
-                Let(p, a, b) => format!("let {p} = {a}; {b}"),
+                Let(p, a, b) => format!("let {p} = {a};\n\t{b}"),
                 Univ => "type".to_string(),
                 Pi(p, b) => format!("{p} -> {b}"),
                 Lam(p, b) => format!("{p} => {b}"),
                 App(f, x) => format!("({f}) ({x})"),
                 Sigma(p, b) => format!("{p} * {b}"),
                 Tuple(a, b) => format!("({a}, {b})"),
-                TupleLet(p, q, a, b) => format!("let ({p}, {q}) = {a}; {b}"),
+                TupleLet(p, q, a, b) => format!("let ({p}, {q}) = {a};\n\t{b}"),
                 Unit => "unit".to_string(),
                 TT => "()".to_string(),
-                UnitLet(a, b) => format!("let _ = {a}; {b}"),
+                UnitLet(a, b) => format!("let _ = {a};\n\t{b}"),
                 Boolean => "boolean".to_string(),
                 False => "false".to_string(),
                 True => "true".to_string(),
@@ -158,6 +160,15 @@ impl Display for Term {
                 Enum(r) => format!("[{r}]"),
                 Variant(r) => format!("[{r}]"),
                 Upcast(a, _) => format!("[...{a}]"),
+                Switch(a, cs) => {
+                    format!(
+                        "switch ({a}) {{\n{}\n}}",
+                        cs.iter()
+                            .map(|(n, (v, e))| format!("\tcase {n}({v}): {e}"))
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    )
+                }
             }
             .as_str(),
         )

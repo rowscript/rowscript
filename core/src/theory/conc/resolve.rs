@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Def;
-use crate::theory::conc::data::Expr;
+use crate::theory::conc::data::{Case, Expr};
 use crate::theory::{Param, RawNameSet, Tele, Var};
 use crate::Error;
-use crate::Error::{DuplicateField, UnresolvedVar};
+use crate::Error::UnresolvedVar;
 
 #[derive(Default)]
 pub struct Resolver(HashMap<String, Var>);
@@ -144,9 +144,7 @@ impl Resolver {
                 let mut names = RawNameSet::default();
                 let mut resolved = Vec::default();
                 for (f, typ) in fields {
-                    if !names.insert(f.clone()) {
-                        return Err(DuplicateField(f, loc));
-                    }
+                    names.raw(loc, &f)?;
                     resolved.push((f, *self.expr(Box::new(typ))?));
                 }
                 Fields(loc, resolved)
@@ -162,9 +160,27 @@ impl Resolver {
             Variant(loc, n, a) => Variant(loc, n, self.expr(a)?),
             Upcast(loc, a) => Upcast(loc, self.expr(a)?),
             Switch(loc, a, cs) => {
+                use Case::*;
+                let mut names = RawNameSet::default();
                 let mut new = Vec::default();
-                for (n, e) in cs {
-                    new.push((n, *self.expr(Box::new(e))?));
+                for c in cs {
+                    let e = match c {
+                        Annotated(n, v, t, e) => {
+                            names.raw(loc, &n)?;
+                            let e = *self.bodied(&[&v], Box::new(e))?;
+                            Annotated(n, v, *self.expr(Box::new(t))?, e)
+                        }
+                        Unannotated(n, v, e) => {
+                            names.raw(loc, &n)?;
+                            let e = *self.bodied(&[&v], Box::new(e))?;
+                            Unannotated(n, v, e)
+                        }
+                        Unbound(n, e) => {
+                            names.raw(loc, &n)?;
+                            Unbound(n, *self.expr(Box::new(e))?)
+                        }
+                    };
+                    new.push(e);
                 }
                 Switch(loc, self.expr(a)?, new)
             }

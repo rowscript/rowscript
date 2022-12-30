@@ -1,6 +1,5 @@
 extern crate core;
 
-use std::collections::HashSet;
 use std::fs::read_to_string;
 use std::io;
 
@@ -16,8 +15,7 @@ use crate::theory::conc::data::Expr;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
-use crate::theory::Loc;
-use crate::Error::DuplicateDef;
+use crate::theory::{Loc, RawNameSet};
 
 #[cfg(test)]
 mod tests;
@@ -33,10 +31,8 @@ pub enum Error {
 
     #[error("unresolved variable")]
     UnresolvedVar(Loc),
-    #[error("duplicate definition")]
-    DuplicateDef(Loc),
-    #[error("duplicate field \"{0}\"")]
-    DuplicateField(String, Loc),
+    #[error("duplicate name")]
+    DuplicateName(Loc),
 
     #[error("unresolved implicit parameter \"{0}\"")]
     UnresolvedImplicitParam(String, Loc),
@@ -48,6 +44,14 @@ pub enum Error {
     ExpectedObject(Box<Term>, Loc),
     #[error("expected enum type, got \"{0}\"")]
     ExpectedEnum(Box<Term>, Loc),
+    #[error("expected annotated case for \"{0}\"")]
+    ExpectedAnnotated(String, Loc),
+    #[error("expected unannotated case for \"{0}\"")]
+    ExpectedUnannotated(String, Loc),
+    #[error("switch not exhaustive, got \"{0}\"")]
+    NonExhaustive(Box<Term>, Loc),
+    #[error("unresolved field \"{0}\" in \"{1}\"")]
+    UnresolvedField(String, Box<Term>, Loc),
 
     #[error("expected \"{0}\", found \"{1}\"")]
     NonUnifiable(Box<Term>, Box<Term>, Loc),
@@ -74,8 +78,7 @@ impl Error {
             }
 
             UnresolvedVar(loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
-            DuplicateDef(loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
-            DuplicateField(_, loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
+            DuplicateName(loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
 
             UnresolvedImplicitParam(_, loc) => {
                 (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string()))
@@ -84,6 +87,16 @@ impl Error {
             ExpectedSigma(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             ExpectedObject(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             ExpectedEnum(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
+            ExpectedAnnotated(_, loc) => {
+                (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string()))
+            }
+            ExpectedUnannotated(_, loc) => {
+                (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string()))
+            }
+            NonExhaustive(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
+            UnresolvedField(_, _, loc) => {
+                (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string()))
+            }
 
             NonUnifiable(_, _, loc) => (loc.start..loc.end, UNIFIER_FAILED, Some(self.to_string())),
             NonRowSat(_, _, loc) => (loc.start..loc.end, UNIFIER_FAILED, Some(self.to_string())),
@@ -142,14 +155,10 @@ impl<'a> Driver<'a> {
 
         let mut r = Resolver::default();
         let mut resolved = Vec::default();
-        let mut names = HashSet::<String>::default();
+        let mut names = RawNameSet::default();
         for d in defs {
-            let loc = d.loc;
-            let name = d.name.to_string();
+            names.var(d.loc, &d.name)?;
             resolved.push(r.def(d)?);
-            if !names.insert(name) {
-                return Err(DuplicateDef(loc));
-            }
         }
 
         let mut e = Elaborator::default();

@@ -1,17 +1,18 @@
 use crate::theory::abs::data::Dir::Le;
-use crate::theory::abs::data::{FieldMap, Term};
+use crate::theory::abs::data::{CaseMap, FieldMap, Term};
 use crate::theory::abs::def::{gamma_to_tele, Body};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
-use crate::theory::conc::data::{ArgInfo, Expr};
+use crate::theory::conc::data::{ArgInfo, Case, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var, VarGen};
 use crate::Error;
 use crate::Error::{
-    ExpectedEnum, ExpectedObject, ExpectedPi, ExpectedSigma, UnresolvedImplicitParam,
+    ExpectedAnnotated, ExpectedEnum, ExpectedObject, ExpectedPi, ExpectedSigma,
+    ExpectedUnannotated, NonExhaustive, UnresolvedField, UnresolvedImplicitParam,
 };
 
 #[derive(Debug)]
@@ -130,9 +131,10 @@ impl Elaborator {
                     _ => return Err(ExpectedSigma(sig, loc)),
                 }
             }
-            TupleLet(loc, x, y, a, b) => {
+            TupleLet(_, x, y, a, b) => {
+                let a_loc = a.loc();
                 let (a, a_ty) = self.infer(a, Some(ty))?;
-                let sig = Normalizer::new(&mut self.sigma, loc).term(a_ty)?;
+                let sig = Normalizer::new(&mut self.sigma, a_loc).term(a_ty)?;
                 match &*sig {
                     Term::Sigma(ty_param, ty_body) => {
                         let x = Param {
@@ -148,7 +150,7 @@ impl Elaborator {
                         let b = self.guarded_check(&[&x, &y], b, ty)?;
                         Box::new(Term::TupleLet(x, y, a, b))
                     }
-                    _ => return Err(ExpectedSigma(sig, loc)),
+                    _ => return Err(ExpectedSigma(sig, a_loc)),
                 }
             }
             UnitLet(_, a, b) => Box::new(Term::UnitLet(
@@ -160,9 +162,6 @@ impl Elaborator {
                 self.check(t, ty)?,
                 self.check(e, ty)?,
             )),
-            Switch(loc, a, cs) => {
-                todo!()
-            }
             _ => {
                 let loc = e.loc();
                 let f_e = e.clone();
@@ -425,6 +424,80 @@ impl Elaborator {
                     }
                     (Term::Enum(_), _) => return Err(ExpectedEnum(b_ty, loc)),
                     _ => return Err(ExpectedEnum(a_ty, loc)),
+                }
+            }
+            Switch(loc, a, cs) => {
+                use Case::*;
+                let ret_ty = hint.unwrap();
+                let a_loc = a.loc();
+                let (a, a_ty) = self.infer(a, hint)?;
+                let en = Normalizer::new(&mut self.sigma, loc).term(a_ty)?;
+                match &*en {
+                    Term::Enum(y) => match &**y {
+                        Term::Fields(f) => {
+                            if f.len() != cs.len() {
+                                return Err(NonExhaustive(Box::new(Term::Fields(f.clone())), loc));
+                            }
+                            let mut m = CaseMap::default();
+                            for c in cs {
+                                let (n, v, e) = match c {
+                                    Annotated(n, _, _, _) => {
+                                        return Err(ExpectedUnannotated(n, loc))
+                                    }
+                                    Unannotated(n, v, e) => (n, v, e),
+                                    Unbound(n, e) => (n, Var::unbound(), e),
+                                };
+                                let ty = f.get(&n).ok_or(UnresolvedField(
+                                    n.clone(),
+                                    Box::new(Term::Fields(f.clone())),
+                                    loc,
+                                ))?;
+                                let p = Param {
+                                    var: v.clone(),
+                                    info: Explicit,
+                                    typ: Box::new(ty.clone()),
+                                };
+                                let tm = *self.guarded_check(&[&p], Box::new(e), ret_ty)?;
+                                m.insert(n, (v, tm));
+                            }
+                            (Box::new(Term::Switch(a, m)), ret_ty.clone())
+                        }
+                        y => {
+                            let mut ty_fields = FieldMap::default();
+                            let mut m = CaseMap::default();
+                            for c in cs {
+                                let (n, v, ty, e) = match c {
+                                    Annotated(n, v, t, e) => {
+                                        (n, v, *self.check(Box::new(t), &Box::new(Term::Univ))?, e)
+                                    }
+                                    Unannotated(n, _, _) => return Err(ExpectedAnnotated(n, loc)),
+                                    Unbound(n, e) => (n, Var::unbound(), Term::Unit, e),
+                                };
+                                let p = Param {
+                                    var: v.clone(),
+                                    info: Explicit,
+                                    typ: Box::new(ty.clone()),
+                                };
+                                let tm = *self.guarded_check(&[&p], Box::new(e), ret_ty)?;
+                                m.insert(n.clone(), (v, tm));
+                                ty_fields.insert(n, ty);
+                            }
+                            let tele = vec![Param {
+                                var: Var::unbound(),
+                                info: Implicit,
+                                typ: Box::new(Term::RowOrd(
+                                    Box::new(y.clone()),
+                                    Le,
+                                    Box::new(Term::Fields(ty_fields)),
+                                )),
+                            }];
+                            (
+                                Term::lam(&tele, Box::new(Term::Switch(a, m))),
+                                Term::pi(&tele, ret_ty.clone()),
+                            )
+                        }
+                    },
+                    _ => return Err(ExpectedEnum(en, a_loc)),
                 }
             }
 

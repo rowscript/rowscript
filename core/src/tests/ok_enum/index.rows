@@ -8,7 +8,9 @@ function f1(): [None | Some: number | More: string] {
 
 function f2(): number {
     return switch (f0()) {
-    case None: 42
+    case None: 69
     case Some(n): n
     }
 }
+
+function f3(): number { return f2() }

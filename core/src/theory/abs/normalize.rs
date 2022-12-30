@@ -211,6 +211,20 @@ impl<'a> Normalizer<'a> {
                     _ => Upcast(a, f),
                 })
             }
+            Switch(a, cs) => {
+                let a = self.term(a)?;
+                match *a {
+                    Variant(r) => match *r {
+                        Fields(f) => {
+                            let (n, x) = f.into_iter().next().unwrap();
+                            let (v, tm) = cs.get(&n).unwrap();
+                            self.with(&[(v, &Box::new(x))], Box::new(tm.clone()))?
+                        }
+                        r => Box::new(Switch(Box::new(r), cs)),
+                    },
+                    a => Box::new(Switch(Box::new(a), cs)),
+                }
+            }
 
             Univ => Box::new(Univ),
             Unit => Box::new(Unit),

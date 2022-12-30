@@ -99,7 +99,7 @@ boolean_type = { "boolean" }
 unit_type = { "unit" }
 object_type_ref = { "{" ~ row_id ~ "}" }
 object_type_literal = { "{" ~ property ~ ("," ~ property)* ~ "}" }
-enum_type_ref = { "{" ~ row_id ~ "}" }
+enum_type_ref = { "[" ~ row_id ~ "]" }
 enum_type_literal = { "[" ~ variant ~ ("|" ~ variant)* ~ "]" }
 
 expr =
@@ -166,7 +166,7 @@ enum_operand =
   | paren_expr
   }
 enum_switch = { "switch" ~ paren_expr ~ "{" ~ enum_case+ ~ "}" }
-enum_case = { "case" ~ variant_id ~ ("(" ~ param_id ~ ")")? ~ ":" ~ expr }
+enum_case = { "case" ~ variant_id ~ ("(" ~ param_id ~ (":" ~ type_expr)? ~ ")")? ~ ":" ~ expr }
 paren_expr = { "(" ~ expr ~ ")" }
 
 row_pred =

@@ -1,0 +1,17 @@
+function toNumber(s: string): number;
+
+function f0(): [None | Some: number] {
+    return Some(42)
+}
+
+function f1<'A>(e: ['A]): number {
+    return switch (e) {
+    case None: 69
+    case Some(n: number): n
+    case More(s: string): toNumber(s)
+    }
+}
+
+function f2(): number {
+    return f1(f0())
+}
