@@ -68,7 +68,7 @@ pub enum Expr {
     Enum(Loc, Box<Self>),
     Variant(Loc, String, Box<Self>),
     Upcast(Loc, Box<Self>),
-    Switch(Loc, Box<Self>, Vec<Case>),
+    Switch(Loc, Box<Self>, Vec<(String, Var, Self)>),
 }
 
 impl Expr {
@@ -237,31 +237,10 @@ impl Display for Expr {
                 Switch(_, a, cs) => format!(
                     "switch ({a}) {{\n{}\n}}",
                     cs.iter()
-                        .map(|c| c.to_string())
+                        .map(|(n, v, e)| format!("\tcase {n}({v}): {e}"))
                         .collect::<Vec<_>>()
                         .join("\n")
                 ),
-            }
-            .as_str(),
-        )
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum Case {
-    Annotated(String, Var, Expr, Expr),
-    Unannotated(String, Var, Expr),
-    Unbound(String, Expr),
-}
-
-impl Display for Case {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        use Case::*;
-        f.write_str(
-            match self {
-                Annotated(n, v, t, e) => format!("case {n}({v}: {t}): {e}"),
-                Unannotated(n, v, e) => format!("case {n}({v}): {e}"),
-                Unbound(n, e) => format!("case {n}: {e}"),
             }
             .as_str(),
         )

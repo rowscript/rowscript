@@ -44,10 +44,8 @@ pub enum Error {
     ExpectedObject(Box<Term>, Loc),
     #[error("expected enum type, got \"{0}\"")]
     ExpectedEnum(Box<Term>, Loc),
-    #[error("expected annotated case for \"{0}\"")]
-    ExpectedAnnotated(String, Loc),
-    #[error("expected unannotated case for \"{0}\"")]
-    ExpectedUnannotated(String, Loc),
+    #[error("switch fields not known yet, got \"{0}\"")]
+    SwitchUnknown(Box<Term>, Loc),
     #[error("switch not exhaustive, got \"{0}\"")]
     NonExhaustive(Box<Term>, Loc),
     #[error("unresolved field \"{0}\" in \"{1}\"")]
@@ -87,12 +85,7 @@ impl Error {
             ExpectedSigma(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             ExpectedObject(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             ExpectedEnum(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
-            ExpectedAnnotated(_, loc) => {
-                (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string()))
-            }
-            ExpectedUnannotated(_, loc) => {
-                (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string()))
-            }
+            SwitchUnknown(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             NonExhaustive(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             UnresolvedField(_, _, loc) => {
                 (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string()))

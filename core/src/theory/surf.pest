@@ -166,7 +166,7 @@ enum_operand =
   | paren_expr
   }
 enum_switch = { "switch" ~ paren_expr ~ "{" ~ enum_case+ ~ "}" }
-enum_case = { "case" ~ variant_id ~ ("(" ~ param_id ~ (":" ~ type_expr)? ~ ")")? ~ ":" ~ expr }
+enum_case = { "case" ~ variant_id ~ ("(" ~ param_id ~ ")")? ~ ":" ~ expr }
 paren_expr = { "(" ~ expr ~ ")" }
 
 row_pred =

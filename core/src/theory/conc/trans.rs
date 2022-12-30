@@ -4,7 +4,6 @@ use crate::theory::abs::data::Dir;
 use crate::theory::abs::def::Body::{Fun, Postulate};
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
-use crate::theory::conc::data::Case;
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var};
@@ -264,31 +263,22 @@ fn expr(e: Pair<Rule>) -> Expr {
         Rule::enum_variant => enum_variant(p),
         Rule::enum_cast => Upcast(loc, Box::new(enum_operand(p.into_inner().next().unwrap()))),
         Rule::enum_switch => {
-            use Case::*;
             let mut pairs = p.into_inner();
             let e = expr(pairs.next().unwrap().into_inner().next().unwrap());
             let mut cases = Vec::default();
             for p in pairs {
                 let mut c = p.into_inner();
                 let n = c.next().unwrap().as_str().to_string();
-                let mut t = None;
                 let mut v = None;
                 let mut body = None;
                 for p in c {
                     match p.as_rule() {
                         Rule::param_id => v = Some(Var::from(p)),
-                        Rule::type_expr => t = Some(type_expr(p)),
                         Rule::expr => body = Some(expr(p)),
                         _ => unreachable!(),
                     };
                 }
-                cases.push(if let Some(t) = t {
-                    Annotated(n, v.unwrap(), t, body.unwrap())
-                } else if let Some(v) = v {
-                    Unannotated(n, v, body.unwrap())
-                } else {
-                    Unbound(n, body.unwrap())
-                });
+                cases.push((n, v.unwrap_or(Var::unbound()), body.unwrap()));
             }
             Switch(loc, Box::new(e), cases)
         }

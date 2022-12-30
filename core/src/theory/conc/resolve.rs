@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Def;
-use crate::theory::conc::data::{Case, Expr};
+use crate::theory::conc::data::Expr;
 use crate::theory::{Param, RawNameSet, Tele, Var};
 use crate::Error;
 use crate::Error::UnresolvedVar;
@@ -160,27 +160,12 @@ impl Resolver {
             Variant(loc, n, a) => Variant(loc, n, self.expr(a)?),
             Upcast(loc, a) => Upcast(loc, self.expr(a)?),
             Switch(loc, a, cs) => {
-                use Case::*;
                 let mut names = RawNameSet::default();
                 let mut new = Vec::default();
-                for c in cs {
-                    let e = match c {
-                        Annotated(n, v, t, e) => {
-                            names.raw(loc, &n)?;
-                            let e = *self.bodied(&[&v], Box::new(e))?;
-                            Annotated(n, v, *self.expr(Box::new(t))?, e)
-                        }
-                        Unannotated(n, v, e) => {
-                            names.raw(loc, &n)?;
-                            let e = *self.bodied(&[&v], Box::new(e))?;
-                            Unannotated(n, v, e)
-                        }
-                        Unbound(n, e) => {
-                            names.raw(loc, &n)?;
-                            Unbound(n, *self.expr(Box::new(e))?)
-                        }
-                    };
-                    new.push(e);
+                for (n, v, e) in cs {
+                    names.raw(loc, &n)?;
+                    let e = *self.bodied(&[&v], Box::new(e))?;
+                    new.push((n, v, e));
                 }
                 Switch(loc, self.expr(a)?, new)
             }
