@@ -21,9 +21,8 @@ fn check_helper(mod_path: &str) -> Result<(), Error> {
         "src",
         "tests",
         mod_path.to_string().split("::").last().unwrap(),
-        "index.rows",
     ]);
-    Driver::new(pkg.to_str().unwrap()).check()
+    Driver::new(pkg).check()
 }
 
 pub fn check_ok(mod_path: &str) {

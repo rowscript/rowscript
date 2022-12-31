@@ -2,6 +2,7 @@ extern crate core;
 
 use std::fs::read_to_string;
 use std::io;
+use std::path::PathBuf;
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use pest::error::InputLocation;
@@ -10,8 +11,6 @@ use pest_derive::Parser;
 use thiserror::Error;
 
 use crate::theory::abs::data::Term;
-use crate::theory::abs::def::Def;
-use crate::theory::conc::data::Expr;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
@@ -114,28 +113,45 @@ impl Error {
 #[grammar = "theory/surf.pest"]
 struct RowsParser;
 
-pub struct Driver<'a> {
-    file: &'a str,
+pub struct Driver {
+    path: PathBuf,
+    e: Elaborator,
 }
 
-impl<'a> Driver<'a> {
-    pub fn new(file: &'a str) -> Self {
-        Self { file }
+impl Driver {
+    pub fn new(path: PathBuf) -> Self {
+        Self {
+            path,
+            e: Elaborator::default(),
+        }
     }
 
-    pub fn check(self) -> Result<(), Error> {
-        let file = self.file.clone();
-        let src = read_to_string(self.file)?;
-        self.check_text(src.as_str()).map_err(|e| {
-            e.print(file, src);
-            e
-        })
+    pub fn check(&mut self) -> Result<(), Error> {
+        for r in self.path.read_dir()? {
+            let entry = r?;
+            if entry.file_type()?.is_dir() {
+                continue;
+            }
+            let file = entry.path();
+            match file.extension() {
+                None => continue,
+                Some(e) if e != "rows" => continue,
+                _ => {
+                    let src = read_to_string(&file)?;
+                    self.check_text(src.as_str()).map_err(|e| {
+                        e.print(file.to_str().unwrap(), src);
+                        e
+                    })?;
+                }
+            }
+        }
+        Ok(())
     }
 
-    fn check_text(self, src: &str) -> Result<(), Error> {
+    fn check_text(&mut self, src: &str) -> Result<(), Error> {
         use trans::*;
 
-        let mut defs: Vec<Def<Expr>> = Default::default();
+        let mut defs = Vec::default();
         let file = RowsParser::parse(Rule::file, src)?.next().unwrap();
         for d in file.into_inner() {
             match d.as_rule() {
@@ -154,8 +170,7 @@ impl<'a> Driver<'a> {
             resolved.push(r.def(d)?);
         }
 
-        let mut e = Elaborator::default();
-        e.defs(resolved)?;
+        self.e.defs(resolved)?;
 
         Ok(())
     }
