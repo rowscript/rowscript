@@ -43,7 +43,6 @@ impl Resolver {
     }
 
     fn body(&mut self, d: Def<Expr>) -> Result<Def<Expr>, Error> {
-        // TODO: Self-referencing definition.
         use Body::*;
         let name = d.name.clone();
         self.0.insert(name.to_string(), name);

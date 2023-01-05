@@ -1,0 +1,12 @@
+function inc(n: number): number;
+
+function f(n: [Z | S]): number {
+    return switch (n) {
+    case Z: 0
+    case S: inc(f(Z))
+    }
+}
+
+function g(): number {
+    return f(S)
+}

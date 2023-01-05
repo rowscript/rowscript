@@ -8,6 +8,7 @@ mod fail_resolve;
 mod ok_bool;
 mod ok_enum;
 mod ok_fn;
+mod ok_fn_recur;
 mod ok_hole;
 mod ok_implicit_named;
 mod ok_implicit_unnamed;
