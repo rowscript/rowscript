@@ -12,10 +12,12 @@ pub struct Resolver(HashMap<String, Var>);
 
 impl Resolver {
     pub fn def(&mut self, mut d: Def<Expr>) -> Result<Def<Expr>, Error> {
-        let mut recoverable: Vec<Var> = Default::default();
-        let mut removable: Vec<Var> = Default::default();
+        use Body::*;
 
-        let mut tele: Tele<Expr> = Default::default();
+        let mut recoverable = Vec::default();
+        let mut removable = Vec::default();
+
+        let mut tele = Tele::default();
         for p in d.tele {
             if let Some(old) = self.0.insert(p.var.to_string(), p.var.clone()) {
                 recoverable.push(old);
@@ -29,8 +31,15 @@ impl Resolver {
             });
         }
         d.tele = tele;
+        d.ret = self.expr(d.ret)?;
 
-        d = self.body(d)?;
+        let name = d.name.clone();
+        self.0.insert(name.to_string(), name);
+        d.body = match d.body {
+            Fun(f) => Fun(self.expr(f)?),
+            Postulate => Postulate,
+            _ => unreachable!(),
+        };
 
         for x in removable {
             self.0.remove(x.as_str());
@@ -42,25 +51,8 @@ impl Resolver {
         Ok(d)
     }
 
-    fn body(&mut self, d: Def<Expr>) -> Result<Def<Expr>, Error> {
-        use Body::*;
-        let name = d.name.clone();
-        self.0.insert(name.to_string(), name);
-        Ok(Def {
-            loc: d.loc,
-            name: d.name,
-            tele: d.tele,
-            ret: self.expr(d.ret)?,
-            body: match d.body {
-                Fun(f) => Fun(self.expr(f)?),
-                Postulate => Postulate,
-                _ => unreachable!(),
-            },
-        })
-    }
-
     fn bodied(&mut self, vars: &[&Var], e: Box<Expr>) -> Result<Box<Expr>, Error> {
-        let mut olds: Vec<Option<Var>> = Default::default();
+        let mut olds = Vec::default();
 
         for &v in vars {
             olds.push(self.0.insert(v.to_string(), v.clone()));

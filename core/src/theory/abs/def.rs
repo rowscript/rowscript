@@ -59,6 +59,13 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
+
+                Undefined => format!(
+                    "undefined {} {}: {}",
+                    self.name,
+                    Param::tele_to_string(&self.tele),
+                    self.ret,
+                ),
                 Meta(s) => {
                     let tele = Param::tele_to_string(&self.tele);
                     if let Some(solved) = s {
@@ -80,5 +87,7 @@ impl<T: Syntax> Display for Def<T> {
 pub enum Body<T: Syntax> {
     Fun(Box<T>),
     Postulate,
+
+    Undefined,
     Meta(Option<T>),
 }

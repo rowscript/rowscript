@@ -28,6 +28,7 @@ pub type CaseMap = HashMap<String, (Var, Term)>;
 pub enum Term {
     Ref(Var),
     MetaRef(Var, Spine),
+    Undef(Var),
 
     Let(Param<Self>, Box<Self>, Box<Self>),
 
@@ -117,6 +118,7 @@ impl Display for Term {
                     );
                     format!("({})", s.join(" "))
                 }
+                Undef(r) => r.to_string(),
                 Let(p, a, b) => format!("let {p} = {a};\n\t{b}"),
                 Univ => "type".to_string(),
                 Pi(p, b) => format!("{p} -> {b}"),

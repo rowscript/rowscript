@@ -26,9 +26,7 @@ pub struct Elaborator {
 impl Elaborator {
     pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<(), Error> {
         for d in defs {
-            let name = d.name.clone();
-            let checked = self.def(d)?;
-            self.sigma.insert(name, checked);
+            self.def(d)?;
         }
         for (_, d) in &self.sigma {
             println!("{}", d);
@@ -36,11 +34,11 @@ impl Elaborator {
         Ok(())
     }
 
-    fn def(&mut self, d: Def<Expr>) -> Result<Def<Term>, Error> {
+    fn def(&mut self, d: Def<Expr>) -> Result<(), Error> {
         use Body::*;
 
-        let mut checked: Vec<Var> = Default::default();
-        let mut tele: Tele<Term> = Default::default();
+        let mut checked = Vec::default();
+        let mut tele = Tele::default();
         for p in d.tele {
             let gamma_var = p.var.clone();
             let checked_var = p.var.clone();
@@ -59,25 +57,30 @@ impl Elaborator {
         }
 
         let ret = self.check(d.ret, &Box::new(Term::Univ))?;
+        self.sigma.insert(
+            d.name.clone(),
+            Def {
+                loc: d.loc,
+                name: d.name.clone(),
+                tele,
+                ret: ret.clone(),
+                body: Undefined,
+            },
+        );
+
         let body = match d.body {
             Fun(f) => Fun(self.check(f, &ret)?),
             Postulate => Postulate,
             _ => unreachable!(),
         };
 
-        let d = Def {
-            loc: d.loc,
-            name: d.name,
-            tele,
-            ret,
-            body,
-        };
-
         for n in checked {
             self.gamma.remove(&n);
         }
 
-        Ok(d)
+        self.sigma.get_mut(&d.name).unwrap().body = body;
+
+        Ok(())
     }
 
     fn check(&mut self, e: Box<Expr>, ty: &Box<Term>) -> Result<Box<Term>, Error> {
@@ -192,12 +195,11 @@ impl Elaborator {
                     (Box::new(Term::Ref(v)), ty.clone())
                 } else {
                     let d = self.sigma.get(&v).unwrap();
+                    let ty = Term::pi(&d.tele, d.ret.clone());
                     match &d.body {
-                        Fun(f) => (
-                            rename(Term::lam(&d.tele, f.clone())),
-                            Term::pi(&d.tele, d.ret.clone()),
-                        ),
-                        Postulate => (Box::new(Term::Ref(v)), Term::pi(&d.tele, d.ret.clone())),
+                        Fun(f) => (rename(Term::lam(&d.tele, f.clone())), ty),
+                        Postulate => (Box::new(Term::Ref(v)), ty),
+                        Undefined => (Box::new(Term::Undef(v)), ty),
                         _ => unreachable!(),
                     }
                 }

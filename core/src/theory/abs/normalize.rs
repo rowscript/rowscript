@@ -59,6 +59,7 @@ impl<'a> Normalizer<'a> {
                 self.sigma.insert(x, def);
                 ret
             }
+            Undef(x) => todo!(),
             Let(p, a, b) => {
                 let a = self.term(a)?;
                 match &*a {

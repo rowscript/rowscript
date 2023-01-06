@@ -17,6 +17,7 @@ impl Renamer {
                     .map(|(i, tm)| (i, *self.term(Box::new(tm))))
                     .collect(),
             ),
+            Undef(x) => todo!(),
             Let(p, a, b) => {
                 let a = self.term(a); // not guarded by `p`, rename it first
                 Let(self.param(p), a, self.term(b))
