@@ -37,6 +37,16 @@ impl<'a> Unifier<'a> {
                 Ok(())
             }
 
+            (Undef(a), Undef(b)) if a == b => Ok(()),
+            (Undef(x), rhs) => match *self.sigma.get(&x).unwrap().to_term(x.clone()) {
+                Undef(x) => self.unify_err(&Box::new(Undef(x)), rhs),
+                lhs => self.unify(&Box::new(lhs), rhs),
+            },
+            (lhs, Undef(y)) => match *self.sigma.get(&y).unwrap().to_term(y.clone()) {
+                Undef(y) => self.unify_err(lhs, &Box::new(Undef(y))),
+                rhs => self.unify(lhs, &Box::new(rhs)),
+            },
+
             (Let(p, a, b), Let(q, x, y)) => {
                 self.unify(&p.typ, &q.typ)?;
                 self.unify(a, x)?;

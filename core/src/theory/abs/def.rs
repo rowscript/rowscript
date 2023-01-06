@@ -3,6 +3,7 @@ use std::fmt::{Debug, Display, Formatter};
 
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Body::Meta;
+use crate::theory::abs::rename::rename;
 use crate::theory::ParamInfo::Explicit;
 use crate::theory::{Loc, Param, Syntax, Tele, Var};
 
@@ -41,6 +42,19 @@ impl<T: Syntax> Def<T> {
     }
 }
 
+impl Def<Term> {
+    pub fn to_term(&self, v: Var) -> Box<Term> {
+        use Body::*;
+        match &self.body {
+            Fun(f) => rename(Term::lam(&self.tele, f.clone())),
+            Postulate => Box::new(Term::Ref(v)),
+            Alias(t) => rename(Term::lam(&self.tele, t.clone())),
+            Undefined => Box::new(Term::Undef(v)),
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl<T: Syntax> Display for Def<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         use Body::*;
@@ -58,6 +72,13 @@ impl<T: Syntax> Display for Def<T> {
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
+                ),
+                Alias(t) => format!(
+                    "type {}{}: {} = {};",
+                    self.name,
+                    Param::tele_to_string(&self.tele),
+                    self.ret,
+                    t,
                 ),
 
                 Undefined => format!(
@@ -87,6 +108,7 @@ impl<T: Syntax> Display for Def<T> {
 pub enum Body<T: Syntax> {
     Fun(Box<T>),
     Postulate,
+    Alias(Box<T>),
 
     Undefined,
     Meta(Option<T>),

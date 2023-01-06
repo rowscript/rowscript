@@ -59,15 +59,7 @@ impl<'a> Normalizer<'a> {
                 self.sigma.insert(x, def);
                 ret
             }
-            Undef(x) => {
-                let d = self.sigma.get(&x).unwrap();
-                match &d.body {
-                    Undefined => Box::new(Undef(x)),
-                    Fun(f) => rename(Term::lam(&d.tele, f.clone())),
-                    Postulate => Box::new(Ref(x)),
-                    _ => unreachable!(),
-                }
-            }
+            Undef(x) => self.sigma.get(&x).unwrap().to_term(x),
             Let(p, a, b) => {
                 let a = self.term(a)?;
                 match &*a {

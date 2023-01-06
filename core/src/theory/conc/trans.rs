@@ -1,7 +1,7 @@
 use pest::iterators::{Pair, Pairs};
 
 use crate::theory::abs::data::Dir;
-use crate::theory::abs::def::Body::{Fun, Postulate};
+use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
@@ -10,6 +10,7 @@ use crate::theory::{Loc, Param, Tele, Var};
 use crate::Rule;
 
 pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
+    use Body::*;
     use Expr::*;
 
     let loc = Loc::from(f.as_span());
@@ -17,9 +18,9 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
 
     let name = Var::from(pairs.next().unwrap());
 
-    let mut tele = Tele::<Expr>::default();
+    let mut tele = Tele::default();
     let mut untupled = UntupledParams::new(loc);
-    let mut row_preds = Tele::<Expr>::default();
+    let mut row_preds = Tele::default();
     let mut ret = Box::new(Unit(loc));
     let mut body = None;
 
@@ -59,6 +60,7 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
 }
 
 pub fn fn_postulate(f: Pair<Rule>) -> Def<Expr> {
+    use Body::*;
     use Expr::*;
 
     let loc = Loc::from(f.as_span());
@@ -87,16 +89,47 @@ pub fn fn_postulate(f: Pair<Rule>) -> Def<Expr> {
 }
 
 pub fn type_postulate(t: Pair<Rule>) -> Def<Expr> {
+    use Body::*;
     use Expr::*;
+
     let loc = Loc::from(t.as_span());
     let name = Var::from(t.into_inner().next().unwrap());
     let ret = Box::new(Univ(loc));
+
     Def {
         loc,
         name,
         tele: Default::default(),
         ret,
         body: Postulate,
+    }
+}
+
+pub fn type_alias(t: Pair<Rule>) -> Def<Expr> {
+    use Body::*;
+    use Expr::*;
+
+    let loc = Loc::from(t.as_span());
+    let mut pairs = t.into_inner();
+
+    let name = Var::from(pairs.next().unwrap());
+    let mut tele = Tele::default();
+    let mut target = None;
+    for p in pairs {
+        match p.as_rule() {
+            Rule::row_id => tele.push(row_param(p)),
+            Rule::implicit_id => tele.push(implicit_param(p)),
+            Rule::type_expr => target = Some(type_expr(p)),
+            _ => unreachable!(),
+        }
+    }
+
+    Def {
+        loc,
+        name,
+        tele,
+        ret: Box::new(Univ(loc)),
+        body: Alias(Box::new(target.unwrap())),
     }
 }
 
@@ -129,11 +162,36 @@ fn type_expr(t: Pair<Rule>) -> Expr {
         Rule::object_type_literal => Object(loc, Box::new(fields(p))),
         Rule::enum_type_ref => Enum(loc, Box::new(unresolved(p.into_inner().next().unwrap()))),
         Rule::enum_type_literal => Enum(loc, Box::new(fields(p))),
+        Rule::type_app => type_app(p),
         Rule::tyref => unresolved(p),
         Rule::paren_type_expr => type_expr(p.into_inner().next().unwrap()),
         Rule::hole => Hole(loc),
         _ => unreachable!(),
     }
+}
+
+fn type_app(a: Pair<Rule>) -> Expr {
+    use Expr::*;
+
+    let mut pairs = a.into_inner();
+    let f = pairs.next().unwrap();
+    let f = match f.as_rule() {
+        Rule::type_expr => type_expr(f),
+        Rule::tyref => unresolved(f),
+        _ => unreachable!(),
+    };
+
+    pairs
+        .map(|arg| {
+            let loc = Loc::from(arg.as_span());
+            let (i, e) = match arg.as_rule() {
+                Rule::row_arg => row_arg(arg),
+                Rule::type_arg => type_arg(arg),
+                _ => unreachable!(),
+            };
+            (loc, i, e)
+        })
+        .fold(f, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
 }
 
 fn row_pred(pred: Pair<Rule>) -> Param<Expr> {
@@ -356,22 +414,13 @@ fn app(a: Pair<Rule>) -> Expr {
     pairs
         .map(|arg| {
             let loc = Loc::from(arg.as_span());
-            match arg.as_rule() {
-                Rule::row_arg => {
-                    let (i, e) = row_arg(arg);
-                    (loc, i, e)
-                }
-                Rule::type_arg => {
-                    let (i, e) = type_arg(arg);
-                    (loc, i, e)
-                }
-                Rule::args => (
-                    loc,
-                    UnnamedExplicit,
-                    tupled_args(loc, &mut arg.into_inner()),
-                ),
+            let (i, e) = match arg.as_rule() {
+                Rule::row_arg => row_arg(arg),
+                Rule::type_arg => type_arg(arg),
+                Rule::args => (UnnamedExplicit, tupled_args(loc, &mut arg.into_inner())),
                 _ => unreachable!(),
-            }
+            };
+            (loc, i, e)
         })
         .fold(f, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
 }

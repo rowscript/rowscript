@@ -10,7 +10,7 @@ priv_camel_id = @{ "_" ~ pub_camel_id }
 fn_id = { pub_camelback_id | priv_camelback_id }
 row_id = @{ "'" ~ pub_camel_id }
 implicit_id = { pub_camel_id }
-type_postulate_id = { pub_camel_id | priv_camel_id }
+type_id = { pub_camel_id | priv_camel_id }
 prop_id = { pub_camelback_id | priv_camelback_id }
 variant_id = { pub_camel_id | priv_camel_id }
 field_id = _{ prop_id | variant_id }
@@ -25,7 +25,7 @@ idref =
   }
 tyref =
   { implicit_id
-  | type_postulate_id
+  | type_id
   }
 
 hole = { "?" }
@@ -89,6 +89,7 @@ type_expr =
   | object_type_literal
   | enum_type_ref
   | enum_type_literal
+  | type_app
   | tyref
   | paren_type_expr
   | hole
@@ -105,6 +106,7 @@ object_type_ref = { "{" ~ row_id ~ "}" }
 object_type_literal = { "{" ~ property ~ ("," ~ property)* ~ "}" }
 enum_type_ref = { "[" ~ row_id ~ "]" }
 enum_type_literal = { "[" ~ variant ~ ("|" ~ variant)* ~ "]" }
+type_app = { ("(" ~ type_expr ~ ")" | tyref) ~ implicit_args? }
 
 expr =
   { string
@@ -216,12 +218,22 @@ fn_postulate =
   ~ ";"
   }
 
-type_postulate = { "type" ~ type_postulate_id ~ ";" }
+type_postulate = { "type" ~ type_id ~ ";" }
+
+type_alias =
+  { "type"
+  ~ type_id
+  ~ implicits?
+  ~ "="
+  ~ type_expr
+  ~ ";"
+  }
 
 decl =
  _{ fn_def
   | fn_postulate
   | type_postulate
+  | type_alias
   }
 
 file = { SOI ~ decl* ~ EOI }

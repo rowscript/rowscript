@@ -3,7 +3,6 @@ use crate::theory::abs::data::{CaseMap, FieldMap, Term};
 use crate::theory::abs::def::{gamma_to_tele, Body};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
-use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
@@ -71,6 +70,7 @@ impl Elaborator {
         let body = match d.body {
             Fun(f) => Fun(self.check(f, &ret)?),
             Postulate => Postulate,
+            Alias(t) => Alias(self.check(t, &ret)?),
             _ => unreachable!(),
         };
 
@@ -187,7 +187,6 @@ impl Elaborator {
         e: Box<Expr>,
         hint: Option<&Box<Term>>,
     ) -> Result<(Box<Term>, Box<Term>), Error> {
-        use Body::*;
         use Expr::*;
         Ok(match *e {
             Resolved(_, v) => {
@@ -195,13 +194,7 @@ impl Elaborator {
                     (Box::new(Term::Ref(v)), ty.clone())
                 } else {
                     let d = self.sigma.get(&v).unwrap();
-                    let ty = Term::pi(&d.tele, d.ret.clone());
-                    match &d.body {
-                        Fun(f) => (rename(Term::lam(&d.tele, f.clone())), ty),
-                        Postulate => (Box::new(Term::Ref(v)), ty),
-                        Undefined => (Box::new(Term::Undef(v)), ty),
-                        _ => unreachable!(),
-                    }
+                    (d.to_term(v), Term::pi(&d.tele, d.ret.clone()))
                 }
             }
             Hole(loc) => self.insert_meta(loc, true),

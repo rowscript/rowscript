@@ -38,6 +38,7 @@ impl Resolver {
         d.body = match d.body {
             Fun(f) => Fun(self.expr(f)?),
             Postulate => Postulate,
+            Alias(t) => Alias(self.expr(t)?),
             _ => unreachable!(),
         };
 
