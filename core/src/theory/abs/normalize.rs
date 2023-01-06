@@ -26,11 +26,11 @@ impl<'a> Normalizer<'a> {
         use Term::*;
 
         Ok(match *tm {
-            Ref(ref x) => {
+            Ref(x) => {
                 if let Some(y) = self.rho.get(&x) {
                     self.term(Renamer::default().term(y.clone()))?
                 } else {
-                    tm.clone()
+                    Box::new(Ref(x))
                 }
             }
             MetaRef(x, sp) => {
@@ -59,7 +59,15 @@ impl<'a> Normalizer<'a> {
                 self.sigma.insert(x, def);
                 ret
             }
-            Undef(x) => todo!(),
+            Undef(x) => {
+                let d = self.sigma.get(&x).unwrap();
+                match &d.body {
+                    Undefined => Box::new(Undef(x)),
+                    Fun(f) => rename(Term::lam(&d.tele, f.clone())),
+                    Postulate => Box::new(Ref(x)),
+                    _ => unreachable!(),
+                }
+            }
             Let(p, a, b) => {
                 let a = self.term(a)?;
                 match &*a {
