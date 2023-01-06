@@ -157,6 +157,7 @@ impl Driver {
             match d.as_rule() {
                 Rule::fn_def => defs.push(fn_def(d)),
                 Rule::fn_postulate => defs.push(fn_postulate(d)),
+                Rule::type_postulate => defs.push(type_postulate(d)),
                 Rule::EOI => {}
                 _ => unreachable!(),
             }

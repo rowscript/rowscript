@@ -86,6 +86,20 @@ pub fn fn_postulate(f: Pair<Rule>) -> Def<Expr> {
     }
 }
 
+pub fn type_postulate(t: Pair<Rule>) -> Def<Expr> {
+    use Expr::*;
+    let loc = Loc::from(t.as_span());
+    let name = Var::from(t.into_inner().next().unwrap());
+    let ret = Box::new(Univ(loc));
+    Def {
+        loc,
+        name,
+        tele: Default::default(),
+        ret,
+        body: Postulate,
+    }
+}
+
 fn type_expr(t: Pair<Rule>) -> Expr {
     use Expr::*;
 

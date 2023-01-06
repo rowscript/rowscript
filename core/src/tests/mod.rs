@@ -14,7 +14,8 @@ mod ok_implicit_named;
 mod ok_implicit_unnamed;
 mod ok_object;
 mod ok_object_rowpoly;
-mod ok_postulate;
+mod ok_postulate_fn;
+mod ok_postulate_type;
 
 fn check_helper(mod_path: &str) -> Result<(), Error> {
     let mut pkg = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
