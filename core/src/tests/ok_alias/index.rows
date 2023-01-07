@@ -9,19 +9,3 @@ type Option<T> = [None | Some: T];
 function f1(): Option<number> {
     return Some(42)
 }
-
-// This can't work:
-
-type Foo = {
-    name: string,
-    sayHi: (x: Foo) -> unit
-};
-
-function sayHi(x: Foo) { return }
-
-function f2(): Foo {
-    return {
-        name: "John",
-        sayHi: sayHi
-    }
-}

@@ -11,7 +11,17 @@ use crate::Error::UnresolvedVar;
 pub struct Resolver(HashMap<String, Var>);
 
 impl Resolver {
-    pub fn def(&mut self, mut d: Def<Expr>) -> Result<Def<Expr>, Error> {
+    pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<Vec<Def<Expr>>, Error> {
+        let mut ret = Vec::default();
+        let mut names = RawNameSet::default();
+        for d in defs {
+            names.var(d.loc, &d.name)?;
+            ret.push(self.def(d)?);
+        }
+        Ok(ret)
+    }
+
+    fn def(&mut self, mut d: Def<Expr>) -> Result<Def<Expr>, Error> {
         use Body::*;
 
         let mut recoverable = Vec::default();
@@ -19,7 +29,7 @@ impl Resolver {
 
         let mut tele = Tele::default();
         for p in d.tele {
-            if let Some(old) = self.0.insert(p.var.to_string(), p.var.clone()) {
+            if let Some(old) = self.insert(&p.var) {
                 recoverable.push(old);
             } else {
                 removable.push(p.var.clone());
@@ -32,11 +42,11 @@ impl Resolver {
         }
         d.tele = tele;
         d.ret = self.expr(d.ret)?;
-
-        let name = d.name.clone();
-        self.0.insert(name.to_string(), name);
         d.body = match d.body {
-            Fun(f) => Fun(self.expr(f)?),
+            Fun(f) => {
+                self.insert(&d.name);
+                Fun(self.expr(f)?)
+            }
             Postulate => Postulate,
             Alias(t) => Alias(self.expr(t)?),
             _ => unreachable!(),
@@ -46,17 +56,22 @@ impl Resolver {
             self.0.remove(x.as_str());
         }
         for x in recoverable {
-            self.0.insert(x.to_string(), x);
+            self.insert(&x);
         }
+        self.insert(&d.name);
 
         Ok(d)
+    }
+
+    fn insert(&mut self, v: &Var) -> Option<Var> {
+        self.0.insert(v.to_string(), v.clone())
     }
 
     fn bodied(&mut self, vars: &[&Var], e: Box<Expr>) -> Result<Box<Expr>, Error> {
         let mut olds = Vec::default();
 
         for &v in vars {
-            olds.push(self.0.insert(v.to_string(), v.clone()));
+            olds.push(self.insert(v));
         }
 
         let ret = self.expr(e)?;
@@ -64,7 +79,7 @@ impl Resolver {
         for i in 0..vars.len() {
             let old = olds.get(i).unwrap();
             if let Some(v) = old {
-                self.0.insert(v.to_string(), v.clone());
+                self.insert(v);
             } else {
                 self.0.remove(&*vars.get(i).unwrap().name);
             }

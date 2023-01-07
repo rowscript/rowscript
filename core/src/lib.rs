@@ -14,7 +14,7 @@ use crate::theory::abs::data::Term;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
-use crate::theory::{Loc, RawNameSet};
+use crate::theory::Loc;
 
 #[cfg(test)]
 mod tests;
@@ -164,15 +164,8 @@ impl Driver {
             })
         }
 
-        let mut r = Resolver::default();
-        let mut resolved = Vec::default();
-        let mut names = RawNameSet::default();
-        for d in defs {
-            names.var(d.loc, &d.name)?;
-            resolved.push(r.def(d)?);
-        }
-
-        self.e.defs(resolved)?;
+        defs = Resolver::default().defs(defs)?;
+        self.e.defs(defs)?;
 
         Ok(())
     }
