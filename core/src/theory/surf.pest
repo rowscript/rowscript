@@ -123,6 +123,7 @@ expr =
   | enum_variant
   | enum_cast
   | enum_switch
+  | new_expr
   | lambda_expr
   | app
   | tt
@@ -139,6 +140,7 @@ boolean_if =
   }
 branch = { branch_let | expr }
 branch_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" ~ branch }
+new_expr = { "new" ~ class_id ~ implicit_args? ~ args }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
 lambda_params = _{ "()" | param_id | "(" ~ param_id ~ ("," ~ param_id)+ ~ ")" }
 lambda_body = { expr | fn_body_block }
@@ -242,12 +244,7 @@ class_def =
   ~ "}"
   }
 class_field = { prop_id ~ ":" ~ type_expr ~ ";" }
-class_method =
-  { fn_id
-  ~ params
-  ~ (":" ~ type_expr)?
-  ~ fn_body_block // FIXME: `this` keywords
-  }
+class_method = { fn_id ~ params ~ (":" ~ type_expr)? ~ fn_body_block }
 
 decl =
  _{ fn_def
