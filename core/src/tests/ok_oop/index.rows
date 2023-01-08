@@ -1,0 +1,9 @@
+function log(msg: string);
+
+class Foo {
+    name: string;
+
+    sayHi() {
+        return log(this.name)
+    }
+}

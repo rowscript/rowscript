@@ -15,6 +15,7 @@ mod ok_implicit_named;
 mod ok_implicit_unnamed;
 mod ok_object;
 mod ok_object_rowpoly;
+mod ok_oop;
 mod ok_postulate_fn;
 mod ok_postulate_type;
 
