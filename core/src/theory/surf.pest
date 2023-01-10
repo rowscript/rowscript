@@ -140,7 +140,7 @@ boolean_if =
   }
 branch = { branch_let | expr }
 branch_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" ~ branch }
-new_expr = { "new" ~ class_id ~ implicit_args? ~ args }
+new_expr = { "new" ~ class_id ~ ("<" ~ type_args ~ ">")? ~ args }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
 lambda_params = _{ "()" | param_id | "(" ~ param_id ~ ("," ~ param_id)+ ~ ")" }
 lambda_body = { expr | fn_body_block }
@@ -236,14 +236,14 @@ type_alias =
 class_def =
   { "class"
   ~ class_id
-  ~ implicits?
+  ~ ("<" ~ implicit_ids ~ ">")?
   ~ row_preds?
   ~ "{"
-  ~ class_field*
+  ~ class_member*
   ~ class_method*
   ~ "}"
   }
-class_field = { prop_id ~ ":" ~ type_expr ~ ";" }
+class_member = { prop_id ~ ":" ~ type_expr ~ ";" }
 class_method = { fn_id ~ params ~ (":" ~ type_expr)? ~ fn_body_block }
 
 decl =

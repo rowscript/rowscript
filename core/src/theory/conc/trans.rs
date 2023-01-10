@@ -133,6 +133,47 @@ pub fn type_alias(t: Pair<Rule>) -> Def<Expr> {
     }
 }
 
+pub fn class_def(c: Pair<Rule>) -> Def<Expr> {
+    use Body::*;
+    use Expr::*;
+
+    let loc = Loc::from(c.as_span());
+    let mut pairs = c.into_inner();
+
+    let name = Var::from(pairs.next().unwrap());
+
+    let mut tele = Tele::default();
+    let mut row_preds = Tele::default();
+    let mut members = Tele::default();
+    let mut methods = Vec::default();
+
+    for p in pairs {
+        match p.as_rule() {
+            Rule::row_id => tele.push(row_param(p)),
+            Rule::implicit_id => tele.push(implicit_param(p)),
+            Rule::row_pred => row_preds.push(row_pred(p)),
+            Rule::class_member => {
+                let mut p = p.into_inner();
+                members.push(Param {
+                    var: Var::from(p.next().unwrap()),
+                    info: Explicit,
+                    typ: Box::new(type_expr(p.next().unwrap())),
+                });
+            }
+            Rule::class_method => methods.push(fn_def(p)),
+            _ => unreachable!(),
+        }
+    }
+
+    Def {
+        loc,
+        name,
+        tele,
+        ret: Box::new(Univ(loc)), // FIXME: should be an object type
+        body: Class(members, methods),
+    }
+}
+
 fn type_expr(t: Pair<Rule>) -> Expr {
     use Expr::*;
 
@@ -353,6 +394,23 @@ fn expr(e: Pair<Rule>) -> Expr {
                 cases.push((n, v.unwrap_or(Var::unbound()), body.unwrap()));
             }
             Switch(loc, Box::new(e), cases)
+        }
+        Rule::new_expr => {
+            let mut pairs = p.into_inner();
+            let cls = unresolved(pairs.next().unwrap());
+            pairs
+                .map(|arg| {
+                    let loc = Loc::from(arg.as_span());
+                    let (i, e) = match arg.as_rule() {
+                        Rule::type_arg => type_arg(arg),
+                        Rule::args => (UnnamedExplicit, tupled_args(loc, &mut arg.into_inner())),
+                        _ => unreachable!(),
+                    };
+                    (loc, i, e)
+                })
+                .fold(New(cls.loc(), Box::new(cls)), |a, (loc, i, x)| {
+                    App(loc, Box::new(a), i, Box::new(x))
+                })
         }
         Rule::lambda_expr => {
             let pairs = p.into_inner();

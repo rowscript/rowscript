@@ -159,6 +159,7 @@ impl Driver {
                 Rule::fn_postulate => fn_postulate(d),
                 Rule::type_postulate => type_postulate(d),
                 Rule::type_alias => type_alias(d),
+                Rule::class_def => class_def(d),
                 Rule::EOI => break,
                 _ => unreachable!(),
             })

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Def;
+use crate::theory::abs::def::{Body, Method};
 use crate::theory::conc::data::Expr;
 use crate::theory::{Param, RawNameSet, Tele, Var};
 use crate::Error;
@@ -49,6 +49,7 @@ impl Resolver {
             }
             Postulate => Postulate,
             Alias(t) => Alias(self.expr(t)?),
+            Class(ms, meths) => self.class_body(ms, meths)?,
             _ => unreachable!(),
         };
 
@@ -94,6 +95,14 @@ impl Resolver {
             info: p.info,
             typ: self.expr(p.typ)?,
         })
+    }
+
+    fn class_body(
+        &mut self,
+        ms: Tele<Expr>,
+        meths: Vec<Method<Expr>>,
+    ) -> Result<Body<Expr>, Error> {
+        todo!()
     }
 
     fn expr(&mut self, e: Box<Expr>) -> Result<Box<Expr>, Error> {
@@ -176,6 +185,7 @@ impl Resolver {
                 }
                 Switch(loc, self.expr(a)?, new)
             }
+            New(loc, a) => New(loc, self.expr(a)?),
 
             Resolved(loc, r) => Resolved(loc, r),
             Hole(loc) => Hole(loc),
