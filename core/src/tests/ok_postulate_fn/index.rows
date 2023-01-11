@@ -1,3 +1,7 @@
 function f(a: number): number;
 function g();
 function h<T>(): T;
+
+function f1(): number {
+    return h<number>()
+}
