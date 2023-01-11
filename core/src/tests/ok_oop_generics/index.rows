@@ -1,0 +1,20 @@
+function log(msg: string);
+
+class Foo<T> {
+    name: string;
+    data: T;
+
+    sayHi() {
+        return log(this.name)
+    }
+
+    doStuff() {
+        let n = this.data;
+        return
+    }
+}
+
+function f() {
+    let a = new Foo<number>("John", 42);
+    return a.sayHi()
+}
