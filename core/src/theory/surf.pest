@@ -237,7 +237,6 @@ class_def =
   { "class"
   ~ class_id
   ~ ("<" ~ implicit_ids ~ ">")?
-  ~ row_preds?
   ~ "{"
   ~ class_member*
   ~ class_method*

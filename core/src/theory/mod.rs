@@ -79,6 +79,10 @@ impl Var {
         Self::new(format!("_untupled_{}", self.name))
     }
 
+    pub fn method(&self, m: Self) -> Self {
+        Self::new(format!("{}.{}", self.name, m.name))
+    }
+
     pub fn id(&self) -> usize {
         Rc::as_ptr(&self.name) as _
     }

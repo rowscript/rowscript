@@ -133,25 +133,24 @@ pub fn type_alias(t: Pair<Rule>) -> Def<Expr> {
     }
 }
 
-pub fn class_def(c: Pair<Rule>) -> Def<Expr> {
+pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     use Body::*;
     use Expr::*;
+
+    let mut ret = Vec::default();
 
     let loc = Loc::from(c.as_span());
     let mut pairs = c.into_inner();
 
     let name = Var::from(pairs.next().unwrap());
-
     let mut tele = Tele::default();
-    let mut row_preds = Tele::default();
     let mut members = Tele::default();
     let mut methods = Vec::default();
+    let mut method_names = Vec::default();
 
     for p in pairs {
         match p.as_rule() {
-            Rule::row_id => tele.push(row_param(p)),
             Rule::implicit_id => tele.push(implicit_param(p)),
-            Rule::row_pred => row_preds.push(row_pred(p)),
             Rule::class_member => {
                 let mut p = p.into_inner();
                 members.push(Param {
@@ -160,18 +159,25 @@ pub fn class_def(c: Pair<Rule>) -> Def<Expr> {
                     typ: Box::new(type_expr(p.next().unwrap())),
                 });
             }
-            Rule::class_method => methods.push(fn_def(p)),
+            Rule::class_method => {
+                let mut m = fn_def(p);
+                m.name = name.method(m.name);
+                method_names.push(m.name.clone());
+                methods.push(m);
+            }
             _ => unreachable!(),
         }
     }
 
-    Def {
+    ret.push(Def {
         loc,
         name,
         tele,
         ret: Box::new(Univ(loc)), // FIXME: should be an object type
-        body: Class(members, methods),
-    }
+        body: Class(members, method_names),
+    });
+    ret.extend(methods);
+    ret
 }
 
 fn type_expr(t: Pair<Rule>) -> Expr {

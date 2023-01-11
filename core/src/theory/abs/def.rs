@@ -125,48 +125,8 @@ pub enum Body<T: Syntax> {
     Fun(Box<T>),
     Postulate,
     Alias(Box<T>),
-    Class(Tele<T>, Vec<Method<T>>),
+    Class(Tele<T>, Vec<Var>),
 
     Undefined,
     Meta(Option<T>),
-}
-
-#[derive(Clone, Debug)]
-pub struct Method<T: Syntax> {
-    loc: Loc,
-    name: Var,
-    tele: Tele<T>,
-    ret: Box<T>,
-    body: Box<T>,
-}
-
-impl<T: Syntax> From<Def<T>> for Method<T> {
-    fn from(d: Def<T>) -> Self {
-        use Body::*;
-        match d.body {
-            Fun(f) => Self {
-                loc: d.loc,
-                name: d.name,
-                tele: d.tele,
-                ret: d.ret,
-                body: f,
-            },
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl<T: Syntax> Display for Method<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(
-            format!(
-                "{}{}: {} {{\n\t{}\n}}",
-                self.name,
-                Param::tele_to_string(&self.tele),
-                self.ret,
-                self.body,
-            )
-            .as_str(),
-        )
-    }
 }
