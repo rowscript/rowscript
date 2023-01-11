@@ -137,8 +137,6 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     use Body::*;
     use Expr::*;
 
-    let mut ret = Vec::default();
-
     let loc = Loc::from(c.as_span());
     let mut pairs = c.into_inner();
 
@@ -161,7 +159,16 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
             }
             Rule::class_method => {
                 let mut m = fn_def(p);
+                let mut tele = vec![Param {
+                    var: Var::new("this"),
+                    info: Explicit,
+                    typ: Box::new(Unresolved(m.loc, name.clone())),
+                }];
+                tele.extend(m.tele);
+
                 m.name = name.method(m.name);
+                m.tele = tele;
+
                 method_names.push(m.name.clone());
                 methods.push(m);
             }
@@ -169,13 +176,14 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         }
     }
 
-    ret.push(Def {
+    let cls = Def {
         loc,
         name,
         tele,
         ret: Box::new(Univ(loc)), // FIXME: should be an object type
         body: Class(members, method_names),
-    });
+    };
+    let mut ret = vec![cls];
     ret.extend(methods);
     ret
 }
