@@ -217,6 +217,7 @@ fn_body_ret = { "return" ~ expr? }
 fn_postulate =
   { "function"
   ~ fn_id
+  ~ ("<" ~ implicit_ids ~ ">")?
   ~ params
   ~ (":" ~ type_expr)?
   ~ ";"

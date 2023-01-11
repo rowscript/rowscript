@@ -68,7 +68,7 @@ impl<T: Syntax> Display for Def<T> {
                     f
                 ),
                 Postulate => format!(
-                    "declare {}{}: {};",
+                    "declare {} {}: {};",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,

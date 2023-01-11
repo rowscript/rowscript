@@ -68,21 +68,24 @@ pub fn fn_postulate(f: Pair<Rule>) -> Def<Expr> {
 
     let name = Var::from(pairs.next().unwrap());
 
+    let mut tele = Tele::default();
     let mut untupled = UntupledParams::new(loc);
     let mut ret = Box::new(Unit(loc));
 
     for p in pairs {
         match p.as_rule() {
+            Rule::implicit_id => tele.push(implicit_param(p)),
             Rule::param => untupled.push(Loc::from(p.as_span()), param(p)),
             Rule::type_expr => ret = Box::new(type_expr(p)),
             _ => unreachable!(),
         }
     }
+    tele.push(Param::from(untupled));
 
     Def {
         loc,
         name,
-        tele: vec![Param::from(untupled)],
+        tele,
         ret,
         body: Postulate,
     }
@@ -148,6 +151,8 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
 
     for p in pairs {
         match p.as_rule() {
+            // FIXME: All the generated definitions from a class should be
+            // parametrized by these implicit IDs.
             Rule::implicit_id => tele.push(implicit_param(p)),
             Rule::class_member => {
                 let mut p = p.into_inner();
