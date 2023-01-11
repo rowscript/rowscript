@@ -149,6 +149,39 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     let mut method_defs = Vec::default();
     let mut methods = Vec::default();
 
+    let vptr_def = Def {
+        loc,
+        name: name.vptr_type(),
+        tele: Default::default(),
+        ret: Box::new(Univ(loc)),
+        body: Postulate,
+    };
+    let vptr_ctor_def = Def {
+        loc,
+        name: name.vptr_ctor(),
+        tele: Default::default(),
+        ret: Box::new(Unresolved(loc, vptr_def.name.clone())),
+        body: Postulate,
+    };
+    let vtbl_def = Def {
+        loc,
+        name: name.vtbl_type(),
+        tele: Default::default(),
+        ret: Box::new(Univ(loc)),
+        body: Postulate,
+    };
+    let vtbl_lookup_def = Def {
+        loc,
+        name: name.vtbl_lookup(),
+        tele: vec![Param {
+            var: Var::unbound(),
+            info: Explicit,
+            typ: Box::new(Unresolved(loc, vptr_def.name.clone())),
+        }],
+        ret: Box::new(Unresolved(loc, vtbl_def.name.clone())),
+        body: Postulate,
+    };
+
     for p in pairs {
         match p.as_rule() {
             // FIXME: All the generated definitions from a class should be
@@ -196,13 +229,14 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         vtbl: name.vtbl_type(),
         vtbl_lookup: name.vtbl_lookup(),
     };
-    let mut defs = vec![Def {
+    let cls_def = Def {
         loc,
         name,
         tele,
         ret,
         body,
-    }];
+    };
+    let mut defs = vec![vptr_def, vptr_ctor_def, vtbl_def, vtbl_lookup_def, cls_def];
     defs.extend(method_defs);
     defs
 }
