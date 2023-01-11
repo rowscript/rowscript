@@ -176,16 +176,22 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         }
     }
 
-    let cls = Def {
+    let mut ret_fields = Vec::default();
+    for m in &members {
+        ret_fields.push((m.var.to_string(), *m.typ.clone()));
+    }
+    ret_fields.push((Var::vptr().to_string(), Unresolved(loc, name.vtbl())));
+    let ret = Box::new(Fields(loc, ret_fields));
+
+    let mut defs = vec![Def {
         loc,
         name,
         tele,
-        ret: Box::new(Univ(loc)), // FIXME: should be an object type
+        ret,
         body: Class(members, method_names),
-    };
-    let mut ret = vec![cls];
-    ret.extend(methods);
-    ret
+    }];
+    defs.extend(methods);
+    defs
 }
 
 fn type_expr(t: Pair<Rule>) -> Expr {

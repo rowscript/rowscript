@@ -83,6 +83,14 @@ impl Var {
         Self::new(format!("{}.{}", self.name, m.name))
     }
 
+    pub fn vptr() -> Self {
+        Self::new("__vptr")
+    }
+
+    pub fn vtbl(&self) -> Self {
+        Self::new(format!("__{}Vtbl", self.name))
+    }
+
     pub fn id(&self) -> usize {
         Rc::as_ptr(&self.name) as _
     }
