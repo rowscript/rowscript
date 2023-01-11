@@ -80,16 +80,31 @@ impl<T: Syntax> Display for Def<T> {
                     self.ret,
                     t,
                 ),
-                Class(ms, meths) => {
+                Class {
+                    members,
+                    methods,
+                    vptr,
+                    vptr_ctor,
+                    vtbl,
+                    vtbl_lookup,
+                } => {
                     format!(
-                        "class {}{} {{\n{}\n{}\n}}",
+                        "class {}{} {{
+{}
+{}
+{vptr};
+{vptr_ctor};
+{vtbl};
+{vtbl_lookup};
+}}",
                         self.name,
                         Param::tele_to_string(&self.tele),
-                        ms.iter()
+                        members
+                            .iter()
                             .map(|m| format!("\t{}: {};", m.var, m.typ))
                             .collect::<Vec<_>>()
                             .join("\n"),
-                        meths
+                        methods
                             .iter()
                             .map(|m| m.to_string())
                             .collect::<Vec<_>>()
@@ -125,7 +140,14 @@ pub enum Body<T: Syntax> {
     Fun(Box<T>),
     Postulate,
     Alias(Box<T>),
-    Class(Tele<T>, Vec<Var>),
+    Class {
+        members: Tele<T>,
+        methods: Vec<Var>,
+        vptr: Var,
+        vptr_ctor: Var,
+        vtbl: Var,
+        vtbl_lookup: Var,
+    },
 
     Undefined,
     Meta(Option<T>),

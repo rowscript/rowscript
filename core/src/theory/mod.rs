@@ -87,8 +87,20 @@ impl Var {
         Self::new("__vptr")
     }
 
-    pub fn vtbl(&self) -> Self {
-        Self::new(format!("__{}Vtbl", self.name))
+    pub fn vptr_type(&self) -> Self {
+        Self::new(format!("{}.__Vptr", self.name))
+    }
+
+    pub fn vptr_ctor(&self) -> Self {
+        Self::new(format!("{}.__newVptr", self.name))
+    }
+
+    pub fn vtbl_type(&self) -> Self {
+        Self::new(format!("{}.__Vtbl", self.name))
+    }
+
+    pub fn vtbl_lookup(&self) -> Self {
+        Self::new(format!("{}.__lookupVtbl", self.name))
     }
 
     pub fn id(&self) -> usize {

@@ -158,7 +158,7 @@ args = { "()" | "(" ~ expr ~ ("," ~ expr)* ~ ")" }
 tt = { "()" }
 object_literal = { "{" ~ label ~ ("," ~ label)* ~ "}" }
 object_concat = { object_operand ~ "..." ~ object_operand }
-object_access = { object_operand ~ "." ~ prop_id }
+object_access = { object_operand ~ "." ~ prop_id ~ args* }
 object_cast = { "{" ~ "..." ~ object_operand ~ "}" }
 object_operand =
   { app

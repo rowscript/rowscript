@@ -49,12 +49,26 @@ impl Resolver {
             }
             Postulate => Postulate,
             Alias(t) => Alias(self.expr(t)?),
-            Class(ms, meths) => {
-                let mut resolved = Tele::default();
-                for m in ms {
-                    resolved.push(self.param(m)?);
+            Class {
+                members,
+                methods,
+                vptr,
+                vptr_ctor,
+                vtbl,
+                vtbl_lookup,
+            } => {
+                let mut ms = Tele::default();
+                for m in members {
+                    ms.push(self.param(m)?);
                 }
-                Class(resolved, meths)
+                Class {
+                    members: ms,
+                    methods,
+                    vptr,
+                    vptr_ctor,
+                    vtbl,
+                    vtbl_lookup,
+                }
             }
             _ => unreachable!(),
         };

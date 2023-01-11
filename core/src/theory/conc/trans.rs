@@ -146,8 +146,8 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     let name = Var::from(pairs.next().unwrap());
     let mut tele = Tele::default();
     let mut members = Tele::default();
+    let mut method_defs = Vec::default();
     let mut methods = Vec::default();
-    let mut method_names = Vec::default();
 
     for p in pairs {
         match p.as_rule() {
@@ -174,8 +174,8 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
                 m.name = name.method(m.name);
                 m.tele = tele;
 
-                method_names.push(m.name.clone());
-                methods.push(m);
+                methods.push(m.name.clone());
+                method_defs.push(m);
             }
             _ => unreachable!(),
         }
@@ -185,17 +185,25 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     for m in &members {
         ret_fields.push((m.var.to_string(), *m.typ.clone()));
     }
-    ret_fields.push((Var::vptr().to_string(), Unresolved(loc, name.vtbl())));
+    ret_fields.push((Var::vptr().to_string(), Unresolved(loc, name.vptr_type())));
     let ret = Box::new(Fields(loc, ret_fields));
 
+    let body = Class {
+        members,
+        methods,
+        vptr: name.vptr_type(),
+        vptr_ctor: name.vptr_ctor(),
+        vtbl: name.vtbl_type(),
+        vtbl_lookup: name.vtbl_lookup(),
+    };
     let mut defs = vec![Def {
         loc,
         name,
         tele,
         ret,
-        body: Class(members, method_names),
+        body,
     }];
-    defs.extend(methods);
+    defs.extend(method_defs);
     defs
 }
 
