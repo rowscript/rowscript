@@ -156,11 +156,10 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
 
     let name = Var::from(pairs.next().unwrap());
     let mut tele = Tele::default();
-    let mut members = Tele::default();
+    let mut members = Vec::default();
     let mut method_defs = Vec::default();
     let mut methods = Vec::default();
 
-    // TODO: Constructor definition.
     let vptr_def = Def {
         loc,
         name: name.vptr_type(),
@@ -200,12 +199,16 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
             // parametrized by these implicit IDs.
             Rule::implicit_id => tele.push(implicit_param(p)),
             Rule::class_member => {
+                let loc = Loc::from(p.as_span());
                 let mut p = p.into_inner();
-                members.push(Param {
-                    var: Var::from(p.next().unwrap()),
-                    info: Explicit,
-                    typ: Box::new(type_expr(p.next().unwrap())),
-                });
+                members.push((
+                    loc,
+                    Param {
+                        var: Var::from(p.next().unwrap()),
+                        info: Explicit,
+                        typ: Box::new(type_expr(p.next().unwrap())),
+                    },
+                ));
             }
             Rule::class_method => {
                 let mut m = fn_def(p, Some(Unresolved(loc, name.clone())));
@@ -217,12 +220,35 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         }
     }
 
-    let mut fields = Vec::default();
-    for m in &members {
-        fields.push((m.var.to_string(), *m.typ.clone()));
+    let mut ctor_untupled = UntupledParams::new(loc);
+    let mut ty_fields = Vec::default();
+    let mut tm_fields = Vec::default();
+    for (loc, m) in members {
+        ty_fields.push((m.var.to_string(), *m.typ.clone()));
+        tm_fields.push((m.var.to_string(), Unresolved(loc, m.var.clone())));
+        ctor_untupled.push(loc, m)
     }
-    fields.push((Var::vptr().to_string(), Unresolved(loc, name.vptr_type())));
-    let object = Box::new(Object(loc, Box::new(Fields(loc, fields))));
+    ty_fields.push((Var::vptr().to_string(), Unresolved(loc, name.vptr_type())));
+    tm_fields.push((Var::vptr().to_string(), Unresolved(loc, name.vptr_ctor())));
+    let object = Box::new(Object(loc, Box::new(Fields(loc, ty_fields))));
+
+    let untupled_vars = ctor_untupled.unresolved();
+    let untupled_loc = ctor_untupled.0;
+    let tupled_param = Param::from(ctor_untupled);
+    let ctor_body = Fun(Expr::wrap_tuple_lets(
+        untupled_loc,
+        &tupled_param.var,
+        untupled_vars,
+        Box::new(Obj(loc, Box::new(Fields(loc, tm_fields)))),
+    ));
+    let ctor_def = Def {
+        loc,
+        name: name.ctor(),
+        tele: vec![tupled_param],
+        ret: Box::new(Unresolved(loc, name.clone())),
+        body: ctor_body,
+    };
+    dbg!(&ctor_def.to_string());
 
     let body = Class {
         object,
@@ -233,6 +259,7 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         vtbl: name.vtbl_type(),
         vtbl_lookup: name.vtbl_lookup(),
     };
+
     let cls_def = Def {
         loc,
         name,
@@ -240,7 +267,14 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         ret: Box::new(Univ(loc)),
         body,
     };
-    let mut defs = vec![vptr_def, vptr_ctor_def, vtbl_def, vtbl_lookup_def, cls_def];
+    let mut defs = vec![
+        vptr_def,
+        vptr_ctor_def,
+        vtbl_def,
+        vtbl_lookup_def,
+        cls_def,
+        ctor_def,
+    ];
     defs.extend(method_defs);
     defs
 }
