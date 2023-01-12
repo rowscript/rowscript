@@ -9,7 +9,7 @@ use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var};
 use crate::Rule;
 
-pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
+pub fn fn_def(f: Pair<Rule>, this: Option<Expr>) -> Def<Expr> {
     use Body::*;
     use Expr::*;
 
@@ -23,6 +23,17 @@ pub fn fn_def(f: Pair<Rule>) -> Def<Expr> {
     let mut row_preds = Tele::default();
     let mut ret = Box::new(Unit(loc));
     let mut body = None;
+
+    if let Some(ty) = this {
+        untupled.push(
+            loc,
+            Param {
+                var: Var::new("this"),
+                info: Explicit,
+                typ: Box::new(ty),
+            },
+        );
+    }
 
     for p in pairs {
         match p.as_rule() {
@@ -196,17 +207,8 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
                 });
             }
             Rule::class_method => {
-                let mut m = fn_def(p);
-                let mut tele = vec![Param {
-                    var: Var::new("this"),
-                    info: Explicit,
-                    typ: Box::new(Unresolved(m.loc, name.clone())),
-                }];
-                tele.extend(m.tele);
-
+                let mut m = fn_def(p, Some(Unresolved(loc, name.clone())));
                 m.name = name.method(m.name);
-                m.tele = tele;
-
                 methods.push(m.name.clone());
                 method_defs.push(m);
             }
@@ -214,15 +216,15 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         }
     }
 
-    let mut ret_fields = Vec::default();
+    let mut fields = Vec::default();
     for m in &members {
-        ret_fields.push((m.var.to_string(), *m.typ.clone()));
+        fields.push((m.var.to_string(), *m.typ.clone()));
     }
-    ret_fields.push((Var::vptr().to_string(), Unresolved(loc, name.vptr_type())));
-    let ret = Box::new(Object(loc, Box::new(Fields(loc, ret_fields))));
+    fields.push((Var::vptr().to_string(), Unresolved(loc, name.vptr_type())));
+    let object = Box::new(Object(loc, Box::new(Fields(loc, fields))));
 
     let body = Class {
-        members,
+        object,
         methods,
         vptr: name.vptr_type(),
         vptr_ctor: name.vptr_ctor(),
@@ -233,7 +235,7 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         loc,
         name,
         tele,
-        ret,
+        ret: Box::new(Univ(loc)),
         body,
     };
     let mut defs = vec![vptr_def, vptr_ctor_def, vtbl_def, vtbl_lookup_def, cls_def];

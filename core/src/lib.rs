@@ -155,7 +155,7 @@ impl Driver {
         let file = RowsParser::parse(Rule::file, src)?.next().unwrap();
         for d in file.into_inner() {
             match d.as_rule() {
-                Rule::fn_def => defs.push(fn_def(d)),
+                Rule::fn_def => defs.push(fn_def(d, None)),
                 Rule::fn_postulate => defs.push(fn_postulate(d)),
                 Rule::type_postulate => defs.push(type_postulate(d)),
                 Rule::type_alias => defs.push(type_alias(d)),

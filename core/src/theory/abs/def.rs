@@ -50,6 +50,7 @@ impl Def<Term> {
             Postulate => Box::new(Term::Ref(v)),
             Alias(t) => rename(Term::lam(&self.tele, t.clone())),
             Undefined => Box::new(Term::Undef(v)),
+            Class { object, .. } => rename(Term::lam(&self.tele, object.clone())),
             _ => unreachable!(),
         }
     }
@@ -81,7 +82,7 @@ impl<T: Syntax> Display for Def<T> {
                     t,
                 ),
                 Class {
-                    members,
+                    object,
                     methods,
                     vptr,
                     vptr_ctor,
@@ -90,7 +91,7 @@ impl<T: Syntax> Display for Def<T> {
                 } => {
                     format!(
                         "class {}{} {{
-{}
+{object}
 {}
 {vptr};
 {vptr_ctor};
@@ -99,16 +100,11 @@ impl<T: Syntax> Display for Def<T> {
 }}",
                         self.name,
                         Param::tele_to_string(&self.tele),
-                        members
-                            .iter()
-                            .map(|m| format!("\t{}: {};", m.var, m.typ))
-                            .collect::<Vec<_>>()
-                            .join("\n"),
                         methods
                             .iter()
                             .map(|m| m.to_string())
                             .collect::<Vec<_>>()
-                            .join("\n\n")
+                            .join(";\n")
                     )
                 }
 
@@ -141,7 +137,7 @@ pub enum Body<T: Syntax> {
     Postulate,
     Alias(Box<T>),
     Class {
-        members: Tele<T>,
+        object: Box<T>,
         methods: Vec<Var>,
         vptr: Var,
         vptr_ctor: Var,
