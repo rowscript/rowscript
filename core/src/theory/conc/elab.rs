@@ -74,6 +74,7 @@ impl Elaborator {
             Class {
                 object,
                 methods,
+                ctor,
                 vptr,
                 vptr_ctor,
                 vtbl,
@@ -81,6 +82,7 @@ impl Elaborator {
             } => Class {
                 object: self.check(object, &ret)?,
                 methods,
+                ctor,
                 vptr,
                 vptr_ctor,
                 vtbl,
@@ -469,6 +471,7 @@ impl Elaborator {
                     en => return Err(ExpectedEnum(Box::new(en), a_loc)),
                 }
             }
+            New(_, cls) => self.infer(cls, hint)?,
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
             Unit(_) => (Box::new(Term::Unit), Box::new(Term::Univ)),

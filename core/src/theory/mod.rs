@@ -83,6 +83,10 @@ impl Var {
         Self::new(format!("{}.{}", self.name, m.name))
     }
 
+    pub fn ctor(&self) -> Self {
+        Self::new(format!("{}.__new", self.name))
+    }
+
     pub fn vptr() -> Self {
         Self::new("__vptr")
     }

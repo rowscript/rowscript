@@ -84,6 +84,7 @@ impl<T: Syntax> Display for Def<T> {
                 Class {
                     object,
                     methods,
+                    ctor,
                     vptr,
                     vptr_ctor,
                     vtbl,
@@ -93,6 +94,7 @@ impl<T: Syntax> Display for Def<T> {
                         "class {}{} {{
 {object}
 {}
+{ctor};
 {vptr};
 {vptr_ctor};
 {vtbl};
@@ -139,6 +141,7 @@ pub enum Body<T: Syntax> {
     Class {
         object: Box<T>,
         methods: Vec<Var>,
+        ctor: Var,
         vptr: Var,
         vptr_ctor: Var,
         vtbl: Var,

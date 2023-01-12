@@ -160,6 +160,7 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     let mut method_defs = Vec::default();
     let mut methods = Vec::default();
 
+    // TODO: Constructor definition.
     let vptr_def = Def {
         loc,
         name: name.vptr_type(),
@@ -226,6 +227,7 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     let body = Class {
         object,
         methods,
+        ctor: name.ctor(),
         vptr: name.vptr_type(),
         vptr_ctor: name.vptr_ctor(),
         vtbl: name.vtbl_type(),
@@ -466,7 +468,10 @@ fn expr(e: Pair<Rule>) -> Expr {
         }
         Rule::new_expr => {
             let mut pairs = p.into_inner();
-            let cls = unresolved(pairs.next().unwrap());
+            let cls = match unresolved(pairs.next().unwrap()) {
+                Unresolved(loc, v) => Unresolved(loc, v.ctor()),
+                _ => unreachable!(),
+            };
             pairs
                 .map(|arg| {
                     let loc = Loc::from(arg.as_span());

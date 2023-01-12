@@ -52,6 +52,7 @@ impl Resolver {
             Class {
                 object,
                 methods,
+                ctor,
                 vptr,
                 vptr_ctor,
                 vtbl,
@@ -59,6 +60,7 @@ impl Resolver {
             } => Class {
                 object: self.expr(object)?,
                 methods,
+                ctor,
                 vptr,
                 vptr_ctor,
                 vtbl,
