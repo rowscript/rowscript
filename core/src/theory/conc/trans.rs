@@ -219,7 +219,7 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         ret_fields.push((m.var.to_string(), *m.typ.clone()));
     }
     ret_fields.push((Var::vptr().to_string(), Unresolved(loc, name.vptr_type())));
-    let ret = Box::new(Fields(loc, ret_fields));
+    let ret = Box::new(Object(loc, Box::new(Fields(loc, ret_fields))));
 
     let body = Class {
         members,
