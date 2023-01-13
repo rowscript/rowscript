@@ -60,6 +60,8 @@ pub struct Var {
     name: Name,
 }
 
+const VPTR: &str = "__ptr";
+
 impl Var {
     fn new<S: AsRef<str>>(name: S) -> Self {
         Self {
@@ -88,23 +90,27 @@ impl Var {
     }
 
     pub fn vptr() -> Self {
-        Self::new("__vptr")
+        Self::new(VPTR)
     }
 
     pub fn vptr_type(&self) -> Self {
-        Self::new(format!("{}.__Vptr", self.name))
+        Self::new(format!("{}.__vptr", self.name))
     }
 
     pub fn vptr_ctor(&self) -> Self {
-        Self::new(format!("{}.__newVptr", self.name))
+        Self::new(format!("{}.__vptrNew", self.name))
+    }
+
+    pub fn vptr_ctor_from_type(&self) -> Self {
+        Self::new(format!("{}New", self.name))
     }
 
     pub fn vtbl_type(&self) -> Self {
-        Self::new(format!("{}.__Vtbl", self.name))
+        Self::new(format!("{}.__vtbl", self.name))
     }
 
     pub fn vtbl_lookup(&self) -> Self {
-        Self::new(format!("{}.__lookupVtbl", self.name))
+        Self::new(format!("{}.__vtblLookup", self.name))
     }
 
     pub fn id(&self) -> usize {

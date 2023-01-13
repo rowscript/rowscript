@@ -248,7 +248,6 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         ret: Box::new(Unresolved(loc, name.clone())),
         body: ctor_body,
     };
-    dbg!(&ctor_def.to_string());
 
     let body = Class {
         object,
