@@ -193,7 +193,6 @@ impl Resolver {
                 }
                 Switch(loc, self.expr(a)?, new)
             }
-            New(loc, a) => New(loc, self.expr(a)?),
             Lookup(loc, a, n) => Lookup(loc, self.expr(a)?, n),
 
             Resolved(loc, r) => Resolved(loc, r),

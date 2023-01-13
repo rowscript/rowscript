@@ -475,10 +475,8 @@ fn expr(e: Pair<Rule>) -> Expr {
 
             pairs
                 .map(|arg| {
-                    (
-                        Loc::from(arg.as_span()),
-                        tupled_args(loc, &mut arg.into_inner()),
-                    )
+                    let loc = Loc::from(arg.as_span());
+                    (loc, tupled_args(loc, &mut arg.into_inner()))
                 })
                 .fold(Lookup(loc, o, n), |a, (loc, x)| {
                     App(loc, Box::new(a), UnnamedExplicit, Box::new(x))
@@ -500,9 +498,7 @@ fn expr(e: Pair<Rule>) -> Expr {
                     };
                     (loc, i, e)
                 })
-                .fold(New(cls.loc(), Box::new(cls)), |a, (loc, i, x)| {
-                    App(loc, Box::new(a), i, Box::new(x))
-                })
+                .fold(cls, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
         }
         Rule::object_literal => object_literal(p),
         Rule::object_concat => {

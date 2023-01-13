@@ -70,7 +70,6 @@ pub enum Expr {
     Upcast(Loc, Box<Self>),
     Switch(Loc, Box<Self>, Vec<(String, Var, Self)>),
 
-    New(Loc, Box<Self>),
     Lookup(Loc, Box<Self>, String),
 }
 
@@ -121,7 +120,6 @@ impl Expr {
             Variant(loc, _, _) => loc,
             Upcast(loc, _) => loc,
             Switch(loc, _, _) => loc,
-            New(loc, _) => loc,
             Lookup(loc, _, _) => loc,
         }
         .clone()
@@ -246,7 +244,6 @@ impl Display for Expr {
                         .collect::<Vec<_>>()
                         .join("\n")
                 ),
-                New(_, a) => format!("new {a}"),
                 Lookup(_, a, n) => format!("{a}.{n}"),
             }
             .as_str(),
