@@ -6,7 +6,7 @@ use crate::theory::abs::def::Def;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Loc, Param, Tele, Var};
+use crate::theory::{Loc, Param, Tele, Var, VPTR};
 use crate::Rule;
 
 pub fn fn_def(f: Pair<Rule>, this: Option<Expr>) -> Def<Expr> {
@@ -460,6 +460,46 @@ fn expr(e: Pair<Rule>) -> Expr {
                 Box::new(branch(pairs.next().unwrap())),
             )
         }
+        Rule::method_app => {
+            let mut pairs = p.into_inner();
+
+            let o = pairs.next().unwrap();
+            let o = match o.as_rule() {
+                Rule::expr => expr(o),
+                Rule::idref => unresolved(o),
+                _ => unreachable!(),
+            };
+
+            let m = pairs.next().unwrap().as_str().to_string();
+            // FIXME: How to get the reference of vtbl lookup?
+            todo!();
+            App(
+                loc,
+                Box::new(Access(loc, VPTR.to_string())),
+                UnnamedExplicit,
+                Box::new(o),
+            )
+        }
+        Rule::new_expr => {
+            let mut pairs = p.into_inner();
+            let cls = match unresolved(pairs.next().unwrap()) {
+                Unresolved(loc, v) => Unresolved(loc, v.ctor()),
+                _ => unreachable!(),
+            };
+            pairs
+                .map(|arg| {
+                    let loc = Loc::from(arg.as_span());
+                    let (i, e) = match arg.as_rule() {
+                        Rule::type_arg => type_arg(arg),
+                        Rule::args => (UnnamedExplicit, tupled_args(loc, &mut arg.into_inner())),
+                        _ => unreachable!(),
+                    };
+                    (loc, i, e)
+                })
+                .fold(New(cls.loc(), Box::new(cls)), |a, (loc, i, x)| {
+                    App(loc, Box::new(a), i, Box::new(x))
+                })
+        }
         Rule::object_literal => object_literal(p),
         Rule::object_concat => {
             let mut pairs = p.into_inner();
@@ -498,26 +538,6 @@ fn expr(e: Pair<Rule>) -> Expr {
                 cases.push((n, v.unwrap_or(Var::unbound()), body.unwrap()));
             }
             Switch(loc, Box::new(e), cases)
-        }
-        Rule::new_expr => {
-            let mut pairs = p.into_inner();
-            let cls = match unresolved(pairs.next().unwrap()) {
-                Unresolved(loc, v) => Unresolved(loc, v.ctor()),
-                _ => unreachable!(),
-            };
-            pairs
-                .map(|arg| {
-                    let loc = Loc::from(arg.as_span());
-                    let (i, e) = match arg.as_rule() {
-                        Rule::type_arg => type_arg(arg),
-                        Rule::args => (UnnamedExplicit, tupled_args(loc, &mut arg.into_inner())),
-                        _ => unreachable!(),
-                    };
-                    (loc, i, e)
-                })
-                .fold(New(cls.loc(), Box::new(cls)), |a, (loc, i, x)| {
-                    App(loc, Box::new(a), i, Box::new(x))
-                })
         }
         Rule::lambda_expr => {
             let pairs = p.into_inner();

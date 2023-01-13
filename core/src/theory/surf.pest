@@ -116,6 +116,8 @@ expr =
   | boolean_false
   | boolean_true
   | boolean_if
+  | new_expr
+  | method_app
   | object_literal
   | object_concat
   | object_access
@@ -123,7 +125,6 @@ expr =
   | enum_variant
   | enum_cast
   | enum_switch
-  | new_expr
   | lambda_expr
   | app
   | tt
@@ -141,6 +142,7 @@ boolean_if =
 branch = { branch_let | expr }
 branch_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" ~ branch }
 new_expr = { "new" ~ class_id ~ ("<" ~ type_args ~ ">")? ~ args }
+method_app = { ("(" ~ expr ~ ")" | idref) ~ "." ~ prop_id ~ args+ }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
 lambda_params = _{ "()" | param_id | "(" ~ param_id ~ ("," ~ param_id)+ ~ ")" }
 lambda_body = { expr | fn_body_block }
@@ -158,7 +160,7 @@ args = { "()" | "(" ~ expr ~ ("," ~ expr)* ~ ")" }
 tt = { "()" }
 object_literal = { "{" ~ label ~ ("," ~ label)* ~ "}" }
 object_concat = { object_operand ~ "..." ~ object_operand }
-object_access = { object_operand ~ "." ~ prop_id ~ args* }
+object_access = { object_operand ~ "." ~ prop_id }
 object_cast = { "{" ~ "..." ~ object_operand ~ "}" }
 object_operand =
   { app

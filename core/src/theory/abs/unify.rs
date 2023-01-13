@@ -2,7 +2,7 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Sigma;
 use crate::theory::abs::normalize::Normalizer;
-use crate::theory::{Loc, Var, VPTR};
+use crate::theory::{Loc, Var};
 use crate::Error;
 use crate::Error::{NonRowSat, NonUnifiable};
 
@@ -134,21 +134,6 @@ impl<'a> Unifier<'a> {
                     if let Some(b) = g.get(x) {
                         self.unify(a, b)?;
                         continue;
-                    }
-                    if let Some(vptr_ty) = g.get(VPTR) {
-                        return match vptr_ty {
-                            Ref(ty) => {
-                                // FIXME: Not a workable name for lookup.
-                                let vptr_ctor = ty.vptr_ctor_from_type();
-                                match *self.sigma.get(&vptr_ctor).unwrap().to_term(vptr_ctor) {
-                                    Object(new_bigger) => {
-                                        self.unify_fields_ord(smaller, &*new_bigger)
-                                    }
-                                    _ => unreachable!(),
-                                }
-                            }
-                            _ => unreachable!(),
-                        };
                     }
                     return Err(NonRowSat(
                         Box::new(smaller.clone()),

@@ -60,7 +60,7 @@ pub struct Var {
     name: Name,
 }
 
-const VPTR: &str = "__ptr";
+const VPTR: &str = "__vptr";
 
 impl Var {
     fn new<S: AsRef<str>>(name: S) -> Self {
@@ -99,10 +99,6 @@ impl Var {
 
     pub fn vptr_ctor(&self) -> Self {
         Self::new(format!("{}.__vptrNew", self.name))
-    }
-
-    pub fn vptr_ctor_from_type(&self) -> Self {
-        Self::new(format!("{}New", self.name))
     }
 
     pub fn vtbl_type(&self) -> Self {
