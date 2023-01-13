@@ -92,13 +92,13 @@ impl<T: Syntax> Display for Def<T> {
                 } => {
                     format!(
                         "class {}{} {{
-{object}
-{}
-{ctor};
-{vptr};
-{vptr_ctor};
-{vtbl};
-{vtbl_lookup};
+    {object}
+    {};
+    {ctor};
+    {vptr};
+    {vptr_ctor};
+    {vtbl};
+    {vtbl_lookup};
 }}",
                         self.name,
                         Param::tele_to_string(&self.tele),

@@ -82,11 +82,11 @@ impl Var {
     }
 
     pub fn method(&self, m: Self) -> Self {
-        Self::new(format!("{}.{}", self.name, m.name))
+        Self::new(format!("{}__{}", self.name, m.name))
     }
 
     pub fn ctor(&self) -> Self {
-        Self::new(format!("{}.__new", self.name))
+        Self::new(format!("{}__new", self.name))
     }
 
     pub fn vptr() -> Self {
@@ -94,19 +94,19 @@ impl Var {
     }
 
     pub fn vptr_type(&self) -> Self {
-        Self::new(format!("{}.__vptr", self.name))
+        Self::new(format!("{}__vptr", self.name))
     }
 
     pub fn vptr_ctor(&self) -> Self {
-        Self::new(format!("{}.__vptrNew", self.name))
+        Self::new(format!("{}__vptrNew", self.name))
     }
 
     pub fn vtbl_type(&self) -> Self {
-        Self::new(format!("{}.__vtbl", self.name))
+        Self::new(format!("{}__vtbl", self.name))
     }
 
     pub fn vtbl_lookup(&self) -> Self {
-        Self::new(format!("{}.__vtblLookup", self.name))
+        Self::new(format!("{}__vtblLookup", self.name))
     }
 
     pub fn id(&self) -> usize {

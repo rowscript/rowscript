@@ -6,7 +6,7 @@ use crate::theory::abs::def::Def;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Loc, Param, Tele, Var, VPTR};
+use crate::theory::{Loc, Param, Tele, Var};
 use crate::Rule;
 
 pub fn fn_def(f: Pair<Rule>, this: Option<Expr>) -> Def<Expr> {
@@ -461,24 +461,28 @@ fn expr(e: Pair<Rule>) -> Expr {
             )
         }
         Rule::method_app => {
+            let loc = Loc::from(p.as_span());
             let mut pairs = p.into_inner();
 
             let o = pairs.next().unwrap();
-            let o = match o.as_rule() {
+            let o = Box::new(match o.as_rule() {
                 Rule::expr => expr(o),
                 Rule::idref => unresolved(o),
                 _ => unreachable!(),
-            };
+            });
 
-            let m = pairs.next().unwrap().as_str().to_string();
-            // FIXME: How to get the reference of vtbl lookup?
-            todo!();
-            App(
-                loc,
-                Box::new(Access(loc, VPTR.to_string())),
-                UnnamedExplicit,
-                Box::new(o),
-            )
+            let n = pairs.next().unwrap().as_str().to_string();
+
+            pairs
+                .map(|arg| {
+                    (
+                        Loc::from(arg.as_span()),
+                        tupled_args(loc, &mut arg.into_inner()),
+                    )
+                })
+                .fold(Lookup(loc, o, n), |a, (loc, x)| {
+                    App(loc, Box::new(a), UnnamedExplicit, Box::new(x))
+                })
         }
         Rule::new_expr => {
             let mut pairs = p.into_inner();
