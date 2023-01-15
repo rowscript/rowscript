@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::theory::abs::data::Dir::Le;
 use crate::theory::abs::data::{CaseMap, FieldMap, Term};
 use crate::theory::abs::def::{gamma_to_tele, Body};
@@ -18,12 +20,20 @@ use crate::Error::{
 pub struct Elaborator {
     sigma: Sigma,
     gamma: Gamma,
+
     ug: VarGen,
     ig: VarGen,
+
+    vtbl_lookups: HashMap<String, Var>,
 }
 
 impl Elaborator {
-    pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<(), Error> {
+    pub fn defs(
+        &mut self,
+        defs: Vec<Def<Expr>>,
+        vtbl_lookups: HashMap<String, Var>,
+    ) -> Result<(), Error> {
+        self.vtbl_lookups = vtbl_lookups;
         for d in defs {
             self.def(d)?;
         }
@@ -471,6 +481,9 @@ impl Elaborator {
                     en => return Err(ExpectedEnum(Box::new(en), a_loc)),
                 }
             }
+            Lookup(_, a, n) => {
+                todo!()
+            }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
             Unit(_) => (Box::new(Term::Unit), Box::new(Term::Univ)),
@@ -602,6 +615,7 @@ impl Default for Elaborator {
             gamma: Default::default(),
             ug: VarGen::user_meta(),
             ig: VarGen::inserted_meta(),
+            vtbl_lookups: Default::default(),
         }
     }
 }

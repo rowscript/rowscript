@@ -147,7 +147,7 @@ pub fn type_alias(t: Pair<Rule>) -> Def<Expr> {
     }
 }
 
-pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
+pub fn class_def(c: Pair<Rule>) -> (Var, Vec<Def<Expr>>) {
     use Body::*;
     use Expr::*;
 
@@ -261,7 +261,7 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
 
     let cls_def = Def {
         loc,
-        name,
+        name: name.clone(),
         tele,
         ret: Box::new(Univ(loc)),
         body,
@@ -275,7 +275,8 @@ pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         ctor_def,
     ];
     defs.extend(method_defs);
-    defs
+
+    (name, defs)
 }
 
 fn type_expr(t: Pair<Rule>) -> Expr {
