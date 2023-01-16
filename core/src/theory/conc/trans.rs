@@ -9,7 +9,7 @@ use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var};
 use crate::Rule;
 
-pub fn fn_def(f: Pair<Rule>, this: Option<Expr>) -> Def<Expr> {
+pub fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
     use Body::*;
     use Expr::*;
 
@@ -24,7 +24,7 @@ pub fn fn_def(f: Pair<Rule>, this: Option<Expr>) -> Def<Expr> {
     let mut ret = Box::new(Unit(loc));
     let mut body = None;
 
-    if let Some(ty) = this {
+    if let Some((ty, implicits)) = this {
         untupled.push(
             loc,
             Param {
@@ -33,6 +33,7 @@ pub fn fn_def(f: Pair<Rule>, this: Option<Expr>) -> Def<Expr> {
                 typ: Box::new(ty),
             },
         );
+        tele.extend(implicits);
     }
 
     for p in pairs {
@@ -160,21 +161,6 @@ pub fn class_def(c: Pair<Rule>, lookups: &mut VtblLookups) -> Vec<Def<Expr>> {
     let mut method_defs = Vec::default();
     let mut methods = Vec::default();
 
-    let vptr_def = Def {
-        loc,
-        name: name.vptr_type(),
-        tele: Default::default(),
-        ret: Box::new(Univ(loc)),
-        body: Postulate,
-    };
-    let vptr_ctor_def = Def {
-        loc,
-        name: name.vptr_ctor(),
-        tele: Default::default(),
-        ret: Box::new(Unresolved(loc, vptr_def.name.clone())),
-        body: Postulate,
-    };
-
     let mut vtbl_fields = Vec::default();
 
     for p in pairs {
@@ -195,7 +181,7 @@ pub fn class_def(c: Pair<Rule>, lookups: &mut VtblLookups) -> Vec<Def<Expr>> {
                 ));
             }
             Rule::class_method => {
-                let mut m = fn_def(p, Some(Unresolved(loc, name.clone())));
+                let mut m = fn_def(p, Some((Unresolved(loc, name.clone()), tele.clone())));
                 vtbl_fields.push((m.name.to_string(), *m.to_type()));
                 m.name = name.method(m.name);
                 methods.push(m.name.clone());
@@ -204,6 +190,21 @@ pub fn class_def(c: Pair<Rule>, lookups: &mut VtblLookups) -> Vec<Def<Expr>> {
             _ => unreachable!(),
         }
     }
+
+    let vptr_def = Def {
+        loc,
+        name: name.vptr_type(),
+        tele: tele.clone(),
+        ret: Box::new(Univ(loc)),
+        body: Postulate,
+    };
+    let vptr_ctor_def = Def {
+        loc,
+        name: name.vptr_ctor(),
+        tele: tele.clone(),
+        ret: Box::new(Unresolved(loc, vptr_def.name.clone())),
+        body: Postulate,
+    };
 
     let mut ctor_untupled = UntupledParams::new(loc);
     let mut ty_fields = Vec::default();
