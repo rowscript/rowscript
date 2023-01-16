@@ -1,19 +1,17 @@
-use std::collections::HashMap;
-
 use crate::theory::abs::data::Dir::Le;
 use crate::theory::abs::data::{CaseMap, FieldMap, Term};
-use crate::theory::abs::def::{gamma_to_tele, Body};
+use crate::theory::abs::def::{gamma_to_tele, Body, VtblLookups};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Loc, Param, Tele, Var, VarGen};
+use crate::theory::{Loc, Param, Tele, Var, VarGen, VPTR};
 use crate::Error;
 use crate::Error::{
-    ExpectedEnum, ExpectedObject, ExpectedPi, ExpectedSigma, NonExhaustive, SwitchUnknown,
-    UnresolvedField, UnresolvedImplicitParam,
+    ExpectedClass, ExpectedEnum, ExpectedObject, ExpectedPi, ExpectedSigma, FieldsUnknown,
+    NonExhaustive, UnresolvedField, UnresolvedImplicitParam,
 };
 
 #[derive(Debug)]
@@ -24,15 +22,11 @@ pub struct Elaborator {
     ug: VarGen,
     ig: VarGen,
 
-    vtbl_lookups: HashMap<String, Var>,
+    vtbl_lookups: VtblLookups,
 }
 
 impl Elaborator {
-    pub fn defs(
-        &mut self,
-        defs: Vec<Def<Expr>>,
-        vtbl_lookups: HashMap<String, Var>,
-    ) -> Result<(), Error> {
+    pub fn defs(&mut self, defs: Vec<Def<Expr>>, vtbl_lookups: VtblLookups) -> Result<(), Error> {
         self.vtbl_lookups = vtbl_lookups;
         for d in defs {
             self.def(d)?;
@@ -476,13 +470,51 @@ impl Elaborator {
                             }
                             (Box::new(Term::Switch(a, m)), ret_ty.clone())
                         }
-                        y => return Err(SwitchUnknown(Box::new(y), loc)),
+                        y => return Err(FieldsUnknown(Box::new(y), loc)),
                     },
                     en => return Err(ExpectedEnum(Box::new(en), a_loc)),
                 }
             }
-            Lookup(_, a, n) => {
-                todo!()
+            Lookup(loc, a, n) => {
+                let a_loc = a.loc();
+                let (_, a_ty) = self.infer(a.clone(), hint)?;
+                match *a_ty {
+                    Term::Object(f) => match *f {
+                        Term::Fields(f) => match f.get(VPTR) {
+                            Some(vp) => match vp {
+                                Term::Ref(v) => {
+                                    let lookup = self.vtbl_lookups.get(v);
+                                    let desugared = Box::new(App(
+                                        loc,
+                                        Box::new(Access(loc, n)),
+                                        UnnamedExplicit,
+                                        Box::new(App(
+                                            loc,
+                                            Box::new(Resolved(loc, lookup)),
+                                            UnnamedExplicit,
+                                            Box::new(App(
+                                                loc,
+                                                Box::new(Access(loc, VPTR.to_string())),
+                                                UnnamedExplicit,
+                                                a,
+                                            )),
+                                        )),
+                                    ));
+                                    self.infer(desugared, hint)?
+                                }
+                                _ => unreachable!(),
+                            },
+                            None => {
+                                return Err(ExpectedClass(
+                                    Box::new(Term::Object(Box::new(Term::Fields(f)))),
+                                    a_loc,
+                                ))
+                            }
+                        },
+                        tm => return Err(FieldsUnknown(Box::new(tm), a_loc)),
+                    },
+                    tm => return Err(ExpectedClass(Box::new(tm), a_loc)),
+                }
             }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),

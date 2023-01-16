@@ -21,6 +21,19 @@ pub fn gamma_to_tele(g: &Gamma) -> Tele<Term> {
         .collect()
 }
 
+#[derive(Default, Debug)]
+pub struct VtblLookups(HashMap<String, Var>);
+
+impl VtblLookups {
+    pub fn insert(&mut self, vptr: &Var, lookup: &Var) {
+        self.0.insert(vptr.to_string(), lookup.clone());
+    }
+
+    pub fn get(&self, vptr: &Var) -> Var {
+        self.0.get(&vptr.to_string()).unwrap().clone()
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Def<T: Syntax> {
     pub loc: Loc,

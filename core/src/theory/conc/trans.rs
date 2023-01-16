@@ -1,8 +1,8 @@
 use pest::iterators::{Pair, Pairs};
 
 use crate::theory::abs::data::Dir;
-use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Def;
+use crate::theory::abs::def::{Body, VtblLookups};
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
@@ -147,7 +147,7 @@ pub fn type_alias(t: Pair<Rule>) -> Def<Expr> {
     }
 }
 
-pub fn class_def(c: Pair<Rule>) -> (Var, Vec<Def<Expr>>) {
+pub fn class_def(c: Pair<Rule>, lookups: &mut VtblLookups) -> Vec<Def<Expr>> {
     use Body::*;
     use Expr::*;
 
@@ -192,6 +192,7 @@ pub fn class_def(c: Pair<Rule>) -> (Var, Vec<Def<Expr>>) {
         ret: Box::new(Unresolved(loc, vtbl_def.name.clone())),
         body: Postulate,
     };
+    lookups.insert(&vptr_def.name, &vtbl_lookup_def.name);
 
     for p in pairs {
         match p.as_rule() {
@@ -261,7 +262,7 @@ pub fn class_def(c: Pair<Rule>) -> (Var, Vec<Def<Expr>>) {
 
     let cls_def = Def {
         loc,
-        name: name.clone(),
+        name,
         tele,
         ret: Box::new(Univ(loc)),
         body,
@@ -275,8 +276,7 @@ pub fn class_def(c: Pair<Rule>) -> (Var, Vec<Def<Expr>>) {
         ctor_def,
     ];
     defs.extend(method_defs);
-
-    (name, defs)
+    defs
 }
 
 fn type_expr(t: Pair<Rule>) -> Expr {

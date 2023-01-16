@@ -1,6 +1,5 @@
 extern crate core;
 
-use std::collections::HashMap;
 use std::fs::read_to_string;
 use std::io;
 use std::path::PathBuf;
@@ -12,6 +11,7 @@ use pest_derive::Parser;
 use thiserror::Error;
 
 use crate::theory::abs::data::Term;
+use crate::theory::abs::def::VtblLookups;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
@@ -44,8 +44,10 @@ pub enum Error {
     ExpectedObject(Box<Term>, Loc),
     #[error("expected enum type, got \"{0}\"")]
     ExpectedEnum(Box<Term>, Loc),
-    #[error("switch fields not known yet, got \"{0}\"")]
-    SwitchUnknown(Box<Term>, Loc),
+    #[error("fields not known yet, got \"{0}\"")]
+    FieldsUnknown(Box<Term>, Loc),
+    #[error("expected class type, got \"{0}\"")]
+    ExpectedClass(Box<Term>, Loc),
     #[error("switch not exhaustive, got \"{0}\"")]
     NonExhaustive(Box<Term>, Loc),
     #[error("unresolved field \"{0}\" in \"{1}\"")]
@@ -85,7 +87,8 @@ impl Error {
             ExpectedSigma(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             ExpectedObject(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             ExpectedEnum(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
-            SwitchUnknown(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
+            FieldsUnknown(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
+            ExpectedClass(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             NonExhaustive(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
             UnresolvedField(_, _, loc) => {
                 (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string()))
@@ -153,7 +156,7 @@ impl Driver {
         use trans::*;
 
         let mut defs = Vec::default();
-        let mut vtbl_lookups = HashMap::default();
+        let mut vtbl_lookups = VtblLookups::default();
         let file = RowsParser::parse(Rule::file, src)?.next().unwrap();
         for d in file.into_inner() {
             match d.as_rule() {
@@ -162,9 +165,7 @@ impl Driver {
                 Rule::type_postulate => defs.push(type_postulate(d)),
                 Rule::type_alias => defs.push(type_alias(d)),
                 Rule::class_def => {
-                    let (name, ds) = class_def(d);
-                    vtbl_lookups.insert(name.vptr_type().to_string(), name.vtbl_lookup());
-                    defs.extend(ds);
+                    defs.extend(class_def(d, &mut vtbl_lookups));
                 }
                 Rule::EOI => break,
                 _ => unreachable!(),
