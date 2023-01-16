@@ -497,12 +497,12 @@ impl Elaborator {
                                                     loc,
                                                     Box::new(Access(loc, VPTR.to_string())),
                                                     UnnamedExplicit,
-                                                    o,
+                                                    o.clone(),
                                                 )),
                                             )),
                                         )),
                                         UnnamedExplicit,
-                                        arg,
+                                        Box::new(Tuple(arg.loc(), o, arg)),
                                     ));
                                     self.infer(desugared, hint)?
                                 }
