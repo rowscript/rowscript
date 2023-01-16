@@ -475,10 +475,9 @@ impl Elaborator {
                     en => return Err(ExpectedEnum(Box::new(en), a_loc)),
                 }
             }
-            Lookup(loc, a, n) => {
-                let a_loc = a.loc();
-                let (_, a_ty) = self.infer(a.clone(), hint)?;
-                match *a_ty {
+            Lookup(loc, o, n, arg) => {
+                let o_loc = o.loc();
+                match *self.infer(o.clone(), hint)?.1 {
                     Term::Object(f) => match *f {
                         Term::Fields(f) => match f.get(VPTR) {
                             Some(vp) => match vp {
@@ -486,19 +485,24 @@ impl Elaborator {
                                     let lookup = self.vtbl_lookups.get(v);
                                     let desugared = Box::new(App(
                                         loc,
-                                        Box::new(Access(loc, n)),
-                                        UnnamedExplicit,
                                         Box::new(App(
                                             loc,
-                                            Box::new(Resolved(loc, lookup)),
+                                            Box::new(Access(loc, n)),
                                             UnnamedExplicit,
                                             Box::new(App(
                                                 loc,
-                                                Box::new(Access(loc, VPTR.to_string())),
+                                                Box::new(Resolved(loc, lookup)),
                                                 UnnamedExplicit,
-                                                a,
+                                                Box::new(App(
+                                                    loc,
+                                                    Box::new(Access(loc, VPTR.to_string())),
+                                                    UnnamedExplicit,
+                                                    o,
+                                                )),
                                             )),
                                         )),
+                                        UnnamedExplicit,
+                                        arg,
                                     ));
                                     self.infer(desugared, hint)?
                                 }
@@ -507,13 +511,13 @@ impl Elaborator {
                             None => {
                                 return Err(ExpectedClass(
                                     Box::new(Term::Object(Box::new(Term::Fields(f)))),
-                                    a_loc,
+                                    o_loc,
                                 ))
                             }
                         },
-                        tm => return Err(FieldsUnknown(Box::new(tm), a_loc)),
+                        tm => return Err(FieldsUnknown(Box::new(tm), o_loc)),
                     },
-                    tm => return Err(ExpectedClass(Box::new(tm), a_loc)),
+                    tm => return Err(ExpectedClass(Box::new(tm), o_loc)),
                 }
             }
 
