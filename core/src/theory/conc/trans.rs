@@ -226,10 +226,12 @@ pub fn class_def(c: Pair<Rule>, lookups: &mut VtblLookups) -> Vec<Def<Expr>> {
         untupled_vars,
         Box::new(Obj(loc, Box::new(Fields(loc, tm_fields)))),
     ));
+    let mut ctor_tele = tele.clone();
+    ctor_tele.push(tupled_param);
     let ctor_def = Def {
         loc,
         name: name.ctor(),
-        tele: vec![tupled_param],
+        tele: ctor_tele,
         ret: Box::new(Unresolved(loc, name.clone())),
         body: ctor_body,
     };
@@ -247,7 +249,7 @@ pub fn class_def(c: Pair<Rule>, lookups: &mut VtblLookups) -> Vec<Def<Expr>> {
     let cls_def = Def {
         loc,
         name: name.clone(),
-        tele,
+        tele: tele.clone(),
         ret: Box::new(Univ(loc)),
         body,
     };
@@ -255,18 +257,20 @@ pub fn class_def(c: Pair<Rule>, lookups: &mut VtblLookups) -> Vec<Def<Expr>> {
     let vtbl_def = Def {
         loc,
         name: name.vtbl_type(),
-        tele: Default::default(),
+        tele: tele.clone(),
         ret: Box::new(Univ(loc)),
         body: Fun(Box::new(Object(loc, Box::new(Fields(loc, vtbl_fields))))),
     };
+    let mut lookup_tele = tele;
+    lookup_tele.push(Param {
+        var: Var::unbound(),
+        info: Explicit,
+        typ: Box::new(Unresolved(loc, vptr_def.name.clone())),
+    });
     let vtbl_lookup_def = Def {
         loc,
         name: name.vtbl_lookup(),
-        tele: vec![Param {
-            var: Var::unbound(),
-            info: Explicit,
-            typ: Box::new(Unresolved(loc, vptr_def.name.clone())),
-        }],
+        tele: lookup_tele,
         ret: Box::new(Unresolved(loc, vtbl_def.name.clone())),
         body: Postulate,
     };
@@ -620,19 +624,21 @@ fn unresolved(p: Pair<Rule>) -> Expr {
 
 fn row_param(p: Pair<Rule>) -> Param<Expr> {
     use Expr::*;
+    let loc = Loc::from(p.as_span());
     Param {
-        var: Var::new(p.as_str()),
+        var: Var::from(p),
         info: Implicit,
-        typ: Box::new(Row(Loc::from(p.as_span()))),
+        typ: Box::new(Row(loc)),
     }
 }
 
 fn implicit_param(p: Pair<Rule>) -> Param<Expr> {
     use Expr::*;
+    let loc = Loc::from(p.as_span());
     Param {
-        var: Var::new(p.as_str()),
+        var: Var::from(p),
         info: Implicit,
-        typ: Box::new(Univ(Loc::from(p.as_span()))),
+        typ: Box::new(Univ(loc)),
     }
 }
 

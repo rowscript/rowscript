@@ -4,9 +4,7 @@ class Foo<T> {
     name: string;
     data: T;
 
-    sayHi() {
-        return log(this.name)
-    }
+    sayHi() { return log(this.name) }
 
     doStuff() {
         let n = this.data;
