@@ -174,25 +174,8 @@ pub fn class_def(c: Pair<Rule>, lookups: &mut VtblLookups) -> Vec<Def<Expr>> {
         ret: Box::new(Unresolved(loc, vptr_def.name.clone())),
         body: Postulate,
     };
-    let vtbl_def = Def {
-        loc,
-        name: name.vtbl_type(),
-        tele: Default::default(),
-        ret: Box::new(Univ(loc)),
-        body: Postulate,
-    };
-    let vtbl_lookup_def = Def {
-        loc,
-        name: name.vtbl_lookup(),
-        tele: vec![Param {
-            var: Var::unbound(),
-            info: Explicit,
-            typ: Box::new(Unresolved(loc, vptr_def.name.clone())),
-        }],
-        ret: Box::new(Unresolved(loc, vtbl_def.name.clone())),
-        body: Postulate,
-    };
-    lookups.insert(&vptr_def.name, &vtbl_lookup_def.name);
+
+    let mut vtbl_fields = Vec::default();
 
     for p in pairs {
         match p.as_rule() {
@@ -213,6 +196,7 @@ pub fn class_def(c: Pair<Rule>, lookups: &mut VtblLookups) -> Vec<Def<Expr>> {
             }
             Rule::class_method => {
                 let mut m = fn_def(p, Some(Unresolved(loc, name.clone())));
+                vtbl_fields.push((m.name.to_string(), *m.to_type()));
                 m.name = name.method(m.name);
                 methods.push(m.name.clone());
                 method_defs.push(m);
@@ -262,18 +246,39 @@ pub fn class_def(c: Pair<Rule>, lookups: &mut VtblLookups) -> Vec<Def<Expr>> {
 
     let cls_def = Def {
         loc,
-        name,
+        name: name.clone(),
         tele,
         ret: Box::new(Univ(loc)),
         body,
     };
+
+    let vtbl_def = Def {
+        loc,
+        name: name.vtbl_type(),
+        tele: Default::default(),
+        ret: Box::new(Univ(loc)),
+        body: Fun(Box::new(Object(loc, Box::new(Fields(loc, vtbl_fields))))),
+    };
+    let vtbl_lookup_def = Def {
+        loc,
+        name: name.vtbl_lookup(),
+        tele: vec![Param {
+            var: Var::unbound(),
+            info: Explicit,
+            typ: Box::new(Unresolved(loc, vptr_def.name.clone())),
+        }],
+        ret: Box::new(Unresolved(loc, vtbl_def.name.clone())),
+        body: Postulate,
+    };
+    lookups.insert(&vptr_def.name, &vtbl_lookup_def.name);
+
     let mut defs = vec![
         vptr_def,
         vptr_ctor_def,
-        vtbl_def,
-        vtbl_lookup_def,
         cls_def,
         ctor_def,
+        vtbl_def,
+        vtbl_lookup_def,
     ];
     defs.extend(method_defs);
     defs

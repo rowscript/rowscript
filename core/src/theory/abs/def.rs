@@ -4,6 +4,7 @@ use std::fmt::{Debug, Display, Formatter};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Body::Meta;
 use crate::theory::abs::rename::rename;
+use crate::theory::conc::data::Expr;
 use crate::theory::ParamInfo::Explicit;
 use crate::theory::{Loc, Param, Syntax, Tele, Var};
 
@@ -55,6 +56,12 @@ impl<T: Syntax> Def<T> {
     }
 }
 
+impl Def<Expr> {
+    pub fn to_type(&self) -> Box<Expr> {
+        Expr::pi(&self.tele, self.ret.clone())
+    }
+}
+
 impl Def<Term> {
     pub fn to_term(&self, v: Var) -> Box<Term> {
         use Body::*;
@@ -66,6 +73,10 @@ impl Def<Term> {
             Class { object, .. } => rename(Term::lam(&self.tele, object.clone())),
             _ => unreachable!(),
         }
+    }
+
+    pub fn to_type(&self) -> Box<Term> {
+        Term::pi(&self.tele, self.ret.clone())
     }
 }
 

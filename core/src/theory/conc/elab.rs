@@ -215,7 +215,7 @@ impl Elaborator {
                     (Box::new(Term::Ref(v)), ty.clone())
                 } else {
                     let d = self.sigma.get(&v).unwrap();
-                    (d.to_term(v), Term::pi(&d.tele, d.ret.clone()))
+                    (d.to_term(v), d.to_type())
                 }
             }
             Hole(loc) => self.insert_meta(loc, true),

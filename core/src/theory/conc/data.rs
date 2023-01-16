@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::data::Dir;
-use crate::theory::{Loc, Param, Syntax, Var};
+use crate::theory::{Loc, Param, Syntax, Tele, Var};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ArgInfo {
@@ -74,6 +74,12 @@ pub enum Expr {
 }
 
 impl Expr {
+    pub fn pi(tele: &Tele<Expr>, e: Box<Expr>) -> Box<Expr> {
+        use Expr::*;
+        tele.iter()
+            .rfold(e, |b, p| Box::new(Pi(b.loc(), p.clone(), b)))
+    }
+
     pub fn loc(&self) -> Loc {
         use Expr::*;
 
