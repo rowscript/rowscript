@@ -185,9 +185,9 @@ impl Display for Expr {
                 InsertedHole(_) => "?".to_string(),
                 Let(_, v, typ, a, b) => {
                     if let Some(ty) = typ {
-                        format!("let {v}: {ty} = {a}; {b}")
+                        format!("let {v}: {ty} = {a};\n\t{b}")
                     } else {
-                        format!("let {v} = {a}; {b}")
+                        format!("let {v} = {a};\n\t{b}")
                     }
                 }
                 Univ(_) => "type".to_string(),
@@ -207,10 +207,10 @@ impl Display for Expr {
                 },
                 Sigma(_, p, b) => format!("{p} * {b}"),
                 Tuple(_, a, b) => format!("({a}, {b})"),
-                TupleLet(_, x, y, a, b) => format!("let ({x}, {y}) = {a}; {b}"),
+                TupleLet(_, x, y, a, b) => format!("let ({x}, {y}) = {a};\n\t{b}"),
                 Unit(_) => "unit".to_string(),
                 TT(_) => "()".to_string(),
-                UnitLet(_, a, b) => format!("let _ = {a}; {b}"),
+                UnitLet(_, a, b) => format!("let _ = {a};\n\t{b}"),
                 Boolean(_) => "boolean".to_string(),
                 False(_) => "false".to_string(),
                 True(_) => "true".to_string(),

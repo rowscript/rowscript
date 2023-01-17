@@ -130,7 +130,7 @@ impl<T: Syntax> Display for Def<T> {
                             .iter()
                             .map(|m| m.to_string())
                             .collect::<Vec<_>>()
-                            .join(";\n")
+                            .join(";\n\t")
                     )
                 }
 

@@ -24,22 +24,13 @@ pub fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
     let mut ret = Box::new(Unit(loc));
     let mut body = None;
 
-    if let Some((mut ty, implicits)) = this {
-        for p in &implicits {
-            let loc = p.typ.loc();
-            ty = App(
-                loc,
-                Box::new(ty),
-                UnnamedImplicit,
-                Box::new(Unresolved(loc, p.var.clone())),
-            );
-        }
+    if let Some((ty, implicits)) = this {
         untupled.push(
             loc,
             Param {
                 var: Var::new("this"),
                 info: Explicit,
-                typ: Box::new(ty),
+                typ: Box::new(wrap_implicit_apps(&implicits, ty)),
             },
         );
         tele.extend(implicits);
@@ -157,6 +148,20 @@ pub fn type_alias(t: Pair<Rule>) -> Def<Expr> {
     }
 }
 
+fn wrap_implicit_apps(implicits: &Tele<Expr>, mut e: Expr) -> Expr {
+    use Expr::*;
+    for p in implicits {
+        let loc = p.typ.loc();
+        e = App(
+            loc,
+            Box::new(e),
+            UnnamedImplicit,
+            Box::new(Unresolved(loc, p.var.clone())),
+        );
+    }
+    e
+}
+
 pub fn class_def(c: Pair<Rule>, lookups: &mut VtblLookups) -> Vec<Def<Expr>> {
     use Body::*;
     use Expr::*;
@@ -201,14 +206,14 @@ pub fn class_def(c: Pair<Rule>, lookups: &mut VtblLookups) -> Vec<Def<Expr>> {
     let vptr_def = Def {
         loc,
         name: name.vptr_type(),
-        tele: tele.clone(),
+        tele: Default::default(),
         ret: Box::new(Univ(loc)),
         body: Postulate,
     };
     let vptr_ctor_def = Def {
         loc,
         name: name.vptr_ctor(),
-        tele: tele.clone(),
+        tele: Default::default(),
         ret: Box::new(Unresolved(loc, vptr_def.name.clone())),
         body: Postulate,
     };
@@ -269,7 +274,7 @@ pub fn class_def(c: Pair<Rule>, lookups: &mut VtblLookups) -> Vec<Def<Expr>> {
         ret: Box::new(Univ(loc)),
         body: Fun(Box::new(Object(loc, Box::new(Fields(loc, vtbl_fields))))),
     };
-    let mut lookup_tele = tele;
+    let mut lookup_tele = tele.clone();
     lookup_tele.push(Param {
         var: Var::unbound(),
         info: Explicit,
@@ -279,7 +284,10 @@ pub fn class_def(c: Pair<Rule>, lookups: &mut VtblLookups) -> Vec<Def<Expr>> {
         loc,
         name: name.vtbl_lookup(),
         tele: lookup_tele,
-        ret: Box::new(Unresolved(loc, vtbl_def.name.clone())),
+        ret: Box::new(wrap_implicit_apps(
+            &tele,
+            Unresolved(loc, vtbl_def.name.clone()),
+        )),
         body: Postulate,
     };
     lookups.insert(&vptr_def.name, &vtbl_lookup_def.name);
