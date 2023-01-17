@@ -13,6 +13,7 @@ mod ok_fn_recur;
 mod ok_hole;
 mod ok_implicit_named;
 mod ok_implicit_unnamed;
+mod ok_interface;
 mod ok_object;
 mod ok_object_rowpoly;
 mod ok_oop;
