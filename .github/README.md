@@ -2,6 +2,12 @@
 
 RowScript is a robustly-typed functional language that compiles to efficient and reliable JavaScript.
 
+## Installing
+
+```bash
+$ npm i -g rowscript
+```
+
 ## Features and Roadmap
 
 * [x] Basic elaborator for a dialect of Martin-Löf type theory with Π, Σ, universe, unit
