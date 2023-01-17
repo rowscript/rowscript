@@ -77,6 +77,7 @@ impl Resolver {
         }
         self.insert(&d.name);
 
+        println!("{}", d);
         Ok(d)
     }
 
@@ -214,6 +215,7 @@ impl Resolver {
             RowSat(loc) => RowSat(loc),
             RowRefl(loc) => RowRefl(loc),
             Access(loc, n) => Access(loc, n),
+            Vptr(loc, r) => Vptr(loc, r),
         }))
     }
 }

@@ -80,6 +80,8 @@ pub enum Term {
     Variant(Box<Self>),
     Upcast(Box<Self>, Box<Self>),
     Switch(Box<Self>, CaseMap),
+
+    Vptr(Var),
 }
 
 impl Term {
@@ -171,6 +173,7 @@ impl Display for Term {
                             .join("\n")
                     )
                 }
+                Vptr(r) => format!("{r}"),
             }
             .as_str(),
         )

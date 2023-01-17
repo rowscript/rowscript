@@ -1,6 +1,6 @@
 use crate::theory::abs::data::Dir::Le;
 use crate::theory::abs::data::{CaseMap, FieldMap, Term};
-use crate::theory::abs::def::{gamma_to_tele, Body, VtblLookups};
+use crate::theory::abs::def::{gamma_to_tele, Body};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::unify::Unifier;
@@ -18,16 +18,12 @@ use crate::Error::{
 pub struct Elaborator {
     sigma: Sigma,
     gamma: Gamma,
-
     ug: VarGen,
     ig: VarGen,
-
-    vtbl_lookups: VtblLookups,
 }
 
 impl Elaborator {
-    pub fn defs(&mut self, defs: Vec<Def<Expr>>, vtbl_lookups: VtblLookups) -> Result<(), Error> {
-        self.vtbl_lookups = vtbl_lookups;
+    pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<(), Error> {
         for d in defs {
             self.def(d)?;
         }
@@ -481,8 +477,8 @@ impl Elaborator {
                     Term::Object(f) => match *f {
                         Term::Fields(f) => match f.get(VPTR) {
                             Some(vp) => match vp {
-                                Term::Ref(v) => {
-                                    let lookup = self.vtbl_lookups.get(v);
+                                Term::Vptr(v) => {
+                                    // let lookup = self.vtbl_lookups.get(v);
                                     let desugared = Box::new(App(
                                         loc,
                                         Box::new(App(
@@ -491,7 +487,7 @@ impl Elaborator {
                                             UnnamedExplicit,
                                             Box::new(App(
                                                 loc,
-                                                Box::new(Resolved(loc, lookup)),
+                                                Box::new(Resolved(loc, v.clone())),
                                                 UnnamedExplicit,
                                                 Box::new(App(
                                                     loc,
@@ -506,7 +502,10 @@ impl Elaborator {
                                     ));
                                     self.infer(desugared, hint)?
                                 }
-                                _ => unreachable!(),
+                                e => {
+                                    dbg!(&e);
+                                    unreachable!()
+                                }
                             },
                             None => {
                                 return Err(ExpectedClass(
@@ -537,6 +536,7 @@ impl Elaborator {
             BigInt(_) => (Box::new(Term::BigInt), Box::new(Term::Univ)),
             Big(_, v) => (Box::new(Term::Big(v)), Box::new(Term::BigInt)),
             Row(_) => (Box::new(Term::Row), Box::new(Term::Univ)),
+            Vptr(_, r) => (Box::new(Term::Vptr(r)), Box::new(Term::Univ)),
 
             _ => unreachable!(),
         })
@@ -651,7 +651,6 @@ impl Default for Elaborator {
             gamma: Default::default(),
             ug: VarGen::user_meta(),
             ig: VarGen::inserted_meta(),
-            vtbl_lookups: Default::default(),
         }
     }
 }

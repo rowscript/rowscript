@@ -9,7 +9,7 @@ RowScript is a robustly-typed functional language that compiles to efficient and
 * [x] Holes and unification
 * [x] Implicit arguments
 * [x] Concatenation-based row polymorphism
-* [ ] OOP functionalities based on row polymorphism
+* [x] OOP functionalities based on row polymorphism
 * JavaScript code generation
     * [ ] Basic transpilation
     * [ ] FBIP (functional but in-place) and reuse analysis

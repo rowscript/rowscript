@@ -44,12 +44,13 @@ impl<'a> Unifier<'a> {
             }
             (Pi(p, a), Pi(q, b)) => {
                 self.unify(&p.typ, &q.typ)?;
-                self.unify(a, b)
+                let rho = &[(&q.var, &Box::new(Ref(p.var.clone())))];
+                let b = Normalizer::new(self.sigma, self.loc).with(rho, b.clone())?;
+                self.unify(a, &b)
             }
-            (Lam(p, a), Lam(q, _)) => {
+            (Lam(p, a), Lam(_, _)) => {
                 let b = Normalizer::new(self.sigma, self.loc)
                     .apply(Box::new(rhs.clone()), &[&Box::new(Ref(p.var.clone()))])?;
-                self.unify(&p.typ, &q.typ)?;
                 self.unify(a, &b)
             }
             (App(f, x), App(g, y)) => {
@@ -57,9 +58,9 @@ impl<'a> Unifier<'a> {
                 self.unify(x, y)
             }
             (Sigma(p, a), Sigma(q, b)) => {
+                self.unify(&p.typ, &q.typ)?;
                 let rho = &[(&q.var, &Box::new(Ref(p.var.clone())))];
                 let b = Normalizer::new(self.sigma, self.loc).with(rho, b.clone())?;
-                self.unify(&p.typ, &q.typ)?;
                 self.unify(a, &b)
             }
             (Tuple(a, b), Tuple(x, y)) => {
@@ -94,6 +95,7 @@ impl<'a> Unifier<'a> {
             (Str(a), Str(b)) if a == b => Ok(()),
             (Num(_, a), Num(_, b)) if a == b => Ok(()),
             (Big(a), Big(b)) if a == b => Ok(()),
+            (Vptr(a), Vptr(b)) if a == b => Ok(()),
 
             (Univ, Univ) => Ok(()),
             (Unit, Unit) => Ok(()),

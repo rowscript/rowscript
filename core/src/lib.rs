@@ -11,7 +11,6 @@ use pest_derive::Parser;
 use thiserror::Error;
 
 use crate::theory::abs::data::Term;
-use crate::theory::abs::def::VtblLookups;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
@@ -156,7 +155,6 @@ impl Driver {
         use trans::*;
 
         let mut defs = Vec::default();
-        let mut vtbl_lookups = VtblLookups::default();
         let file = RowsParser::parse(Rule::file, src)?.next().unwrap();
         for d in file.into_inner() {
             match d.as_rule() {
@@ -165,7 +163,7 @@ impl Driver {
                 Rule::type_postulate => defs.push(type_postulate(d)),
                 Rule::type_alias => defs.push(type_alias(d)),
                 Rule::class_def => {
-                    defs.extend(class_def(d, &mut vtbl_lookups));
+                    defs.extend(class_def(d));
                 }
                 Rule::EOI => break,
                 _ => unreachable!(),
@@ -173,7 +171,7 @@ impl Driver {
         }
 
         defs = Resolver::default().defs(defs)?;
-        self.e.defs(defs, vtbl_lookups)?;
+        self.e.defs(defs)?;
 
         Ok(())
     }
