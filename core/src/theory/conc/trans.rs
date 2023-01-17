@@ -24,7 +24,16 @@ pub fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
     let mut ret = Box::new(Unit(loc));
     let mut body = None;
 
-    if let Some((ty, implicits)) = this {
+    if let Some((mut ty, implicits)) = this {
+        for p in &implicits {
+            let loc = p.typ.loc();
+            ty = App(
+                loc,
+                Box::new(ty),
+                UnnamedImplicit,
+                Box::new(Unresolved(loc, p.var.clone())),
+            );
+        }
         untupled.push(
             loc,
             Param {
@@ -165,8 +174,6 @@ pub fn class_def(c: Pair<Rule>, lookups: &mut VtblLookups) -> Vec<Def<Expr>> {
 
     for p in pairs {
         match p.as_rule() {
-            // FIXME: All the generated definitions from a class should be
-            // parametrized by these implicit IDs.
             Rule::implicit_id => tele.push(implicit_param(p)),
             Rule::class_member => {
                 let loc = Loc::from(p.as_span());
