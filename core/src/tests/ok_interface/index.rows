@@ -10,4 +10,4 @@ implements Addable for Foo {
     add(a: Foo, b: Foo): Foo { return {n: numAdd(a, b)} }
 }
 
-function f(): number { return add({n: 42, m: 69}) }
+function f(): number { return add({n: 42}, {m: 69}) }
