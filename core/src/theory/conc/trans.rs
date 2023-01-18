@@ -17,9 +17,8 @@ pub fn file(mut f: Pairs<Rule>) -> Vec<Def<Expr>> {
             Rule::fn_postulate => defs.push(fn_postulate(d)),
             Rule::type_postulate => defs.push(type_postulate(d)),
             Rule::type_alias => defs.push(type_alias(d)),
-            Rule::class_def => {
-                defs.extend(class_def(d));
-            }
+            Rule::class_def => defs.extend(class_def(d)),
+            Rule::interface_def => defs.push(interface_def(d)),
             Rule::EOI => break,
             _ => unreachable!(),
         }
@@ -330,6 +329,34 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     ];
     defs.extend(method_defs);
     defs
+}
+
+fn interface_def(i: Pair<Rule>) -> Def<Expr> {
+    use Body::*;
+    use Expr::*;
+
+    let loc = Loc::from(i.as_span());
+    let mut pairs = i.into_inner();
+
+    // FIXME: Interfaces could be generalized by type parameters.
+    Def {
+        loc,
+        name: Var::from(pairs.next().unwrap()),
+        tele: Default::default(),
+        ret: Box::new(Univ(loc)),
+        body: Interface(Box::new(Object(
+            loc,
+            Box::new(Fields(
+                loc,
+                pairs
+                    .map(|p| {
+                        let d = fn_postulate(p);
+                        (d.name.to_string(), *d.to_type())
+                    })
+                    .collect(),
+            )),
+        ))),
+    }
 }
 
 fn type_expr(t: Pair<Rule>) -> Expr {

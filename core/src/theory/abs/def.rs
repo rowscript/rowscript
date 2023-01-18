@@ -120,6 +120,7 @@ impl<T: Syntax> Display for Def<T> {
                             .join(";\n\t")
                     )
                 }
+                Interface(ty) => format!("interface {} {{\n\t{ty}\n}}", self.name),
 
                 Undefined => format!(
                     "undefined {} {}: {}",
@@ -158,6 +159,7 @@ pub enum Body<T: Syntax> {
         vtbl: Var,
         vtbl_lookup: Var,
     },
+    Interface(Box<T>),
 
     Undefined,
     Meta(Option<T>),
