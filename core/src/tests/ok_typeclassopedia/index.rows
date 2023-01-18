@@ -1,0 +1,17 @@
+interface Functor<T> {
+    map<A, B>(f: (a: A) -> B, x: Functor<A>): Functor<B>;
+}
+
+type Foo<T> = {n: T};
+
+implements Functor<T> for Foo<T> {
+    map<A, B>(f: (a: A) -> B, x: Foo<A>): Foo<B> {
+        return {n: f(x.n)}
+    }
+}
+
+function numToString(n: number): string;
+
+function f(): string {
+    return map(numToString, {n: 42})
+}

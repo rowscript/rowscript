@@ -20,6 +20,7 @@ mod ok_oop;
 mod ok_oop_generics;
 mod ok_postulate_fn;
 mod ok_postulate_type;
+mod ok_typeclassopedia;
 
 fn check_helper(mod_path: &str) -> Result<(), Error> {
     let mut pkg = PathBuf::from(env!("CARGO_MANIFEST_DIR"));

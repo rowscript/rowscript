@@ -11,12 +11,13 @@ fn_id = { pub_camelback_id | priv_camelback_id }
 row_id = @{ "'" ~ pub_camel_id }
 implicit_id = { pub_camel_id }
 type_id = { pub_camel_id | priv_camel_id }
-class_id = { pub_camel_id | priv_camel_id }
 prop_id = { pub_camelback_id | priv_camelback_id }
 variant_id = { pub_camel_id | priv_camel_id }
 field_id = _{ prop_id | variant_id }
 param_id = { pub_camelback_id }
 let_id = { pub_camelback_id }
+class_id = { pub_camel_id | priv_camel_id }
+interface_id = { pub_camel_id | priv_camel_id }
 
 idref =
   { fn_id
@@ -248,12 +249,20 @@ class_def =
 class_member = { prop_id ~ ":" ~ type_expr ~ ";" }
 class_method = { fn_id ~ params ~ (":" ~ type_expr)? ~ fn_body_block }
 
+interface_def =
+  { "interface"
+  ~ interface_id
+  ~ "{"
+  ~ "}"
+  }
+
 decl =
  _{ fn_def
   | fn_postulate
   | type_postulate
   | type_alias
   | class_def
+  | interface_def
   }
 
 file = { SOI ~ decl* ~ EOI }
