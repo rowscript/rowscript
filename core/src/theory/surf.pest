@@ -242,9 +242,12 @@ class_def =
   ~ class_id
   ~ ("<" ~ implicit_ids ~ ">")?
   ~ "{"
-  ~ class_member*
-  ~ class_method*
+  ~ class_body
   ~ "}"
+  }
+class_body =
+ _{ class_member+ ~ class_method*
+  | class_member* ~ class_method+
   }
 class_member = { prop_id ~ ":" ~ type_expr ~ ";" }
 class_method = { fn_id ~ params ~ (":" ~ type_expr)? ~ fn_body_block }
@@ -253,8 +256,21 @@ interface_def =
   { "interface"
   ~ interface_id
   ~ "{"
+  ~ interface_fn+
   ~ "}"
   }
+interface_fn = { fn_id ~ params ~ (":" ~ type_expr)? ~ ";" }
+
+implements_def =
+  { "implements"
+  ~ interface_id
+  ~ "for"
+  ~ tyref
+  ~ "{"
+  ~ implements_fn
+  ~ "}"
+  }
+implements_fn = { fn_id ~ params ~ (":" ~ type_expr)? ~ fn_body_block }
 
 decl =
  _{ fn_def
@@ -263,6 +279,7 @@ decl =
   | type_alias
   | class_def
   | interface_def
+  | implements_def
   }
 
 file = { SOI ~ decl* ~ EOI }
