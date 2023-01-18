@@ -118,14 +118,14 @@ struct RowsParser;
 
 pub struct Driver {
     path: PathBuf,
-    e: Elaborator,
+    elab: Elaborator,
 }
 
 impl Driver {
     pub fn new(path: PathBuf) -> Self {
         Self {
             path,
-            e: Elaborator::default(),
+            elab: Elaborator::default(),
         }
     }
 
@@ -152,27 +152,7 @@ impl Driver {
     }
 
     fn check_text(&mut self, src: &str) -> Result<(), Error> {
-        use trans::*;
-
-        let mut defs = Vec::default();
-        let file = RowsParser::parse(Rule::file, src)?.next().unwrap();
-        for d in file.into_inner() {
-            match d.as_rule() {
-                Rule::fn_def => defs.push(fn_def(d, None)),
-                Rule::fn_postulate => defs.push(fn_postulate(d)),
-                Rule::type_postulate => defs.push(type_postulate(d)),
-                Rule::type_alias => defs.push(type_alias(d)),
-                Rule::class_def => {
-                    defs.extend(class_def(d));
-                }
-                Rule::EOI => break,
-                _ => unreachable!(),
-            }
-        }
-
-        defs = Resolver::default().defs(defs)?;
-        self.e.defs(defs)?;
-
-        Ok(())
+        self.elab
+            .defs(Resolver::default().defs(trans::file(RowsParser::parse(Rule::file, src)?))?)
     }
 }

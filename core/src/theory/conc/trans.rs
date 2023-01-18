@@ -9,7 +9,25 @@ use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var};
 use crate::Rule;
 
-pub fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
+pub fn file(mut f: Pairs<Rule>) -> Vec<Def<Expr>> {
+    let mut defs = Vec::default();
+    for d in f.next().unwrap().into_inner() {
+        match d.as_rule() {
+            Rule::fn_def => defs.push(fn_def(d, None)),
+            Rule::fn_postulate => defs.push(fn_postulate(d)),
+            Rule::type_postulate => defs.push(type_postulate(d)),
+            Rule::type_alias => defs.push(type_alias(d)),
+            Rule::class_def => {
+                defs.extend(class_def(d));
+            }
+            Rule::EOI => break,
+            _ => unreachable!(),
+        }
+    }
+    defs
+}
+
+fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
     use Body::*;
     use Expr::*;
 
@@ -71,7 +89,7 @@ pub fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
     }
 }
 
-pub fn fn_postulate(f: Pair<Rule>) -> Def<Expr> {
+fn fn_postulate(f: Pair<Rule>) -> Def<Expr> {
     use Body::*;
     use Expr::*;
 
@@ -103,7 +121,7 @@ pub fn fn_postulate(f: Pair<Rule>) -> Def<Expr> {
     }
 }
 
-pub fn type_postulate(t: Pair<Rule>) -> Def<Expr> {
+fn type_postulate(t: Pair<Rule>) -> Def<Expr> {
     use Body::*;
     use Expr::*;
 
@@ -120,7 +138,7 @@ pub fn type_postulate(t: Pair<Rule>) -> Def<Expr> {
     }
 }
 
-pub fn type_alias(t: Pair<Rule>) -> Def<Expr> {
+fn type_alias(t: Pair<Rule>) -> Def<Expr> {
     use Body::*;
     use Expr::*;
 
@@ -162,7 +180,7 @@ fn wrap_implicit_apps(implicits: &Tele<Expr>, mut e: Expr) -> Expr {
     e
 }
 
-pub fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
+fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     use Body::*;
     use Expr::*;
 

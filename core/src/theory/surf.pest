@@ -267,7 +267,7 @@ implements_def =
   ~ "for"
   ~ tyref
   ~ "{"
-  ~ implements_fn
+  ~ implements_fn+
   ~ "}"
   }
 implements_fn = { fn_id ~ params ~ (":" ~ type_expr)? ~ fn_body_block }
