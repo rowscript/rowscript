@@ -160,7 +160,7 @@ pub enum Body<T: Syntax> {
         vtbl_lookup: Var,
     },
     Interface(Box<T>),
-
+    // Implements,
     Undefined,
     Meta(Option<T>),
 }

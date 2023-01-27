@@ -19,6 +19,7 @@ pub fn file(mut f: Pairs<Rule>) -> Vec<Def<Expr>> {
             Rule::type_alias => defs.push(type_alias(d)),
             Rule::class_def => defs.extend(class_def(d)),
             Rule::interface_def => defs.push(interface_def(d)),
+            Rule::implements_def => defs.extend(implements_def(d)),
             Rule::EOI => break,
             _ => unreachable!(),
         }
@@ -357,6 +358,16 @@ fn interface_def(i: Pair<Rule>) -> Def<Expr> {
             )),
         ))),
     }
+}
+
+fn implements_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
+    use Body::*;
+    use Expr::*;
+
+    let loc = Loc::from(i.as_span());
+    let mut pairs = i.into_inner();
+
+    todo!()
 }
 
 fn type_expr(t: Pair<Rule>) -> Expr {

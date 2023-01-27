@@ -153,15 +153,19 @@ impl Hash for Var {
 }
 
 #[derive(Debug)]
-pub struct VarGen(&'static str, u32);
+pub struct VarGen(String, u32);
 
 impl VarGen {
     pub fn user_meta() -> Self {
-        Self("?u", Default::default())
+        Self("?u".to_string(), Default::default())
     }
 
     pub fn inserted_meta() -> Self {
-        Self("?i", Default::default())
+        Self("?i".to_string(), Default::default())
+    }
+
+    pub fn implements(v: &Var) -> Self {
+        Self(format!("{}__impl", v), Default::default())
     }
 
     pub fn fresh(&mut self) -> Var {
