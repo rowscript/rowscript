@@ -355,7 +355,11 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     let mut defs = vec![Def {
         loc,
         name,
-        tele: Default::default(),
+        tele: vec![Param {
+            var: Var::new("t"),
+            info: Implicit,
+            typ: Box::new(Univ(loc)),
+        }],
         ret: Box::new(Univ(loc)),
         body: Interface(fns),
     }];
@@ -386,7 +390,11 @@ fn implements_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     defs.push(Def {
         loc,
         name: name.implements(&ty),
-        tele: Default::default(),
+        tele: vec![Param {
+            var: Var::new("t"),
+            info: Explicit,
+            typ: Box::new(Univ(loc)),
+        }],
         ret: Box::new(Univ(loc)),
         body: Implements { ty, fns },
     });
