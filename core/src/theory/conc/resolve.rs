@@ -43,9 +43,9 @@ impl Resolver {
         d.tele = tele;
         d.ret = self.expr(d.ret)?;
         d.body = match d.body {
-            Fun(f) => {
+            Fn(f) => {
                 self.insert(&d.name);
-                Fun(self.expr(f)?)
+                Fn(self.expr(f)?)
             }
             Postulate => Postulate,
             Alias(t) => Alias(self.expr(t)?),
@@ -66,14 +66,12 @@ impl Resolver {
                 vtbl,
                 vtbl_lookup,
             },
-            Interface(o) => {
-                self.insert(&d.name);
-                Interface(self.expr(o)?)
-            }
-            Implements { ty, funcs } => Implements {
+            Interface(fns) => Interface(fns),
+            Implements { ty, fns } => Implements {
                 ty: self.expr(ty)?,
-                funcs,
+                fns,
             },
+            InterfaceFn => InterfaceFn,
             _ => unreachable!(),
         };
 

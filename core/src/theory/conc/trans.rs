@@ -18,7 +18,7 @@ pub fn file(mut f: Pairs<Rule>) -> Vec<Def<Expr>> {
             Rule::type_postulate => defs.push(type_postulate(d)),
             Rule::type_alias => defs.push(type_alias(d)),
             Rule::class_def => defs.extend(class_def(d)),
-            Rule::interface_def => defs.push(interface_def(d)),
+            Rule::interface_def => defs.extend(interface_def(d)),
             Rule::implements_def => defs.extend(implements_def(d)),
             Rule::EOI => break,
             _ => unreachable!(),
@@ -71,7 +71,7 @@ fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
     let untupled_vars = untupled.unresolved();
     let untupled_loc = untupled.0;
     let tupled_param = Param::from(untupled);
-    let body = Fun(Expr::wrap_tuple_lets(
+    let body = Fn(Expr::wrap_tuple_lets(
         untupled_loc,
         &tupled_param.var,
         untupled_vars,
@@ -231,7 +231,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         name: vptr_name.clone(),
         tele: tele.clone(),
         ret: Box::new(Univ(loc)),
-        body: Fun(Box::new(Vptr(loc, vtbl_lookup_name.clone()))),
+        body: Fn(Box::new(Vptr(loc, vtbl_lookup_name.clone()))),
     };
     let vptr_ctor_def = Def {
         loc,
@@ -265,7 +265,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     let untupled_vars = ctor_untupled.unresolved();
     let untupled_loc = ctor_untupled.0;
     let tupled_param = Param::from(ctor_untupled);
-    let ctor_body = Fun(Expr::wrap_tuple_lets(
+    let ctor_body = Fn(Expr::wrap_tuple_lets(
         untupled_loc,
         &tupled_param.var,
         untupled_vars,
@@ -304,7 +304,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         name: vtbl_name.clone(),
         tele: tele.clone(),
         ret: Box::new(Univ(loc)),
-        body: Fun(Box::new(Object(loc, Box::new(Fields(loc, vtbl_fields))))),
+        body: Fn(Box::new(Object(loc, Box::new(Fields(loc, vtbl_fields))))),
     };
     let mut lookup_tele = tele.clone();
     lookup_tele.push(Param {
@@ -332,7 +332,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     defs
 }
 
-fn interface_def(i: Pair<Rule>) -> Def<Expr> {
+fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     use Body::*;
     use Expr::*;
 
@@ -340,24 +340,27 @@ fn interface_def(i: Pair<Rule>) -> Def<Expr> {
     let mut pairs = i.into_inner();
 
     // FIXME: Interfaces could be generalized by type parameters.
-    Def {
+
+    let name = Var::from(pairs.next().unwrap());
+
+    let mut fn_defs = Vec::default();
+    let mut fns = Vec::default();
+    for p in pairs {
+        let mut d = fn_postulate(p);
+        fns.push(d.name.clone());
+        d.body = InterfaceFn;
+        fn_defs.push(d);
+    }
+
+    let mut defs = vec![Def {
         loc,
-        name: Var::from(pairs.next().unwrap()),
+        name,
         tele: Default::default(),
         ret: Box::new(Univ(loc)),
-        body: Interface(Box::new(Object(
-            loc,
-            Box::new(Fields(
-                loc,
-                pairs
-                    .map(|p| {
-                        let d = fn_postulate(p);
-                        (d.name.to_string(), *d.to_type())
-                    })
-                    .collect(),
-            )),
-        ))),
-    }
+        body: Interface(fns),
+    }];
+    defs.extend(fn_defs);
+    defs
 }
 
 fn implements_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
@@ -372,11 +375,11 @@ fn implements_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     let name = Var::from(pairs.next().unwrap());
     let ty = Box::new(unresolved(pairs.next().unwrap()));
 
-    let mut funcs = Vec::default();
+    let mut fns = Vec::default();
     for p in pairs {
         let mut def = fn_def(p, None);
         def.name = def.name.implement_func(&name, &ty);
-        funcs.push(def.name.clone());
+        fns.push(def.name.clone());
         defs.push(def);
     }
 
@@ -385,7 +388,7 @@ fn implements_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
         name: name.implements(&ty),
         tele: Default::default(),
         ret: Box::new(Univ(loc)),
-        body: Implements { ty, funcs },
+        body: Implements { ty, fns },
     });
     defs
 }

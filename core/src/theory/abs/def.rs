@@ -53,7 +53,7 @@ impl Def<Term> {
     pub fn to_term(&self, v: Var) -> Box<Term> {
         use Body::*;
         match &self.body {
-            Fun(f) => rename(Term::lam(&self.tele, f.clone())),
+            Fn(f) => rename(Term::lam(&self.tele, f.clone())),
             Postulate => Box::new(Term::Ref(v)),
             Alias(t) => rename(Term::lam(&self.tele, t.clone())),
             Undefined => Box::new(Term::Undef(v)),
@@ -72,7 +72,7 @@ impl<T: Syntax> Display for Def<T> {
         use Body::*;
         f.write_str(
             match &self.body {
-                Fun(f) => format!(
+                Fn(f) => format!(
                     "function {} {}: {} {{\n\t{}\n}}",
                     self.name,
                     Param::tele_to_string(&self.tele),
@@ -120,15 +120,21 @@ impl<T: Syntax> Display for Def<T> {
                             .join(";\n\t")
                     )
                 }
-                Interface(ty) => format!("interface {} {{\n\t{ty}\n}}", self.name),
-                Implements { ty, funcs } => format!(
-                    "implements {} for {ty} {{\n{}\t\n}}",
+                Interface(fns) => format!(
+                    "interface {} {{\n{}}}",
                     self.name,
-                    funcs
-                        .iter()
-                        .map(|f| f.to_string())
+                    fns.iter()
+                        .map(|f| format!("\t{f};\n"))
                         .collect::<Vec<_>>()
-                        .join(";\n\t")
+                        .concat()
+                ),
+                Implements { ty, fns } => format!(
+                    "implements {} for {ty} {{\n{}}}",
+                    self.name,
+                    fns.iter()
+                        .map(|f| format!("\t{f};\n"))
+                        .collect::<Vec<_>>()
+                        .concat()
                 ),
 
                 Undefined => format!(
@@ -148,6 +154,12 @@ impl<T: Syntax> Display for Def<T> {
                         format!("meta {} {}: {};", self.name, tele, self.ret,)
                     }
                 }
+                InterfaceFn => format!(
+                    "interfaceFn {} {}: {}",
+                    self.name,
+                    Param::tele_to_string(&self.tele),
+                    self.ret,
+                ),
             }
             .as_str(),
         )
@@ -156,7 +168,7 @@ impl<T: Syntax> Display for Def<T> {
 
 #[derive(Clone, Debug)]
 pub enum Body<T: Syntax> {
-    Fun(Box<T>),
+    Fn(Box<T>),
     Postulate,
     Alias(Box<T>),
     Class {
@@ -168,12 +180,13 @@ pub enum Body<T: Syntax> {
         vtbl: Var,
         vtbl_lookup: Var,
     },
-    Interface(Box<T>),
+    Interface(Vec<Var>),
     Implements {
         ty: Box<T>,
-        funcs: Vec<Var>,
+        fns: Vec<Var>,
     },
 
     Undefined,
     Meta(Option<T>),
+    InterfaceFn,
 }

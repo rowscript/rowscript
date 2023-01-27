@@ -68,7 +68,7 @@ impl Elaborator {
         );
 
         let body = match d.body {
-            Fun(f) => Fun(self.check(f, &ret)?),
+            Fn(f) => Fn(self.check(f, &ret)?),
             Postulate => Postulate,
             Alias(t) => Alias(self.check(t, &ret)?),
             Class {
