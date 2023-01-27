@@ -367,7 +367,27 @@ fn implements_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     let loc = Loc::from(i.as_span());
     let mut pairs = i.into_inner();
 
-    todo!()
+    let mut defs = Vec::default();
+
+    let name = Var::from(pairs.next().unwrap());
+    let ty = Box::new(unresolved(pairs.next().unwrap()));
+
+    let mut funcs = Vec::default();
+    for p in pairs {
+        let mut def = fn_def(p, None);
+        def.name = def.name.implement_func(&name, &ty);
+        funcs.push(def.name.clone());
+        defs.push(def);
+    }
+
+    defs.push(Def {
+        loc,
+        name: name.implements(&ty),
+        tele: Default::default(),
+        ret: Box::new(Univ(loc)),
+        body: Implements { ty, funcs },
+    });
+    defs
 }
 
 fn type_expr(t: Pair<Rule>) -> Expr {

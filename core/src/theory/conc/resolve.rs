@@ -66,6 +66,14 @@ impl Resolver {
                 vtbl,
                 vtbl_lookup,
             },
+            Interface(o) => {
+                self.insert(&d.name);
+                Interface(self.expr(o)?)
+            }
+            Implements { ty, funcs } => Implements {
+                ty: self.expr(ty)?,
+                funcs,
+            },
             _ => unreachable!(),
         };
 

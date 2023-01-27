@@ -6,6 +6,7 @@ use std::rc::Rc;
 use pest::iterators::Pair;
 use pest::Span;
 
+use crate::theory::conc::data::Expr;
 use crate::{Error, Rule};
 
 pub mod abs;
@@ -109,6 +110,14 @@ impl Var {
         Self::new(format!("{}__vtblLookup", self.name))
     }
 
+    pub fn implements(&self, im: &Box<Expr>) -> Self {
+        Self::new(format!("{}__for__{}", self.name, im))
+    }
+
+    pub fn implement_func(&self, i: &Self, im: &Box<Expr>) -> Self {
+        Self::new(format!("{}__for__{}__{}", i.name, im, self.name))
+    }
+
     pub fn id(&self) -> usize {
         Rc::as_ptr(&self.name) as _
     }
@@ -162,10 +171,6 @@ impl VarGen {
 
     pub fn inserted_meta() -> Self {
         Self("?i".to_string(), Default::default())
-    }
-
-    pub fn implements(v: &Var) -> Self {
-        Self(format!("{}__impl", v), Default::default())
     }
 
     pub fn fresh(&mut self) -> Var {

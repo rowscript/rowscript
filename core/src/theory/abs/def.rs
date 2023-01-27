@@ -121,6 +121,15 @@ impl<T: Syntax> Display for Def<T> {
                     )
                 }
                 Interface(ty) => format!("interface {} {{\n\t{ty}\n}}", self.name),
+                Implements { ty, funcs } => format!(
+                    "implements {} for {ty} {{\n{}\t\n}}",
+                    self.name,
+                    funcs
+                        .iter()
+                        .map(|f| f.to_string())
+                        .collect::<Vec<_>>()
+                        .join(";\n\t")
+                ),
 
                 Undefined => format!(
                     "undefined {} {}: {}",
@@ -160,7 +169,11 @@ pub enum Body<T: Syntax> {
         vtbl_lookup: Var,
     },
     Interface(Box<T>),
-    // Implements,
+    Implements {
+        ty: Box<T>,
+        funcs: Vec<Var>,
+    },
+
     Undefined,
     Meta(Option<T>),
 }
