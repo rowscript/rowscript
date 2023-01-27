@@ -67,10 +67,23 @@ impl Resolver {
                 vtbl_lookup,
             },
             Interface(fns) => Interface(fns),
-            Implements { ty, fns } => Implements {
-                ty: self.expr(ty)?,
-                fns,
-            },
+            Implements {
+                i,
+                im,
+                i_fns,
+                im_fns,
+            } => {
+                let mut resolved = Vec::default();
+                for i in i_fns {
+                    resolved.push(*self.expr(Box::new(i))?);
+                }
+                Implements {
+                    i: self.expr(i)?,
+                    im: self.expr(im)?,
+                    i_fns: resolved,
+                    im_fns,
+                }
+            }
             InterfaceFn => InterfaceFn,
             _ => unreachable!(),
         };

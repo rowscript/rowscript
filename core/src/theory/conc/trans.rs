@@ -376,27 +376,37 @@ fn implements_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
 
     let mut defs = Vec::default();
 
-    let name = Var::from(pairs.next().unwrap());
-    let ty = Box::new(unresolved(pairs.next().unwrap()));
+    let i = pairs.next().unwrap();
+    let i_loc = Loc::from(i.as_span());
+    let name = Var::from(i);
+    let im = Box::new(unresolved(pairs.next().unwrap()));
 
-    let mut fns = Vec::default();
+    let mut i_fns = Vec::default();
+    let mut im_fns = Vec::default();
     for p in pairs {
         let mut def = fn_def(p, None);
-        def.name = def.name.implement_func(&name, &ty);
-        fns.push(def.name.clone());
+        i_fns.push(Unresolved(def.loc, def.name.clone()));
+        let fn_name = def.name.implement_func(&name, &im);
+        im_fns.push(fn_name.clone());
+        def.name = fn_name;
         defs.push(def);
     }
 
     defs.push(Def {
         loc,
-        name: name.implements(&ty),
+        name: name.implements(&im),
         tele: vec![Param {
             var: Var::new("t"),
             info: Explicit,
             typ: Box::new(Univ(loc)),
         }],
         ret: Box::new(Univ(loc)),
-        body: Implements { ty, fns },
+        body: Implements {
+            i: Box::new(Unresolved(i_loc, name)),
+            im,
+            i_fns,
+            im_fns,
+        },
     });
     defs
 }

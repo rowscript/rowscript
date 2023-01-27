@@ -89,10 +89,13 @@ impl Elaborator {
                 vtbl_lookup,
             },
             Interface(fns) => Interface(fns),
-            Implements { ty, fns } => Implements {
-                ty: self.check_object(ty)?,
-                fns,
-            },
+            Implements {
+                i,
+                im,
+                i_fns,
+                im_fns,
+            } => self.check_implements(i, im, i_fns, im_fns)?,
+            InterfaceFn => InterfaceFn,
             _ => unreachable!(),
         };
 
@@ -648,13 +651,14 @@ impl Elaborator {
         })
     }
 
-    fn check_object(&mut self, o: Box<Expr>) -> Result<Box<Term>, Error> {
-        let loc = o.loc();
-        let (tm, _) = self.infer(o, None)?;
-        match *tm {
-            Term::Object(f) => Ok(Box::new(Term::Object(f))),
-            tm => Err(ExpectedObject(Box::new(tm), loc)),
-        }
+    fn check_implements(
+        &mut self,
+        i: Box<Expr>,
+        im: Box<Expr>,
+        i_fns: Vec<Expr>,
+        im_fns: Vec<Var>,
+    ) -> Result<Body<Term>, Error> {
+        todo!()
     }
 }
 

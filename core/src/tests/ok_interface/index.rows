@@ -7,7 +7,7 @@ interface Addable {
 type Foo = {n: number};
 
 implements Addable for Foo {
-    add(a: Foo, b: Foo): Foo { return {n: numAdd(a, b)} }
+    add(a: Foo, b: Foo): Foo { return {n: numAdd(a.n, b.n)} }
 }
 
 function f(): number {
