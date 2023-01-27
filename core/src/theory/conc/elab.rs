@@ -658,6 +658,21 @@ impl Elaborator {
         i_fns: Vec<Expr>,
         im_fns: Vec<Var>,
     ) -> Result<Body<Term>, Error> {
+        use Body::*;
+        use Expr::*;
+
+        match *i {
+            Resolved(loc, r) => match &self.sigma.get(&r).unwrap().body {
+                Interface(is) => {
+                    if is.len() != i_fns.len() {
+                        return Err(NonExhaustive(Box::new(Term::Ref(r)), loc));
+                    }
+                }
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        };
+
         todo!()
     }
 }

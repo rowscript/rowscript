@@ -47,7 +47,7 @@ pub enum Error {
     FieldsUnknown(Box<Term>, Loc),
     #[error("expected class type, got \"{0}\"")]
     ExpectedClass(Box<Term>, Loc),
-    #[error("switch not exhaustive, got \"{0}\"")]
+    #[error("not exhaustive, got \"{0}\"")]
     NonExhaustive(Box<Term>, Loc),
     #[error("unresolved field \"{0}\" in \"{1}\"")]
     UnresolvedField(String, Box<Term>, Loc),
