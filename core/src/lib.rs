@@ -2,6 +2,7 @@ extern crate core;
 
 use std::fs::read_to_string;
 use std::io;
+use std::ops::Range;
 use std::path::PathBuf;
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
@@ -51,6 +52,8 @@ pub enum Error {
     NonExhaustive(Box<Term>, Loc),
     #[error("unresolved field \"{0}\" in \"{1}\"")]
     UnresolvedField(String, Box<Term>, Loc),
+    #[error("expected interface type, got \"{0}\"")]
+    ExpectedInterface(Box<Term>, Loc),
 
     #[error("expected \"{0}\", found \"{1}\"")]
     NonUnifiable(Box<Term>, Box<Term>, Loc),
@@ -76,25 +79,22 @@ impl Error {
                 (range, PARSER_FAILED, Some(e.variant.message().to_string()))
             }
 
-            UnresolvedVar(loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
-            DuplicateName(loc) => (loc.start..loc.end, RESOLVER_FAILED, Some(self.to_string())),
+            UnresolvedVar(loc) => self.simple_message(loc, RESOLVER_FAILED),
+            DuplicateName(loc) => self.simple_message(loc, RESOLVER_FAILED),
 
-            UnresolvedImplicitParam(_, loc) => {
-                (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string()))
-            }
-            ExpectedPi(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
-            ExpectedSigma(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
-            ExpectedObject(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
-            ExpectedEnum(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
-            FieldsUnknown(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
-            ExpectedClass(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
-            NonExhaustive(_, loc) => (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string())),
-            UnresolvedField(_, _, loc) => {
-                (loc.start..loc.end, CHECKER_FAILED, Some(self.to_string()))
-            }
+            UnresolvedImplicitParam(_, loc) => self.simple_message(loc, CHECKER_FAILED),
+            ExpectedPi(_, loc) => self.simple_message(loc, CHECKER_FAILED),
+            ExpectedSigma(_, loc) => self.simple_message(loc, CHECKER_FAILED),
+            ExpectedObject(_, loc) => self.simple_message(loc, CHECKER_FAILED),
+            ExpectedEnum(_, loc) => self.simple_message(loc, CHECKER_FAILED),
+            FieldsUnknown(_, loc) => self.simple_message(loc, CHECKER_FAILED),
+            ExpectedClass(_, loc) => self.simple_message(loc, CHECKER_FAILED),
+            NonExhaustive(_, loc) => self.simple_message(loc, CHECKER_FAILED),
+            UnresolvedField(_, _, loc) => self.simple_message(loc, CHECKER_FAILED),
+            ExpectedInterface(_, loc) => self.simple_message(loc, CHECKER_FAILED),
 
-            NonUnifiable(_, _, loc) => (loc.start..loc.end, UNIFIER_FAILED, Some(self.to_string())),
-            NonRowSat(_, _, loc) => (loc.start..loc.end, UNIFIER_FAILED, Some(self.to_string())),
+            NonUnifiable(_, _, loc) => self.simple_message(loc, UNIFIER_FAILED),
+            NonRowSat(_, _, loc) => self.simple_message(loc, UNIFIER_FAILED),
         };
         let mut b = Report::build(ReportKind::Error, file.as_ref(), range.start)
             .with_message(title)
@@ -109,6 +109,10 @@ impl Error {
         b.finish()
             .print((file.as_ref(), Source::from(source.as_ref())))
             .unwrap();
+    }
+
+    fn simple_message(&self, loc: &Loc, msg: &'static str) -> (Range<usize>, &str, Option<String>) {
+        (loc.start..loc.end, msg, Some(self.to_string()))
     }
 }
 

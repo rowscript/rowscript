@@ -40,7 +40,7 @@ impl<'a> From<Span<'a>> for Loc {
 
 type Name = Rc<String>;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct RawNameSet(HashSet<String>);
 
 impl RawNameSet {
@@ -53,6 +53,10 @@ impl RawNameSet {
             return Err(Error::DuplicateName(loc));
         }
         Ok(())
+    }
+
+    pub fn contains_var(&self, v: &Var) -> bool {
+        self.0.contains(&v.to_string())
     }
 }
 

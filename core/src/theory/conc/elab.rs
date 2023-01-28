@@ -7,11 +7,11 @@ use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Loc, Param, Tele, Var, VarGen, VPTR};
+use crate::theory::{Loc, Param, RawNameSet, Tele, Var, VarGen, VPTR};
 use crate::Error;
 use crate::Error::{
-    ExpectedClass, ExpectedEnum, ExpectedObject, ExpectedPi, ExpectedSigma, FieldsUnknown,
-    NonExhaustive, UnresolvedField, UnresolvedImplicitParam,
+    ExpectedClass, ExpectedEnum, ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedSigma,
+    FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplicitParam,
 };
 
 #[derive(Debug)]
@@ -662,14 +662,25 @@ impl Elaborator {
         use Expr::*;
 
         match *i {
-            Resolved(loc, r) => match &self.sigma.get(&r).unwrap().body {
-                Interface(is) => {
-                    if is.len() != i_fns.len() {
-                        return Err(NonExhaustive(Box::new(Term::Ref(r)), loc));
+            Resolved(_, r) => {
+                let loc = im.loc();
+                let d = self.sigma.get(&r).unwrap();
+                let tm = Box::new(Term::Ref(r));
+                match &d.body {
+                    Interface(is) => {
+                        let mut names = RawNameSet::default();
+                        for v in &i_fns {
+                            names.raw(loc, &v.to_string()).unwrap();
+                        }
+                        for v in is {
+                            if !names.contains_var(v) {
+                                return Err(NonExhaustive(tm, loc));
+                            }
+                        }
                     }
+                    _ => return Err(ExpectedInterface(tm, loc)),
                 }
-                _ => unreachable!(),
-            },
+            }
             _ => unreachable!(),
         };
 
