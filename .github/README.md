@@ -1,6 +1,6 @@
 # RowScript
 
-RowScript _is a robustly-typed functional language that compiles to efficient and reliable JavaScript.
+RowScript is a robustly-typed functional language that compiles to efficient and reliable JavaScript.
 
 ## Installing
 
@@ -12,7 +12,7 @@ $ npm i -g rowscript
 
 ### Dependent types
 
-The type system _is based on a dialect of Martin-Löf type theory with Π, Σ, universe, unit, and its elaboration uses the
+The type system is based on a dialect of Martin-Löf type theory with Π, Σ, universe, unit, and its elaboration uses the
 normalization by evaluation (NbE) technique.
 
 ### JavaScript friendliness
@@ -26,7 +26,7 @@ Primitive types are JavaScript-based, e.g. `boolean`, `number`, `string`, `bigin
 
 ### Row polymorphism
 
-Row polymorphism (or extensible types) _is supported based on record concatenation.
+Row polymorphism (or extensible types) is supported based on record concatenation.
 
 ### Object-oriented programming
 
