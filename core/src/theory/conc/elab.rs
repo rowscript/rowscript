@@ -659,7 +659,7 @@ impl Elaborator {
         i: &Var,
         im: &Var,
         fns: &Vec<(Var, Var)>,
-    ) -> Result<Body<Term>, Error> {
+    ) -> Result<(), Error> {
         use Body::*;
 
         match &self.sigma.get(i).unwrap().body {
@@ -694,10 +694,9 @@ impl Elaborator {
             let im_fn_nf = Normalizer::new(&mut self.sigma, im_loc).term(im_ty)?;
 
             Unifier::new(&mut self.sigma, im_loc).unify(&i_nf, &im_fn_nf)?;
-            // TODO: Friendlier error messages.
         }
 
-        todo!()
+        Ok(())
     }
 }
 
