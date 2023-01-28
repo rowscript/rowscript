@@ -686,6 +686,7 @@ impl Elaborator {
             let i_loc = self.sigma.get(i_fn).unwrap().loc;
             let im_loc = self.sigma.get(im_fn).unwrap().loc;
 
+            // FIXME: Cannot infer the type of this interface function.
             let (_, i_ty) = self.infer(Box::new(Resolved(i_loc, i_fn.clone())), None)?;
             let (_, im_ty) = self.infer(Box::new(Resolved(im_loc, im_fn.clone())), None)?;
 
