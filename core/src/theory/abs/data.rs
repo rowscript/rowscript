@@ -82,7 +82,8 @@ pub enum Term {
     Switch(Box<Self>, CaseMap),
 
     Vptr(Var),
-    // Resolve(Var), // TODO: instance resolving
+
+    Resolve(Var),
 }
 
 impl Term {
@@ -174,7 +175,8 @@ impl Display for Term {
                             .join("\n")
                     )
                 }
-                Vptr(r) => format!("{r}"),
+                Vptr(r) => r.to_string(),
+                Resolve(r) => r.to_string(),
             }
             .as_str(),
         )

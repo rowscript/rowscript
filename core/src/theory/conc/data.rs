@@ -81,6 +81,14 @@ impl Expr {
             .rfold(e, |b, p| Box::new(Pi(b.loc(), p.clone(), b)))
     }
 
+    pub fn resolved(self) -> Var {
+        use Expr::*;
+        match self {
+            Resolved(_, r) => r,
+            _ => unreachable!(),
+        }
+    }
+
     pub fn loc(&self) -> Loc {
         use Expr::*;
 

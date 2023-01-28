@@ -73,15 +73,19 @@ impl Resolver {
                 i_fns,
                 im_fns,
             } => {
-                let mut resolved = Vec::default();
+                let mut is = Vec::default();
                 for i in i_fns {
-                    resolved.push(*self.expr(Box::new(i))?);
+                    is.push(*self.expr(Box::new(i))?);
+                }
+                let mut ims = Vec::default();
+                for im in im_fns {
+                    ims.push(*self.expr(Box::new(im))?);
                 }
                 Implements {
                     i: self.expr(i)?,
                     im: self.expr(im)?,
-                    i_fns: resolved,
-                    im_fns,
+                    i_fns: is,
+                    im_fns: ims,
                 }
             }
             InterfaceFn => InterfaceFn,

@@ -58,10 +58,8 @@ impl Def<Term> {
             Alias(t) => rename(Term::lam(&self.tele, t.clone())),
             Undefined => Box::new(Term::Undef(v)),
             Class { object, .. } => rename(Term::lam(&self.tele, object.clone())),
-            Interface(_) => rename(Term::lam(
-                &self.tele,
-                Box::new(Term::Ref(self.tele[0].var.clone())),
-            )),
+            Interface(_) => Box::new(Term::Ref(v)),
+            InterfaceFn => Box::new(Term::Resolve(v)),
             _ => unreachable!(),
         }
     }

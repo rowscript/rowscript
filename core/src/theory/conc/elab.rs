@@ -3,6 +3,7 @@ use crate::theory::abs::data::{CaseMap, FieldMap, Term};
 use crate::theory::abs::def::{gamma_to_tele, Body};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
+use crate::theory::abs::rename::rename_with;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
@@ -659,31 +660,37 @@ impl Elaborator {
         im_fns: Vec<Expr>,
     ) -> Result<Body<Term>, Error> {
         use Body::*;
-        use Expr::*;
 
-        match *i {
-            Resolved(_, r) => {
-                let loc = im.loc();
-                let d = self.sigma.get(&r).unwrap();
-                let tm = Box::new(Term::Ref(r));
-                match &d.body {
-                    Interface(is) => {
-                        let names = RawNameSet::from(&i_fns);
-                        for v in is {
-                            if !names.contains_var(v) {
-                                return Err(NonExhaustive(tm, loc));
-                            }
-                        }
+        let im_loc = im.loc();
+        let i_var = i.resolved();
+        let im_var = im.resolved();
+
+        let d = self.sigma.get(&i_var).unwrap();
+        match &d.body {
+            Interface(is) => {
+                let names = RawNameSet::from(&i_fns);
+                for v in is {
+                    if !names.contains_var(v) {
+                        return Err(NonExhaustive(Box::new(Term::Ref(i_var.clone())), im_loc));
                     }
-                    _ => return Err(ExpectedInterface(tm, loc)),
                 }
             }
-            _ => unreachable!(),
+            _ => {
+                return Err(ExpectedInterface(
+                    Box::new(Term::Ref(i_var.clone())),
+                    im_loc,
+                ))
+            }
         };
 
         for (i_fn, im_fn) in i_fns.into_iter().zip(im_fns.into_iter()) {
-            let (i_fn, _) = self.infer(Box::new(i_fn), None)?;
+            let (_, i_fn_ty) = self.infer(Box::new(i_fn), None)?;
             let (_, im_fn_ty) = self.infer(Box::new(im_fn), None)?;
+            let i_renamed = rename_with((i_var.clone(), im_var.clone()), i_fn_ty);
+            let i_nf = Normalizer::new(&mut self.sigma, im_loc).term(i_renamed)?;
+            let im_nf = Normalizer::new(&mut self.sigma, im_loc).term(im_fn_ty)?;
+            dbg!(i_nf.to_string(), im_nf.to_string());
+            Unifier::new(&mut self.sigma, im_loc).unify(&i_nf, &im_nf)?;
         }
 
         todo!()

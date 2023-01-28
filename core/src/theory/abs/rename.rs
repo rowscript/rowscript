@@ -75,6 +75,7 @@ impl Renamer {
             RowSat => RowSat,
             RowRefl => RowRefl,
             Vptr(r) => Vptr(r),
+            Resolve(r) => Resolve(r),
         })
     }
 
@@ -91,4 +92,8 @@ impl Renamer {
 
 pub fn rename(tm: Box<Term>) -> Box<Term> {
     Renamer::default().term(tm)
+}
+
+pub fn rename_with(m: (Var, Var), tm: Box<Term>) -> Box<Term> {
+    Renamer(HashMap::from([m])).term(tm)
 }
