@@ -1,13 +1,16 @@
 function numAdd(a: number, b: number): number;
+function numMul(a: number, b: number): number;
 
-interface Addable {
-    add(a: Addable, b: Addable): Addable;
+interface NatLike {
+    add(a: NatLike, b: NatLike): NatLike;
+    mul(a: NatLike, b: NatLike): NatLike;
 }
 
 type Foo = {n: number};
 
-implements Addable for Foo {
+implements NatLike for Foo {
     add(a: Foo, b: Foo): Foo { return {n: numAdd(a.n, b.n)} }
+    mul(a: Foo, b: Foo): Foo { return {n: numMul(a.n, b.n)} }
 }
 
 function f(): number {
