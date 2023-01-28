@@ -662,6 +662,7 @@ impl Elaborator {
         use Body::*;
 
         let im_loc = im.loc();
+        let (im_tm, _) = self.infer(im.clone(), None)?;
         let i_var = i.resolved();
         let im_var = im.resolved();
 
@@ -684,13 +685,16 @@ impl Elaborator {
         };
 
         for (i_fn, im_fn) in i_fns.into_iter().zip(im_fns.into_iter()) {
+            let i_fn_loc = i_fn.loc();
+            let im_fn_loc = im_fn.loc();
             let (_, i_fn_ty) = self.infer(Box::new(i_fn), None)?;
             let (_, im_fn_ty) = self.infer(Box::new(im_fn), None)?;
-            let i_renamed = rename_with((i_var.clone(), im_var.clone()), i_fn_ty);
-            let i_nf = Normalizer::new(&mut self.sigma, im_loc).term(i_renamed)?;
-            let im_nf = Normalizer::new(&mut self.sigma, im_loc).term(im_fn_ty)?;
-            dbg!(i_nf.to_string(), im_nf.to_string());
-            Unifier::new(&mut self.sigma, im_loc).unify(&i_nf, &im_nf)?;
+            let i_fn_renamed = rename_with((i_var.clone(), im_var.clone()), i_fn_ty);
+            let i_fn_nf = Normalizer::new(&mut self.sigma, i_fn_loc)
+                .with(&[(&im_var, &im_tm)], i_fn_renamed)?;
+            let im_fn_nf = Normalizer::new(&mut self.sigma, im_fn_loc).term(im_fn_ty)?;
+            Unifier::new(&mut self.sigma, im_fn_loc).unify(&i_fn_nf, &im_fn_nf)?;
+            // TODO: Friendlier error messages.
         }
 
         todo!()
