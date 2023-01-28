@@ -6,7 +6,6 @@ use std::rc::Rc;
 use pest::iterators::Pair;
 use pest::Span;
 
-use crate::theory::conc::data::Expr;
 use crate::{Error, Rule};
 
 pub mod abs;
@@ -54,20 +53,6 @@ impl RawNameSet {
         }
         Ok(())
     }
-
-    pub fn contains_var(&self, v: &Var) -> bool {
-        self.0.contains(&v.to_string())
-    }
-}
-
-impl From<&Vec<Expr>> for RawNameSet {
-    fn from(vs: &Vec<Expr>) -> Self {
-        let mut ret = Self::default();
-        for v in vs {
-            ret.raw(v.loc(), &v.to_string()).unwrap();
-        }
-        ret
-    }
 }
 
 #[derive(Clone, Eq)]
@@ -93,15 +78,15 @@ impl Var {
     }
 
     pub fn untupled_right(&self) -> Self {
-        Self::new(format!("_untupled_{}", self.name))
+        Self::new(format!("_untupled_{}", self))
     }
 
     pub fn method(&self, m: Self) -> Self {
-        Self::new(format!("{}__{}", self.name, m.name))
+        Self::new(format!("{}__{}", self, m))
     }
 
     pub fn ctor(&self) -> Self {
-        Self::new(format!("{}__new", self.name))
+        Self::new(format!("{}__new", self))
     }
 
     pub fn vptr() -> Self {
@@ -109,27 +94,27 @@ impl Var {
     }
 
     pub fn vptr_type(&self) -> Self {
-        Self::new(format!("{}__vptr", self.name))
+        Self::new(format!("{}__vptr", self))
     }
 
     pub fn vptr_ctor(&self) -> Self {
-        Self::new(format!("{}__vptrNew", self.name))
+        Self::new(format!("{}__vptrNew", self))
     }
 
     pub fn vtbl_type(&self) -> Self {
-        Self::new(format!("{}__vtbl", self.name))
+        Self::new(format!("{}__vtbl", self))
     }
 
     pub fn vtbl_lookup(&self) -> Self {
-        Self::new(format!("{}__vtblLookup", self.name))
+        Self::new(format!("{}__vtblLookup", self))
     }
 
-    pub fn implements(&self, im: &Box<Expr>) -> Self {
-        Self::new(format!("{}__for__{}", self.name, im))
+    pub fn implements(&self, im: &Self) -> Self {
+        Self::new(format!("{}__for__{}", self, im))
     }
 
-    pub fn implement_func(&self, i: &Self, im: &Box<Expr>) -> Self {
-        Self::new(format!("{}__for__{}__{}", i.name, im, self.name))
+    pub fn implement_func(&self, i: &Self, im: &Self) -> Self {
+        Self::new(format!("{}__for__{}__{}", i, im, self))
     }
 
     pub fn id(&self) -> usize {

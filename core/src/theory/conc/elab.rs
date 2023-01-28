@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::theory::abs::data::Dir::Le;
 use crate::theory::abs::data::{CaseMap, FieldMap, Term};
 use crate::theory::abs::def::{gamma_to_tele, Body};
@@ -6,13 +8,14 @@ use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename_with;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
+use crate::theory::conc::data::Expr::Resolved;
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Loc, Param, RawNameSet, Tele, Var, VarGen, VPTR};
+use crate::theory::{Loc, Param, Tele, Var, VarGen, VPTR};
 use crate::Error;
 use crate::Error::{
-    ExpectedClass, ExpectedEnum, ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedSigma,
-    FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplicitParam,
+    ExpectedAlias, ExpectedClass, ExpectedEnum, ExpectedInterface, ExpectedObject, ExpectedPi,
+    ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplicitParam,
 };
 
 #[derive(Debug)]
@@ -90,12 +93,10 @@ impl Elaborator {
                 vtbl_lookup,
             },
             Interface(fns) => Interface(fns),
-            Implements {
-                i,
-                im,
-                i_fns,
-                im_fns,
-            } => self.check_implements(i, im, i_fns, im_fns)?,
+            Implements { i: (i, im), fns } => {
+                self.check_implements(d.loc, &i, &im, &fns)?;
+                Implements { i: (i, im), fns }
+            }
             InterfaceFn => InterfaceFn,
             _ => unreachable!(),
         };
@@ -654,46 +655,45 @@ impl Elaborator {
 
     fn check_implements(
         &mut self,
-        i: Box<Expr>,
-        im: Box<Expr>,
-        i_fns: Vec<Expr>,
-        im_fns: Vec<Expr>,
+        loc: Loc,
+        i: &Var,
+        im: &Var,
+        fns: &Vec<(Var, Var)>,
     ) -> Result<Body<Term>, Error> {
         use Body::*;
 
-        let im_loc = im.loc();
-        let (im_tm, _) = self.infer(im.clone(), None)?;
-        let i_var = i.resolved();
-        let im_var = im.resolved();
-
-        let d = self.sigma.get(&i_var).unwrap();
-        match &d.body {
+        match &self.sigma.get(i).unwrap().body {
             Interface(is) => {
-                let names = RawNameSet::from(&i_fns);
-                for v in is {
-                    if !names.contains_var(v) {
-                        return Err(NonExhaustive(Box::new(Term::Ref(i_var.clone())), im_loc));
+                let fns = fns.iter().map(|(f, _)| f.clone()).collect::<HashSet<_>>();
+                for f in is {
+                    if !fns.contains(f) {
+                        let loc = self.sigma.get(f).unwrap().loc;
+                        return Err(NonExhaustive(Box::new(Term::Ref(im.clone())), loc));
                     }
                 }
             }
-            _ => {
-                return Err(ExpectedInterface(
-                    Box::new(Term::Ref(i_var.clone())),
-                    im_loc,
-                ))
-            }
+            _ => return Err(ExpectedInterface(Box::new(Term::Ref(i.clone())), loc)),
         };
 
-        for (i_fn, im_fn) in i_fns.into_iter().zip(im_fns.into_iter()) {
-            let i_fn_loc = i_fn.loc();
-            let im_fn_loc = im_fn.loc();
-            let (_, i_fn_ty) = self.infer(Box::new(i_fn), None)?;
-            let (_, im_fn_ty) = self.infer(Box::new(im_fn), None)?;
-            let i_fn_renamed = rename_with((i_var.clone(), im_var.clone()), i_fn_ty);
-            let i_fn_nf = Normalizer::new(&mut self.sigma, i_fn_loc)
-                .with(&[(&im_var, &im_tm)], i_fn_renamed)?;
-            let im_fn_nf = Normalizer::new(&mut self.sigma, im_fn_loc).term(im_fn_ty)?;
-            Unifier::new(&mut self.sigma, im_fn_loc).unify(&i_fn_nf, &im_fn_nf)?;
+        let im_def = self.sigma.get(im).unwrap();
+        match im_def.body {
+            Alias(_) => {}
+            _ => return Err(ExpectedAlias(Box::new(Term::Ref(im.clone())), loc)),
+        }
+
+        let im_tm = im_def.to_term(im.clone());
+        for (i_fn, im_fn) in fns {
+            let i_loc = self.sigma.get(i_fn).unwrap().loc;
+            let im_loc = self.sigma.get(im_fn).unwrap().loc;
+
+            let (_, i_ty) = self.infer(Box::new(Resolved(i_loc, i_fn.clone())), None)?;
+            let (_, im_ty) = self.infer(Box::new(Resolved(im_loc, im_fn.clone())), None)?;
+
+            let i_renamed = rename_with((i.clone(), im.clone()), i_ty);
+            let i_nf = Normalizer::new(&mut self.sigma, i_loc).with(&[(im, &im_tm)], i_renamed)?;
+            let im_fn_nf = Normalizer::new(&mut self.sigma, im_loc).term(im_ty)?;
+
+            Unifier::new(&mut self.sigma, im_loc).unify(&i_nf, &im_fn_nf)?;
             // TODO: Friendlier error messages.
         }
 

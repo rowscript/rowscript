@@ -130,16 +130,9 @@ impl<T: Syntax> Display for Def<T> {
                         .collect::<Vec<_>>()
                         .concat()
                 ),
-                Implements {
-                    i,
-                    im,
-                    i_fns,
-                    im_fns,
-                } => format!(
+                Implements { i: (i, im), fns } => format!(
                     "implements {i} for {im} {{\n{}}}",
-                    i_fns
-                        .iter()
-                        .zip(im_fns.iter())
+                    fns.iter()
                         .map(|(i, im)| format!("\t{i}; {im};\n"))
                         .collect::<Vec<_>>()
                         .concat()
@@ -190,10 +183,8 @@ pub enum Body<T: Syntax> {
     },
     Interface(Vec<Var>),
     Implements {
-        i: Box<T>,
-        im: Box<T>,
-        i_fns: Vec<T>,
-        im_fns: Vec<T>,
+        i: (Var, Var),
+        fns: Vec<(Var, Var)>,
     },
 
     Undefined,

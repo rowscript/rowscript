@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
+use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::{Param, RawNameSet, Tele, Var};
 use crate::Error;
 use crate::Error::UnresolvedVar;
@@ -67,25 +68,20 @@ impl Resolver {
                 vtbl_lookup,
             },
             Interface(fns) => Interface(fns),
-            Implements {
-                i,
-                im,
-                i_fns,
-                im_fns,
-            } => {
-                let mut is = Vec::default();
-                for i in i_fns {
-                    is.push(*self.expr(Box::new(i))?);
-                }
-                let mut ims = Vec::default();
-                for im in im_fns {
-                    ims.push(*self.expr(Box::new(im))?);
+            Implements { i: (i, im), fns } => {
+                let loc = d.loc;
+                let i = self.expr(Box::new(Unresolved(loc, i)))?.resolved();
+                let im = self.expr(Box::new(Unresolved(loc, im)))?.resolved();
+                let mut resolved = Vec::default();
+                for (i_fn, im_fn) in fns {
+                    resolved.push((
+                        self.expr(Box::new(Unresolved(loc, i_fn)))?.resolved(),
+                        self.expr(Box::new(Unresolved(loc, im_fn)))?.resolved(),
+                    ));
                 }
                 Implements {
-                    i: self.expr(i)?,
-                    im: self.expr(im)?,
-                    i_fns: is,
-                    im_fns: ims,
+                    i: (i, im),
+                    fns: resolved,
                 }
             }
             InterfaceFn => InterfaceFn,
