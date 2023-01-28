@@ -656,7 +656,7 @@ impl Elaborator {
         i: Box<Expr>,
         im: Box<Expr>,
         i_fns: Vec<Expr>,
-        im_fns: Vec<Var>,
+        im_fns: Vec<Expr>,
     ) -> Result<Body<Term>, Error> {
         use Body::*;
         use Expr::*;
@@ -668,10 +668,7 @@ impl Elaborator {
                 let tm = Box::new(Term::Ref(r));
                 match &d.body {
                     Interface(is) => {
-                        let mut names = RawNameSet::default();
-                        for v in &i_fns {
-                            names.raw(loc, &v.to_string()).unwrap();
-                        }
+                        let names = RawNameSet::from(&i_fns);
                         for v in is {
                             if !names.contains_var(v) {
                                 return Err(NonExhaustive(tm, loc));
@@ -683,6 +680,11 @@ impl Elaborator {
             }
             _ => unreachable!(),
         };
+
+        for (i_fn, im_fn) in i_fns.into_iter().zip(im_fns.into_iter()) {
+            let (i_fn, _) = self.infer(Box::new(i_fn), None)?;
+            let (_, im_fn_ty) = self.infer(Box::new(im_fn), None)?;
+        }
 
         todo!()
     }

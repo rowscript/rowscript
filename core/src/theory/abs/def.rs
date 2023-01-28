@@ -62,10 +62,7 @@ impl Def<Term> {
                 &self.tele,
                 Box::new(Term::Ref(self.tele[0].var.clone())),
             )),
-            e => {
-                dbg!(e);
-                unreachable!()
-            } // _ => unreachable!(),
+            _ => unreachable!(),
         }
     }
 
@@ -136,14 +133,16 @@ impl<T: Syntax> Display for Def<T> {
                         .concat()
                 ),
                 Implements {
-                    im: ty,
-                    im_fns: fns,
-                    ..
+                    i,
+                    im,
+                    i_fns,
+                    im_fns,
                 } => format!(
-                    "implements {} for {ty} {{\n{}}}",
-                    self.name,
-                    fns.iter()
-                        .map(|f| format!("\t{f};\n"))
+                    "implements {i} for {im} {{\n{}}}",
+                    i_fns
+                        .iter()
+                        .zip(im_fns.iter())
+                        .map(|(i, im)| format!("\t{i}; {im};\n"))
                         .collect::<Vec<_>>()
                         .concat()
                 ),
@@ -196,7 +195,7 @@ pub enum Body<T: Syntax> {
         i: Box<T>,
         im: Box<T>,
         i_fns: Vec<T>,
-        im_fns: Vec<Var>,
+        im_fns: Vec<T>,
     },
 
     Undefined,

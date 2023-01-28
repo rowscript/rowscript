@@ -82,6 +82,7 @@ pub enum Term {
     Switch(Box<Self>, CaseMap),
 
     Vptr(Var),
+    // Resolve(Var), // TODO: instance resolving
 }
 
 impl Term {

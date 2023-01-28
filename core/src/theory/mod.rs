@@ -60,6 +60,16 @@ impl RawNameSet {
     }
 }
 
+impl From<&Vec<Expr>> for RawNameSet {
+    fn from(vs: &Vec<Expr>) -> Self {
+        let mut ret = Self::default();
+        for v in vs {
+            ret.raw(v.loc(), &v.to_string()).unwrap();
+        }
+        ret
+    }
+}
+
 #[derive(Clone, Eq)]
 pub struct Var {
     name: Name,

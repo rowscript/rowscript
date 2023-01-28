@@ -387,7 +387,7 @@ fn implements_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
         let mut def = fn_def(p, None);
         i_fns.push(Unresolved(def.loc, def.name.clone()));
         let fn_name = def.name.implement_func(&name, &im);
-        im_fns.push(fn_name.clone());
+        im_fns.push(Unresolved(def.loc, fn_name.clone()));
         def.name = fn_name;
         defs.push(def);
     }
