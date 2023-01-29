@@ -58,8 +58,8 @@ impl Def<Term> {
             Alias(t) => rename(Term::lam(&self.tele, t.clone())),
             Undefined => Box::new(Term::Undef(v)),
             Class { object, .. } => rename(Term::lam(&self.tele, object.clone())),
-            Interface(_) => Box::new(Term::Ref(v)),
-            Searchable(_) => Box::new(Term::Search(v)),
+            Interface { .. } => Box::new(Term::Ref(v)),
+            Findable(i) => Box::new(Term::Find(i.clone(), v)),
             _ => unreachable!(),
         }
     }
@@ -122,10 +122,14 @@ impl<T: Syntax> Display for Def<T> {
                             .join(";\n\t")
                     )
                 }
-                Interface(fns) => format!(
-                    "interface {} {{\n{}}}",
+                Interface { fns, ims } => format!(
+                    "interface {} {{\n{}\n{}}}",
                     self.name,
                     fns.iter()
+                        .map(|f| format!("\t{f};\n"))
+                        .collect::<Vec<_>>()
+                        .concat(),
+                    ims.iter()
                         .map(|f| format!("\t{f};\n"))
                         .collect::<Vec<_>>()
                         .concat()
@@ -155,8 +159,8 @@ impl<T: Syntax> Display for Def<T> {
                         format!("meta {} {}: {};", self.name, tele, self.ret,)
                     }
                 }
-                Searchable(i) => format!(
-                    "searchable {i}.{} {}: {}",
+                Findable(i) => format!(
+                    "findable {i}.{} {}: {}",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
@@ -181,11 +185,10 @@ pub enum Body<T: Syntax> {
         vtbl: Var,
         vtbl_lookup: Var,
     },
-    Interface(Vec<Var>),
-    // Interface{
-    //     fns: Vec<Var>,
-    //     ims: Vec<Var>,
-    // },
+    Interface {
+        fns: Vec<Var>,
+        ims: Vec<Var>,
+    },
     Implements {
         i: (Var, Var),
         fns: HashMap<Var, Var>,
@@ -193,5 +196,5 @@ pub enum Body<T: Syntax> {
 
     Undefined,
     Meta(Option<T>),
-    Searchable(Var),
+    Findable(Var),
 }

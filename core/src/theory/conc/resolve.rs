@@ -67,7 +67,7 @@ impl Resolver {
                 vtbl,
                 vtbl_lookup,
             },
-            Interface(fns) => Interface(fns),
+            Interface { fns, ims } => Interface { fns, ims },
             Implements { i: (i, im), fns } => {
                 let loc = d.loc;
                 let i = self.expr(Box::new(Unresolved(loc, i)))?.resolved();
@@ -84,7 +84,7 @@ impl Resolver {
                     fns: resolved,
                 }
             }
-            Searchable(i) => Searchable(i),
+            Findable(i) => Findable(i),
             _ => unreachable!(),
         };
 

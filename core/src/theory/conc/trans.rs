@@ -350,7 +350,7 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     for p in pairs {
         let mut d = fn_postulate(p);
         fns.push(d.name.clone());
-        d.body = Searchable(name.clone());
+        d.body = Findable(name.clone());
         fn_defs.push(d);
     }
 
@@ -359,7 +359,10 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
         name,
         tele: Default::default(),
         ret: Box::new(Univ(loc)),
-        body: Interface(fns),
+        body: Interface {
+            fns,
+            ims: Default::default(),
+        },
     }];
     defs.extend(fn_defs);
     defs

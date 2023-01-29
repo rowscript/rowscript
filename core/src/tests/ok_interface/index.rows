@@ -18,6 +18,13 @@ implements NatLike for Foo {
     }
 }
 
+type Bar = {m: number};
+
+implements NatLike for Bar {
+    add(a: Bar, b: Bar): Bar { return {m: numAdd(a.m, b.m)} }
+    mul(a: Bar, b: Bar): Bar { return {m: numMul(a.m, b.m)} }
+}
+
 function f(): number {
     return add({n: 42}, {n: 69}).n
 }

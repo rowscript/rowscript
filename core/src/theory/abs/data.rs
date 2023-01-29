@@ -83,7 +83,7 @@ pub enum Term {
 
     Vptr(Var),
 
-    Search(Var),
+    Find(Var, Var),
 }
 
 impl Term {
@@ -176,7 +176,7 @@ impl Display for Term {
                     )
                 }
                 Vptr(r) => r.to_string(),
-                Search(r) => r.to_string(),
+                Find(i, f) => format!("{i}.{f}"),
             }
             .as_str(),
         )

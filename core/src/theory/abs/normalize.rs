@@ -243,7 +243,7 @@ impl<'a> Normalizer<'a> {
             RowSat => Box::new(RowSat),
             RowRefl => Box::new(RowRefl),
             Vptr(r) => Box::new(Vptr(r)),
-            Search(r) => Box::new(Search(r)),
+            Find(i, f) => Box::new(Find(i, f)),
         })
     }
 
