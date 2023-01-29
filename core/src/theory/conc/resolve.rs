@@ -72,19 +72,19 @@ impl Resolver {
                 let loc = d.loc;
                 let i = self.expr(Box::new(Unresolved(loc, i)))?.resolved();
                 let im = self.expr(Box::new(Unresolved(loc, im)))?.resolved();
-                let mut resolved = Vec::default();
+                let mut resolved = HashMap::default();
                 for (i_fn, im_fn) in fns {
-                    resolved.push((
+                    resolved.insert(
                         self.expr(Box::new(Unresolved(loc, i_fn)))?.resolved(),
                         self.expr(Box::new(Unresolved(loc, im_fn)))?.resolved(),
-                    ));
+                    );
                 }
                 Implements {
                     i: (i, im),
                     fns: resolved,
                 }
             }
-            Searchable => Searchable,
+            Searchable(i) => Searchable(i),
             _ => unreachable!(),
         };
 

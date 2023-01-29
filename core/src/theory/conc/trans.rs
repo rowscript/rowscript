@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use pest::iterators::{Pair, Pairs};
 
 use crate::theory::abs::data::Dir;
@@ -348,7 +350,7 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     for p in pairs {
         let mut d = fn_postulate(p);
         fns.push(d.name.clone());
-        d.body = Searchable;
+        d.body = Searchable(name.clone());
         fn_defs.push(d);
     }
 
@@ -375,11 +377,11 @@ fn implements_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     let i = Var::from(pairs.next().unwrap());
     let im = Var::from(pairs.next().unwrap());
 
-    let mut fns = Vec::default();
+    let mut fns = HashMap::default();
     for p in pairs {
         let mut def = fn_def(p, None);
         let fn_name = def.name.implement_func(&i, &im);
-        fns.push((def.name.clone(), fn_name.clone()));
+        fns.insert(def.name.clone(), fn_name.clone());
         def.name = fn_name;
         defs.push(def);
     }

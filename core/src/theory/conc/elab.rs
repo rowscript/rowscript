@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use crate::theory::abs::data::Dir::Le;
 use crate::theory::abs::data::{CaseMap, FieldMap, Term};
@@ -93,11 +93,11 @@ impl Elaborator {
                 vtbl_lookup,
             },
             Interface(fns) => Interface(fns),
-            Implements { i: (i, im), fns } => {
-                self.check_implements(d.loc, &i, &im, &fns)?;
-                Implements { i: (i, im), fns }
+            Implements { i, fns } => {
+                self.insert_implements(&i, &fns)?;
+                Implements { i, fns }
             }
-            Searchable => Searchable,
+            Searchable(i) => Searchable(i),
             _ => unreachable!(),
         };
 
@@ -106,6 +106,51 @@ impl Elaborator {
         }
 
         self.sigma.get_mut(&d.name).unwrap().body = body;
+
+        Ok(())
+    }
+
+    fn insert_implements(&mut self, i: &(Var, Var), fns: &HashMap<Var, Var>) -> Result<(), Error> {
+        use Body::*;
+
+        let (i, im) = i;
+
+        let i_def = self.sigma.get(i).unwrap();
+        match &i_def.body {
+            Interface(is) => {
+                for f in is {
+                    if fns.contains_key(f) {
+                        continue;
+                    }
+                    let loc = self.sigma.get(f).unwrap().loc;
+                    return Err(NonExhaustive(Box::new(Term::Ref(im.clone())), loc));
+                }
+            }
+            _ => return Err(ExpectedInterface(Box::new(Term::Ref(i.clone())), i_def.loc)),
+        };
+
+        let im_def = self.sigma.get(im).unwrap();
+        match im_def.body {
+            Alias(_) => {}
+            _ => return Err(ExpectedAlias(Box::new(Term::Ref(im.clone())), im_def.loc)),
+        }
+
+        let im_tm = im_def.to_term(im.clone());
+        for (i_fn, im_fn) in fns {
+            let i_def = self.sigma.get(i_fn).unwrap();
+
+            let i_loc = i_def.loc;
+            let im_loc = self.sigma.get(im_fn).unwrap().loc;
+
+            let i_ty = i_def.to_type();
+            let (_, im_ty) = self.infer(Box::new(Resolved(im_loc, im_fn.clone())), None)?;
+
+            let i_renamed = rename_with((i.clone(), im.clone()), i_ty);
+            let i_nf = Normalizer::new(&mut self.sigma, i_loc).with(&[(im, &im_tm)], i_renamed)?;
+            let im_fn_nf = Normalizer::new(&mut self.sigma, im_loc).term(im_ty)?;
+
+            Unifier::new(&mut self.sigma, im_loc).unify(&i_nf, &im_fn_nf)?;
+        }
 
         Ok(())
     }
@@ -525,7 +570,7 @@ impl Elaborator {
                                 return Err(ExpectedClass(
                                     Box::new(Term::Object(Box::new(Term::Fields(f)))),
                                     o_loc,
-                                ))
+                                ));
                             }
                         },
                         tm => return Err(FieldsUnknown(Box::new(tm), o_loc)),
@@ -655,54 +700,6 @@ impl Elaborator {
             },
             _ => None,
         })
-    }
-
-    fn check_implements(
-        &mut self,
-        loc: Loc,
-        i: &Var,
-        im: &Var,
-        fns: &Vec<(Var, Var)>,
-    ) -> Result<(), Error> {
-        use Body::*;
-
-        match &self.sigma.get(i).unwrap().body {
-            Interface(is) => {
-                let fns = fns.iter().map(|(f, _)| f.clone()).collect::<HashSet<_>>();
-                for f in is {
-                    if !fns.contains(f) {
-                        let loc = self.sigma.get(f).unwrap().loc;
-                        return Err(NonExhaustive(Box::new(Term::Ref(im.clone())), loc));
-                    }
-                }
-            }
-            _ => return Err(ExpectedInterface(Box::new(Term::Ref(i.clone())), loc)),
-        };
-
-        let im_def = self.sigma.get(im).unwrap();
-        match im_def.body {
-            Alias(_) => {}
-            _ => return Err(ExpectedAlias(Box::new(Term::Ref(im.clone())), loc)),
-        }
-
-        let im_tm = im_def.to_term(im.clone());
-        for (i_fn, im_fn) in fns {
-            let i_def = self.sigma.get(i_fn).unwrap();
-
-            let i_loc = i_def.loc;
-            let im_loc = self.sigma.get(im_fn).unwrap().loc;
-
-            let i_ty = i_def.to_type();
-            let (_, im_ty) = self.infer(Box::new(Resolved(im_loc, im_fn.clone())), None)?;
-
-            let i_renamed = rename_with((i.clone(), im.clone()), i_ty);
-            let i_nf = Normalizer::new(&mut self.sigma, i_loc).with(&[(im, &im_tm)], i_renamed)?;
-            let im_fn_nf = Normalizer::new(&mut self.sigma, im_loc).term(im_ty)?;
-
-            Unifier::new(&mut self.sigma, im_loc).unify(&i_nf, &im_fn_nf)?;
-        }
-
-        Ok(())
     }
 }
 

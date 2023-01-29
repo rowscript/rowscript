@@ -59,7 +59,7 @@ impl Def<Term> {
             Undefined => Box::new(Term::Undef(v)),
             Class { object, .. } => rename(Term::lam(&self.tele, object.clone())),
             Interface(_) => Box::new(Term::Ref(v)),
-            Searchable => Box::new(Term::Search(v)),
+            Searchable(_) => Box::new(Term::Search(v)),
             _ => unreachable!(),
         }
     }
@@ -155,8 +155,8 @@ impl<T: Syntax> Display for Def<T> {
                         format!("meta {} {}: {};", self.name, tele, self.ret,)
                     }
                 }
-                Searchable => format!(
-                    "searchable {} {}: {}",
+                Searchable(i) => format!(
+                    "searchable {i}.{} {}: {}",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
@@ -182,12 +182,16 @@ pub enum Body<T: Syntax> {
         vtbl_lookup: Var,
     },
     Interface(Vec<Var>),
+    // Interface{
+    //     fns: Vec<Var>,
+    //     ims: Vec<Var>,
+    // },
     Implements {
         i: (Var, Var),
-        fns: Vec<(Var, Var)>,
+        fns: HashMap<Var, Var>,
     },
 
     Undefined,
     Meta(Option<T>),
-    Searchable,
+    Searchable(Var),
 }
