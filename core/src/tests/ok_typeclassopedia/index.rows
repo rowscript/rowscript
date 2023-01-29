@@ -1,4 +1,4 @@
-interface Functor {
+interface Functor<T> {
     map<A, B>(f: (a: A) -> B, x: Functor<A>): Functor<B>;
 }
 
@@ -12,6 +12,6 @@ implements Functor for Foo {
 
 function numToStr(n: number): string;
 
-function f(): string {
+function f0(): string {
     return map(numToStr, {n: 42})
 }

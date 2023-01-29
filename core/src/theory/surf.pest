@@ -255,6 +255,7 @@ class_method = { fn_id ~ params ~ (":" ~ type_expr)? ~ fn_body_block }
 interface_def =
   { "interface"
   ~ interface_id
+  ~ implicits?
   ~ "{"
   ~ interface_fn+
   ~ "}"

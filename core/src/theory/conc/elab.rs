@@ -314,7 +314,10 @@ impl Elaborator {
                             Normalizer::new(&mut self.sigma, loc).with(&[(&p.var, &x)], b)?;
                         (applied, applied_ty)
                     }
-                    _ => return Err(ExpectedPi(f, loc)),
+                    f_ty => {
+                        dbg!(f_ty.to_string());
+                        return Err(ExpectedPi(f, loc));
+                    }
                 }
             }
             Sigma(_, p, b) => {

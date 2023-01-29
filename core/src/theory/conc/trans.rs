@@ -341,23 +341,29 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     let loc = Loc::from(i.as_span());
     let mut pairs = i.into_inner();
 
-    // FIXME: Interfaces could be generalized by type parameters.
-
     let name = Var::from(pairs.next().unwrap());
 
+    let mut tele = Tele::default();
     let mut fn_defs = Vec::default();
     let mut fns = Vec::default();
     for p in pairs {
-        let mut d = fn_postulate(p);
-        fns.push(d.name.clone());
-        d.body = Findable(name.clone());
-        fn_defs.push(d);
+        match p.as_rule() {
+            Rule::row_id => tele.push(row_param(p)),
+            Rule::implicit_id => tele.push(implicit_param(p)),
+            Rule::interface_fn => {
+                let mut d = fn_postulate(p);
+                fns.push(d.name.clone());
+                d.body = Findable(name.clone());
+                fn_defs.push(d);
+            }
+            _ => unreachable!(),
+        }
     }
 
     let mut defs = vec![Def {
         loc,
         name,
-        tele: Default::default(),
+        tele,
         ret: Box::new(Univ(loc)),
         body: Interface {
             fns,
