@@ -97,7 +97,7 @@ impl Elaborator {
                 self.check_implements(d.loc, &i, &im, &fns)?;
                 Implements { i: (i, im), fns }
             }
-            Resolvable => Resolvable,
+            Searchable => Searchable,
             _ => unreachable!(),
         };
 
@@ -214,7 +214,6 @@ impl Elaborator {
         e: Box<Expr>,
         hint: Option<&Box<Term>>,
     ) -> Result<(Box<Term>, Box<Term>), Error> {
-        use Body::*;
         use Expr::*;
 
         Ok(match *e {
@@ -222,10 +221,7 @@ impl Elaborator {
                 Some(ty) => (Box::new(Term::Ref(v)), ty.clone()),
                 None => {
                     let d = self.sigma.get(&v).unwrap();
-                    match d.body {
-                        Resolvable => todo!(),
-                        _ => (d.to_term(v), d.to_type()),
-                    }
+                    (d.to_term(v), d.to_type())
                 }
             },
             Hole(loc) => self.insert_meta(loc, true),
@@ -246,6 +242,10 @@ impl Elaborator {
                 let (f, f_ty) = self.infer(f, hint)?;
                 if let Some(f_e) = Self::app_insert_holes(f_e, i.clone(), &*f_ty)? {
                     return self.infer(Box::new(App(loc, f_e, i, x)), hint);
+                }
+                if let Term::Search(r) = &*f {
+                    dbg!(f.to_string(), f_ty.to_string());
+                    todo!("rename the type to the correct one")
                 }
                 match *f_ty {
                     Term::Pi(p, b) => {

@@ -348,7 +348,7 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     for p in pairs {
         let mut d = fn_postulate(p);
         fns.push(d.name.clone());
-        d.body = Resolvable;
+        d.body = Searchable;
         fn_defs.push(d);
     }
 

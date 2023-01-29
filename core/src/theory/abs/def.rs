@@ -59,6 +59,7 @@ impl Def<Term> {
             Undefined => Box::new(Term::Undef(v)),
             Class { object, .. } => rename(Term::lam(&self.tele, object.clone())),
             Interface(_) => Box::new(Term::Ref(v)),
+            Searchable => Box::new(Term::Search(v)),
             _ => unreachable!(),
         }
     }
@@ -154,8 +155,8 @@ impl<T: Syntax> Display for Def<T> {
                         format!("meta {} {}: {};", self.name, tele, self.ret,)
                     }
                 }
-                Resolvable => format!(
-                    "resolvable {} {}: {}",
+                Searchable => format!(
+                    "searchable {} {}: {}",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
@@ -188,5 +189,5 @@ pub enum Body<T: Syntax> {
 
     Undefined,
     Meta(Option<T>),
-    Resolvable,
+    Searchable,
 }

@@ -84,7 +84,7 @@ impl Resolver {
                     fns: resolved,
                 }
             }
-            Resolvable => Resolvable,
+            Searchable => Searchable,
             _ => unreachable!(),
         };
 
