@@ -1,10 +1,10 @@
-interface Functor<T> {
+interface Functor {
     map<A, B>(f: (a: A) -> B, x: Functor<A>): Functor<B>;
 }
 
 type Foo<T> = {n: T};
 
-implements Functor<T> for Foo<T> {
+implements Functor for Foo {
     map<A, B>(f: (a: A) -> B, x: Foo<A>): Foo<B> {
         return {n: f(x.n)}
     }

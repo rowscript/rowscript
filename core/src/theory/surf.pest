@@ -255,7 +255,6 @@ class_method = { fn_id ~ params ~ (":" ~ type_expr)? ~ fn_body_block }
 interface_def =
   { "interface"
   ~ interface_id
-  ~ ("<" ~ implicit_ids ~ ">")?
   ~ "{"
   ~ interface_fn+
   ~ "}"
@@ -271,10 +270,8 @@ interface_fn =
 implements_def =
   { "implements"
   ~ interface_id
-  ~ ("<" ~ implicit_ids ~ ">")?
   ~ "for"
   ~ tyref
-  ~ ("<" ~ type_args ~ ">")?
   ~ "{"
   ~ implements_fn+
   ~ "}"
