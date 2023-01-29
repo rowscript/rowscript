@@ -13,5 +13,5 @@ implements Functor for Foo {
 function numToStr(n: number): string;
 
 function f0(): string {
-    return map(numToStr, {n: 42})
+    return map(numToStr, {n: 42}).n
 }

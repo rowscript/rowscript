@@ -96,7 +96,6 @@ impl Resolver {
         }
         self.insert(&d.name);
 
-        println!("{}", d);
         Ok(d)
     }
 
