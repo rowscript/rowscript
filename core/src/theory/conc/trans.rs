@@ -392,11 +392,7 @@ fn implements_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     defs.push(Def {
         loc,
         name: i.implements(&im),
-        tele: vec![Param {
-            var: Var::new("t"),
-            info: Implicit,
-            typ: Box::new(Univ(loc)),
-        }],
+        tele: Default::default(),
         ret: Box::new(Univ(loc)),
         body: Implements { i: (i, im), fns },
     });
