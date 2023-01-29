@@ -9,8 +9,13 @@ interface NatLike {
 type Foo = {n: number};
 
 implements NatLike for Foo {
-    add(a: Foo, b: Foo): Foo { return {n: numAdd(a.n, b.n)} }
-    mul(a: Foo, b: Foo): Foo { return {n: numMul(a.n, b.n)} }
+    add(a: Foo, b: Foo): Foo {
+        return {n: numAdd(a.n, b.n)}
+    }
+
+    mul(a: Foo, b: Foo): Foo {
+        return {n: numMul(a.n, b.n)}
+    }
 }
 
 function f(): number {

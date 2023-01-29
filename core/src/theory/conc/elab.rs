@@ -97,7 +97,7 @@ impl Elaborator {
                 self.check_implements(d.loc, &i, &im, &fns)?;
                 Implements { i: (i, im), fns }
             }
-            InterfaceFn => InterfaceFn,
+            Resolvable => Resolvable,
             _ => unreachable!(),
         };
 
@@ -214,16 +214,20 @@ impl Elaborator {
         e: Box<Expr>,
         hint: Option<&Box<Term>>,
     ) -> Result<(Box<Term>, Box<Term>), Error> {
+        use Body::*;
         use Expr::*;
+
         Ok(match *e {
-            Resolved(_, v) => {
-                if let Some(ty) = self.gamma.get(&v) {
-                    (Box::new(Term::Ref(v)), ty.clone())
-                } else {
+            Resolved(_, v) => match self.gamma.get(&v) {
+                Some(ty) => (Box::new(Term::Ref(v)), ty.clone()),
+                None => {
                     let d = self.sigma.get(&v).unwrap();
-                    (d.to_term(v), d.to_type())
+                    match d.body {
+                        Resolvable => todo!(),
+                        _ => (d.to_term(v), d.to_type()),
+                    }
                 }
-            }
+            },
             Hole(loc) => self.insert_meta(loc, true),
             InsertedHole(loc) => self.insert_meta(loc, false),
             Pi(_, p, b) => {
@@ -683,11 +687,12 @@ impl Elaborator {
 
         let im_tm = im_def.to_term(im.clone());
         for (i_fn, im_fn) in fns {
-            let i_loc = self.sigma.get(i_fn).unwrap().loc;
+            let i_def = self.sigma.get(i_fn).unwrap();
+
+            let i_loc = i_def.loc;
             let im_loc = self.sigma.get(im_fn).unwrap().loc;
 
-            // FIXME: Cannot infer the type of this interface function.
-            let (_, i_ty) = self.infer(Box::new(Resolved(i_loc, i_fn.clone())), None)?;
+            let i_ty = i_def.to_type();
             let (_, im_ty) = self.infer(Box::new(Resolved(im_loc, im_fn.clone())), None)?;
 
             let i_renamed = rename_with((i.clone(), im.clone()), i_ty);

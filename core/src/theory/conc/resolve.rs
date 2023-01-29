@@ -84,7 +84,7 @@ impl Resolver {
                     fns: resolved,
                 }
             }
-            InterfaceFn => InterfaceFn,
+            Resolvable => Resolvable,
             _ => unreachable!(),
         };
 
