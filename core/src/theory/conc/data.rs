@@ -72,6 +72,9 @@ pub enum Expr {
 
     Lookup(Loc, Box<Self>, String, Box<Self>),
     Vptr(Loc, Var),
+
+    ImplementsOf(Loc, Box<Self>, Box<Self>),
+    ImplementsSat(Loc),
 }
 
 impl Expr {
@@ -137,6 +140,8 @@ impl Expr {
             Switch(loc, _, _) => loc,
             Lookup(loc, _, _, _) => loc,
             Vptr(loc, _) => loc,
+            ImplementsOf(loc, _, _) => loc,
+            ImplementsSat(loc) => loc,
         }
         .clone()
     }
@@ -262,6 +267,8 @@ impl Display for Expr {
                 ),
                 Lookup(_, o, n, a) => format!("{o}.{n}{a}"),
                 Vptr(_, r) => r.to_string(),
+                ImplementsOf(_, a, b) => format!("{a} implementsOf {b}"),
+                ImplementsSat(_) => "sat".to_string(),
             }
             .as_str(),
         )

@@ -213,6 +213,7 @@ impl Resolver {
                 Switch(loc, self.expr(a)?, new)
             }
             Lookup(loc, o, n, a) => Lookup(loc, self.expr(o)?, n, self.expr(a)?),
+            ImplementsOf(loc, a, b) => ImplementsOf(loc, self.expr(a)?, self.expr(b)?),
 
             Resolved(loc, r) => Resolved(loc, r),
             Hole(loc) => Hole(loc),
@@ -234,6 +235,7 @@ impl Resolver {
             RowRefl(loc) => RowRefl(loc),
             Access(loc, n) => Access(loc, n),
             Vptr(loc, r) => Vptr(loc, r),
+            ImplementsSat(loc) => ImplementsSat(loc),
         }))
     }
 }

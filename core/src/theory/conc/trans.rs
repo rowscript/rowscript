@@ -493,8 +493,11 @@ fn pred(pred: Pair<Rule>) -> Param<Expr> {
                 let rhs = row_expr(p.next().unwrap());
                 Box::new(RowEq(loc, Box::new(lhs), Box::new(rhs)))
             }
-            Rule::instance_of => {
-                todo!()
+            Rule::implements_of => {
+                let mut p = p.into_inner();
+                let lhs = unresolved(p.next().unwrap());
+                let rhs = type_expr(p.next().unwrap());
+                Box::new(ImplementsOf(loc, Box::new(lhs), Box::new(rhs)))
             }
             _ => unreachable!(),
         },
