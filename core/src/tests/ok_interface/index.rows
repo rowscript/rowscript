@@ -22,9 +22,9 @@ function f0(): number {
     return add({n: 42}, {n: 69}).n
 }
 
-function f1<T>(a: T): T
-where
-    T: NatLike
-{
-    return add(a, a)
-}
+//function f1<T>(a: T): T
+//where
+//    T: NatLike
+//{
+//    return add(a, a)
+//}
