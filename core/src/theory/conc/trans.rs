@@ -40,7 +40,7 @@ fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
 
     let mut tele = Tele::default();
     let mut untupled = UntupledParams::new(loc);
-    let mut row_preds = Tele::default();
+    let mut preds = Tele::default();
     let mut ret = Box::new(Unit(loc));
     let mut body = None;
 
@@ -66,7 +66,7 @@ fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
                 body = Some(fn_body(p));
                 break;
             }
-            Rule::row_pred => row_preds.push(row_pred(p)),
+            Rule::pred => preds.push(pred(p)),
             _ => unreachable!(),
         }
     }
@@ -80,7 +80,7 @@ fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
         Box::new(body.unwrap()),
     ));
     tele.push(tupled_param);
-    tele.extend(row_preds);
+    tele.extend(preds);
 
     Def {
         loc,
@@ -466,7 +466,7 @@ fn type_app(a: Pair<Rule>) -> Expr {
         .fold(f, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
 }
 
-fn row_pred(pred: Pair<Rule>) -> Param<Expr> {
+fn pred(pred: Pair<Rule>) -> Param<Expr> {
     use Expr::*;
 
     let p = pred.into_inner().next().unwrap();
@@ -492,6 +492,9 @@ fn row_pred(pred: Pair<Rule>) -> Param<Expr> {
                 let lhs = row_expr(p.next().unwrap());
                 let rhs = row_expr(p.next().unwrap());
                 Box::new(RowEq(loc, Box::new(lhs), Box::new(rhs)))
+            }
+            Rule::instance_of => {
+                todo!()
             }
             _ => unreachable!(),
         },
