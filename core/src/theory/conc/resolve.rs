@@ -231,11 +231,8 @@ impl Resolver {
             BigInt(loc) => BigInt(loc),
             Big(loc, v) => Big(loc, v),
             Row(loc) => Row(loc),
-            RowSat(loc) => RowSat(loc),
-            RowRefl(loc) => RowRefl(loc),
             Access(loc, n) => Access(loc, n),
             Vptr(loc, r) => Vptr(loc, r),
-            ImplementsSat(loc) => ImplementsSat(loc),
         }))
     }
 }

@@ -54,10 +54,7 @@ pub enum Expr {
     Combine(Loc, Box<Self>, Box<Self>),
 
     RowOrd(Loc, Box<Self>, Dir, Box<Self>),
-    RowSat(Loc),
-
     RowEq(Loc, Box<Self>, Box<Self>),
-    RowRefl(Loc),
 
     Object(Loc, Box<Self>),
     Obj(Loc, Box<Self>),
@@ -74,7 +71,6 @@ pub enum Expr {
     Vptr(Loc, Var),
 
     ImplementsOf(Loc, Box<Self>, Box<Self>),
-    ImplementsSat(Loc),
 }
 
 impl Expr {
@@ -126,9 +122,7 @@ impl Expr {
             Fields(loc, _) => loc,
             Combine(loc, _, _) => loc,
             RowOrd(loc, _, _, _) => loc,
-            RowSat(loc) => loc,
             RowEq(loc, _, _) => loc,
-            RowRefl(loc) => loc,
             Object(loc, _) => loc,
             Obj(loc, _) => loc,
             Concat(loc, _, _) => loc,
@@ -141,7 +135,6 @@ impl Expr {
             Lookup(loc, _, _, _) => loc,
             Vptr(loc, _) => loc,
             ImplementsOf(loc, _, _) => loc,
-            ImplementsSat(loc) => loc,
         }
         .clone()
     }
@@ -247,9 +240,7 @@ impl Display for Expr {
                 ),
                 Combine(_, a, b) => format!("{a} + {b}"),
                 RowOrd(_, a, dir, b) => format!("{a} {dir} {b}"),
-                RowSat(_) => "sat".to_string(),
                 RowEq(_, a, b) => format!("{a} = {b}"),
-                RowRefl(_) => "refl".to_string(),
                 Object(_, r) => format!("{{{r}}}"),
                 Obj(_, r) => format!("{{{r}}}"),
                 Concat(_, a, b) => format!("{a}...{b}"),
@@ -268,7 +259,6 @@ impl Display for Expr {
                 Lookup(_, o, n, a) => format!("{o}.{n}{a}"),
                 Vptr(_, r) => r.to_string(),
                 ImplementsOf(_, a, b) => format!("{a} implementsOf {b}"),
-                ImplementsSat(_) => "sat".to_string(),
             }
             .as_str(),
         )

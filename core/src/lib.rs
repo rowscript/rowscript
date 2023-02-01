@@ -56,8 +56,8 @@ pub enum Error {
     ExpectedInterface(Box<Term>, Loc),
     #[error("expected type alias, got \"{0}\"")]
     ExpectedAlias(Box<Term>, Loc),
-    #[error("unresolved implementation")]
-    UnresolvedImplementation(Loc),
+    #[error("unresolved implementation, got type \"{0}\"")]
+    UnresolvedImplementation(Box<Term>, Loc),
 
     #[error("expected \"{0}\", found \"{1}\"")]
     NonUnifiable(Box<Term>, Box<Term>, Loc),
@@ -97,7 +97,7 @@ impl Error {
             UnresolvedField(_, _, loc) => self.simple_message(loc, CHECKER_FAILED),
             ExpectedInterface(_, loc) => self.simple_message(loc, CHECKER_FAILED),
             ExpectedAlias(_, loc) => self.simple_message(loc, CHECKER_FAILED),
-            UnresolvedImplementation(loc) => self.simple_message(loc, CHECKER_FAILED),
+            UnresolvedImplementation(_, loc) => self.simple_message(loc, CHECKER_FAILED),
 
             NonUnifiable(_, _, loc) => self.simple_message(loc, UNIFIER_FAILED),
             NonRowSat(_, _, loc) => self.simple_message(loc, UNIFIER_FAILED),

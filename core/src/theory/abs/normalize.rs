@@ -226,6 +226,9 @@ impl<'a> Normalizer<'a> {
                     a => Box::new(Switch(Box::new(a), cs)),
                 }
             }
+            ImplementsOf(a, b) => {
+                todo!()
+            }
 
             Univ => Box::new(Univ),
             Unit => Box::new(Unit),
@@ -245,6 +248,7 @@ impl<'a> Normalizer<'a> {
             Vptr(r) => Box::new(Vptr(r)),
             InterfaceRef(r) => Box::new(InterfaceRef(r)),
             Find(i, f) => Box::new(Find(i, f)),
+            ImplementsSat => Box::new(ImplementsSat),
         })
     }
 

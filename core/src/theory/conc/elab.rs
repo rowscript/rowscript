@@ -584,6 +584,18 @@ impl Elaborator {
                     tm => return Err(ExpectedClass(Box::new(tm), o_loc)),
                 }
             }
+            ImplementsOf(_, a, b) => {
+                let a = self.check(a, &Box::new(Term::Univ))?;
+                let loc = b.loc();
+                let b = self.check(b, &Box::new(Term::Univ))?;
+                match *b {
+                    Term::InterfaceRef(r) => (
+                        Box::new(Term::ImplementsOf(a, Box::new(Term::InterfaceRef(r)))),
+                        Box::new(Term::Univ),
+                    ),
+                    b => return Err(ExpectedInterface(Box::new(b), loc)),
+                }
+            }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
             Unit(_) => (Box::new(Term::Unit), Box::new(Term::Univ)),
@@ -708,6 +720,7 @@ impl Elaborator {
         })
     }
 
+    // FIXME: Should be in the normalization phase?
     fn app_find_implements(
         &mut self,
         loc: Loc,
@@ -742,7 +755,8 @@ impl Elaborator {
                     }
                 }
 
-                Err(UnresolvedImplementation(loc))
+                let ty = self.sigma.get(&i_fn).unwrap().to_type();
+                Err(UnresolvedImplementation(ty, loc))
             }
             f => Ok((Box::new(f), f_ty)),
         }

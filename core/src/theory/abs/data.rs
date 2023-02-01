@@ -85,6 +85,8 @@ pub enum Term {
 
     InterfaceRef(Var),
     Find(Var, Var),
+    ImplementsOf(Box<Self>, Box<Self>),
+    ImplementsSat,
 }
 
 impl Term {
@@ -179,6 +181,8 @@ impl Display for Term {
                 Vptr(r) => r.to_string(),
                 InterfaceRef(r) => r.to_string(),
                 Find(i, f) => format!("{i}.{f}"),
+                ImplementsOf(a, b) => format!("{a} implementsOf {b}"),
+                ImplementsSat => "implementsSat".to_string(),
             }
             .as_str(),
         )

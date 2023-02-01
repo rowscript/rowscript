@@ -58,6 +58,7 @@ impl Renamer {
                 Switch(a, m)
             }
             InterfaceRef(x) => self.0.get(&x).map_or(InterfaceRef(x), |y| Ref(y.clone())),
+            ImplementsOf(a, b) => ImplementsOf(self.term(a), self.term(b)),
 
             Undef(x) => Undef(x),
             Univ => Univ,
@@ -77,6 +78,7 @@ impl Renamer {
             RowRefl => RowRefl,
             Vptr(r) => Vptr(r),
             Find(i, f) => Find(i, f),
+            ImplementsSat => ImplementsSat,
         })
     }
 
