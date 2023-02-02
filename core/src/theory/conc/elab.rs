@@ -157,7 +157,10 @@ impl Elaborator {
             let i_loc = i_fn_def.loc;
             let im_loc = self.sigma.get(im_fn).unwrap().loc;
 
-            let i_ty = i_fn_def.to_type();
+            let i_ty = match &i_fn_def.body {
+                Findable { tpl_ty, .. } => tpl_ty.clone(),
+                _ => unreachable!(),
+            };
             let (_, im_ty) = self.infer(Box::new(Resolved(im_loc, im_fn.clone())), None)?;
 
             let i_renamed = rename_with((alias.clone(), im.clone()), i_ty);

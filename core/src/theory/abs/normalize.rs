@@ -227,24 +227,24 @@ impl<'a> Normalizer<'a> {
                     a => Box::new(Switch(Box::new(a), cs)),
                 }
             }
+            Find(i, f) => {
+                todo!()
+            }
             ImplementsOf(a, b) => {
+                let a = self.term(a)?;
                 let i = match *b {
                     InterfaceRef(i) => i,
                     _ => unreachable!(),
                 };
                 let ims = match &self.sigma.get(&i).unwrap().body {
-                    Interface { ims, .. } => {
-                        ims.iter()
-                            .rev()
-                            .map(|im| {
-                                match &self.sigma.get(im).unwrap().body {
-                                    Implements { i: (_, im), .. } => im.clone(),
-                                    // FIXME: Why this is Undefined here? Damn.
-                                    _ => unreachable!(),
-                                }
-                            })
-                            .collect::<Vec<_>>()
-                    }
+                    Interface { ims, .. } => ims
+                        .iter()
+                        .rev()
+                        .map(|im| match &self.sigma.get(im).unwrap().body {
+                            Implements { i: (_, im), .. } => im.clone(),
+                            _ => unreachable!(),
+                        })
+                        .collect::<Vec<_>>(),
                     _ => unreachable!(),
                 };
                 for im in ims {
@@ -274,7 +274,6 @@ impl<'a> Normalizer<'a> {
             RowRefl => Box::new(RowRefl),
             Vptr(r) => Box::new(Vptr(r)),
             InterfaceRef(r) => Box::new(InterfaceRef(r)),
-            Find(i, f) => Box::new(Find(i, f)),
             ImplementsSat => Box::new(ImplementsSat),
         })
     }
@@ -314,6 +313,7 @@ impl<'a> Normalizer<'a> {
         match tm {
             RowEq(_, _) => Some(RowRefl),
             RowOrd(_, _, _) => Some(RowSat),
+            ImplementsOf(_, _) => Some(ImplementsSat),
             _ => None,
         }
     }
