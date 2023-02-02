@@ -1,9 +1,9 @@
 function numAdd(a: number, b: number): number;
 function numMul(a: number, b: number): number;
 
-interface NatLike {
-    add(a: NatLike, b: NatLike): NatLike;
-    mul(a: NatLike, b: NatLike): NatLike;
+interface NatLike for N {
+    add(a: N, b: N): N;
+    mul(a: N, b: N): N;
 }
 
 type Foo = {n: number};
@@ -22,9 +22,9 @@ function f0(): number {
     return add({n: 42}, {n: 69}).n
 }
 
-function f1<T>(a: T): T
-where
-    T: NatLike
-{
-    return add(a, a)
-}
+//function f1<T>(a: T): T
+//where
+//    T: NatLike
+//{
+//    return add(a, a)
+//}

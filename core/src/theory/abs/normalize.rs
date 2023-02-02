@@ -5,6 +5,7 @@ use crate::theory::abs::rename::{rename, Renamer};
 use crate::theory::abs::unify::Unifier;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
+use crate::Error::UnresolvedImplementation;
 
 pub struct Normalizer<'a> {
     sigma: &'a mut Sigma,
@@ -227,7 +228,33 @@ impl<'a> Normalizer<'a> {
                 }
             }
             ImplementsOf(a, b) => {
-                todo!()
+                let i = match *b {
+                    InterfaceRef(i) => i,
+                    _ => unreachable!(),
+                };
+                let ims = match &self.sigma.get(&i).unwrap().body {
+                    Interface { ims, .. } => {
+                        ims.iter()
+                            .rev()
+                            .map(|im| {
+                                match &self.sigma.get(im).unwrap().body {
+                                    Implements { i: (_, im), .. } => im.clone(),
+                                    // FIXME: Why this is Undefined here? Damn.
+                                    _ => unreachable!(),
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                    }
+                    _ => unreachable!(),
+                };
+                for im in ims {
+                    let b = self.sigma.get(&im).unwrap().to_term(im);
+                    match Unifier::new(&mut self.sigma, self.loc).unify(&a, &b) {
+                        Ok(_) => return Ok(Box::new(ImplementsOf(a, Box::new(InterfaceRef(i))))),
+                        Err(_) => continue,
+                    }
+                }
+                return Err(UnresolvedImplementation(a, self.loc));
             }
 
             Univ => Box::new(Univ),

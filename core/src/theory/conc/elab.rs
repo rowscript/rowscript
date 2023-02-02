@@ -15,8 +15,7 @@ use crate::theory::{Loc, Param, Tele, Var, VarGen, VPTR};
 use crate::Error;
 use crate::Error::{
     ExpectedAlias, ExpectedClass, ExpectedEnum, ExpectedInterface, ExpectedObject, ExpectedPi,
-    ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplementation,
-    UnresolvedImplicitParam,
+    ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplicitParam,
 };
 
 #[derive(Debug)]
@@ -93,12 +92,15 @@ impl Elaborator {
                 vtbl,
                 vtbl_lookup,
             },
-            Interface { fns, ims } => Interface { fns, ims },
+            Interface { alias, fns, ims } => Interface { alias, fns, ims },
             Implements { i, fns } => {
                 self.push_implements(&d.name, &i, &fns)?;
                 Implements { i, fns }
             }
-            Findable(i) => Findable(i),
+            Findable { i, tpl_ty } => Findable {
+                i,
+                tpl_ty: self.check(tpl_ty, &Box::new(Term::Univ))?,
+            },
             _ => unreachable!(),
         };
 
@@ -122,41 +124,48 @@ impl Elaborator {
         let (i, im) = i;
 
         let im_def = self.sigma.get(im).unwrap();
+        let im_def_loc = im_def.loc;
+        let im_tm = im_def.to_term(im.clone());
         match im_def.body {
             Alias(_) => {}
-            _ => return Err(ExpectedAlias(Box::new(Term::Ref(im.clone())), im_def.loc)),
+            _ => return Err(ExpectedAlias(Box::new(Term::Ref(im.clone())), im_def_loc)),
         }
 
-        let im_tm = im_def.to_term(im.clone());
-        for (i_fn, im_fn) in fns {
-            let i_def = self.sigma.get(i_fn).unwrap();
+        let i_def = self.sigma.get_mut(i).unwrap();
+        let i_def_loc = i_def.loc;
+        let alias = match &mut i_def.body {
+            Interface {
+                alias,
+                fns: i_fns,
+                ims,
+            } => {
+                ims.push(d.clone());
+                for f in i_fns {
+                    if fns.contains_key(&f) {
+                        continue;
+                    }
+                    return Err(NonExhaustive(Box::new(Term::Ref(im.clone())), i_def_loc));
+                }
+                alias.clone()
+            }
+            _ => return Err(ExpectedInterface(Box::new(Term::Ref(i.clone())), i_def_loc)),
+        };
 
-            let i_loc = i_def.loc;
+        for (i_fn, im_fn) in fns {
+            let i_fn_def = self.sigma.get(i_fn).unwrap();
+
+            let i_loc = i_fn_def.loc;
             let im_loc = self.sigma.get(im_fn).unwrap().loc;
 
-            let i_ty = i_def.to_type();
+            let i_ty = i_fn_def.to_type();
             let (_, im_ty) = self.infer(Box::new(Resolved(im_loc, im_fn.clone())), None)?;
 
-            let i_renamed = rename_with((i.clone(), im.clone()), i_ty);
+            let i_renamed = rename_with((alias.clone(), im.clone()), i_ty);
             let i_nf = Normalizer::new(&mut self.sigma, i_loc).with(&[(im, &im_tm)], i_renamed)?;
             let im_fn_nf = Normalizer::new(&mut self.sigma, im_loc).term(im_ty)?;
 
             Unifier::new(&mut self.sigma, im_loc).unify(&i_nf, &im_fn_nf)?;
         }
-
-        let i_def = self.sigma.get_mut(i).unwrap();
-        match &mut i_def.body {
-            Interface { fns: is, ims } => {
-                for f in is {
-                    if fns.contains_key(f) {
-                        continue;
-                    }
-                    return Err(NonExhaustive(Box::new(Term::Ref(im.clone())), i_def.loc));
-                }
-                ims.push(d.clone());
-            }
-            _ => return Err(ExpectedInterface(Box::new(Term::Ref(i.clone())), i_def.loc)),
-        };
 
         Ok(())
     }
@@ -295,8 +304,6 @@ impl Elaborator {
                 if let Some(f_e) = Self::app_insert_holes(f_e, i.clone(), &*f_ty)? {
                     return self.infer(Box::new(App(loc, f_e, i, x)), hint);
                 }
-
-                let (f, f_ty) = self.app_find_implements(loc, f, f_ty, &x)?;
 
                 match *f_ty {
                     Term::Pi(p, b) => {
@@ -718,48 +725,6 @@ impl Elaborator {
             },
             _ => None,
         })
-    }
-
-    // FIXME: Should be in the normalization phase?
-    fn app_find_implements(
-        &mut self,
-        loc: Loc,
-        f: Box<Term>,
-        f_ty: Box<Term>,
-        x: &Box<Expr>,
-    ) -> Result<(Box<Term>, Box<Term>), Error> {
-        use Body::*;
-        match *f {
-            Term::Find(i, i_fn) => {
-                let ims = match &self.sigma.get(&i).unwrap().body {
-                    Interface { ims, .. } => ims,
-                    _ => unreachable!(),
-                }
-                .clone();
-
-                for im in ims.into_iter().rev() {
-                    let im_fn = match &self.sigma.get(&im).unwrap().body {
-                        Implements { fns, .. } => fns,
-                        _ => unreachable!(),
-                    }
-                    .get(&i_fn)
-                    .unwrap()
-                    .clone();
-                    let im_fn_def = self.sigma.get(&im_fn).unwrap();
-                    let answer_tm = im_fn_def.to_term(im_fn);
-                    let answer_ty = im_fn_def.to_type();
-                    let p = im_fn_def.tele[0].clone();
-                    match self.guarded_check(&[&p], x.clone(), &p.typ) {
-                        Ok(_) => return Ok((answer_tm, answer_ty)),
-                        Err(_) => continue,
-                    }
-                }
-
-                let ty = self.sigma.get(&i_fn).unwrap().to_type();
-                Err(UnresolvedImplementation(ty, loc))
-            }
-            f => Ok((Box::new(f), f_ty)),
-        }
     }
 }
 

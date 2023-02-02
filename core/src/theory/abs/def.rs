@@ -59,7 +59,7 @@ impl Def<Term> {
             Undefined => Box::new(Term::Undef(v)),
             Class { object, .. } => rename(Term::lam(&self.tele, object.clone())),
             Interface { .. } => Box::new(Term::InterfaceRef(v)),
-            Findable(i) => Box::new(Term::Find(i.clone(), v)),
+            Findable { i, .. } => Box::new(Term::Find(i.clone(), v)),
             _ => unreachable!(),
         }
     }
@@ -122,8 +122,8 @@ impl<T: Syntax> Display for Def<T> {
                             .join(";\n\t")
                     )
                 }
-                Interface { fns, ims } => format!(
-                    "interface {} {{\n{}\n{}}}",
+                Interface { alias, fns, ims } => format!(
+                    "interface {} for {alias} {{\n{}\n{}}}",
                     self.name,
                     fns.iter()
                         .map(|f| format!("\t{f};\n"))
@@ -159,12 +159,7 @@ impl<T: Syntax> Display for Def<T> {
                         format!("meta {} {}: {};", self.name, tele, self.ret,)
                     }
                 }
-                Findable(i) => format!(
-                    "findable {i}.{} {}: {}",
-                    self.name,
-                    Param::tele_to_string(&self.tele),
-                    self.ret,
-                ),
+                Findable { i, tpl_ty } => format!("findable {i}.{}: {tpl_ty}", self.name),
             }
             .as_str(),
         )
@@ -186,6 +181,7 @@ pub enum Body<T: Syntax> {
         vtbl_lookup: Var,
     },
     Interface {
+        alias: Var,
         fns: Vec<Var>,
         ims: Vec<Var>,
     },
@@ -196,5 +192,8 @@ pub enum Body<T: Syntax> {
 
     Undefined,
     Meta(Option<T>),
-    Findable(Var),
+    Findable {
+        i: Var,
+        tpl_ty: Box<T>,
+    },
 }
