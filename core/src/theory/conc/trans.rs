@@ -379,6 +379,7 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
                 d.tele = tele;
                 d.body = Findable {
                     i: name.clone(),
+                    alias: alias.clone(),
                     tpl_ty,
                 };
 

@@ -84,8 +84,9 @@ impl Resolver {
                     fns: resolved,
                 }
             }
-            Findable { i, tpl_ty } => Findable {
+            Findable { i, alias, tpl_ty } => Findable {
                 i,
+                alias,
                 tpl_ty: self.expr(tpl_ty)?,
             },
             _ => unreachable!(),

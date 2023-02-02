@@ -227,8 +227,30 @@ impl<'a> Normalizer<'a> {
                     a => Box::new(Switch(Box::new(a), cs)),
                 }
             }
-            Find(i, f) => {
-                todo!()
+            Find(i, f, a) => {
+                let a = self.term(a)?;
+                let ims = match &self.sigma.get(&i).unwrap().body {
+                    Interface { ims, .. } => ims.clone(),
+                    _ => unreachable!(),
+                };
+                for im in ims.into_iter().rev() {
+                    let (im, fns) = match &self.sigma.get(&im).unwrap().body {
+                        Implements { i: (_, im), fns } => (im, fns),
+                        _ => unreachable!(),
+                    };
+                    let im_ty = self.sigma.get(im).unwrap().to_term(im.clone());
+                    let im_fn = fns.get(&f).unwrap().clone();
+                    if Unifier::new(&mut self.sigma, self.loc)
+                        .unify(&a, &im_ty)
+                        .is_err()
+                    {
+                        continue;
+                    }
+                    let tm = self.sigma.get(&im_fn).unwrap().to_term(im_fn);
+                    println!("{tm}"); // FIXME: well, stack overflow
+                    return self.term(tm);
+                }
+                return Err(UnresolvedImplementation(a, self.loc));
             }
             ImplementsOf(a, b) => {
                 let a = self.term(a)?;

@@ -97,8 +97,9 @@ impl Elaborator {
                 self.push_implements(&d.name, &i, &fns)?;
                 Implements { i, fns }
             }
-            Findable { i, tpl_ty } => Findable {
+            Findable { i, alias, tpl_ty } => Findable {
                 i,
+                alias,
                 tpl_ty: self.check(tpl_ty, &Box::new(Term::Univ))?,
             },
             _ => unreachable!(),

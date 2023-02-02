@@ -59,7 +59,10 @@ impl Def<Term> {
             Undefined => Box::new(Term::Undef(v)),
             Class { object, .. } => rename(Term::lam(&self.tele, object.clone())),
             Interface { .. } => Box::new(Term::InterfaceRef(v)),
-            Findable { i, .. } => rename(Term::lam(&self.tele, Box::new(Term::Find(i.clone(), v)))),
+            Findable { i, alias, .. } => rename(Term::lam(
+                &self.tele,
+                Box::new(Term::Find(i.clone(), v, Box::new(Term::Ref(alias.clone())))),
+            )),
             _ => unreachable!(),
         }
     }
@@ -159,7 +162,7 @@ impl<T: Syntax> Display for Def<T> {
                         format!("meta {} {}: {};", self.name, tele, self.ret)
                     }
                 }
-                Findable { i, tpl_ty } => format!("findable {i}.{}: {tpl_ty}", self.name),
+                Findable { i, tpl_ty, .. } => format!("findable {i}.{}: {tpl_ty}", self.name),
             }
             .as_str(),
         )
@@ -194,6 +197,7 @@ pub enum Body<T: Syntax> {
     Meta(Option<T>),
     Findable {
         i: Var,
+        alias: Var,
         tpl_ty: Box<T>,
     },
 }
