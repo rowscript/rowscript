@@ -5,7 +5,7 @@ use crate::theory::abs::data::{CaseMap, FieldMap, Term};
 use crate::theory::abs::def::{gamma_to_tele, Body};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
-use crate::theory::abs::rename::rename_with;
+use crate::theory::abs::rename::{rename, rename_with};
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
 use crate::theory::conc::data::Expr::Resolved;
@@ -444,8 +444,11 @@ impl Elaborator {
                     },
                 ];
                 (
-                    Term::lam(&tele, Box::new(Term::Access(Box::new(Term::Ref(o)), n))),
-                    Term::pi(&tele, Box::new(Term::Ref(t))),
+                    rename(Term::lam(
+                        &tele,
+                        Box::new(Term::Access(Box::new(Term::Ref(o)), n)),
+                    )),
+                    rename(Term::pi(&tele, Box::new(Term::Ref(t)))),
                 )
             }
             Downcast(loc, a) => {
@@ -459,8 +462,8 @@ impl Elaborator {
                             typ: Box::new(Term::RowOrd(to.clone(), Le, from.clone())),
                         }];
                         (
-                            Term::lam(&tele, Box::new(Term::Downcast(a, to.clone()))),
-                            Term::pi(&tele, Box::new(Term::Object(to.clone()))),
+                            rename(Term::lam(&tele, Box::new(Term::Downcast(a, to.clone())))),
+                            rename(Term::pi(&tele, Box::new(Term::Object(to.clone())))),
                         )
                     }
                     (Term::Object(_), _) => return Err(ExpectedObject(b_ty, loc)),
@@ -485,11 +488,11 @@ impl Elaborator {
                             typ: Box::new(Term::RowOrd(from.clone(), Le, to.clone())),
                         }];
                         (
-                            Term::lam(
+                            rename(Term::lam(
                                 &tele,
                                 Box::new(Term::Variant(Box::new(Term::Fields(tm_fields)))),
-                            ),
-                            Term::pi(&tele, Box::new(Term::Enum(to.clone()))),
+                            )),
+                            rename(Term::pi(&tele, Box::new(Term::Enum(to.clone())))),
                         )
                     }
                     _ => return Err(ExpectedEnum(b_ty, loc)),
@@ -506,8 +509,8 @@ impl Elaborator {
                             typ: Box::new(Term::RowOrd(from.clone(), Le, to.clone())),
                         }];
                         (
-                            Term::lam(&tele, Box::new(Term::Upcast(a, to.clone()))),
-                            Term::pi(&tele, Box::new(Term::Enum(to.clone()))),
+                            rename(Term::lam(&tele, Box::new(Term::Upcast(a, to.clone())))),
+                            rename(Term::pi(&tele, Box::new(Term::Enum(to.clone())))),
                         )
                     }
                     (Term::Enum(_), _) => return Err(ExpectedEnum(b_ty, loc)),

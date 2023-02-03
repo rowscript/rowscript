@@ -247,8 +247,7 @@ impl<'a> Normalizer<'a> {
                         continue;
                     }
                     let tm = self.sigma.get(&im_fn).unwrap().to_term(im_fn);
-                    println!("{tm}"); // FIXME: well, stack overflow
-                    return self.term(tm);
+                    return Ok(tm);
                 }
                 return Err(UnresolvedImplementation(a, self.loc));
             }

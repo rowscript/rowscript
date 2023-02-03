@@ -61,14 +61,17 @@ impl Def<Term> {
             Interface { .. } => Box::new(Term::InterfaceRef(v)),
             Findable { i, alias, .. } => rename(Term::lam(
                 &self.tele,
-                Box::new(Term::Find(i.clone(), v, Box::new(Term::Ref(alias.clone())))),
+                Box::new(Term::App(
+                    Box::new(Term::Find(i.clone(), v, Box::new(Term::Ref(alias.clone())))),
+                    Box::new(Term::Ref(self.tele[1].var.clone())),
+                )),
             )),
             _ => unreachable!(),
         }
     }
 
     pub fn to_type(&self) -> Box<Term> {
-        Term::pi(&self.tele, self.ret.clone())
+        rename(Term::pi(&self.tele, self.ret.clone()))
     }
 }
 
