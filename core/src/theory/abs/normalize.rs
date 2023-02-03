@@ -1,7 +1,7 @@
 use crate::theory::abs::data::Term::{App, Lam};
 use crate::theory::abs::data::{Dir, FieldMap, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
-use crate::theory::abs::rename::{rename, Renamer};
+use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
@@ -29,7 +29,7 @@ impl<'a> Normalizer<'a> {
         Ok(match *tm {
             Ref(x) => {
                 if let Some(y) = self.rho.get(&x) {
-                    self.term(Renamer::default().term(y.clone()))?
+                    self.term(rename(y.clone()))?
                 } else {
                     Box::new(Ref(x))
                 }
@@ -227,29 +227,33 @@ impl<'a> Normalizer<'a> {
                     a => Box::new(Switch(Box::new(a), cs)),
                 }
             }
-            Find(i, f, a) => {
-                let a = self.term(a)?;
-                let ims = match &self.sigma.get(&i).unwrap().body {
-                    Interface { ims, .. } => ims.clone(),
-                    _ => unreachable!(),
-                };
-                for im in ims.into_iter().rev() {
-                    let (im, fns) = match &self.sigma.get(&im).unwrap().body {
-                        Implements { i: (_, im), fns } => (im, fns),
-                        _ => unreachable!(),
-                    };
-                    let im_ty = self.sigma.get(im).unwrap().to_term(im.clone());
-                    let im_fn = fns.get(&f).unwrap().clone();
-                    if Unifier::new(&mut self.sigma, self.loc)
-                        .unify(&a, &im_ty)
-                        .is_err()
-                    {
-                        continue;
-                    }
-                    let tm = self.sigma.get(&im_fn).unwrap().to_term(im_fn);
-                    return Ok(tm);
-                }
-                return Err(UnresolvedImplementation(a, self.loc));
+            Find(i, a, f, x) => {
+                Box::new(Find(i, a, f, x))
+                // let x = self.term(x)?;
+                // println!("x ~> {x}");
+                // let a = self.term(a)?;
+                // let ims = match &self.sigma.get(&i).unwrap().body {
+                //     Interface { ims, .. } => ims.clone(),
+                //     _ => unreachable!(),
+                // };
+                // for im in ims.into_iter().rev() {
+                //     let (im, fns) = match &self.sigma.get(&im).unwrap().body {
+                //         Implements { i: (_, im), fns } => (im, fns),
+                //         _ => unreachable!(),
+                //     };
+                //     let im_ty = self.sigma.get(im).unwrap().to_term(im.clone());
+                //     let im_fn = fns.get(&f).unwrap().clone();
+                //     if Unifier::new(&mut self.sigma, self.loc)
+                //         .unify(&a, &im_ty)
+                //         .is_err()
+                //     {
+                //         continue;
+                //     }
+                //     let im_fn_tm = self.sigma.get(&im_fn).unwrap().to_term(im_fn);
+                //     let tm = self.apply(im_fn_tm, &[&x])?;
+                //     return Ok(tm);
+                // }
+                // return Err(UnresolvedImplementation(a, self.loc));
             }
             ImplementsOf(a, b) => {
                 let a = self.term(a)?;

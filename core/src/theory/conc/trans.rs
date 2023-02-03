@@ -360,9 +360,8 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
                 let mut d = fn_postulate(p);
                 let tpl_ty = d.to_type();
 
-                let alias_renamed = Var::new(alias.to_string());
                 let mut tele = vec![Param {
-                    var: alias_renamed.clone(),
+                    var: alias.clone(),
                     info: Implicit,
                     typ: Box::new(Univ(alias_loc)),
                 }];
@@ -372,7 +371,7 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
                     info: Implicit,
                     typ: Box::new(ImplementsOf(
                         alias_loc,
-                        Box::new(Unresolved(alias_loc, alias_renamed)),
+                        Box::new(Unresolved(alias_loc, alias.clone())),
                         Box::new(Unresolved(name_loc, name.clone())),
                     )),
                 });
@@ -397,7 +396,6 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
         tele,
         ret: Box::new(Univ(loc)),
         body: Interface {
-            alias,
             fns,
             ims: Default::default(),
         },

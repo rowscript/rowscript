@@ -92,7 +92,7 @@ impl Elaborator {
                 vtbl,
                 vtbl_lookup,
             },
-            Interface { alias, fns, ims } => Interface { alias, fns, ims },
+            Interface { fns, ims } => Interface { fns, ims },
             Implements { i, fns } => {
                 self.push_implements(&d.name, &i, &fns)?;
                 Implements { i, fns }
@@ -134,12 +134,8 @@ impl Elaborator {
 
         let i_def = self.sigma.get_mut(i).unwrap();
         let i_def_loc = i_def.loc;
-        let alias = match &mut i_def.body {
-            Interface {
-                alias,
-                fns: i_fns,
-                ims,
-            } => {
+        match &mut i_def.body {
+            Interface { fns: i_fns, ims } => {
                 ims.push(d.clone());
                 for f in i_fns {
                     if fns.contains_key(&f) {
@@ -147,7 +143,6 @@ impl Elaborator {
                     }
                     return Err(NonExhaustive(Box::new(Term::Ref(im.clone())), i_def_loc));
                 }
-                alias.clone()
             }
             _ => return Err(ExpectedInterface(Box::new(Term::Ref(i.clone())), i_def_loc)),
         };
@@ -158,8 +153,8 @@ impl Elaborator {
             let i_loc = i_fn_def.loc;
             let im_loc = self.sigma.get(im_fn).unwrap().loc;
 
-            let i_ty = match &i_fn_def.body {
-                Findable { tpl_ty, .. } => tpl_ty.clone(),
+            let (alias, i_ty) = match &i_fn_def.body {
+                Findable { alias, tpl_ty, .. } => (alias.clone(), tpl_ty.clone()),
                 _ => unreachable!(),
             };
             let (_, im_ty) = self.infer(Box::new(Resolved(im_loc, im_fn.clone())), None)?;

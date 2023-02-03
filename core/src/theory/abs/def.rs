@@ -61,8 +61,10 @@ impl Def<Term> {
             Interface { .. } => Box::new(Term::InterfaceRef(v)),
             Findable { i, alias, .. } => rename(Term::lam(
                 &self.tele,
-                Box::new(Term::App(
-                    Box::new(Term::Find(i.clone(), v, Box::new(Term::Ref(alias.clone())))),
+                Box::new(Term::Find(
+                    i.clone(),
+                    Box::new(Term::Ref(alias.clone())),
+                    v,
                     Box::new(Term::Ref(self.tele[1].var.clone())),
                 )),
             )),
@@ -128,8 +130,8 @@ impl<T: Syntax> Display for Def<T> {
                             .join(";\n\t")
                     )
                 }
-                Interface { alias, fns, ims } => format!(
-                    "interface {} for {alias} {{\n{}\n{}}}",
+                Interface { fns, ims } => format!(
+                    "interface {} {{\n{}\n{}}}",
                     self.name,
                     fns.iter()
                         .map(|f| format!("\t{f};\n"))
@@ -187,7 +189,6 @@ pub enum Body<T: Syntax> {
         vtbl_lookup: Var,
     },
     Interface {
-        alias: Var,
         fns: Vec<Var>,
         ims: Vec<Var>,
     },

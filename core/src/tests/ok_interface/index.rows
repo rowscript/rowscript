@@ -1,26 +1,38 @@
 function numAdd(a: number, b: number): number;
 function numMul(a: number, b: number): number;
 
-interface NatLike for N {
-    add(a: N, b: N): N;
-    mul(a: N, b: N): N;
+//interface NatLike for N {
+//    add(a: N, b: N): N;
+//    mul(a: N, b: N): N;
+//}
+
+interface Pure for T {
+    pure(): T;
 }
 
 type Foo = {n: number};
 
-implements NatLike for Foo {
-    add(a: Foo, b: Foo): Foo {
-        return {n: numAdd(a.n, b.n)}
-    }
+//implements NatLike for Foo {
+//    add(a: Foo, b: Foo): Foo {
+//        return {n: numAdd(a.n, b.n)}
+//    }
+//
+//    mul(a: Foo, b: Foo): Foo {
+//        return {n: numMul(a.n, b.n)}
+//    }
+//}
 
-    mul(a: Foo, b: Foo): Foo {
-        return {n: numMul(a.n, b.n)}
-    }
+implements Pure for Foo {
+    pure(): Foo { return {n: 0} }
 }
 
-function f0(): number {
-    return add({n: 42}, {n: 69}).n
+function f0(): Foo {
+    return pure<Foo>()
 }
+
+//function f0(): number {
+//    return add({n: 42}, {n: 69}).n
+//}
 
 //function f1<T>(a: T): T
 //where

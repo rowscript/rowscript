@@ -58,7 +58,7 @@ impl Renamer {
                 Switch(a, m)
             }
             InterfaceRef(x) => self.0.get(&x).map_or(InterfaceRef(x), |y| Ref(y.clone())),
-            Find(i, f, a) => Find(i, f, self.term(a)),
+            Find(i, a, f, x) => Find(i, self.term(a), f, self.term(x)),
             ImplementsOf(a, b) => ImplementsOf(self.term(a), self.term(b)),
 
             Undef(x) => Undef(x),
