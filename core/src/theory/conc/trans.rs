@@ -342,12 +342,7 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     let mut pairs = i.into_inner();
 
     let name_pair = pairs.next().unwrap();
-    let name_loc = Loc::from(name_pair.as_span());
     let name = Var::from(name_pair);
-
-    let alias_pair = pairs.next().unwrap();
-    let alias_loc = Loc::from(alias_pair.as_span());
-    let alias = Var::from(alias_pair);
 
     let mut tele = Tele::default();
     let mut fn_defs = Vec::default();
@@ -358,31 +353,7 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
             Rule::implicit_id => tele.push(implicit_param(p)),
             Rule::interface_fn => {
                 let mut d = fn_postulate(p);
-                let tpl_ty = d.to_type();
-
-                let mut tele = vec![Param {
-                    var: alias.clone(),
-                    info: Implicit,
-                    typ: Box::new(Univ(alias_loc)),
-                }];
-                tele.extend(d.tele);
-                tele.push(Param {
-                    var: Var::unbound(),
-                    info: Implicit,
-                    typ: Box::new(ImplementsOf(
-                        alias_loc,
-                        Box::new(Unresolved(alias_loc, alias.clone())),
-                        Box::new(Unresolved(name_loc, name.clone())),
-                    )),
-                });
-
-                d.tele = tele;
-                d.body = Findable {
-                    i: name.clone(),
-                    alias: alias.clone(),
-                    tpl_ty,
-                };
-
+                d.body = Findable(name.clone());
                 fns.push(d.name.clone());
                 fn_defs.push(d);
             }
@@ -522,12 +493,6 @@ fn pred(pred: Pair<Rule>) -> Param<Expr> {
                 let lhs = row_expr(p.next().unwrap());
                 let rhs = row_expr(p.next().unwrap());
                 Box::new(RowEq(loc, Box::new(lhs), Box::new(rhs)))
-            }
-            Rule::implements_of => {
-                let mut p = p.into_inner();
-                let lhs = unresolved(p.next().unwrap());
-                let rhs = type_expr(p.next().unwrap());
-                Box::new(ImplementsOf(loc, Box::new(lhs), Box::new(rhs)))
             }
             _ => unreachable!(),
         },

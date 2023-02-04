@@ -84,11 +84,7 @@ impl Resolver {
                     fns: resolved,
                 }
             }
-            Findable { i, alias, tpl_ty } => Findable {
-                i,
-                alias,
-                tpl_ty: self.expr(tpl_ty)?,
-            },
+            Findable(i) => Findable(i),
             _ => unreachable!(),
         };
 
@@ -217,7 +213,6 @@ impl Resolver {
                 Switch(loc, self.expr(a)?, new)
             }
             Lookup(loc, o, n, a) => Lookup(loc, self.expr(o)?, n, self.expr(a)?),
-            ImplementsOf(loc, a, b) => ImplementsOf(loc, self.expr(a)?, self.expr(b)?),
 
             Resolved(loc, r) => Resolved(loc, r),
             Hole(loc) => Hole(loc),

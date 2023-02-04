@@ -227,59 +227,29 @@ impl<'a> Normalizer<'a> {
                     a => Box::new(Switch(Box::new(a), cs)),
                 }
             }
-            Find(i, a, f, x) => {
-                Box::new(Find(i, a, f, x))
-                // let x = self.term(x)?;
-                // println!("x ~> {x}");
-                // let a = self.term(a)?;
-                // let ims = match &self.sigma.get(&i).unwrap().body {
-                //     Interface { ims, .. } => ims.clone(),
-                //     _ => unreachable!(),
-                // };
-                // for im in ims.into_iter().rev() {
-                //     let (im, fns) = match &self.sigma.get(&im).unwrap().body {
-                //         Implements { i: (_, im), fns } => (im, fns),
-                //         _ => unreachable!(),
-                //     };
-                //     let im_ty = self.sigma.get(im).unwrap().to_term(im.clone());
-                //     let im_fn = fns.get(&f).unwrap().clone();
-                //     if Unifier::new(&mut self.sigma, self.loc)
-                //         .unify(&a, &im_ty)
-                //         .is_err()
-                //     {
-                //         continue;
-                //     }
-                //     let im_fn_tm = self.sigma.get(&im_fn).unwrap().to_term(im_fn);
-                //     let tm = self.apply(im_fn_tm, &[&x])?;
-                //     return Ok(tm);
-                // }
-                // return Err(UnresolvedImplementation(a, self.loc));
-            }
-            ImplementsOf(a, b) => {
-                let a = self.term(a)?;
-                let i = match *b {
-                    InterfaceRef(i) => i,
-                    _ => unreachable!(),
-                };
+            Find(i, f, ty) => {
+                let ty = self.term(ty.unwrap())?;
                 let ims = match &self.sigma.get(&i).unwrap().body {
-                    Interface { ims, .. } => ims
-                        .iter()
-                        .rev()
-                        .map(|im| match &self.sigma.get(im).unwrap().body {
-                            Implements { i: (_, im), .. } => im.clone(),
-                            _ => unreachable!(),
-                        })
-                        .collect::<Vec<_>>(),
+                    Interface { ims, .. } => ims.clone(),
                     _ => unreachable!(),
                 };
-                for im in ims {
-                    let b = self.sigma.get(&im).unwrap().to_term(im);
-                    match Unifier::new(&mut self.sigma, self.loc).unify(&a, &b) {
-                        Ok(_) => return Ok(Box::new(ImplementsOf(a, Box::new(InterfaceRef(i))))),
-                        Err(_) => continue,
+                for im in ims.into_iter().rev() {
+                    let im_fn = match &self.sigma.get(&im).unwrap().body {
+                        Implements { fns, .. } => fns.get(&f).unwrap().clone(),
+                        _ => unreachable!(),
+                    };
+                    let im_fn_def = self.sigma.get(&im_fn).unwrap();
+                    let im_fn_ty = im_fn_def.to_type();
+                    let im_fn_tm = im_fn_def.to_term(im_fn);
+                    if Unifier::new(&mut self.sigma, self.loc)
+                        .unify(&ty, &im_fn_ty)
+                        .is_err()
+                    {
+                        continue;
                     }
+                    return Ok(im_fn_tm);
                 }
-                return Err(UnresolvedImplementation(a, self.loc));
+                return Err(UnresolvedImplementation(ty, self.loc));
             }
 
             Univ => Box::new(Univ),
@@ -299,7 +269,6 @@ impl<'a> Normalizer<'a> {
             RowRefl => Box::new(RowRefl),
             Vptr(r) => Box::new(Vptr(r)),
             InterfaceRef(r) => Box::new(InterfaceRef(r)),
-            ImplementsSat => Box::new(ImplementsSat),
         })
     }
 
@@ -338,7 +307,6 @@ impl<'a> Normalizer<'a> {
         match tm {
             RowEq(_, _) => Some(RowRefl),
             RowOrd(_, _, _) => Some(RowSat),
-            ImplementsOf(_, _) => Some(ImplementsSat),
             _ => None,
         }
     }

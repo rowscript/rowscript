@@ -97,11 +97,7 @@ impl Elaborator {
                 self.push_implements(&d.name, &i, &fns)?;
                 Implements { i, fns }
             }
-            Findable { i, alias, tpl_ty } => Findable {
-                i,
-                alias,
-                tpl_ty: self.check(tpl_ty, &Box::new(Term::Univ))?,
-            },
+            Findable(i) => Findable(i),
             _ => unreachable!(),
         };
 
@@ -153,13 +149,10 @@ impl Elaborator {
             let i_loc = i_fn_def.loc;
             let im_loc = self.sigma.get(im_fn).unwrap().loc;
 
-            let (alias, i_ty) = match &i_fn_def.body {
-                Findable { alias, tpl_ty, .. } => (alias.clone(), tpl_ty.clone()),
-                _ => unreachable!(),
-            };
+            let i_ty = i_fn_def.to_type();
             let (_, im_ty) = self.infer(Box::new(Resolved(im_loc, im_fn.clone())), None)?;
 
-            let i_renamed = rename_with((alias.clone(), im.clone()), i_ty);
+            let i_renamed = rename_with((i.clone(), im.clone()), i_ty);
             let i_nf = Normalizer::new(&mut self.sigma, i_loc).with(&[(im, &im_tm)], i_renamed)?;
             let im_fn_nf = Normalizer::new(&mut self.sigma, im_loc).term(im_ty)?;
 
@@ -302,6 +295,26 @@ impl Elaborator {
 
                 if let Some(f_e) = Self::app_insert_holes(f_e, i.clone(), &*f_ty)? {
                     return self.infer(Box::new(App(loc, f_e, i, x)), hint);
+                }
+
+                if let Term::Find(i, f, _) = &*f {
+                    let (fx_ty, _) = self.insert_meta(loc, false);
+                    let (x, x_ty) = self.infer(x, hint)?;
+                    let expected = rename(Term::pi(
+                        &vec![Param {
+                            var: Var::unbound(),
+                            info: Explicit,
+                            typ: x_ty,
+                        }],
+                        fx_ty.clone(),
+                    ));
+                    return Ok((
+                        Box::new(Term::App(
+                            Box::new(Term::Find(i.clone(), f.clone(), Some(expected))),
+                            x,
+                        )),
+                        fx_ty,
+                    ));
                 }
 
                 match *f_ty {
@@ -576,10 +589,7 @@ impl Elaborator {
                                     ));
                                     self.infer(desugared, hint)?
                                 }
-                                e => {
-                                    dbg!(&e);
-                                    unreachable!()
-                                }
+                                _ => unreachable!(),
                             },
                             None => {
                                 return Err(ExpectedClass(
@@ -591,18 +601,6 @@ impl Elaborator {
                         tm => return Err(FieldsUnknown(Box::new(tm), o_loc)),
                     },
                     tm => return Err(ExpectedClass(Box::new(tm), o_loc)),
-                }
-            }
-            ImplementsOf(_, a, b) => {
-                let a = self.check(a, &Box::new(Term::Univ))?;
-                let loc = b.loc();
-                let b = self.check(b, &Box::new(Term::Univ))?;
-                match *b {
-                    Term::InterfaceRef(r) => (
-                        Box::new(Term::ImplementsOf(a, Box::new(Term::InterfaceRef(r)))),
-                        Box::new(Term::Univ),
-                    ),
-                    b => return Err(ExpectedInterface(Box::new(b), loc)),
                 }
             }
 
