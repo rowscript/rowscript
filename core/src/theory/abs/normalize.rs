@@ -5,7 +5,6 @@ use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
-use crate::Error::UnresolvedImplementation;
 
 pub struct Normalizer<'a> {
     sigma: &'a mut Sigma,
@@ -227,30 +226,6 @@ impl<'a> Normalizer<'a> {
                     a => Box::new(Switch(Box::new(a), cs)),
                 }
             }
-            Find(i, f, ty) => {
-                let ty = self.term(ty.unwrap())?;
-                let ims = match &self.sigma.get(&i).unwrap().body {
-                    Interface { ims, .. } => ims.clone(),
-                    _ => unreachable!(),
-                };
-                for im in ims.into_iter().rev() {
-                    let im_fn = match &self.sigma.get(&im).unwrap().body {
-                        Implements { fns, .. } => fns.get(&f).unwrap().clone(),
-                        _ => unreachable!(),
-                    };
-                    let im_fn_def = self.sigma.get(&im_fn).unwrap();
-                    let im_fn_ty = im_fn_def.to_type();
-                    let im_fn_tm = im_fn_def.to_term(im_fn);
-                    if Unifier::new(&mut self.sigma, self.loc)
-                        .unify(&ty, &im_fn_ty)
-                        .is_err()
-                    {
-                        continue;
-                    }
-                    return Ok(im_fn_tm);
-                }
-                return Err(UnresolvedImplementation(ty, self.loc));
-            }
 
             Univ => Box::new(Univ),
             Unit => Box::new(Unit),
@@ -281,9 +256,9 @@ impl<'a> Normalizer<'a> {
         self.term(tm)
     }
 
-    pub fn apply(&mut self, f: Box<Term>, args: &[&Box<Term>]) -> Result<Box<Term>, Error> {
+    pub fn apply(&mut self, f: Box<Term>, args: &[Box<Term>]) -> Result<Box<Term>, Error> {
         let mut ret = f.clone();
-        for &x in args {
+        for x in args {
             match *ret {
                 Lam(p, b) => {
                     ret = self.with(&[(&p.var, x)], b)?;

@@ -50,7 +50,7 @@ impl<'a> Unifier<'a> {
             }
             (Lam(p, a), Lam(_, _)) => {
                 let b = Normalizer::new(self.sigma, self.loc)
-                    .apply(Box::new(rhs.clone()), &[&Box::new(Ref(p.var.clone()))])?;
+                    .apply(Box::new(rhs.clone()), &[Box::new(Ref(p.var.clone()))])?;
                 self.unify(a, &b)
             }
             (App(f, x), App(g, y)) => {

@@ -84,7 +84,6 @@ pub enum Term {
     Vptr(Var),
 
     InterfaceRef(Var),
-    Find(Var, Var, Option<Box<Self>>),
 }
 
 impl Term {
@@ -178,7 +177,6 @@ impl Display for Term {
                 }
                 Vptr(r) => r.to_string(),
                 InterfaceRef(r) => r.to_string(),
-                Find(i, f, _) => format!("{i}.{f}"),
             }
             .as_str(),
         )

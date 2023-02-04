@@ -8,22 +8,26 @@ use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::{rename, rename_with};
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
-use crate::theory::conc::data::Expr::Resolved;
+use crate::theory::conc::data::Expr::{Find, Resolved};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Loc, Param, Tele, Var, VarGen, VPTR};
+use crate::theory::{Answers, Loc, Param, Tele, Var, VarGen, VPTR};
 use crate::Error;
 use crate::Error::{
     ExpectedAlias, ExpectedClass, ExpectedEnum, ExpectedInterface, ExpectedObject, ExpectedPi,
-    ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplicitParam,
+    ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplementation,
+    UnresolvedImplicitParam,
 };
 
 #[derive(Debug)]
 pub struct Elaborator {
     sigma: Sigma,
     gamma: Gamma,
+
     ug: VarGen,
     ig: VarGen,
+
+    answers: Answers,
 }
 
 impl Elaborator {
@@ -32,7 +36,7 @@ impl Elaborator {
             self.def(d)?;
         }
         for (_, d) in &self.sigma {
-            println!("{}", d);
+            println!("{d}");
         }
         Ok(())
     }
@@ -165,6 +169,15 @@ impl Elaborator {
     fn check(&mut self, e: Box<Expr>, ty: &Box<Term>) -> Result<Box<Term>, Error> {
         use Expr::*;
 
+        match &*e {
+            App(loc, f, i, x) => {
+                if let Some(e) = self.to_findable(*loc, f.clone(), i.clone(), x.clone()) {
+                    return self.check(e, ty);
+                }
+            }
+            _ => {}
+        }
+
         Ok(match *e {
             Let(_, var, maybe_typ, a, b) => {
                 let (tm, typ) = if let Some(t) = maybe_typ {
@@ -244,6 +257,40 @@ impl Elaborator {
                 self.check(t, ty)?,
                 self.check(e, ty)?,
             )),
+            Find(loc, i, f, ai, x) => {
+                use Body::*;
+
+                if let Some(tm) = self.answers.get(loc, f.clone()) {
+                    return Ok(tm);
+                }
+
+                let ims = match &self.sigma.get(&i).unwrap().body {
+                    Interface { ims, .. } => ims.clone(),
+                    _ => unreachable!(),
+                };
+                for im in ims.into_iter().rev() {
+                    let im_fn = match &self.sigma.get(&im).unwrap().body {
+                        Implements { fns, .. } => fns.get(&f).unwrap().clone(),
+                        _ => unreachable!(),
+                    };
+                    match self.check(
+                        Box::new(App(
+                            loc,
+                            Box::new(Resolved(loc, im_fn.clone())),
+                            ai.clone(),
+                            x.clone(),
+                        )),
+                        ty,
+                    ) {
+                        Ok(tm) => {
+                            self.answers.insert(loc, f, tm.clone());
+                            return Ok(tm);
+                        }
+                        Err(_) => continue,
+                    }
+                }
+                return Err(UnresolvedImplementation(Box::new(Term::Ref(f)), loc));
+            }
             _ => {
                 let loc = e.loc();
                 let f_e = e.clone();
@@ -297,26 +344,6 @@ impl Elaborator {
                     return self.infer(Box::new(App(loc, f_e, i, x)), hint);
                 }
 
-                if let Term::Find(i, f, _) = &*f {
-                    let (fx_ty, _) = self.insert_meta(loc, false);
-                    let (x, x_ty) = self.infer(x, hint)?;
-                    let expected = rename(Term::pi(
-                        &vec![Param {
-                            var: Var::unbound(),
-                            info: Explicit,
-                            typ: x_ty,
-                        }],
-                        fx_ty.clone(),
-                    ));
-                    return Ok((
-                        Box::new(Term::App(
-                            Box::new(Term::Find(i.clone(), f.clone(), Some(expected))),
-                            x,
-                        )),
-                        fx_ty,
-                    ));
-                }
-
                 match *f_ty {
                     Term::Pi(p, b) => {
                         let x = self.guarded_check(
@@ -328,9 +355,9 @@ impl Elaborator {
                             x,
                             &p.typ,
                         )?;
-                        let applied = Normalizer::new(&mut self.sigma, loc).apply(f, &[&x])?;
                         let applied_ty =
                             Normalizer::new(&mut self.sigma, loc).with(&[(&p.var, &x)], b)?;
+                        let applied = Normalizer::new(&mut self.sigma, loc).apply(f, &[x])?;
                         (applied, applied_ty)
                     }
                     _ => return Err(ExpectedPi(f, loc)),
@@ -565,7 +592,6 @@ impl Elaborator {
                         Term::Fields(f) => match f.get(VPTR) {
                             Some(vp) => match vp {
                                 Term::Vptr(v) => {
-                                    // let lookup = self.vtbl_lookups.get(v);
                                     let desugared = Box::new(App(
                                         loc,
                                         Box::new(App(
@@ -726,6 +752,21 @@ impl Elaborator {
             _ => None,
         })
     }
+
+    fn to_findable(&self, loc: Loc, f: Box<Expr>, ai: ArgInfo, x: Box<Expr>) -> Option<Box<Expr>> {
+        use Body::*;
+        match *f {
+            Resolved(_, r) => self
+                .sigma
+                .get(&r)
+                .map(|d| match &d.body {
+                    Findable(i) => Some(Box::new(Find(loc, i.clone(), r, ai, x))),
+                    _ => None,
+                })
+                .flatten(),
+            _ => None,
+        }
+    }
 }
 
 impl Default for Elaborator {
@@ -735,6 +776,7 @@ impl Default for Elaborator {
             gamma: Default::default(),
             ug: VarGen::user_meta(),
             ig: VarGen::inserted_meta(),
+            answers: Default::default(),
         }
     }
 }

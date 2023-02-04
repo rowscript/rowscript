@@ -59,7 +59,6 @@ impl Def<Term> {
             Undefined => Box::new(Term::Undef(v)),
             Class { object, .. } => rename(Term::lam(&self.tele, object.clone())),
             Interface { .. } => Box::new(Term::InterfaceRef(v)),
-            Findable(i) => Box::new(Term::Find(i.clone(), v, None)),
             _ => unreachable!(),
         }
     }
@@ -150,19 +149,16 @@ impl<T: Syntax> Display for Def<T> {
                 ),
                 Meta(s) => {
                     let tele = Param::tele_to_string(&self.tele);
-                    if let Some(solved) = s {
-                        format!(
-                            "meta {} {}: {} {{\n\t{}\n}}",
-                            self.name, tele, self.ret, solved
-                        )
-                    } else {
-                        format!("meta {} {}: {};", self.name, tele, self.ret)
+                    match s {
+                        Some(a) => format!("meta {} {tele}: {} {{\n\t{a}\n}}", self.name, self.ret),
+                        None => format!("meta {} {tele}: {};", self.name, self.ret),
                     }
                 }
                 Findable(i) => format!(
-                    "findable {i}.{} {}",
+                    "findable {i}.{} {}: {}",
                     self.name,
-                    Param::tele_to_string(&self.tele)
+                    Param::tele_to_string(&self.tele),
+                    self.ret
                 ),
             }
             .as_str(),

@@ -1,13 +1,23 @@
 use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::data::Dir;
-use crate::theory::{Loc, Param, Syntax, Tele, Var};
+use crate::theory::{Loc, Param, ParamInfo, Syntax, Tele, Var};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ArgInfo {
     UnnamedExplicit,
     UnnamedImplicit,
     NamedImplicit(String),
+}
+
+impl Into<ParamInfo> for ArgInfo {
+    fn into(self) -> ParamInfo {
+        use ArgInfo::*;
+        match self {
+            UnnamedExplicit => ParamInfo::Explicit,
+            _ => ParamInfo::Implicit,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -69,6 +79,8 @@ pub enum Expr {
 
     Lookup(Loc, Box<Self>, String, Box<Self>),
     Vptr(Loc, Var),
+
+    Find(Loc, Var, Var, ArgInfo, Box<Self>),
 }
 
 impl Expr {
@@ -132,6 +144,7 @@ impl Expr {
             Switch(loc, _, _) => loc,
             Lookup(loc, _, _, _) => loc,
             Vptr(loc, _) => loc,
+            Find(loc, _, _, _, _) => loc,
         }
         .clone()
     }
@@ -255,6 +268,7 @@ impl Display for Expr {
                 ),
                 Lookup(_, o, n, a) => format!("{o}.{n}{a}"),
                 Vptr(_, r) => r.to_string(),
+                Find(_, i, f, _, x) => format!("({i}.{f} {x})"),
             }
             .as_str(),
         )

@@ -213,6 +213,7 @@ impl Resolver {
                 Switch(loc, self.expr(a)?, new)
             }
             Lookup(loc, o, n, a) => Lookup(loc, self.expr(o)?, n, self.expr(a)?),
+            Find(loc, i, f, ai, x) => Find(loc, i, f, ai, self.expr(x)?),
 
             Resolved(loc, r) => Resolved(loc, r),
             Hole(loc) => Hole(loc),
