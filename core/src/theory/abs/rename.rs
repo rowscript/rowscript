@@ -57,7 +57,6 @@ impl Renamer {
                 }
                 Switch(a, m)
             }
-            InterfaceRef(x) => self.0.get(&x).map_or(InterfaceRef(x), |y| Ref(y.clone())),
 
             Undef(x) => Undef(x),
             Univ => Univ,

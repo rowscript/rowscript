@@ -56,7 +56,7 @@ pub enum Error {
     ExpectedInterface(Box<Term>, Loc),
     #[error("expected type alias, got \"{0}\"")]
     ExpectedAlias(Box<Term>, Loc),
-    #[error("unresolved implementation, got type \"{0}\"")]
+    #[error("unresolved implementation, got \"{0}\"")]
     UnresolvedImplementation(Box<Term>, Loc),
 
     #[error("expected \"{0}\", found \"{1}\"")]
