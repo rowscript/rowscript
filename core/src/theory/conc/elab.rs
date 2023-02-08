@@ -289,7 +289,9 @@ impl Elaborator {
                         Err(_) => continue,
                     }
                 }
-                return Err(UnresolvedImplementation(Box::new(Term::Ref(f)), loc));
+                // return Err(UnresolvedImplementation(Box::new(Term::Ref(f)), loc));
+                let (x_tm, _) = self.infer(x, Some(ty))?;
+                Box::new(Term::App(Box::new(Term::Ref(f)), x_tm))
             }
             _ => {
                 let loc = e.loc();

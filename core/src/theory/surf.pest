@@ -64,13 +64,15 @@ decimal_digits = @{ ASCII_DIGIT ~ ("_"? ~ ASCII_DIGIT)* }
 exponent_part = @{ ("e" | "E")? ~ ("-" | "+")? ~ decimal_digits }
 decimal_integer = @{ "0" | "0"? ~ ASCII_NONZERO_DIGIT ~ ("_"? ~ decimal_digits)? }
 
-implicit_ids = _{ implicit_id ~ ("," ~ implicit_id)* }
-row_ids = _{ row_id ~ ("," ~ row_id)* }
 implicits =
  _{ "<" ~ row_ids ~ ">"
-  | "<" ~ implicit_ids ~ ">"
-  | "<" ~ row_ids ~ "," ~ implicit_ids ~ ">"
+  | "<" ~ implicit_params ~ ">"
+  | "<" ~ row_ids ~ "," ~ implicit_params ~ ">"
   }
+row_ids = _{ row_id ~ ("," ~ row_id)* }
+implicit_params = _{ implicit_param ~ ("," ~ implicit_param)* }
+implicit_param = _{ interface_param | implicit_id }
+interface_param = { implicit_id ~ ":" ~ interface_id }
 
 param = { param_id ~ ":" ~ type_expr }
 params = _{ "()" | "(" ~ param ~ ("," ~ param)* ~ ")" }
@@ -220,7 +222,7 @@ fn_body_ret = { "return" ~ expr? }
 fn_postulate =
   { "function"
   ~ fn_id
-  ~ ("<" ~ implicit_ids ~ ">")?
+  ~ ("<" ~ implicit_params ~ ">")?
   ~ params
   ~ (":" ~ type_expr)?
   ~ ";"
@@ -240,7 +242,7 @@ type_alias =
 class_def =
   { "class"
   ~ class_id
-  ~ ("<" ~ implicit_ids ~ ">")?
+  ~ ("<" ~ implicit_params ~ ">")?
   ~ "{"
   ~ class_body
   ~ "}"
