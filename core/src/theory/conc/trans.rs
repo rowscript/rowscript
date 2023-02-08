@@ -343,7 +343,15 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     let mut pairs = i.into_inner();
 
     let name_pair = pairs.next().unwrap();
+    let name_loc = Loc::from(name_pair.as_span());
     let name = Var::from(name_pair);
+    let i_ref = Box::new(InterfaceRef(
+        name_loc,
+        Box::new(Unresolved(name_loc, name.clone())),
+    ));
+
+    let alias_pair = pairs.next().unwrap();
+    let alias = Var::from(alias_pair);
 
     let mut tele = Tele::default();
     let mut fn_defs = Vec::default();
@@ -354,6 +362,14 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
             Rule::implicit_id => tele.push(implicit_param(p)),
             Rule::interface_fn => {
                 let mut d = fn_postulate(p);
+                let mut tele = vec![Param {
+                    var: alias.clone(),
+                    info: Implicit,
+                    typ: i_ref.clone(),
+                }];
+                tele.extend(d.tele);
+                d.tele = tele;
+
                 d.body = Findable(name.clone());
                 fns.push(d.name.clone());
                 fn_defs.push(d);
@@ -762,16 +778,18 @@ fn implicit_param(p: Pair<Rule>) -> Param<Expr> {
 }
 
 fn interface_param(p: Pair<Rule>) -> Param<Expr> {
-    use Expr::*;
     let mut pairs = p.into_inner();
-    let var = Var::from(pairs.next().unwrap());
-    let i = Box::new(unresolved(pairs.next().unwrap()));
-    let typ = Box::new(InterfaceRef(i.loc(), i));
     Param {
-        var,
+        var: Var::from(pairs.next().unwrap()),
         info: Implicit,
-        typ,
+        typ: Box::new(interface_ref(pairs.next().unwrap())),
     }
+}
+
+fn interface_ref(i: Pair<Rule>) -> Expr {
+    use Expr::*;
+    let r = Box::new(unresolved(i));
+    InterfaceRef(r.loc(), r)
 }
 
 fn param(p: Pair<Rule>) -> Param<Expr> {

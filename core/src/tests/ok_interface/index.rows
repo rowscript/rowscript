@@ -3,9 +3,9 @@ function numMul(a: number, b: number): number;
 
 type Foo = {n: number};
 
-interface NatLike {
-    add(a: NatLike, b: NatLike): NatLike;
-    mul(a: NatLike, b: NatLike): NatLike;
+interface NatLike for T {
+    add(a: T, b: T): T;
+    mul(a: T, b: T): T;
 }
 
 implements NatLike for Foo {
@@ -26,7 +26,7 @@ function f1(): number {
     return f0()
 }
 
-interface Default { default(): Default; }
+interface Default for T { default(): T; }
 implements Default for Foo { default(): Foo { return {n: 0} } }
 function g0(): Foo { return default() }
 function g1(): Foo { return g0() }
