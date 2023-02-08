@@ -56,9 +56,11 @@ impl Def<Term> {
             Fn(f) => rename(Term::lam(&self.tele, f.clone())),
             Postulate => Box::new(Term::Ref(v)),
             Alias(t) => rename(Term::lam(&self.tele, t.clone())),
-            Undefined => Box::new(Term::Undef(v)),
             Class { object, .. } => rename(Term::lam(&self.tele, object.clone())),
             Interface { .. } => Box::new(Term::InterfaceRef(v)),
+
+            Undefined => Box::new(Term::Undef(v)),
+            Findable(_) => rename(Term::lam(&self.tele, Box::new(Term::Refind(v)))),
             _ => unreachable!(),
         }
     }

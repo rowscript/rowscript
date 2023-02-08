@@ -37,9 +37,9 @@ impl<'a> Unifier<'a> {
                 Ok(())
             }
 
+            // A constraint is a subtype of universe.
             (Univ, InterfaceRef(_)) => Ok(()),
-            (InterfaceRef(_), Univ) => Ok(()),
-
+            // (InterfaceRef(_), Univ) => Ok(()),
             (Let(p, a, b), Let(q, x, y)) => {
                 self.unify(&p.typ, &q.typ)?;
                 self.unify(a, x)?;

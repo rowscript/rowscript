@@ -233,6 +233,7 @@ impl Resolver {
             Row(loc) => Row(loc),
             Access(loc, n) => Access(loc, n),
             Vptr(loc, r) => Vptr(loc, r),
+            Refind(loc, r) => Refind(loc, r),
             InterfaceRef(loc, r) => InterfaceRef(loc, r),
         }))
     }
