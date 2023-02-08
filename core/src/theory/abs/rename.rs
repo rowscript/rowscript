@@ -75,6 +75,7 @@ impl Renamer {
             RowSat => RowSat,
             RowRefl => RowRefl,
             Vptr(r) => Vptr(r),
+            InterfaceRef(r) => InterfaceRef(r),
         })
     }
 

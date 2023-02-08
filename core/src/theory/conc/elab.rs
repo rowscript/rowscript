@@ -631,6 +631,7 @@ impl Elaborator {
                     tm => return Err(ExpectedClass(Box::new(tm), o_loc)),
                 }
             }
+            InterfaceRef(_, r) => return self.infer(r, hint),
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
             Unit(_) => (Box::new(Term::Unit), Box::new(Term::Univ)),

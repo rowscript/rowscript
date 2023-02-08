@@ -60,6 +60,7 @@ fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
         match p.as_rule() {
             Rule::row_id => tele.push(row_param(p)),
             Rule::implicit_id => tele.push(implicit_param(p)),
+            Rule::interface_param => tele.push(interface_param(p)),
             Rule::param => untupled.push(Loc::from(p.as_span()), param(p)),
             Rule::type_expr => ret = Box::new(type_expr(p)),
             Rule::fn_body => {
@@ -757,6 +758,19 @@ fn implicit_param(p: Pair<Rule>) -> Param<Expr> {
         var: Var::from(p),
         info: Implicit,
         typ: Box::new(Univ(loc)),
+    }
+}
+
+fn interface_param(p: Pair<Rule>) -> Param<Expr> {
+    use Expr::*;
+    let mut pairs = p.into_inner();
+    let var = Var::from(pairs.next().unwrap());
+    let i = Box::new(unresolved(pairs.next().unwrap()));
+    let typ = Box::new(InterfaceRef(i.loc(), i));
+    Param {
+        var,
+        info: Implicit,
+        typ,
     }
 }
 

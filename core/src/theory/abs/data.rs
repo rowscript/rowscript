@@ -82,6 +82,7 @@ pub enum Term {
     Switch(Box<Self>, CaseMap),
 
     Vptr(Var),
+    InterfaceRef(Var),
 }
 
 impl Term {
@@ -174,6 +175,7 @@ impl Display for Term {
                     )
                 }
                 Vptr(r) => r.to_string(),
+                InterfaceRef(r) => r.to_string(),
             }
             .as_str(),
         )
