@@ -81,7 +81,7 @@ pub enum Expr {
     Vptr(Loc, Var),
 
     Find(Loc, Var, Var, ArgInfo, Box<Self>),
-    InterfaceRef(Loc, Box<Self>),
+    InterfaceRef(Loc, Var),
 }
 
 impl Expr {

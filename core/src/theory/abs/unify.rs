@@ -37,6 +37,9 @@ impl<'a> Unifier<'a> {
                 Ok(())
             }
 
+            (Univ, InterfaceRef(_)) => Ok(()),
+            (InterfaceRef(_), Univ) => Ok(()),
+
             (Let(p, a, b), Let(q, x, y)) => {
                 self.unify(&p.typ, &q.typ)?;
                 self.unify(a, x)?;
@@ -96,6 +99,7 @@ impl<'a> Unifier<'a> {
             (Num(_, a), Num(_, b)) if a == b => Ok(()),
             (Big(a), Big(b)) if a == b => Ok(()),
             (Vptr(a), Vptr(b)) if a == b => Ok(()),
+            (InterfaceRef(a), InterfaceRef(b)) if a == b => Ok(()),
 
             (Univ, Univ) => Ok(()),
             (Unit, Unit) => Ok(()),

@@ -214,7 +214,6 @@ impl Resolver {
             }
             Lookup(loc, o, n, a) => Lookup(loc, self.expr(o)?, n, self.expr(a)?),
             Find(loc, i, f, ai, x) => Find(loc, i, f, ai, self.expr(x)?),
-            InterfaceRef(loc, r) => InterfaceRef(loc, self.expr(r)?),
 
             Resolved(loc, r) => Resolved(loc, r),
             Hole(loc) => Hole(loc),
@@ -234,6 +233,7 @@ impl Resolver {
             Row(loc) => Row(loc),
             Access(loc, n) => Access(loc, n),
             Vptr(loc, r) => Vptr(loc, r),
+            InterfaceRef(loc, r) => InterfaceRef(loc, r),
         }))
     }
 }

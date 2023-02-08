@@ -6,6 +6,7 @@ use crate::theory::abs::data::Dir;
 use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
+use crate::theory::conc::data::Expr::InterfaceRef;
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var};
@@ -345,13 +346,9 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     let name_pair = pairs.next().unwrap();
     let name_loc = Loc::from(name_pair.as_span());
     let name = Var::from(name_pair);
-    let i_ref = Box::new(InterfaceRef(
-        name_loc,
-        Box::new(Unresolved(name_loc, name.clone())),
-    ));
+    let i_ref = Box::new(InterfaceRef(name_loc, name.clone()));
 
-    let alias_pair = pairs.next().unwrap();
-    let alias = Var::from(alias_pair);
+    let alias = Var::from(pairs.next().unwrap());
 
     let mut tele = Tele::default();
     let mut fn_defs = Vec::default();
@@ -380,9 +377,9 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
 
     let mut defs = vec![Def {
         loc,
-        name,
+        name: name.clone(),
         tele,
-        ret: Box::new(Univ(loc)),
+        ret: Box::new(InterfaceRef(loc, name)),
         body: Interface {
             fns,
             ims: Default::default(),
@@ -779,17 +776,15 @@ fn implicit_param(p: Pair<Rule>) -> Param<Expr> {
 
 fn interface_param(p: Pair<Rule>) -> Param<Expr> {
     let mut pairs = p.into_inner();
+    let var = Var::from(pairs.next().unwrap());
+    let i = pairs.next().unwrap();
+    let i_loc = Loc::from(i.as_span());
+    let typ = Box::new(InterfaceRef(i_loc, Var::from(i)));
     Param {
-        var: Var::from(pairs.next().unwrap()),
+        var,
         info: Implicit,
-        typ: Box::new(interface_ref(pairs.next().unwrap())),
+        typ,
     }
-}
-
-fn interface_ref(i: Pair<Rule>) -> Expr {
-    use Expr::*;
-    let r = Box::new(unresolved(i));
-    InterfaceRef(r.loc(), r)
 }
 
 fn param(p: Pair<Rule>) -> Param<Expr> {

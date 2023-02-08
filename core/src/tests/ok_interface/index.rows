@@ -31,8 +31,7 @@ implements Default for Foo { default(): Foo { return {n: 0} } }
 function g0(): Foo { return default() }
 function g1(): Foo { return g0() }
 
-function h1<T: NatLike>(a: T): T
-{
+function h1<T: NatLike>(a: T): T {
     return add(a, a)
 }
 

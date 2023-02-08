@@ -5,7 +5,7 @@ use crate::theory::abs::data::{CaseMap, FieldMap, Term};
 use crate::theory::abs::def::{gamma_to_tele, Body};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
-use crate::theory::abs::rename::{rename, rename_with};
+use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
 use crate::theory::conc::data::Expr::{Find, Resolved};
@@ -15,8 +15,7 @@ use crate::theory::{Answers, Loc, Param, Tele, Var, VarGen, VPTR};
 use crate::Error;
 use crate::Error::{
     ExpectedAlias, ExpectedClass, ExpectedEnum, ExpectedInterface, ExpectedObject, ExpectedPi,
-    ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplementation,
-    UnresolvedImplicitParam,
+    ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplicitParam,
 };
 
 #[derive(Debug)]
@@ -153,14 +152,15 @@ impl Elaborator {
             let i_loc = i_fn_def.loc;
             let im_loc = self.sigma.get(im_fn).unwrap().loc;
 
-            let i_ty = i_fn_def.to_type();
-            let (_, im_ty) = self.infer(Box::new(Resolved(im_loc, im_fn.clone())), None)?;
+            let (i_fn_ty_p, i_fn_ty_b) = match *i_fn_def.to_type() {
+                Term::Pi(p, b) => (p, b),
+                _ => unreachable!(),
+            };
+            let i_fn_ty_applied = Normalizer::new(&mut self.sigma, i_loc)
+                .with(&[(&i_fn_ty_p.var, &im_tm)], i_fn_ty_b)?;
+            let (_, im_fn_ty) = self.infer(Box::new(Resolved(im_loc, im_fn.clone())), None)?;
 
-            let i_renamed = rename_with((i.clone(), im.clone()), i_ty);
-            let i_nf = Normalizer::new(&mut self.sigma, i_loc).with(&[(im, &im_tm)], i_renamed)?;
-            let im_fn_nf = Normalizer::new(&mut self.sigma, im_loc).term(im_ty)?;
-
-            Unifier::new(&mut self.sigma, im_loc).unify(&i_nf, &im_fn_nf)?;
+            Unifier::new(&mut self.sigma, im_loc).unify(&i_fn_ty_applied, &im_fn_ty)?;
         }
 
         Ok(())
@@ -289,9 +289,16 @@ impl Elaborator {
                         Err(_) => continue,
                     }
                 }
-                // return Err(UnresolvedImplementation(Box::new(Term::Ref(f)), loc));
-                let (x_tm, _) = self.infer(x, Some(ty))?;
-                Box::new(Term::App(Box::new(Term::Ref(f)), x_tm))
+
+                todo!("check the original interface function")
+            }
+            InterfaceRef(loc, a) => {
+                let u = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
+                Box::new(match *u {
+                    Term::Univ => Term::InterfaceRef(a),
+                    Term::InterfaceRef(b) if a == b => Term::InterfaceRef(a),
+                    u => return Err(ExpectedInterface(Box::new(u), loc)),
+                })
             }
             _ => {
                 let loc = e.loc();
@@ -631,7 +638,6 @@ impl Elaborator {
                     tm => return Err(ExpectedClass(Box::new(tm), o_loc)),
                 }
             }
-            InterfaceRef(_, r) => return self.infer(r, hint),
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
             Unit(_) => (Box::new(Term::Unit), Box::new(Term::Univ)),
