@@ -50,7 +50,6 @@ impl Elaborator {
             let checked_var = p.var.clone();
             let var = p.var.clone();
 
-            // TODO: Check InterfaceRef.
             let gamma_typ = self.check(p.typ, &Box::new(Term::Univ))?;
             let typ = gamma_typ.clone();
 
@@ -63,7 +62,6 @@ impl Elaborator {
             })
         }
 
-        // TODO: Check InterfaceRef.
         let ret = self.check(d.ret, &Box::new(Term::Univ))?;
         self.sigma.insert(
             d.name.clone(),
@@ -297,13 +295,6 @@ impl Elaborator {
                     self.check(Box::new(App(loc, Box::new(Refind(loc, f)), ai, x)), ty)?,
                     x_tm,
                 ))
-            }
-            InterfaceRef(loc, a) => {
-                let u = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
-                Box::new(match *u {
-                    Term::InterfaceRef(b) if a == b => Term::InterfaceRef(a),
-                    u => return Err(ExpectedInterface(Box::new(u), loc)),
-                })
             }
             _ => {
                 let loc = e.loc();
@@ -644,6 +635,11 @@ impl Elaborator {
                 }
             }
             Refind(loc, r) => self.infer(Box::new(Resolved(loc, r)), hint)?,
+            InterfaceRef(_, r) => {
+                let tm = Box::new(Term::InterfaceRef(r));
+                let ty = tm.clone();
+                (tm, ty)
+            }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
             Unit(_) => (Box::new(Term::Unit), Box::new(Term::Univ)),
