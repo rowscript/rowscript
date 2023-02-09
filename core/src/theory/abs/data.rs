@@ -84,7 +84,7 @@ pub enum Term {
     Vptr(Var),
 
     InterfaceRef(Var),
-    Refind(Var),
+    Refind(Var, Var),
 }
 
 impl Term {
@@ -178,7 +178,7 @@ impl Display for Term {
                 }
                 Vptr(r) => r.to_string(),
                 InterfaceRef(r) => r.to_string(),
-                Refind(r) => r.to_string(),
+                Refind(i, f) => format!("{i}.{f}"),
             }
             .as_str(),
         )

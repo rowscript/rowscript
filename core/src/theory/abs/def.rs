@@ -60,7 +60,7 @@ impl Def<Term> {
             Interface { .. } => Box::new(Term::InterfaceRef(v)),
 
             Undefined => Box::new(Term::Undef(v)),
-            Findable(_) => rename(Term::lam(&self.tele, Box::new(Term::Refind(v)))),
+            Findable(i) => Box::new(Term::Refind(i.clone(), v)),
             _ => unreachable!(),
         }
     }

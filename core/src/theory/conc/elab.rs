@@ -170,10 +170,53 @@ impl Elaborator {
         use Expr::*;
 
         match &*e {
-            App(loc, f, i, x) => {
-                if let Some(e) = self.to_findable(*loc, f.clone(), i.clone(), x.clone()) {
+            App(loc, f, ai, x) => {
+                let loc = *loc;
+                if let Some(e) = self.to_findable(loc, f.clone(), ai.clone(), x.clone()) {
                     return self.check(e, ty);
                 }
+                // FIXME: Seems like `Refind` not working at all.
+                if let Term::Refind(i, r) = *self.infer(f.clone(), Some(ty))?.0 {
+                    let e = Box::new(Find(loc, i, r, ai.clone(), x.clone()));
+                    return self.check(e, ty);
+                }
+            }
+            Find(loc, i, f, ai, x) => {
+                use Body::*;
+
+                let loc = *loc;
+
+                if let Some(tm) = self.answers.get(loc, f.clone()) {
+                    return Ok(tm);
+                }
+
+                let ims = match &self.sigma.get(&i).unwrap().body {
+                    Interface { ims, .. } => ims.clone(),
+                    _ => unreachable!(),
+                };
+                for im in ims.into_iter().rev() {
+                    let im_fn = match &self.sigma.get(&im).unwrap().body {
+                        Implements { fns, .. } => fns.get(f).unwrap().clone(),
+                        _ => unreachable!(),
+                    };
+                    match self.check(
+                        Box::new(App(
+                            loc,
+                            Box::new(Resolved(loc, im_fn.clone())),
+                            ai.clone(),
+                            x.clone(),
+                        )),
+                        ty,
+                    ) {
+                        Ok(tm) => {
+                            self.answers.insert(loc, f.clone(), tm.clone());
+                            return Ok(tm);
+                        }
+                        Err(_) => continue,
+                    }
+                }
+
+                // Answer not found, try type inference.
             }
             _ => {}
         }
@@ -257,45 +300,6 @@ impl Elaborator {
                 self.check(t, ty)?,
                 self.check(e, ty)?,
             )),
-            Find(loc, i, f, ai, x) => {
-                use Body::*;
-
-                if let Some(tm) = self.answers.get(loc, f.clone()) {
-                    return Ok(tm);
-                }
-
-                let ims = match &self.sigma.get(&i).unwrap().body {
-                    Interface { ims, .. } => ims.clone(),
-                    _ => unreachable!(),
-                };
-                for im in ims.into_iter().rev() {
-                    let im_fn = match &self.sigma.get(&im).unwrap().body {
-                        Implements { fns, .. } => fns.get(&f).unwrap().clone(),
-                        _ => unreachable!(),
-                    };
-                    match self.check(
-                        Box::new(App(
-                            loc,
-                            Box::new(Resolved(loc, im_fn.clone())),
-                            ai.clone(),
-                            x.clone(),
-                        )),
-                        ty,
-                    ) {
-                        Ok(tm) => {
-                            self.answers.insert(loc, f, tm.clone());
-                            return Ok(tm);
-                        }
-                        Err(_) => continue,
-                    }
-                }
-
-                let (x_tm, _) = self.infer(x.clone(), Some(ty))?;
-                Box::new(Term::App(
-                    self.check(Box::new(App(loc, Box::new(Refind(loc, f)), ai, x)), ty)?,
-                    x_tm,
-                ))
-            }
             _ => {
                 let loc = e.loc();
                 let f_e = e.clone();
@@ -639,6 +643,9 @@ impl Elaborator {
                 let tm = Box::new(Term::InterfaceRef(r));
                 let ty = tm.clone();
                 (tm, ty)
+            }
+            Find(loc, _, f, ai, x) => {
+                self.infer(Box::new(App(loc, Box::new(Refind(loc, f)), ai, x)), hint)?
             }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
