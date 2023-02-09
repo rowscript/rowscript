@@ -57,6 +57,7 @@ impl Renamer {
                 }
                 Switch(a, m)
             }
+            Refind(i, f, ai, x) => Refind(i, f, ai, self.term(x)),
 
             Undef(x) => Undef(x),
             Univ => Univ,
@@ -76,7 +77,6 @@ impl Renamer {
             RowRefl => RowRefl,
             Vptr(r) => Vptr(r),
             InterfaceRef(r) => InterfaceRef(r),
-            Refind(i, r) => Refind(i, r),
         })
     }
 

@@ -226,6 +226,7 @@ impl<'a> Normalizer<'a> {
                     a => Box::new(Switch(Box::new(a), cs)),
                 }
             }
+            Refind(i, f, ai, x) => Box::new(Refind(i, f, ai, self.term(x)?)),
 
             Univ => Box::new(Univ),
             Unit => Box::new(Unit),
@@ -244,7 +245,6 @@ impl<'a> Normalizer<'a> {
             RowRefl => Box::new(RowRefl),
             Vptr(r) => Box::new(Vptr(r)),
             InterfaceRef(r) => Box::new(InterfaceRef(r)),
-            Refind(i, r) => Box::new(Refind(i, r)),
         })
     }
 

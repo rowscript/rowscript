@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::data::Term::{Lam, Pi};
+use crate::theory::conc::data::ArgInfo;
 use crate::theory::{Param, ParamInfo, Syntax, Tele, Var};
 
 pub type Spine = Vec<(ParamInfo, Term)>;
@@ -84,7 +85,7 @@ pub enum Term {
     Vptr(Var),
 
     InterfaceRef(Var),
-    Refind(Var, Var),
+    Refind(Var, Var, ArgInfo, Box<Self>),
 }
 
 impl Term {
@@ -178,7 +179,7 @@ impl Display for Term {
                 }
                 Vptr(r) => r.to_string(),
                 InterfaceRef(r) => r.to_string(),
-                Refind(i, f) => format!("{i}.{f}"),
+                Refind(i, f, _, x) => format!("({i}.{f} {x})"),
             }
             .as_str(),
         )

@@ -339,7 +339,7 @@ impl Elaborator {
                 let (b, b_ty) = self.guarded_infer(&[&param], b, hint)?;
                 (Box::new(Term::Pi(param, b)), b_ty)
             }
-            App(loc, f, i, x) => {
+            App(_, f, i, x) => {
                 let f_loc = f.loc();
                 let f_e = f.clone();
                 let (f, f_ty) = self.infer(f, hint)?;
@@ -348,12 +348,7 @@ impl Elaborator {
                     return self.infer(Box::new(App(f_loc, f_e, i, x)), hint);
                 }
 
-                if let Term::Refind(i_var, r) = &*f {
-                    let e = Box::new(Find(loc, i_var.clone(), r.clone(), i, x.clone()));
-                    let tm = self.check(e, hint.unwrap())?;
-                    println!("refind tm ~> {tm}");
-                    todo!("how to find implementations again here?")
-                }
+                // TODO: How to reify the term and check?
 
                 match *f_ty {
                     Term::Pi(p, b) => {
@@ -640,14 +635,17 @@ impl Elaborator {
                     tm => return Err(ExpectedClass(Box::new(tm), o_loc)),
                 }
             }
-            Refind(loc, r) => self.infer(Box::new(Resolved(loc, r)), hint)?,
+            FindRef(loc, r) => self.infer(Box::new(Resolved(loc, r)), hint)?,
             InterfaceRef(_, r) => {
                 let tm = Box::new(Term::InterfaceRef(r));
                 let ty = tm.clone();
                 (tm, ty)
             }
-            Find(loc, _, f, ai, x) => {
-                self.infer(Box::new(App(loc, Box::new(Refind(loc, f)), ai, x)), hint)?
+            Find(loc, i, f, ai, x) => {
+                let x_tm = self.infer(x.clone(), hint)?.0;
+                let fx = Box::new(App(loc, Box::new(FindRef(loc, f.clone())), ai.clone(), x));
+                let fx_ty = self.infer(fx, hint)?.1;
+                (Box::new(Term::Refind(i, f, ai, x_tm)), fx_ty)
             }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
