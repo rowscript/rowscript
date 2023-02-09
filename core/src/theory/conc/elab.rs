@@ -175,11 +175,6 @@ impl Elaborator {
                 if let Some(e) = self.to_findable(loc, f.clone(), ai.clone(), x.clone()) {
                     return self.check(e, ty);
                 }
-                // FIXME: Seems like `Refind` not working at all.
-                if let Term::Refind(i, r) = *self.infer(f.clone(), Some(ty))?.0 {
-                    let e = Box::new(Find(loc, i, r, ai.clone(), x.clone()));
-                    return self.check(e, ty);
-                }
             }
             Find(loc, i, f, ai, x) => {
                 use Body::*;
@@ -344,13 +339,20 @@ impl Elaborator {
                 let (b, b_ty) = self.guarded_infer(&[&param], b, hint)?;
                 (Box::new(Term::Pi(param, b)), b_ty)
             }
-            App(_, f, i, x) => {
-                let loc = f.loc();
+            App(loc, f, i, x) => {
+                let f_loc = f.loc();
                 let f_e = f.clone();
                 let (f, f_ty) = self.infer(f, hint)?;
 
                 if let Some(f_e) = Self::app_insert_holes(f_e, i.clone(), &*f_ty)? {
-                    return self.infer(Box::new(App(loc, f_e, i, x)), hint);
+                    return self.infer(Box::new(App(f_loc, f_e, i, x)), hint);
+                }
+
+                if let Term::Refind(i_var, r) = &*f {
+                    let e = Box::new(Find(loc, i_var.clone(), r.clone(), i, x.clone()));
+                    let tm = self.check(e, hint.unwrap())?;
+                    println!("refind tm ~> {tm}");
+                    todo!("how to find implementations again here?")
                 }
 
                 match *f_ty {
@@ -365,11 +367,11 @@ impl Elaborator {
                             &p.typ,
                         )?;
                         let applied_ty =
-                            Normalizer::new(&mut self.sigma, loc).with(&[(&p.var, &x)], b)?;
-                        let applied = Normalizer::new(&mut self.sigma, loc).apply(f, &[x])?;
+                            Normalizer::new(&mut self.sigma, f_loc).with(&[(&p.var, &x)], b)?;
+                        let applied = Normalizer::new(&mut self.sigma, f_loc).apply(f, &[x])?;
                         (applied, applied_ty)
                     }
-                    _ => return Err(ExpectedPi(f, loc)),
+                    _ => return Err(ExpectedPi(f, f_loc)),
                 }
             }
             Sigma(_, p, b) => {
