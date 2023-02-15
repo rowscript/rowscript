@@ -1,5 +1,7 @@
 # RowScript
 
+![Rust Workflow](https://github.com/rowscript/rowscript/actions/workflows/rust.yml/badge.svg)
+
 RowScript is a robustly-typed functional language that compiles to efficient and reliable JavaScript.
 
 ## Installing
