@@ -9,7 +9,7 @@ use crate::theory::abs::reify::reify;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
-use crate::theory::conc::data::Expr::{Find, Resolved};
+use crate::theory::conc::data::Expr::{App, Find, Resolved};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Answers, Loc, Param, Tele, Var, VarGen, VPTR};
@@ -786,7 +786,12 @@ impl Elaborator {
                 .get(&r)
                 .map(|d| match &d.body {
                     Findable(i) => Some(Box::new(Find(loc, i.clone(), r, ai, x))),
-                    Reifiable(f) => Some(reify(loc, rename(Term::lam(&d.tele, f.clone())))),
+                    Reifiable(f) => Some(Box::new(App(
+                        loc,
+                        reify(loc, rename(Term::lam(&d.tele, f.clone()))),
+                        ai,
+                        x,
+                    ))),
                     _ => None,
                 })
                 .flatten(),
