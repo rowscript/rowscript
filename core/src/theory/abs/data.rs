@@ -85,7 +85,8 @@ pub enum Term {
     Vptr(Var),
 
     InterfaceRef(Var),
-    Refind(Var, Var, ArgInfo, Box<Self>),
+    Find(Var, ArgInfo, Box<Self>),
+    Reified(Box<Self>),
 }
 
 impl Term {
@@ -129,7 +130,7 @@ impl Display for Term {
                 Univ => "type".to_string(),
                 Pi(p, b) => format!("{p} -> {b}"),
                 Lam(p, b) => format!("{p} => {b}"),
-                App(f, x) => format!("({f}) ({x})"),
+                App(f, x) => format!("({f} {x})"),
                 Sigma(p, b) => format!("{p} * {b}"),
                 Tuple(a, b) => format!("({a}, {b})"),
                 TupleLet(p, q, a, b) => format!("let ({p}, {q}) = {a};\n\t{b}"),
@@ -179,7 +180,8 @@ impl Display for Term {
                 }
                 Vptr(r) => r.to_string(),
                 InterfaceRef(r) => r.to_string(),
-                Refind(i, f, _, x) => format!("({i}.{f} {x})"),
+                Find(f, _, x) => format!("({f} {x})"),
+                Reified(x) => x.to_string(),
             }
             .as_str(),
         )

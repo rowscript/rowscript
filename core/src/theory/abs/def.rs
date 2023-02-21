@@ -61,6 +61,7 @@ impl Def<Term> {
 
             Undefined => Box::new(Term::Undef(v)),
             Findable(_) => Box::new(Term::Ref(v)),
+            Reifiable(f) => Box::new(Term::Reified(rename(Term::lam(&self.tele, f.clone())))),
             _ => unreachable!(),
         }
     }
@@ -162,6 +163,13 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     self.ret
                 ),
+                Reifiable(f) => format!(
+                    "reifiable {} {}: {} {{\n\t{}\n}}",
+                    self.name,
+                    Param::tele_to_string(&self.tele),
+                    self.ret,
+                    f
+                ),
             }
             .as_str(),
         )
@@ -194,4 +202,5 @@ pub enum Body<T: Syntax> {
     Undefined,
     Meta(Option<T>),
     Findable(Var),
+    Reifiable(Box<T>),
 }

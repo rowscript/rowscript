@@ -57,7 +57,8 @@ impl Renamer {
                 }
                 Switch(a, m)
             }
-            Refind(i, f, ai, x) => Refind(i, f, ai, self.term(x)),
+            Find(f, ai, x) => Find(f, ai, self.term(x)),
+            Reified(x) => Reified(self.term(x)),
 
             Undef(x) => Undef(x),
             Univ => Univ,

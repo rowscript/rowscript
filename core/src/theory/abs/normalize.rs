@@ -226,7 +226,8 @@ impl<'a> Normalizer<'a> {
                     a => Box::new(Switch(Box::new(a), cs)),
                 }
             }
-            Refind(i, f, ai, x) => Box::new(Refind(i, f, ai, self.term(x)?)),
+            Find(f, ai, x) => Box::new(Find(f, ai, self.term(x)?)),
+            Reified(x) => Box::new(Reified(self.term(x)?)),
 
             Univ => Box::new(Univ),
             Unit => Box::new(Unit),

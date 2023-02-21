@@ -26,6 +26,7 @@ pub struct Elaborator {
     ug: VarGen,
     ig: VarGen,
 
+    is_reifiable: bool,
     answers: Answers,
 }
 
@@ -42,6 +43,8 @@ impl Elaborator {
 
     fn def(&mut self, d: Def<Expr>) -> Result<(), Error> {
         use Body::*;
+
+        self.is_reifiable = Default::default();
 
         let mut checked = Vec::default();
         let mut tele = Tele::default();
@@ -75,7 +78,14 @@ impl Elaborator {
         );
 
         let body = match d.body {
-            Fn(f) => Fn(self.check(f, &ret)?),
+            Fn(f) => {
+                let tm = self.check(f, &ret)?;
+                if self.is_reifiable {
+                    Reifiable(tm)
+                } else {
+                    Fn(tm)
+                }
+            }
             Postulate => Postulate,
             Alias(t) => Alias(self.check(t, &ret)?),
             Class {
@@ -344,11 +354,13 @@ impl Elaborator {
                 let f_e = f.clone();
                 let (f, f_ty) = self.infer(f, hint)?;
 
+                if let Term::Reified(r_f) = &*f {
+                    todo!()
+                }
+
                 if let Some(f_e) = Self::app_insert_holes(f_e, i.clone(), &*f_ty)? {
                     return self.infer(Box::new(App(f_loc, f_e, i, x)), hint);
                 }
-
-                // TODO: How to reify the term and check?
 
                 match *f_ty {
                     Term::Pi(p, b) => {
@@ -641,11 +653,12 @@ impl Elaborator {
                 let ty = tm.clone();
                 (tm, ty)
             }
-            Find(loc, i, f, ai, x) => {
+            Find(loc, _, f, ai, x) => {
                 let x_tm = self.infer(x.clone(), hint)?.0;
                 let fx = Box::new(App(loc, Box::new(FindRef(loc, f.clone())), ai.clone(), x));
                 let fx_ty = self.infer(fx, hint)?.1;
-                (Box::new(Term::Refind(i, f, ai, x_tm)), fx_ty)
+                self.is_reifiable = true;
+                (Box::new(Term::Find(f, ai, x_tm)), fx_ty)
             }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
@@ -794,6 +807,7 @@ impl Default for Elaborator {
             gamma: Default::default(),
             ug: VarGen::user_meta(),
             ig: VarGen::inserted_meta(),
+            is_reifiable: Default::default(),
             answers: Default::default(),
         }
     }
