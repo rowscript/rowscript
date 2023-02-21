@@ -5,6 +5,7 @@ use crate::theory::abs::data::{CaseMap, FieldMap, Term};
 use crate::theory::abs::def::{gamma_to_tele, Body};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
+use crate::theory::abs::reify::reify;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
@@ -353,10 +354,6 @@ impl Elaborator {
                 let f_loc = f.loc();
                 let f_e = f.clone();
                 let (f, f_ty) = self.infer(f, hint)?;
-
-                if let Term::Reified(r_f) = &*f {
-                    todo!()
-                }
 
                 if let Some(f_e) = Self::app_insert_holes(f_e, i.clone(), &*f_ty)? {
                     return self.infer(Box::new(App(f_loc, f_e, i, x)), hint);
@@ -792,6 +789,7 @@ impl Elaborator {
                 .get(&r)
                 .map(|d| match &d.body {
                     Findable(i) => Some(Box::new(Find(loc, i.clone(), r, ai, x))),
+                    Reifiable(f) => Some(reify(loc, f.clone())),
                     _ => None,
                 })
                 .flatten(),

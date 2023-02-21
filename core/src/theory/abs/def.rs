@@ -61,7 +61,6 @@ impl Def<Term> {
 
             Undefined => Box::new(Term::Undef(v)),
             Findable(_) => Box::new(Term::Ref(v)),
-            Reifiable(f) => Box::new(Term::Reified(rename(Term::lam(&self.tele, f.clone())))),
             _ => unreachable!(),
         }
     }

@@ -227,7 +227,6 @@ impl<'a> Normalizer<'a> {
                 }
             }
             Find(f, ai, x) => Box::new(Find(f, ai, self.term(x)?)),
-            Reified(x) => Box::new(Reified(self.term(x)?)),
 
             Univ => Box::new(Univ),
             Unit => Box::new(Unit),

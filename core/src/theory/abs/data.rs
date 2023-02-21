@@ -86,7 +86,6 @@ pub enum Term {
 
     InterfaceRef(Var),
     Find(Var, ArgInfo, Box<Self>),
-    Reified(Box<Self>),
 }
 
 impl Term {
@@ -181,7 +180,6 @@ impl Display for Term {
                 Vptr(r) => r.to_string(),
                 InterfaceRef(r) => r.to_string(),
                 Find(f, _, x) => format!("({f} {x})"),
-                Reified(x) => x.to_string(),
             }
             .as_str(),
         )
