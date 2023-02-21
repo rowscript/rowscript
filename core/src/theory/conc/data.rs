@@ -1,23 +1,13 @@
 use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::data::Dir;
-use crate::theory::{Loc, Param, ParamInfo, Syntax, Tele, Var};
+use crate::theory::{Loc, Param, Syntax, Tele, Var};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ArgInfo {
     UnnamedExplicit,
     UnnamedImplicit,
     NamedImplicit(String),
-}
-
-impl Into<ParamInfo> for ArgInfo {
-    fn into(self) -> ParamInfo {
-        use ArgInfo::*;
-        match self {
-            UnnamedExplicit => ParamInfo::Explicit,
-            _ => ParamInfo::Implicit,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]

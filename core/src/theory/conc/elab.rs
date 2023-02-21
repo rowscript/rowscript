@@ -651,11 +651,8 @@ impl Elaborator {
                 (tm, ty)
             }
             Find(loc, _, f, ai, x) => {
-                let x_tm = self.infer(x.clone(), hint)?.0;
-                let fx = Box::new(App(loc, Box::new(FindRef(loc, f.clone())), ai.clone(), x));
-                let fx_ty = self.infer(fx, hint)?.1;
                 self.is_reifiable = true;
-                (Box::new(Term::Find(f, ai, x_tm)), fx_ty)
+                self.infer(Box::new(App(loc, Box::new(FindRef(loc, f)), ai, x)), hint)?
             }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
@@ -789,7 +786,7 @@ impl Elaborator {
                 .get(&r)
                 .map(|d| match &d.body {
                     Findable(i) => Some(Box::new(Find(loc, i.clone(), r, ai, x))),
-                    Reifiable(f) => Some(reify(loc, f.clone())),
+                    Reifiable(f) => Some(reify(loc, rename(Term::lam(&d.tele, f.clone())))),
                     _ => None,
                 })
                 .flatten(),

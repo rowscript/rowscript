@@ -226,7 +226,6 @@ impl<'a> Normalizer<'a> {
                     a => Box::new(Switch(Box::new(a), cs)),
                 }
             }
-            Find(f, ai, x) => Box::new(Find(f, ai, self.term(x)?)),
 
             Univ => Box::new(Univ),
             Unit => Box::new(Unit),
