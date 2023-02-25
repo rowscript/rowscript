@@ -350,6 +350,19 @@ impl Elaborator {
                 let (b, b_ty) = self.guarded_infer(&[&param], b, hint)?;
                 (Box::new(Term::Pi(param, b)), b_ty)
             }
+            AnnoLam(_, p, b) => {
+                let (p_ty, _) = self.infer(p.typ, hint)?;
+                let param = Param {
+                    var: p.var,
+                    info: p.info,
+                    typ: p_ty,
+                };
+                let (b, b_ty) = self.guarded_infer(&[&param], b, hint)?;
+                (
+                    Box::new(Term::Lam(param.clone(), b)),
+                    Box::new(Term::Pi(param, b_ty)),
+                )
+            }
             App(_, f, i, x) => {
                 let f_loc = f.loc();
                 let f_e = f.clone();
@@ -402,6 +415,23 @@ impl Elaborator {
                         b_ty,
                     )),
                 )
+            }
+            AnnoTupleLet(_, p, q, a, b) => {
+                let p_ty = self.check(p.typ, &Box::new(Term::Univ))?;
+                let p = Param {
+                    var: p.var,
+                    info: p.info,
+                    typ: p_ty,
+                };
+                let q_ty = self.guarded_check(&[&p], q.typ, &Box::new(Term::Univ))?;
+                let q = Param {
+                    var: q.var,
+                    info: q.info,
+                    typ: q_ty,
+                };
+                let (b, b_ty) = self.guarded_infer(&[&p, &q], b, hint)?;
+                let a = self.check(a, &Box::new(Term::Sigma(p.clone(), q.typ.clone())))?;
+                (Box::new(Term::TupleLet(p, q, a, b)), b_ty)
             }
             Fields(_, fields) => {
                 let mut inferred = FieldMap::default();
@@ -652,7 +682,19 @@ impl Elaborator {
             }
             Find(loc, _, f, ai, x) => {
                 self.is_reifiable = true;
-                self.infer(Box::new(App(loc, Box::new(FindRef(loc, f)), ai, x)), hint)?
+                let ty = self
+                    .infer(
+                        Box::new(App(
+                            loc,
+                            Box::new(FindRef(loc, f.clone())),
+                            ai.clone(),
+                            x.clone(),
+                        )),
+                        hint,
+                    )?
+                    .1;
+                let x = self.infer(x, hint)?.0;
+                (Box::new(Term::Suspended(f, ai, x)), ty)
             }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),

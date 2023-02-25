@@ -18,11 +18,17 @@ pub fn reify(loc: Loc, tm: Box<Term>) -> Box<Expr> {
         ),
         Univ => Expr::Univ(loc),
         Pi(p, b) => Expr::Pi(loc, param(loc, p), reify(loc, b)),
-        Lam(p, b) => Expr::Lam(loc, p.var, reify(loc, b)),
+        Lam(p, b) => Expr::AnnoLam(loc, param(loc, p), reify(loc, b)),
         App(f, x) => Expr::App(loc, reify(loc, f), UnnamedExplicit, reify(loc, x)),
         Sigma(p, b) => Expr::Sigma(loc, param(loc, p), reify(loc, b)),
         Tuple(a, b) => Expr::Tuple(loc, reify(loc, a), reify(loc, b)),
-        TupleLet(p, q, a, b) => Expr::TupleLet(loc, p.var, q.var, reify(loc, a), reify(loc, b)),
+        TupleLet(p, q, a, b) => Expr::AnnoTupleLet(
+            loc,
+            param(loc, p),
+            param(loc, q),
+            reify(loc, a),
+            reify(loc, b),
+        ),
         Unit => Expr::Unit(loc),
         TT => Expr::TT(loc),
         UnitLet(a, b) => Expr::UnitLet(loc, reify(loc, a), reify(loc, b)),
@@ -70,6 +76,7 @@ pub fn reify(loc: Loc, tm: Box<Term>) -> Box<Expr> {
         ),
         Vptr(r) => Expr::Vptr(loc, r),
         InterfaceRef(r) => Expr::InterfaceRef(loc, r),
+        Suspended(f, i, x) => Expr::App(loc, Box::new(Expr::Resolved(loc, f)), i, reify(loc, x)),
     })
 }
 

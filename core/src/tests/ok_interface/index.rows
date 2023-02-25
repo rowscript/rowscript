@@ -30,11 +30,3 @@ interface Default for T { default(): T; }
 implements Default for Foo { default(): Foo { return {n: 0} } }
 function g0(): Foo { return default() }
 function g1(): Foo { return g0() }
-
-function h0<T: NatLike>(a: T): T {
-    return add(a, a)
-}
-
-function h1(): number {
-    return h0({n: 42}).n
-}

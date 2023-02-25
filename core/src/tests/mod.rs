@@ -14,6 +14,7 @@ mod ok_hole;
 mod ok_implicit_named;
 mod ok_implicit_unnamed;
 mod ok_interface;
+mod ok_interface_suspended;
 mod ok_object;
 mod ok_object_rowpoly;
 mod ok_oop;

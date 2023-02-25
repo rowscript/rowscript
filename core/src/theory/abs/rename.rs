@@ -57,6 +57,7 @@ impl Renamer {
                 }
                 Switch(a, m)
             }
+            Suspended(f, i, x) => Suspended(f, i, self.term(x)),
 
             Undef(x) => Undef(x),
             Univ => Univ,

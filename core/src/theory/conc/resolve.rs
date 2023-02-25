@@ -143,7 +143,7 @@ impl Resolver {
                 }
             }
             Let(loc, x, typ, a, b) => {
-                let vx = x.clone();
+                let b = self.bodied(&[&x], b)?;
                 Let(
                     loc,
                     x,
@@ -153,12 +153,12 @@ impl Resolver {
                         None
                     },
                     self.expr(a)?,
-                    self.bodied(&[&vx], b)?,
+                    b,
                 )
             }
             Pi(loc, p, b) => {
-                let x = p.var.clone();
-                Pi(loc, self.param(p)?, self.bodied(&[&x], b)?)
+                let b = self.bodied(&[&p.var], b)?;
+                Pi(loc, self.param(p)?, b)
             }
             TupledLam(loc, vars, b) => {
                 let x = Var::tupled();
@@ -166,20 +166,27 @@ impl Resolver {
                 let desugared = Box::new(Lam(loc, x.clone(), wrapped));
                 *self.bodied(&[&x], desugared)?
             }
+            AnnoLam(loc, p, b) => {
+                let b = self.bodied(&[&p.var], b)?;
+                AnnoLam(loc, self.param(p)?, b)
+            }
             Lam(loc, x, b) => {
-                let vx = x.clone();
-                Lam(loc, x, self.bodied(&[&vx], b)?)
+                let b = self.bodied(&[&x], b)?;
+                Lam(loc, x, b)
             }
             App(loc, f, i, x) => App(loc, self.expr(f)?, i, self.expr(x)?),
             Sigma(loc, p, b) => {
-                let x = p.var.clone();
-                Sigma(loc, self.param(p)?, self.bodied(&[&x], b)?)
+                let b = self.bodied(&[&p.var], b)?;
+                Sigma(loc, self.param(p)?, b)
             }
             Tuple(loc, a, b) => Tuple(loc, self.expr(a)?, self.expr(b)?),
             TupleLet(loc, x, y, a, b) => {
-                let vx = x.clone();
-                let vy = y.clone();
-                TupleLet(loc, x, y, self.expr(a)?, self.bodied(&[&vx, &vy], b)?)
+                let b = self.bodied(&[&x, &y], b)?;
+                TupleLet(loc, x, y, self.expr(a)?, b)
+            }
+            AnnoTupleLet(loc, p, q, a, b) => {
+                let b = self.bodied(&[&p.var, &q.var], b)?;
+                AnnoTupleLet(loc, self.param(p)?, self.param(q)?, self.expr(a)?, b)
             }
             UnitLet(loc, a, b) => UnitLet(loc, self.expr(a)?, self.expr(b)?),
             If(loc, p, t, e) => If(loc, self.expr(p)?, self.expr(t)?, self.expr(e)?),

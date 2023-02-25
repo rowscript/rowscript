@@ -244,6 +244,7 @@ impl<'a> Normalizer<'a> {
             RowRefl => Box::new(RowRefl),
             Vptr(r) => Box::new(Vptr(r)),
             InterfaceRef(r) => Box::new(InterfaceRef(r)),
+            Suspended(f, i, x) => Box::new(Suspended(f, i, x)),
         })
     }
 

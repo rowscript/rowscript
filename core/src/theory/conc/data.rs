@@ -24,12 +24,14 @@ pub enum Expr {
 
     Pi(Loc, Param<Self>, Box<Self>),
     TupledLam(Loc, Vec<Self>, Box<Self>),
+    AnnoLam(Loc, Param<Self>, Box<Self>),
     Lam(Loc, Var, Box<Self>),
     App(Loc, Box<Self>, ArgInfo, Box<Self>),
 
     Sigma(Loc, Param<Self>, Box<Self>),
     Tuple(Loc, Box<Self>, Box<Self>),
     TupleLet(Loc, Var, Var, Box<Self>, Box<Self>),
+    AnnoTupleLet(Loc, Param<Self>, Param<Self>, Box<Self>, Box<Self>),
 
     Unit(Loc),
     TT(Loc),
@@ -102,11 +104,13 @@ impl Expr {
             Univ(loc) => loc,
             Pi(loc, _, _) => loc,
             TupledLam(loc, _, _) => loc,
+            AnnoLam(loc, _, _) => loc,
             Lam(loc, _, _) => loc,
             App(loc, _, _, _) => loc,
             Sigma(loc, _, _) => loc,
             Tuple(loc, _, _) => loc,
             TupleLet(loc, _, _, _, _) => loc,
+            AnnoTupleLet(loc, _, _, _, _) => loc,
             Unit(loc) => loc,
             TT(loc) => loc,
             UnitLet(loc, _, _) => loc,
@@ -203,7 +207,7 @@ impl Display for Expr {
                     }
                 }
                 Univ(_) => "type".to_string(),
-                Pi(_, p, b) => format!("{} -> {}", p, b),
+                Pi(_, p, b) => format!("{p} -> {b}"),
                 TupledLam(_, vs, b) => format!(
                     "({}) => {b}",
                     vs.iter()
@@ -211,6 +215,7 @@ impl Display for Expr {
                         .collect::<Vec<_>>()
                         .join(", ")
                 ),
+                AnnoLam(_, p, b) => format!("{p} => {b}"),
                 Lam(_, v, b) => format!("{v} => {b}"),
                 App(_, f, i, x) => match i {
                     UnnamedExplicit => format!("({f} {x})"),
@@ -220,6 +225,7 @@ impl Display for Expr {
                 Sigma(_, p, b) => format!("{p} * {b}"),
                 Tuple(_, a, b) => format!("({a}, {b})"),
                 TupleLet(_, x, y, a, b) => format!("let ({x}, {y}) = {a};\n\t{b}"),
+                AnnoTupleLet(_, p, q, a, b) => format!("let {p}, {q} = {a};\n\t{b}"),
                 Unit(_) => "unit".to_string(),
                 TT(_) => "()".to_string(),
                 UnitLet(_, a, b) => format!("let _ = {a};\n\t{b}"),

@@ -60,13 +60,20 @@ impl Def<Term> {
             Interface { .. } => Box::new(Term::InterfaceRef(v)),
 
             Undefined => Box::new(Term::Undef(v)),
+            Meta(f) => match f {
+                None => unreachable!(),
+                Some(f) => rename(Term::lam(&self.tele, Box::new(f.clone()))),
+            },
             Findable(_) => Box::new(Term::Ref(v)),
             _ => unreachable!(),
         }
     }
 
     pub fn to_type(&self) -> Box<Term> {
-        rename(Term::pi(&self.tele, self.ret.clone()))
+        match &self.body {
+            Meta(_) => self.ret.clone(),
+            _ => rename(Term::pi(&self.tele, self.ret.clone())),
+        }
     }
 }
 

@@ -1,0 +1,21 @@
+function numAdd(a: number, b: number): number;
+
+type Foo = {n: number};
+
+interface NatLike for T {
+    add(a: T, b: T): T;
+}
+
+implements NatLike for Foo {
+    add(a: Foo, b: Foo): Foo {
+        return {n: numAdd(a.n, b.n)}
+    }
+}
+
+function f0<T: NatLike>(a: T): T {
+    return add(a, a)
+}
+
+function f1(): number {
+    return f0({n: 42}).n
+}
