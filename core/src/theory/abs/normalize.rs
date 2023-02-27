@@ -244,7 +244,8 @@ impl<'a> Normalizer<'a> {
             RowRefl => Box::new(RowRefl),
             Vptr(r) => Box::new(Vptr(r)),
             InterfaceRef(r) => Box::new(InterfaceRef(r)),
-            Suspended(f, i, x) => Box::new(Suspended(f, i, x)),
+            Suspended(i, f, ai, x) => Box::new(Suspended(i, f, ai, self.term(x)?)),
+            Find(i, f) => Box::new(Find(i, f)),
         })
     }
 

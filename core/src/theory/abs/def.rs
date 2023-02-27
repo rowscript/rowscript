@@ -64,7 +64,7 @@ impl Def<Term> {
                 None => unreachable!(),
                 Some(f) => rename(Term::lam(&self.tele, Box::new(f.clone()))),
             },
-            Findable(_) => Box::new(Term::Ref(v)),
+            Findable(i) => Box::new(Term::Find(i.clone(), v)),
             _ => unreachable!(),
         }
     }
@@ -169,13 +169,6 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     self.ret
                 ),
-                Reifiable(f) => format!(
-                    "reifiable {} {}: {} {{\n\t{}\n}}",
-                    self.name,
-                    Param::tele_to_string(&self.tele),
-                    self.ret,
-                    f
-                ),
             }
             .as_str(),
         )
@@ -208,5 +201,4 @@ pub enum Body<T: Syntax> {
     Undefined,
     Meta(Option<T>),
     Findable(Var),
-    Reifiable(Box<T>),
 }

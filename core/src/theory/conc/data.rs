@@ -72,9 +72,8 @@ pub enum Expr {
     Lookup(Loc, Box<Self>, String, Box<Self>),
     Vptr(Loc, Var),
 
-    Find(Loc, Var, Var, ArgInfo, Box<Self>),
-    FindRef(Loc, Var),
     InterfaceRef(Loc, Var),
+    Find(Loc, Var, Var),
 }
 
 impl Expr {
@@ -140,9 +139,8 @@ impl Expr {
             Switch(loc, _, _) => loc,
             Lookup(loc, _, _, _) => loc,
             Vptr(loc, _) => loc,
-            Find(loc, _, _, _, _) => loc,
-            FindRef(loc, _) => loc,
             InterfaceRef(loc, _) => loc,
+            Find(loc, _, _) => loc,
         }
         .clone()
     }
@@ -268,9 +266,8 @@ impl Display for Expr {
                 ),
                 Lookup(_, o, n, a) => format!("{o}.{n}{a}"),
                 Vptr(_, r) => r.to_string(),
-                Find(_, i, f, _, x) => format!("({i}.{f} {x})"),
-                FindRef(_, r) => r.to_string(),
                 InterfaceRef(_, r) => r.to_string(),
+                Find(_, i, f) => format!("{i}.{f}"),
             }
             .as_str(),
         )

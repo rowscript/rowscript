@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::theory::abs::data::Dir::Le;
 use crate::theory::abs::data::{CaseMap, FieldMap, Term};
+use crate::theory::abs::def::Body::Findable;
 use crate::theory::abs::def::{gamma_to_tele, Body};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
@@ -9,10 +10,9 @@ use crate::theory::abs::reify::reify;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
-use crate::theory::conc::data::Expr::{App, Find, Resolved};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Answers, Loc, Param, Tele, Var, VarGen, VPTR};
+use crate::theory::{Loc, Param, Tele, Var, VarGen, VPTR};
 use crate::Error;
 use crate::Error::{
     ExpectedAlias, ExpectedClass, ExpectedEnum, ExpectedInterface, ExpectedObject, ExpectedPi,
@@ -26,9 +26,6 @@ pub struct Elaborator {
 
     ug: VarGen,
     ig: VarGen,
-
-    is_reifiable: bool,
-    answers: Answers,
 }
 
 impl Elaborator {
@@ -44,8 +41,6 @@ impl Elaborator {
 
     fn def(&mut self, d: Def<Expr>) -> Result<(), Error> {
         use Body::*;
-
-        self.is_reifiable = Default::default();
 
         let mut checked = Vec::default();
         let mut tele = Tele::default();
@@ -79,14 +74,7 @@ impl Elaborator {
         );
 
         let body = match d.body {
-            Fn(f) => {
-                let tm = self.check(f, &ret)?;
-                if self.is_reifiable {
-                    Reifiable(tm)
-                } else {
-                    Fn(tm)
-                }
-            }
+            Fn(f) => Fn(self.check(f, &ret)?),
             Postulate => Postulate,
             Alias(t) => Alias(self.check(t, &ret)?),
             Class {
@@ -131,6 +119,7 @@ impl Elaborator {
         fns: &HashMap<Var, Var>,
     ) -> Result<(), Error> {
         use Body::*;
+        use Expr::*;
 
         let (i, im) = i;
 
@@ -182,47 +171,10 @@ impl Elaborator {
 
         match &*e {
             App(loc, f, ai, x) => {
-                let loc = *loc;
-                if let Some(e) = self.to_findable(loc, f.clone(), ai.clone(), x.clone()) {
-                    return self.check(e, ty);
-                }
-            }
-            Find(loc, i, f, ai, x) => {
-                use Body::*;
-
-                let loc = *loc;
-
-                if let Some(tm) = self.answers.get(loc, f.clone()) {
+                if let Some((i, f)) = self.to_findable_fn(f) {
+                    let tm = self.findable_check(*loc, i, f, ai.clone(), x.clone(), ty)?;
                     return Ok(tm);
                 }
-
-                let ims = match &self.sigma.get(&i).unwrap().body {
-                    Interface { ims, .. } => ims.clone(),
-                    _ => unreachable!(),
-                };
-                for im in ims.into_iter().rev() {
-                    let im_fn = match &self.sigma.get(&im).unwrap().body {
-                        Implements { fns, .. } => fns.get(f).unwrap().clone(),
-                        _ => unreachable!(),
-                    };
-                    match self.check(
-                        Box::new(App(
-                            loc,
-                            Box::new(Resolved(loc, im_fn.clone())),
-                            ai.clone(),
-                            x.clone(),
-                        )),
-                        ty,
-                    ) {
-                        Ok(tm) => {
-                            self.answers.insert(loc, f.clone(), tm.clone());
-                            return Ok(tm);
-                        }
-                        Err(_) => continue,
-                    }
-                }
-
-                // Answer not found, try type inference.
             }
             _ => {}
         }
@@ -314,6 +266,12 @@ impl Elaborator {
                     let (new_tm, new_ty) = self.infer(f_e, Some(ty))?;
                     inferred_tm = new_tm;
                     inferred_ty = new_ty;
+                }
+                if let Term::Suspended(_, f, ai, x) = *inferred_tm {
+                    return self.check(
+                        Box::new(App(loc, Box::new(Resolved(loc, f)), ai, reify(loc, x))),
+                        ty,
+                    );
                 }
                 let inferred = Normalizer::new(&mut self.sigma, loc).term(inferred_ty)?;
                 let expected = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
@@ -674,27 +632,14 @@ impl Elaborator {
                     tm => return Err(ExpectedClass(Box::new(tm), o_loc)),
                 }
             }
-            FindRef(loc, r) => self.infer(Box::new(Resolved(loc, r)), hint)?,
             InterfaceRef(_, r) => {
                 let tm = Box::new(Term::InterfaceRef(r));
                 let ty = tm.clone();
                 (tm, ty)
             }
-            Find(loc, _, f, ai, x) => {
-                self.is_reifiable = true;
-                let ty = self
-                    .infer(
-                        Box::new(App(
-                            loc,
-                            Box::new(FindRef(loc, f.clone())),
-                            ai.clone(),
-                            x.clone(),
-                        )),
-                        hint,
-                    )?
-                    .1;
-                let x = self.infer(x, hint)?.0;
-                (Box::new(Term::Suspended(f, ai, x)), ty)
+            Find(_, _, f) => {
+                let ty = self.sigma.get(&f).unwrap().to_type();
+                (Box::new(Term::Ref(f)), ty)
             }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
@@ -820,25 +765,73 @@ impl Elaborator {
         })
     }
 
-    fn to_findable(&self, loc: Loc, f: Box<Expr>, ai: ArgInfo, x: Box<Expr>) -> Option<Box<Expr>> {
-        use Body::*;
-        match *f {
-            Resolved(_, r) => self
+    fn to_findable_fn(&self, r: &Box<Expr>) -> Option<(Var, Var)> {
+        use Expr::*;
+        match &**r {
+            Resolved(_, f) => self
                 .sigma
-                .get(&r)
+                .get(f)
                 .map(|d| match &d.body {
-                    Findable(i) => Some(Box::new(Find(loc, i.clone(), r, ai, x))),
-                    Reifiable(f) => Some(Box::new(App(
-                        loc,
-                        reify(loc, rename(Term::lam(&d.tele, f.clone()))),
-                        ai,
-                        x,
-                    ))),
+                    Findable(i) => Some((i.clone(), f.clone())),
                     _ => None,
                 })
                 .flatten(),
             _ => None,
         }
+    }
+
+    fn findable_check(
+        &mut self,
+        loc: Loc,
+        i: Var,
+        f: Var,
+        ai: ArgInfo,
+        x: Box<Expr>,
+        ty: &Box<Term>,
+    ) -> Result<Box<Term>, Error> {
+        use Body::*;
+        use Expr::*;
+
+        let ims = match &self.sigma.get(&i).unwrap().body {
+            Interface { ims, .. } => ims.clone(),
+            _ => unreachable!(),
+        };
+
+        for im in ims.into_iter().rev() {
+            let im_fn = match &self.sigma.get(&im).unwrap().body {
+                Implements { fns, .. } => fns.get(&f).unwrap().clone(),
+                _ => unreachable!(),
+            };
+            match self.check(
+                Box::new(App(
+                    loc,
+                    Box::new(Resolved(loc, im_fn.clone())),
+                    ai.clone(),
+                    x.clone(),
+                )),
+                ty,
+            ) {
+                Ok(tm) => return Ok(tm),
+                Err(_) => continue,
+            }
+        }
+
+        self.check(
+            Box::new(App(
+                loc,
+                reify(loc, self.sigma.get(&f).unwrap().to_term(f.clone())),
+                ai.clone(),
+                x.clone(),
+            )),
+            ty,
+        )?;
+
+        Ok(Box::new(Term::Suspended(
+            i,
+            f,
+            ai,
+            self.infer(x, Some(ty))?.0,
+        )))
     }
 }
 
@@ -849,8 +842,6 @@ impl Default for Elaborator {
             gamma: Default::default(),
             ug: VarGen::user_meta(),
             ig: VarGen::inserted_meta(),
-            is_reifiable: Default::default(),
-            answers: Default::default(),
         }
     }
 }

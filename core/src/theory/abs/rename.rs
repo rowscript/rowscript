@@ -57,7 +57,7 @@ impl Renamer {
                 }
                 Switch(a, m)
             }
-            Suspended(f, i, x) => Suspended(f, i, self.term(x)),
+            Suspended(i, f, ai, x) => Suspended(i, f, ai, self.term(x)),
 
             Undef(x) => Undef(x),
             Univ => Univ,
@@ -77,6 +77,7 @@ impl Renamer {
             RowRefl => RowRefl,
             Vptr(r) => Vptr(r),
             InterfaceRef(r) => InterfaceRef(r),
+            Find(i, f) => Find(i, f),
         })
     }
 
