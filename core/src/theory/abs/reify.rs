@@ -76,7 +76,7 @@ pub fn reify(loc: Loc, tm: Box<Term>) -> Box<Expr> {
         ),
         Vptr(r) => Expr::Vptr(loc, r),
         InterfaceRef(r) => Expr::InterfaceRef(loc, r),
-        Suspended(_, _, _, _) => unreachable!(),
+        Stuck(_, _, _, _) => unreachable!(),
         Find(i, f) => Expr::Find(loc, i, f),
     })
 }

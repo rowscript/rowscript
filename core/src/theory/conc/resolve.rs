@@ -224,6 +224,7 @@ impl Resolver {
             Resolved(loc, r) => Resolved(loc, r),
             Hole(loc) => Hole(loc),
             InsertedHole(loc) => InsertedHole(loc),
+            InterfaceHole(loc, r) => InterfaceHole(loc, r),
             Univ(loc) => Univ(loc),
             Unit(loc) => Unit(loc),
             TT(loc) => TT(loc),

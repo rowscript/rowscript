@@ -86,7 +86,7 @@ pub enum Term {
 
     InterfaceRef(Var),
     Find(Var, Var),
-    Suspended(Var, Var, ArgInfo, Box<Self>),
+    Stuck(Var, Var, ArgInfo, Box<Self>),
 }
 
 impl Term {
@@ -181,7 +181,7 @@ impl Display for Term {
                 Vptr(r) => r.to_string(),
                 InterfaceRef(r) => r.to_string(),
                 Find(i, f) => format!("{i}.{f}"),
-                Suspended(i, f, _, x) => format!("({i}.{f} {x})"),
+                Stuck(i, f, _, x) => format!("({i}.{f} {x})"),
             }
             .as_str(),
         )

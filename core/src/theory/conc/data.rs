@@ -17,6 +17,7 @@ pub enum Expr {
 
     Hole(Loc),
     InsertedHole(Loc),
+    InterfaceHole(Loc, Var),
 
     Let(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
 
@@ -99,6 +100,7 @@ impl Expr {
             Resolved(loc, _) => loc,
             Hole(loc) => loc,
             InsertedHole(loc) => loc,
+            InterfaceHole(loc, _) => loc,
             Let(loc, _, _, _, _) => loc,
             Univ(loc) => loc,
             Pi(loc, _, _) => loc,
@@ -196,7 +198,8 @@ impl Display for Expr {
                 Unresolved(_, r) => r.to_string(),
                 Resolved(_, r) => r.to_string(),
                 Hole(_) => "?".to_string(),
-                InsertedHole(_) => "?".to_string(),
+                InsertedHole(_) => "?i".to_string(),
+                InterfaceHole(_, r) => format!("?{r}"),
                 Let(_, v, typ, a, b) => {
                     if let Some(ty) = typ {
                         format!("let {v}: {ty} = {a};\n\t{b}")

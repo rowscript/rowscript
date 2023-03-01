@@ -171,7 +171,7 @@ impl Elaborator {
 
         match &*e {
             App(loc, f, ai, x) => {
-                if let Some((i, f)) = self.to_findable_fn(f) {
+                if let Some((i, f)) = self.is_findable_fn(f) {
                     let tm = self.findable_check(*loc, i, f, ai.clone(), x.clone(), ty)?;
                     return Ok(tm);
                 }
@@ -267,7 +267,7 @@ impl Elaborator {
                     inferred_tm = new_tm;
                     inferred_ty = new_ty;
                 }
-                if let Term::Suspended(_, f, ai, x) = *inferred_tm {
+                if let Term::Stuck(_, f, ai, x) = *inferred_tm {
                     return self.check(
                         Box::new(App(loc, Box::new(Resolved(loc, f)), ai, reify(loc, x))),
                         ty,
@@ -746,7 +746,13 @@ impl Elaborator {
 
         Ok(match f_ty {
             Term::Pi(p, _) if p.info == Implicit => match i {
-                UnnamedExplicit => Some(Expr::holed_app(f)),
+                UnnamedExplicit => {
+                    if let Term::InterfaceRef(r) = &*p.typ {
+                        // FIXME: Should insert holes of constraints, not `type`.
+                        println!("r ~> {r}")
+                    }
+                    Some(Expr::holed_app(f))
+                }
                 NamedImplicit(name) => {
                     let n = n_to_insert(0, f.loc(), name, f_ty)?;
                     if n == 0 {
@@ -765,7 +771,7 @@ impl Elaborator {
         })
     }
 
-    fn to_findable_fn(&self, r: &Box<Expr>) -> Option<(Var, Var)> {
+    fn is_findable_fn(&self, r: &Box<Expr>) -> Option<(Var, Var)> {
         use Expr::*;
         match &**r {
             Resolved(_, f) => self
@@ -826,12 +832,7 @@ impl Elaborator {
             ty,
         )?;
 
-        Ok(Box::new(Term::Suspended(
-            i,
-            f,
-            ai,
-            self.infer(x, Some(ty))?.0,
-        )))
+        Ok(Box::new(Term::Stuck(i, f, ai, self.infer(x, Some(ty))?.0)))
     }
 }
 
