@@ -296,8 +296,9 @@ impl Elaborator {
                     (d.to_term(v), d.to_type())
                 }
             },
-            Hole(loc) => self.insert_meta(loc, true),
-            InsertedHole(loc) => self.insert_meta(loc, false),
+            Hole(loc) => self.insert_meta(loc, true, None),
+            InsertedHole(loc) => self.insert_meta(loc, false, None),
+            InterfaceHole(loc, r) => self.insert_meta(loc, false, Some(r)),
             Pi(_, p, b) => {
                 let (param_ty, _) = self.infer(p.typ, hint)?;
                 let param = Param {
@@ -696,13 +697,17 @@ impl Elaborator {
         Ok(ret)
     }
 
-    fn insert_meta(&mut self, loc: Loc, is_user: bool) -> (Box<Term>, Box<Term>) {
+    fn insert_meta(&mut self, loc: Loc, is_user: bool, r: Option<Var>) -> (Box<Term>, Box<Term>) {
         use Body::*;
 
         let ty_meta_var = self.ig.fresh();
         self.sigma.insert(
             ty_meta_var.clone(),
-            Def::new_constant_constraint(loc, ty_meta_var.clone(), Box::new(Term::Univ)),
+            Def::new_constant_constraint(
+                loc,
+                ty_meta_var.clone(),
+                Box::new(r.map_or(Term::Univ, Term::InterfaceRef)),
+            ),
         );
         let ty = Box::new(Term::MetaRef(ty_meta_var, Default::default()));
 
@@ -731,20 +736,26 @@ impl Elaborator {
         i: ArgInfo,
         f_ty: &Box<Term>,
     ) -> Result<Option<Box<Expr>>, Error> {
-        fn n_to_insert(loc: Loc, name: String, mut ty: &Box<Term>) -> Result<usize, Error> {
-            let mut n = 0;
+        fn holes_to_insert(
+            loc: Loc,
+            name: String,
+            mut ty: &Box<Term>,
+        ) -> Result<Vec<Option<Var>>, Error> {
+            let mut ret = Default::default();
             loop {
                 match &**ty {
                     Term::Pi(p, b) => {
-                        if p.info == Implicit {
-                            if *p.var.name == name {
-                                return Ok(n);
-                            }
-                            ty = b;
-                            n += 1;
-                            continue;
+                        if p.info != Implicit {
+                            return Err(UnresolvedImplicitParam(name, loc));
                         }
-                        return Err(UnresolvedImplicitParam(name, loc));
+                        if *p.var.name == name {
+                            return Ok(ret);
+                        }
+                        ty = b;
+                        ret.push(match &*p.typ {
+                            Term::InterfaceRef(r) => Some(r.clone()),
+                            _ => None,
+                        });
                     }
                     _ => unreachable!(),
                 }
@@ -753,23 +764,19 @@ impl Elaborator {
 
         Ok(match &**f_ty {
             Term::Pi(p, _) if p.info == Implicit => match i {
-                UnnamedExplicit => {
-                    if let Term::InterfaceRef(r) = &*p.typ {
-                        // FIXME: Should insert holes of constraints, not `type`.
-                        println!("r ~> {r}")
-                    }
-                    Some(Expr::holed_app(f))
-                }
+                UnnamedExplicit => Some(Expr::holed_app(
+                    f,
+                    match &*p.typ {
+                        Term::InterfaceRef(r) => Some(r.clone()),
+                        _ => None,
+                    },
+                )),
                 NamedImplicit(name) => {
-                    let n = n_to_insert(f.loc(), name, f_ty)?;
-                    if n == 0 {
+                    let holes = holes_to_insert(f.loc(), name, f_ty)?;
+                    if holes.is_empty() {
                         None
                     } else {
-                        let mut ret = Expr::holed_app(f);
-                        for _ in 1..n {
-                            ret = Expr::holed_app(ret);
-                        }
-                        Some(ret)
+                        Some(holes.into_iter().fold(f, Expr::holed_app))
                     }
                 }
                 _ => None,
