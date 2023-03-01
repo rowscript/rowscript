@@ -262,7 +262,7 @@ impl Elaborator {
                 let loc = e.loc();
                 let f_e = e.clone();
                 let (mut inferred_tm, mut inferred_ty) = self.infer(e, Some(ty))?;
-                if let Some(f_e) = Self::app_insert_holes(f_e, UnnamedExplicit, &*inferred_ty)? {
+                if let Some(f_e) = Self::app_insert_holes(f_e, UnnamedExplicit, &inferred_ty)? {
                     let (new_tm, new_ty) = self.infer(f_e, Some(ty))?;
                     inferred_tm = new_tm;
                     inferred_ty = new_ty;
@@ -326,7 +326,7 @@ impl Elaborator {
                 let f_e = f.clone();
                 let (f, f_ty) = self.infer(f, hint)?;
 
-                if let Some(f_e) = Self::app_insert_holes(f_e, i.clone(), &*f_ty)? {
+                if let Some(f_e) = Self::app_insert_holes(f_e, i.clone(), &f_ty)? {
                     return self.infer(Box::new(App(f_loc, f_e, i, x)), hint);
                 }
 
@@ -726,25 +726,32 @@ impl Elaborator {
         (Box::new(Term::MetaRef(tm_meta_var, spine)), ty)
     }
 
-    fn app_insert_holes(f: Box<Expr>, i: ArgInfo, f_ty: &Term) -> Result<Option<Box<Expr>>, Error> {
-        fn n_to_insert(n: usize, loc: Loc, name: String, ty: &Term) -> Result<usize, Error> {
-            match ty {
-                Term::Pi(p, b) => {
-                    if p.info == Implicit {
-                        if *p.var.name == name {
-                            Ok(n)
-                        } else {
-                            n_to_insert(n + 1, loc, name, &*b)
+    fn app_insert_holes(
+        f: Box<Expr>,
+        i: ArgInfo,
+        f_ty: &Box<Term>,
+    ) -> Result<Option<Box<Expr>>, Error> {
+        fn n_to_insert(loc: Loc, name: String, mut ty: &Box<Term>) -> Result<usize, Error> {
+            let mut n = 0;
+            loop {
+                match &**ty {
+                    Term::Pi(p, b) => {
+                        if p.info == Implicit {
+                            if *p.var.name == name {
+                                return Ok(n);
+                            }
+                            ty = b;
+                            n += 1;
+                            continue;
                         }
-                    } else {
-                        Err(UnresolvedImplicitParam(name, loc))
+                        return Err(UnresolvedImplicitParam(name, loc));
                     }
+                    _ => unreachable!(),
                 }
-                _ => unreachable!(),
             }
         }
 
-        Ok(match f_ty {
+        Ok(match &**f_ty {
             Term::Pi(p, _) if p.info == Implicit => match i {
                 UnnamedExplicit => {
                     if let Term::InterfaceRef(r) = &*p.typ {
@@ -754,7 +761,7 @@ impl Elaborator {
                     Some(Expr::holed_app(f))
                 }
                 NamedImplicit(name) => {
-                    let n = n_to_insert(0, f.loc(), name, f_ty)?;
+                    let n = n_to_insert(f.loc(), name, f_ty)?;
                     if n == 0 {
                         None
                     } else {
