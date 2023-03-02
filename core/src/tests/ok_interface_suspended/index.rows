@@ -12,8 +12,7 @@ implements NatLike for Foo {
     }
 }
 
-// FIXME: Constraints still not working.
-function f0<T>(a: T): T {
+function f0<T: NatLike>(a: T): T {
     return add(a, a)
 }
 

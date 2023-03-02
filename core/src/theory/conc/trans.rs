@@ -346,7 +346,10 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     let name_pair = pairs.next().unwrap();
     let name_loc = Loc::from(name_pair.as_span());
     let name = Var::from(name_pair);
-    let i_ref = Box::new(InterfaceRef(name_loc, name.clone()));
+    let i_ref = Box::new(InterfaceRef(
+        name_loc,
+        Box::new(Resolved(name_loc, name.clone())),
+    ));
 
     let alias = Var::from(pairs.next().unwrap());
 
@@ -379,7 +382,7 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
         loc,
         name: name.clone(),
         tele,
-        ret: Box::new(InterfaceRef(loc, name)),
+        ret: i_ref,
         body: Interface {
             fns,
             ims: Default::default(),
@@ -777,9 +780,8 @@ fn implicit_param(p: Pair<Rule>) -> Param<Expr> {
 fn interface_param(p: Pair<Rule>) -> Param<Expr> {
     let mut pairs = p.into_inner();
     let var = Var::from(pairs.next().unwrap());
-    let i = pairs.next().unwrap();
-    let i_loc = Loc::from(i.as_span());
-    let typ = Box::new(InterfaceRef(i_loc, Var::from(i)));
+    let i = Box::new(unresolved(pairs.next().unwrap()));
+    let typ = Box::new(InterfaceRef(i.loc(), i));
     Param {
         var,
         info: Implicit,

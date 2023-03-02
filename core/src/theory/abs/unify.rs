@@ -17,6 +17,8 @@ impl<'a> Unifier<'a> {
     }
 
     fn unify_err(&self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
+        dbg!(lhs);
+        dbg!(rhs);
         Err(NonUnifiable(
             Box::new(lhs.clone()),
             Box::new(rhs.clone()),
@@ -29,11 +31,11 @@ impl<'a> Unifier<'a> {
 
         match (lhs, rhs) {
             (MetaRef(v, _), rhs) => {
-                self.solve(v, rhs);
+                self.solve(v, rhs)?;
                 Ok(())
             }
             (lhs, MetaRef(v, _)) => {
-                self.solve(v, lhs);
+                self.solve(v, lhs)?;
                 Ok(())
             }
 
@@ -116,20 +118,29 @@ impl<'a> Unifier<'a> {
         }
     }
 
-    fn solve(&mut self, meta_var: &Var, tm: &Term) {
+    fn solve(&mut self, meta_var: &Var, tm: &Term) -> Result<(), Error> {
         use Body::*;
+        use Term::*;
 
-        let def = self.sigma.get_mut(meta_var).unwrap();
-        match &def.body {
+        let d = self.sigma.get_mut(meta_var).unwrap();
+        match &d.body {
             Meta(s) => {
-                if let Some(_) = s {
-                    return;
+                if s.is_some() {
+                    return Ok(());
                 }
-                // FIXME: A solution `T` of type `type` is inserted with the interface constraint,
-                // which is illegal due to the subtyping rule.
-                def.body = Meta(Some(tm.clone()));
+                d.body = Meta(Some(tm.clone()));
             }
             _ => unreachable!(),
+        }
+
+        let tele = d.tele.clone();
+        let ret = d.ret.clone();
+        match &*tm {
+            Ref(r) => match tele.into_iter().find(|p| &p.var == r) {
+                Some(p) => self.unify(&ret, &p.typ),
+                None => unreachable!(),
+            },
+            _ => Ok(()),
         }
     }
 

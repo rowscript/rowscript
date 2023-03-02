@@ -73,7 +73,7 @@ pub enum Expr {
     Lookup(Loc, Box<Self>, String, Box<Self>),
     Vptr(Loc, Var),
 
-    InterfaceRef(Loc, Var),
+    InterfaceRef(Loc, Box<Self>),
     Find(Loc, Var, Var),
 }
 
