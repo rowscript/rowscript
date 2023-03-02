@@ -125,6 +125,8 @@ impl<'a> Unifier<'a> {
                 if let Some(_) = s {
                     return;
                 }
+                // FIXME: A solution `T` of type `type` is inserted with the interface constraint,
+                // which is illegal due to the subtyping rule.
                 def.body = Meta(Some(tm.clone()));
             }
             _ => unreachable!(),
