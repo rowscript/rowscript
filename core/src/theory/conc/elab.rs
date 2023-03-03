@@ -31,7 +31,6 @@ pub struct Elaborator {
 impl Elaborator {
     pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<(), Error> {
         for d in defs {
-            dbg!(&d);
             self.def(d)?;
         }
         for (_, d) in &self.sigma {

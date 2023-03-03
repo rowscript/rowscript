@@ -17,8 +17,6 @@ impl<'a> Unifier<'a> {
     }
 
     fn unify_err(&self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
-        dbg!(lhs);
-        dbg!(rhs);
         Err(NonUnifiable(
             Box::new(lhs.clone()),
             Box::new(rhs.clone()),

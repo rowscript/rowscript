@@ -365,7 +365,7 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
                 let mut tele = vec![Param {
                     var: alias.clone(),
                     info: Implicit,
-                    typ: i_ref.clone(),
+                    typ: Expr::pi(&tele, i_ref.clone()),
                 }];
                 tele.extend(d.tele);
                 d.tele = tele;

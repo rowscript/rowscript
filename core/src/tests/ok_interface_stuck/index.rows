@@ -12,6 +12,11 @@ implements NatLike for Foo {
     }
 }
 
+type Bar = {m: number};
+implements NatLike for Bar {
+    add(a: Bar, b: Bar): Bar { return {m: numAdd(a.m, b.m)} }
+}
+
 function f0<T: NatLike>(a: T): T {
     return add(a, a)
 }
