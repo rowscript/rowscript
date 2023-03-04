@@ -12,7 +12,7 @@ use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Loc, Param, Tele, Var, VarGen, VPTR};
+use crate::theory::{Answers, Loc, Param, Tele, Var, VarGen, VPTR};
 use crate::Error;
 use crate::Error::{
     ExpectedAlias, ExpectedClass, ExpectedEnum, ExpectedInterface, ExpectedObject, ExpectedPi,
@@ -26,6 +26,8 @@ pub struct Elaborator {
 
     ug: VarGen,
     ig: VarGen,
+
+    answers: Answers,
 }
 
 impl Elaborator {
@@ -172,8 +174,7 @@ impl Elaborator {
         match &*e {
             App(loc, f, ai, x) => {
                 if let Some((i, f)) = self.is_findable_fn(f) {
-                    let tm = self.findable_check(*loc, i, f, ai.clone(), x.clone(), ty)?;
-                    return Ok(tm);
+                    return Ok(self.findable_check(*loc, i, f, ai.clone(), x.clone(), ty)?);
                 }
             }
             _ => {}
@@ -347,7 +348,7 @@ impl Elaborator {
                         let applied = Normalizer::new(&mut self.sigma, f_loc).apply(f, &[x])?;
                         (applied, applied_ty)
                     }
-                    _ => return Err(ExpectedPi(f, f_loc)),
+                    ty => return Err(ExpectedPi(Box::new(ty), f_loc)),
                 }
             }
             Sigma(_, p, b) => {
@@ -735,7 +736,7 @@ impl Elaborator {
     }
 
     fn app_insert_holes(
-        f: Box<Expr>,
+        f_e: Box<Expr>,
         i: ArgInfo,
         f_ty: &Box<Term>,
     ) -> Result<Option<Box<Expr>>, Error> {
@@ -768,18 +769,18 @@ impl Elaborator {
         Ok(match &**f_ty {
             Term::Pi(p, _) if p.info == Implicit => match i {
                 UnnamedExplicit => Some(Expr::holed_app(
-                    f,
+                    f_e,
                     match &*p.typ {
                         Term::InterfaceRef(r) => Some(r.clone()),
                         _ => None,
                     },
                 )),
                 NamedImplicit(name) => {
-                    let holes = holes_to_insert(f.loc(), name, f_ty)?;
+                    let holes = holes_to_insert(f_e.loc(), name, f_ty)?;
                     if holes.is_empty() {
                         None
                     } else {
-                        Some(holes.into_iter().fold(f, Expr::holed_app))
+                        Some(holes.into_iter().fold(f_e, Expr::holed_app))
                     }
                 }
                 _ => None,
@@ -815,6 +816,10 @@ impl Elaborator {
         use Body::*;
         use Expr::*;
 
+        if let Some(tm) = self.answers.get(loc, &f) {
+            return Ok(tm);
+        }
+
         let ims = match &self.sigma.get(&i).unwrap().body {
             Interface { ims, .. } => ims.clone(),
             _ => unreachable!(),
@@ -834,7 +839,10 @@ impl Elaborator {
                 )),
                 ty,
             ) {
-                Ok(tm) => return Ok(tm),
+                Ok(tm) => {
+                    self.answers.insert(loc, f, tm.clone());
+                    return Ok(tm);
+                }
                 Err(_) => continue,
             }
         }
@@ -860,6 +868,7 @@ impl Default for Elaborator {
             gamma: Default::default(),
             ug: VarGen::user_meta(),
             ig: VarGen::inserted_meta(),
+            answers: Default::default(),
         }
     }
 }

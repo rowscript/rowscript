@@ -75,7 +75,7 @@ pub fn reify(loc: Loc, tm: Box<Term>) -> Box<Expr> {
                 .collect(),
         ),
         Vptr(r) => Expr::Vptr(loc, r),
-        InterfaceRef(r) => Expr::InterfaceRef(loc, Box::new(Expr::Resolved(loc, r))),
+        InterfaceRef(r) => Expr::Resolved(loc, r),
         Stuck(_, _, _, _) => unreachable!(),
         Find(i, f) => Expr::Find(loc, i, f),
     })

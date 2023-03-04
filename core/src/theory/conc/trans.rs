@@ -6,7 +6,6 @@ use crate::theory::abs::data::Dir;
 use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
-use crate::theory::conc::data::Expr::InterfaceRef;
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var};
@@ -780,8 +779,7 @@ fn implicit_param(p: Pair<Rule>) -> Param<Expr> {
 fn interface_param(p: Pair<Rule>) -> Param<Expr> {
     let mut pairs = p.into_inner();
     let var = Var::from(pairs.next().unwrap());
-    let i = Box::new(unresolved(pairs.next().unwrap()));
-    let typ = Box::new(InterfaceRef(i.loc(), i));
+    let typ = Box::new(unresolved(pairs.next().unwrap()));
     Param {
         var,
         info: Implicit,

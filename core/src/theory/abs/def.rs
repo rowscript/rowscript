@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 
 use crate::theory::abs::data::Term;
-use crate::theory::abs::def::Body::Meta;
 use crate::theory::abs::rename::rename;
 use crate::theory::conc::data::Expr;
 use crate::theory::ParamInfo::Explicit;
@@ -33,6 +32,7 @@ pub struct Def<T: Syntax> {
 
 impl<T: Syntax> Def<T> {
     pub fn new_constant_constraint(loc: Loc, name: Var, ret: Box<T>) -> Self {
+        use Body::*;
         Self {
             loc,
             name,
@@ -70,10 +70,7 @@ impl Def<Term> {
     }
 
     pub fn to_type(&self) -> Box<Term> {
-        match &self.body {
-            Meta(_) => self.ret.clone(),
-            _ => rename(Term::pi(&self.tele, self.ret.clone())),
-        }
+        rename(Term::pi(&self.tele, self.ret.clone()))
     }
 }
 
