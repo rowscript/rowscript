@@ -24,7 +24,7 @@ function f0(): string {
     return map(numToStr, {n: 42}).n
 }
 
-//function g0<M: Functor, A, B>(f: (a: A) -> B, x: M<A>): M<B> {
+//function g0<M: type -> Functor, A, B>(f: (a: A) -> B, x: M<A>): M<B> {
 //    return map(f, x)
 //}
 //

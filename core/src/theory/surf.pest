@@ -17,7 +17,6 @@ field_id = _{ prop_id | variant_id }
 param_id = { pub_camelback_id }
 let_id = { pub_camelback_id }
 class_id = { pub_camel_id | priv_camel_id }
-interface_id = { pub_camel_id | priv_camel_id }
 
 idref =
   { fn_id
@@ -31,6 +30,7 @@ tyref =
   }
 
 hole = { "?" }
+univ = { "type" }
 
 string = @{ "\"" ~ (unescaped_string_fragment | escaped_string_fragment)* ~ "\"" }
 unescaped_string_fragment = @{ (!("\"" | "\\") ~ ANY)+ }
@@ -71,8 +71,17 @@ implicits =
   }
 row_ids = _{ row_id ~ ("," ~ row_id)* }
 implicit_params = _{ implicit_param ~ ("," ~ implicit_param)* }
-implicit_param = _{ interface_param | implicit_id }
-interface_param = { implicit_id ~ ":" ~ interface_id }
+implicit_param = _{ hkt_param | implicit_id }
+hkt_param = { implicit_id ~ ":" ~ hkt_expr }
+hkt_expr =
+  { hkt_fn
+  | hkt_primary_expr
+  }
+hkt_primary_expr =
+  { univ
+  | tyref
+  }
+hkt_fn = { hkt_primary_expr ~ "->" ~ hkt_expr }
 
 param = { param_id ~ ":" ~ type_expr }
 params = _{ "()" | "(" ~ param ~ ("," ~ param)* ~ ")" }
@@ -256,7 +265,7 @@ class_method = { fn_id ~ params ~ (":" ~ type_expr)? ~ fn_body_block }
 
 interface_def =
   { "interface"
-  ~ interface_id
+  ~ type_id
   ~ "for"
   ~ implicit_id
   ~ implicits?
@@ -274,7 +283,7 @@ interface_fn =
 
 implements_def =
   { "implements"
-  ~ interface_id
+  ~ type_id
   ~ "for"
   ~ tyref
   ~ "{"

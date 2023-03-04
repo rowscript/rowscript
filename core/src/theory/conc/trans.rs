@@ -60,7 +60,7 @@ fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
         match p.as_rule() {
             Rule::row_id => tele.push(row_param(p)),
             Rule::implicit_id => tele.push(implicit_param(p)),
-            Rule::interface_param => tele.push(interface_param(p)),
+            Rule::hkt_param => tele.push(hkt_param(p)),
             Rule::param => untupled.push(Loc::from(p.as_span()), param(p)),
             Rule::type_expr => ret = Box::new(type_expr(p)),
             Rule::fn_body => {
@@ -380,7 +380,7 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     let mut defs = vec![Def {
         loc,
         name: name.clone(),
-        tele,
+        tele: Default::default(),
         ret: i_ref,
         body: Interface {
             fns,
@@ -776,14 +776,49 @@ fn implicit_param(p: Pair<Rule>) -> Param<Expr> {
     }
 }
 
-fn interface_param(p: Pair<Rule>) -> Param<Expr> {
+fn hkt_param(p: Pair<Rule>) -> Param<Expr> {
     let mut pairs = p.into_inner();
     let var = Var::from(pairs.next().unwrap());
-    let typ = Box::new(unresolved(pairs.next().unwrap()));
+    let typ = Box::new(hkt_expr(pairs.next().unwrap()));
     Param {
         var,
         info: Implicit,
         typ,
+    }
+}
+
+fn hkt_expr(t: Pair<Rule>) -> Expr {
+    let p = t.into_inner().next().unwrap();
+    match p.as_rule() {
+        Rule::hkt_fn => hkt_fn(p),
+        Rule::hkt_primary_expr => hkt_primary_expr(p),
+        _ => unreachable!(),
+    }
+}
+
+fn hkt_fn(f: Pair<Rule>) -> Expr {
+    use Expr::*;
+    let loc = Loc::from(f.as_span());
+    let mut pairs = f.into_inner();
+    Pi(
+        loc,
+        Param {
+            var: Var::unbound(),
+            info: Implicit,
+            typ: Box::new(hkt_primary_expr(pairs.next().unwrap())),
+        },
+        Box::new(hkt_expr(pairs.next().unwrap())),
+    )
+}
+
+fn hkt_primary_expr(t: Pair<Rule>) -> Expr {
+    use Expr::*;
+    let loc = Loc::from(t.as_span());
+    let p = t.into_inner().next().unwrap();
+    match p.as_rule() {
+        Rule::univ => Univ(loc),
+        Rule::tyref => unresolved(p),
+        _ => unreachable!(),
     }
 }
 
