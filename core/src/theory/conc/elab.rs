@@ -833,7 +833,7 @@ impl Elaborator {
             match self.check(
                 Box::new(App(
                     loc,
-                    Box::new(Resolved(loc, im_fn.clone())),
+                    Box::new(Resolved(loc, im_fn)),
                     ai.clone(),
                     x.clone(),
                 )),

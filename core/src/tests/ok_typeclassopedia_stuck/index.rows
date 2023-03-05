@@ -10,16 +10,12 @@ implements Functor for Foo {
     }
 }
 
-type Bar<T> = {m: T};
-
-implements Functor for Bar {
-    map<A, B>(f: (a: A) -> B, x: Bar<A>): Bar<B> {
-        return {m: f(x.m)}
-    }
-}
-
 function numToStr(n: number): string;
 
-function f0(): string {
-    return map(numToStr, {n: 42}).n
-}
+//function f0<M: type -> Functor, A, B>(f: (a: A) -> B, x: M<A>): M<B> {
+//    return map<M, A, B>(f, x)
+//}
+//
+//function f1(): string {
+//    return f0(numToStr, {n: 42}).n
+//}
