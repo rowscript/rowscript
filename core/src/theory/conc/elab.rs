@@ -15,8 +15,9 @@ use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Answers, Loc, Param, Tele, Var, VarGen, VPTR};
 use crate::Error;
 use crate::Error::{
-    ExpectedAlias, ExpectedClass, ExpectedEnum, ExpectedInterface, ExpectedObject, ExpectedPi,
-    ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplicitParam,
+    ExpectedAlias, ExpectedClass, ExpectedEnum, ExpectedExplicit, ExpectedInterface,
+    ExpectedObject, ExpectedPi, ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField,
+    UnresolvedImplicitParam,
 };
 
 #[derive(Debug)]
@@ -323,10 +324,15 @@ impl Elaborator {
                     Box::new(Term::Pi(param, b_ty)),
                 )
             }
-            App(_, f, i, x) => {
+            App(loc, f, i, x) => {
                 let f_loc = f.loc();
                 let f_e = f.clone();
                 let (f, f_ty) = self.infer(f, hint)?;
+
+                match *f {
+                    Term::Find(_, _) if i != UnnamedExplicit => return Err(ExpectedExplicit(loc)),
+                    _ => {}
+                }
 
                 if let Some(f_e) = Self::app_insert_holes(f_e, i.clone(), &f_ty)? {
                     return self.infer(Box::new(App(f_loc, f_e, i, x)), hint);
