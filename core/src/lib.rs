@@ -58,8 +58,6 @@ pub enum Error {
     ExpectedAlias(Box<Term>, Loc),
     #[error("unresolved implementation, got \"{0}\"")]
     UnresolvedImplementation(Box<Term>, Loc),
-    #[error("expected explicit function application")]
-    ExpectedExplicit(Loc),
 
     #[error("expected \"{0}\", found \"{1}\"")]
     NonUnifiable(Box<Term>, Box<Term>, Loc),
@@ -100,7 +98,6 @@ impl Error {
             ExpectedInterface(_, loc) => self.simple_message(loc, CHECKER_FAILED),
             ExpectedAlias(_, loc) => self.simple_message(loc, CHECKER_FAILED),
             UnresolvedImplementation(_, loc) => self.simple_message(loc, CHECKER_FAILED),
-            ExpectedExplicit(loc) => self.simple_message(loc, CHECKER_FAILED),
 
             NonUnifiable(_, _, loc) => self.simple_message(loc, UNIFIER_FAILED),
             NonRowSat(_, _, loc) => self.simple_message(loc, UNIFIER_FAILED),
