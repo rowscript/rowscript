@@ -714,10 +714,7 @@ impl Elaborator {
                     InterfaceMeta(r) => Term::InterfaceRef(r.clone()),
                     _ => Term::Univ,
                 }),
-                body: Meta {
-                    k: k.clone(),
-                    s: None,
-                },
+                body: Meta(k.clone(), None),
             },
         );
         let ty = Box::new(Term::MetaRef(k.clone(), ty_meta_var, Default::default()));
@@ -732,10 +729,7 @@ impl Elaborator {
                 name: tm_meta_var.clone(),
                 tele,
                 ret: ty.clone(),
-                body: Meta {
-                    k: k.clone(),
-                    s: None,
-                },
+                body: Meta(k.clone(), None),
             },
         );
         (Box::new(Term::MetaRef(k, tm_meta_var, spine)), ty)

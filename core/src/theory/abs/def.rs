@@ -47,7 +47,7 @@ impl Def<Term> {
             Interface { .. } => Box::new(Term::InterfaceRef(v)),
 
             Undefined => Box::new(Term::Undef(v)),
-            Meta { s, .. } => match s {
+            Meta(_, s) => match s {
                 None => unreachable!(),
                 Some(f) => rename(Term::lam(&self.tele, Box::new(f.clone()))),
             },
@@ -140,7 +140,7 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
-                Meta { k, s } => {
+                Meta(k, s) => {
                     let tele = Param::tele_to_string(&self.tele);
                     match s {
                         Some(a) => {
@@ -185,9 +185,6 @@ pub enum Body<T: Syntax> {
     },
 
     Undefined,
-    Meta {
-        k: MetaKind,
-        s: Option<T>,
-    },
+    Meta(MetaKind, Option<T>),
     Findable(Var),
 }

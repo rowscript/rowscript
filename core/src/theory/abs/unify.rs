@@ -122,14 +122,11 @@ impl<'a> Unifier<'a> {
 
         let d = self.sigma.get_mut(meta_var).unwrap();
         match &d.body {
-            Meta { k, s } => {
+            Meta(k, s) => {
                 if s.is_some() {
                     return Ok(());
                 }
-                d.body = Meta {
-                    k: k.clone(),
-                    s: Some(tm.clone()),
-                };
+                d.body = Meta(k.clone(), Some(tm.clone()));
             }
             _ => unreachable!(),
         }
