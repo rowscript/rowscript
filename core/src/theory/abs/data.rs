@@ -26,9 +26,27 @@ pub type FieldMap = HashMap<String, Term>;
 pub type CaseMap = HashMap<String, (Var, Term)>;
 
 #[derive(Debug, Clone)]
+pub enum MetaKind {
+    UserMeta,
+    InsertedMeta,
+    InterfaceMeta(Var),
+}
+
+impl Display for MetaKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        use MetaKind::*;
+        f.write_str(match self {
+            UserMeta => "u",
+            InsertedMeta => "i",
+            InterfaceMeta(r) => r.as_str(),
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum Term {
     Ref(Var),
-    MetaRef(Var, Spine),
+    MetaRef(MetaKind, Var, Spine),
     Undef(Var),
 
     Let(Param<Self>, Box<Self>, Box<Self>),
@@ -113,8 +131,8 @@ impl Display for Term {
         f.write_str(
             match self {
                 Ref(r) => r.to_string(),
-                MetaRef(r, sp) => {
-                    let mut s = vec![r.to_string()];
+                MetaRef(k, r, sp) => {
+                    let mut s = vec![format!("?{k}{r}")];
                     s.extend(
                         sp.into_iter()
                             .map(|(i, tm)| match i {

@@ -28,11 +28,11 @@ impl<'a> Unifier<'a> {
         use Term::*;
 
         match (lhs, rhs) {
-            (MetaRef(v, _), rhs) => {
+            (MetaRef(_, v, _), rhs) => {
                 self.solve(v, rhs)?;
                 Ok(())
             }
-            (lhs, MetaRef(v, _)) => {
+            (lhs, MetaRef(_, v, _)) => {
                 self.solve(v, lhs)?;
                 Ok(())
             }

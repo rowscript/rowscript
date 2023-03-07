@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::theory::abs::data::Dir::Le;
-use crate::theory::abs::data::{CaseMap, FieldMap, Term};
+use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, Term};
 use crate::theory::abs::def::Body::Findable;
 use crate::theory::abs::def::{gamma_to_tele, Body};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
@@ -19,14 +19,11 @@ use crate::Error::{
     ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplicitParam,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Elaborator {
     sigma: Sigma,
     gamma: Gamma,
-
-    ug: VarGen,
-    ig: VarGen,
-
+    vg: VarGen,
     answers: Answers,
 }
 
@@ -288,6 +285,7 @@ impl Elaborator {
         hint: Option<&Box<Term>>,
     ) -> Result<(Box<Term>, Box<Term>), Error> {
         use Expr::*;
+        use MetaKind::*;
 
         Ok(match *e {
             Resolved(_, v) => match self.gamma.get(&v) {
@@ -297,9 +295,9 @@ impl Elaborator {
                     (d.to_term(v), d.to_type())
                 }
             },
-            Hole(loc) => self.insert_meta(loc, true, None),
-            InsertedHole(loc) => self.insert_meta(loc, false, None),
-            InterfaceHole(loc, r) => self.insert_meta(loc, false, Some(r)),
+            Hole(loc) => self.insert_meta(loc, UserMeta),
+            InsertedHole(loc) => self.insert_meta(loc, InsertedMeta),
+            InterfaceHole(loc, r) => self.insert_meta(loc, InterfaceMeta(r)),
             Pi(_, p, b) => {
                 let (param_ty, _) = self.infer(p.typ, hint)?;
                 let param = Param {
@@ -701,25 +699,25 @@ impl Elaborator {
         Ok(ret)
     }
 
-    fn insert_meta(&mut self, loc: Loc, is_user: bool, r: Option<Var>) -> (Box<Term>, Box<Term>) {
+    fn insert_meta(&mut self, loc: Loc, k: MetaKind) -> (Box<Term>, Box<Term>) {
         use Body::*;
+        use MetaKind::*;
 
-        let ty_meta_var = self.ig.fresh();
+        let ty_meta_var = self.vg.fresh();
         self.sigma.insert(
             ty_meta_var.clone(),
             Def::new_constant_constraint(
                 loc,
                 ty_meta_var.clone(),
-                Box::new(r.map_or(Term::Univ, Term::InterfaceRef)),
+                Box::new(match &k {
+                    InterfaceMeta(r) => Term::InterfaceRef(r.clone()),
+                    _ => Term::Univ,
+                }),
             ),
         );
-        let ty = Box::new(Term::MetaRef(ty_meta_var, Default::default()));
+        let ty = Box::new(Term::MetaRef(k.clone(), ty_meta_var, Default::default()));
 
-        let tm_meta_var = if is_user {
-            self.ug.fresh()
-        } else {
-            self.ig.fresh()
-        };
+        let tm_meta_var = self.vg.fresh();
         let tele = gamma_to_tele(&self.gamma);
         let spine = Term::tele_to_spine(&tele);
         self.sigma.insert(
@@ -732,7 +730,7 @@ impl Elaborator {
                 body: Meta(None),
             },
         );
-        (Box::new(Term::MetaRef(tm_meta_var, spine)), ty)
+        (Box::new(Term::MetaRef(k, tm_meta_var, spine)), ty)
     }
 
     fn app_insert_holes(
@@ -858,17 +856,5 @@ impl Elaborator {
         )?;
 
         Ok(Box::new(Term::Stuck(i, f, ai, self.infer(x, Some(ty))?.0)))
-    }
-}
-
-impl Default for Elaborator {
-    fn default() -> Self {
-        Self {
-            sigma: Default::default(),
-            gamma: Default::default(),
-            ug: VarGen::user_meta(),
-            ig: VarGen::inserted_meta(),
-            answers: Default::default(),
-        }
     }
 }

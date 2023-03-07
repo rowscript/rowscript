@@ -1,13 +1,18 @@
-use crate::theory::abs::data::Term;
+use crate::theory::abs::data::{MetaKind, Term};
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::conc::data::Expr;
 use crate::theory::{Loc, Param};
 
 pub fn reify(loc: Loc, tm: Box<Term>) -> Box<Expr> {
+    use MetaKind::*;
     use Term::*;
     Box::new(match *tm {
         Ref(x) => Expr::Resolved(loc, x),
-        MetaRef(x, _) => Expr::Resolved(loc, x),
+        MetaRef(k, _, _) => match k {
+            UserMeta => Expr::Hole(loc),
+            InsertedMeta => Expr::InsertedHole(loc),
+            InterfaceMeta(i) => Expr::InterfaceRef(loc, Box::new(Expr::Resolved(loc, i))),
+        },
         Undef(x) => Expr::Resolved(loc, x),
         Let(p, a, b) => Expr::Let(
             loc,

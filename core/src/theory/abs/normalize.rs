@@ -33,7 +33,7 @@ impl<'a> Normalizer<'a> {
                     Box::new(Ref(x))
                 }
             }
-            MetaRef(x, sp) => {
+            MetaRef(k, x, sp) => {
                 let mut def = self.sigma.get(&x).unwrap().clone();
                 def.ret = self.term(def.ret)?;
                 let ret = match &def.body {
@@ -46,7 +46,7 @@ impl<'a> Normalizer<'a> {
                             self.term(ret)?
                         } else {
                             Box::new(Self::auto_implicit(&*def.ret).map_or_else(
-                                || MetaRef(x.clone(), sp),
+                                || MetaRef(k, x.clone(), sp),
                                 |tm| {
                                     def.body = Meta(Some(tm.clone()));
                                     tm
@@ -63,7 +63,7 @@ impl<'a> Normalizer<'a> {
             Let(p, a, b) => {
                 let a = self.term(a)?;
                 match &*a {
-                    MetaRef(_, _) => Box::new(Let(p, a, b)),
+                    MetaRef(_, _, _) => Box::new(Let(p, a, b)),
                     _ => self.with(&[(&p.var, &a)], b)?,
                 }
             }
@@ -72,7 +72,7 @@ impl<'a> Normalizer<'a> {
             App(f, x) => {
                 let f = self.term(f)?;
                 let x = self.term(x)?;
-                if let MetaRef(_, _) = &*x {
+                if let MetaRef(_, _, _) = &*x {
                     Box::new(App(f, x))
                 } else if let Lam(p, b) = *f {
                     self.rho.insert(p.var, x);
@@ -85,7 +85,7 @@ impl<'a> Normalizer<'a> {
             Tuple(a, b) => Box::new(Tuple(self.term(a)?, self.term(b)?)),
             TupleLet(p, q, a, b) => {
                 let a = self.term(a)?;
-                if let MetaRef(_, _) = &*a {
+                if let MetaRef(_, _, _) = &*a {
                     Box::new(TupleLet(p, q, a, b))
                 } else if let Tuple(x, y) = *a {
                     self.rho.insert(p.var, x);
@@ -97,7 +97,7 @@ impl<'a> Normalizer<'a> {
             }
             UnitLet(a, b) => {
                 let a = self.term(a)?;
-                if let MetaRef(_, _) = &*a {
+                if let MetaRef(_, _, _) = &*a {
                     Box::new(UnitLet(a, b))
                 } else if let TT = *a {
                     self.term(b)?

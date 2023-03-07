@@ -11,7 +11,8 @@ impl Renamer {
         use Term::*;
         Box::new(match *tm {
             Ref(x) => self.0.get(&x).map_or(Ref(x), |y| Ref(y.clone())),
-            MetaRef(r, sp) => MetaRef(
+            MetaRef(k, r, sp) => MetaRef(
+                k,
                 r,
                 sp.into_iter()
                     .map(|(i, tm)| (i, *self.term(Box::new(tm))))
