@@ -17,7 +17,7 @@ pub enum Expr {
 
     Hole(Loc),
     InsertedHole(Loc),
-    InterfaceHole(Loc, Var),
+    ConstraintHole(Loc, Var),
 
     Let(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
 
@@ -73,7 +73,7 @@ pub enum Expr {
     Lookup(Loc, Box<Self>, String, Box<Self>),
     Vptr(Loc, Var),
 
-    InterfaceRef(Loc, Box<Self>),
+    Constraint(Loc, Box<Self>),
     Find(Loc, Var, Var),
 }
 
@@ -100,7 +100,7 @@ impl Expr {
             Resolved(loc, _) => loc,
             Hole(loc) => loc,
             InsertedHole(loc) => loc,
-            InterfaceHole(loc, _) => loc,
+            ConstraintHole(loc, _) => loc,
             Let(loc, _, _, _, _) => loc,
             Univ(loc) => loc,
             Pi(loc, _, _) => loc,
@@ -141,7 +141,7 @@ impl Expr {
             Switch(loc, _, _) => loc,
             Lookup(loc, _, _, _) => loc,
             Vptr(loc, _) => loc,
-            InterfaceRef(loc, _) => loc,
+            Constraint(loc, _) => loc,
             Find(loc, _, _) => loc,
         }
         .clone()
@@ -186,7 +186,7 @@ impl Expr {
             loc,
             f,
             UnnamedImplicit,
-            Box::new(r.map_or(InsertedHole(loc), |r| InterfaceHole(loc, r))),
+            Box::new(r.map_or(InsertedHole(loc), |r| ConstraintHole(loc, r))),
         ))
     }
 }
@@ -204,7 +204,7 @@ impl Display for Expr {
                 Resolved(_, r) => r.to_string(),
                 Hole(_) => "?".to_string(),
                 InsertedHole(_) => "?i".to_string(),
-                InterfaceHole(_, r) => format!("?{r}"),
+                ConstraintHole(_, r) => format!("?{r}"),
                 Let(_, v, typ, a, b) => {
                     if let Some(ty) = typ {
                         format!("let {v}: {ty} = {a};\n\t{b}")
@@ -274,7 +274,7 @@ impl Display for Expr {
                 ),
                 Lookup(_, o, n, a) => format!("{o}.{n}{a}"),
                 Vptr(_, r) => r.to_string(),
-                InterfaceRef(_, r) => r.to_string(),
+                Constraint(_, r) => r.to_string(),
                 Find(_, i, f) => format!("{i}.{f}"),
             }
             .as_str(),

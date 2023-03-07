@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::theory::abs::data::Dir::Le;
 use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, Term};
-use crate::theory::abs::def::Body::Findable;
 use crate::theory::abs::def::{gamma_to_tele, Body};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
@@ -16,7 +15,8 @@ use crate::theory::{Answers, Loc, Param, Tele, Var, VarGen, VPTR};
 use crate::Error;
 use crate::Error::{
     ExpectedAlias, ExpectedClass, ExpectedEnum, ExpectedInterface, ExpectedObject, ExpectedPi,
-    ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplicitParam,
+    ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplementation,
+    UnresolvedImplicitParam,
 };
 
 #[derive(Debug, Default)]
@@ -93,7 +93,11 @@ impl Elaborator {
                 vtbl,
                 vtbl_lookup,
             },
-            Interface { fns, ims } => Interface { fns, ims },
+            Interface { im_ty, fns, ims } => Interface {
+                im_ty: self.check(im_ty, &Box::new(Term::Univ))?,
+                fns,
+                ims,
+            },
             Implements { i, fns } => {
                 self.push_implements(&d.name, &i, &fns)?;
                 Implements { i, fns }
@@ -115,7 +119,7 @@ impl Elaborator {
         &mut self,
         d: &Var,
         i: &(Var, Var),
-        fns: &HashMap<Var, Var>,
+        im_fns: &HashMap<Var, Var>,
     ) -> Result<(), Error> {
         use Body::*;
         use Expr::*;
@@ -133,10 +137,10 @@ impl Elaborator {
         let i_def = self.sigma.get_mut(i).unwrap();
         let i_def_loc = i_def.loc;
         match &mut i_def.body {
-            Interface { fns: i_fns, ims } => {
+            Interface { fns, ims, .. } => {
                 ims.push(d.clone());
-                for f in i_fns {
-                    if fns.contains_key(&f) {
+                for f in fns {
+                    if im_fns.contains_key(&f) {
                         continue;
                     }
                     return Err(NonExhaustive(Box::new(Term::Ref(im.clone())), i_def_loc));
@@ -145,7 +149,7 @@ impl Elaborator {
             _ => return Err(ExpectedInterface(Box::new(Term::Ref(i.clone())), i_def_loc)),
         };
 
-        for (i_fn, im_fn) in fns {
+        for (i_fn, im_fn) in im_fns {
             let i_fn_def = self.sigma.get(i_fn).unwrap();
 
             let i_loc = i_fn_def.loc;
@@ -170,7 +174,7 @@ impl Elaborator {
 
         match &*e {
             App(loc, f, ai, x) => {
-                if let Some((i, f)) = self.is_findable_fn(f) {
+                if let Some((i, f)) = self.to_findable(f) {
                     return Ok(self.findable_check(*loc, i, f, ai.clone(), x.clone(), ty)?);
                 }
             }
@@ -259,21 +263,30 @@ impl Elaborator {
             _ => {
                 let loc = e.loc();
                 let f_e = e.clone();
-                let (mut inferred_tm, mut inferred_ty) = self.infer(e, Some(ty))?;
-                if let Some(f_e) = Self::app_insert_holes(f_e, UnnamedExplicit, &inferred_ty)? {
-                    let (new_tm, new_ty) = self.infer(f_e, Some(ty))?;
-                    inferred_tm = new_tm;
-                    inferred_ty = new_ty;
-                }
-                if let Term::Stuck(_, f, ai, x) = *inferred_tm {
-                    return self.check(
-                        Box::new(App(loc, Box::new(Resolved(loc, f)), ai, reify(loc, x))),
-                        ty,
-                    );
-                }
-                let inferred = Normalizer::new(&mut self.sigma, loc).term(inferred_ty)?;
+
+                let (mut inferred_tm, inferred_ty) = self.infer(e, Some(ty))?;
+                let mut inferred = Normalizer::new(&mut self.sigma, loc).term(inferred_ty)?;
                 let expected = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
-                Unifier::new(&mut self.sigma, loc).unify(&expected, &inferred)?;
+
+                if let Some(i) = Self::type_to_constraint(&expected, &inferred) {
+                    self.check_constraint(loc, &i, &inferred_tm)?;
+                } else {
+                    if let Some(f_e) = Self::app_insert_holes(f_e, UnnamedExplicit, &inferred)? {
+                        let (new_tm, new_ty) = self.infer(f_e, Some(ty))?;
+                        inferred_tm = new_tm;
+                        inferred = new_ty;
+                    }
+
+                    if let Term::Stuck(_, f, ai, x) = *inferred_tm {
+                        return self.check(
+                            Box::new(App(loc, Box::new(Resolved(loc, f)), ai, reify(loc, x))),
+                            ty,
+                        );
+                    }
+
+                    Unifier::new(&mut self.sigma, loc).unify(&expected, &inferred)?;
+                }
+
                 inferred_tm
             }
         })
@@ -297,7 +310,7 @@ impl Elaborator {
             },
             Hole(loc) => self.insert_meta(loc, UserMeta),
             InsertedHole(loc) => self.insert_meta(loc, InsertedMeta),
-            InterfaceHole(loc, r) => self.insert_meta(loc, InterfaceMeta(r)),
+            ConstraintHole(loc, r) => self.insert_meta(loc, ConstraintMeta(r)),
             Pi(_, p, b) => {
                 let (param_ty, _) = self.infer(p.typ, hint)?;
                 let param = Param {
@@ -329,6 +342,14 @@ impl Elaborator {
                 if let Some(f_e) = Self::app_insert_holes(f_e, i.clone(), &f_ty)? {
                     return self.infer(Box::new(App(f_loc, f_e, i, x)), hint);
                 }
+
+                let f_ty = match *f_ty {
+                    Term::Constraint(r) => match &self.sigma.get(&r).unwrap().body {
+                        Body::Interface { im_ty, .. } => im_ty.clone(),
+                        _ => unreachable!(),
+                    },
+                    ty => Box::new(ty),
+                };
 
                 match *f_ty {
                     Term::Pi(p, b) => {
@@ -632,9 +653,9 @@ impl Elaborator {
                     tm => return Err(ExpectedClass(Box::new(tm), o_loc)),
                 }
             }
-            InterfaceRef(_, r) => {
+            Constraint(_, r) => {
                 let tm = match *r {
-                    Resolved(_, r) => Box::new(Term::InterfaceRef(r)),
+                    Resolved(_, r) => Box::new(Term::Constraint(r)),
                     _ => unreachable!(),
                 };
                 let ty = tm.clone();
@@ -711,7 +732,7 @@ impl Elaborator {
                 name: ty_meta_var.clone(),
                 tele: Default::default(),
                 ret: Box::new(match &k {
-                    InterfaceMeta(r) => Term::InterfaceRef(r.clone()),
+                    ConstraintMeta(r) => Term::Constraint(r.clone()),
                     _ => Term::Univ,
                 }),
                 body: Meta(k.clone(), None),
@@ -757,7 +778,7 @@ impl Elaborator {
                         }
                         ty = b;
                         ret.push(match &*p.typ {
-                            Term::InterfaceRef(r) => Some(r.clone()),
+                            Term::Constraint(r) => Some(r.clone()),
                             _ => None,
                         });
                     }
@@ -771,7 +792,7 @@ impl Elaborator {
                 UnnamedExplicit => Some(Expr::holed_app(
                     f_e,
                     match &*p.typ {
-                        Term::InterfaceRef(r) => Some(r.clone()),
+                        Term::Constraint(r) => Some(r.clone()),
                         _ => None,
                     },
                 )),
@@ -789,14 +810,14 @@ impl Elaborator {
         })
     }
 
-    fn is_findable_fn(&self, r: &Box<Expr>) -> Option<(Var, Var)> {
+    fn to_findable(&self, r: &Box<Expr>) -> Option<(Var, Var)> {
         use Expr::*;
         match &**r {
             Resolved(_, f) => self
                 .sigma
                 .get(f)
                 .map(|d| match &d.body {
-                    Findable(i) => Some((i.clone(), f.clone())),
+                    Body::Findable(i) => Some((i.clone(), f.clone())),
                     _ => None,
                 })
                 .flatten(),
@@ -850,7 +871,7 @@ impl Elaborator {
         self.check(
             Box::new(App(
                 loc,
-                reify(loc, self.sigma.get(&f).unwrap().to_term(f.clone())),
+                Box::new(Find(loc, i.clone(), f.clone())),
                 ai.clone(),
                 x.clone(),
             )),
@@ -858,5 +879,37 @@ impl Elaborator {
         )?;
 
         Ok(Box::new(Term::Stuck(i, f, ai, self.infer(x, Some(ty))?.0)))
+    }
+
+    fn type_to_constraint(expected: &Box<Term>, inferred: &Box<Term>) -> Option<Var> {
+        use Term::*;
+        let r = match &**expected {
+            Constraint(r) => r.clone(),
+            _ => return None,
+        };
+        match &**inferred {
+            Univ | Pi(_, _) | Sigma(_, _) => Some(r),
+            _ => None,
+        }
+    }
+
+    fn check_constraint(&mut self, loc: Loc, i: &Var, x: &Box<Term>) -> Result<(), Error> {
+        use Body::*;
+
+        let ims = match &self.sigma.get(i).unwrap().body {
+            Interface { ims, .. } => ims.clone(),
+            _ => unreachable!(),
+        };
+        for im in ims {
+            let y = match &self.sigma.get(&im).unwrap().body {
+                Implements { i: (_, im), .. } => self.sigma.get(im).unwrap().to_term(im.clone()),
+                _ => unreachable!(),
+            };
+            match Unifier::new(&mut self.sigma, loc).unify(&y, &x) {
+                Ok(_) => return Ok(()),
+                Err(_) => continue,
+            }
+        }
+        Err(UnresolvedImplementation(x.clone(), loc))
     }
 }

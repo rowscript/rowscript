@@ -29,7 +29,7 @@ pub type CaseMap = HashMap<String, (Var, Term)>;
 pub enum MetaKind {
     UserMeta,
     InsertedMeta,
-    InterfaceMeta(Var),
+    ConstraintMeta(Var),
 }
 
 impl Display for MetaKind {
@@ -39,7 +39,7 @@ impl Display for MetaKind {
             match self {
                 UserMeta => "?u".to_string(),
                 InsertedMeta => "?i".to_string(),
-                InterfaceMeta(r) => format!("?{r}"),
+                ConstraintMeta(r) => format!("?{r}"),
             }
             .as_str(),
         )
@@ -105,7 +105,7 @@ pub enum Term {
 
     Vptr(Var),
 
-    InterfaceRef(Var),
+    Constraint(Var),
     Find(Var, Var),
     Stuck(Var, Var, ArgInfo, Box<Self>),
 }
@@ -200,7 +200,7 @@ impl Display for Term {
                     )
                 }
                 Vptr(r) => r.to_string(),
-                InterfaceRef(r) => r.to_string(),
+                Constraint(r) => r.to_string(),
                 Find(i, f) => format!("{i}.{f}"),
                 Stuck(i, f, _, x) => format!("({i}.{f} {x})"),
             }

@@ -44,7 +44,7 @@ impl Def<Term> {
             Postulate => Box::new(Term::Ref(v)),
             Alias(t) => rename(Term::lam(&self.tele, t.clone())),
             Class { object, .. } => rename(Term::lam(&self.tele, object.clone())),
-            Interface { .. } => Box::new(Term::InterfaceRef(v)),
+            Interface { .. } => Box::new(Term::Constraint(v)),
 
             Undefined => Box::new(Term::Undef(v)),
             Meta(_, s) => match s {
@@ -114,8 +114,8 @@ impl<T: Syntax> Display for Def<T> {
                             .join(";\n\t")
                     )
                 }
-                Interface { fns, ims } => format!(
-                    "interface {} {{\n{}\n{}}}",
+                Interface { im_ty, fns, ims } => format!(
+                    "interface {} for {im_ty} {{\n{}\n{}}}",
                     self.name,
                     fns.iter()
                         .map(|f| format!("\t{f};\n"))
@@ -176,6 +176,7 @@ pub enum Body<T: Syntax> {
         vtbl_lookup: Var,
     },
     Interface {
+        im_ty: Box<T>,
         fns: Vec<Var>,
         ims: Vec<Var>,
     },

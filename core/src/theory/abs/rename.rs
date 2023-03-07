@@ -77,7 +77,7 @@ impl Renamer {
             RowSat => RowSat,
             RowRefl => RowRefl,
             Vptr(r) => Vptr(r),
-            InterfaceRef(r) => InterfaceRef(r),
+            Constraint(r) => Constraint(r),
             Find(i, f) => Find(i, f),
         })
     }

@@ -11,7 +11,7 @@ pub fn reify(loc: Loc, tm: Box<Term>) -> Box<Expr> {
         MetaRef(k, _, _) => match k {
             UserMeta => Expr::Hole(loc),
             InsertedMeta => Expr::InsertedHole(loc),
-            InterfaceMeta(i) => Expr::InterfaceRef(loc, Box::new(Expr::Resolved(loc, i))),
+            ConstraintMeta(i) => Expr::Constraint(loc, Box::new(Expr::Resolved(loc, i))),
         },
         Undef(x) => Expr::Resolved(loc, x),
         Let(p, a, b) => Expr::Let(
@@ -80,7 +80,7 @@ pub fn reify(loc: Loc, tm: Box<Term>) -> Box<Expr> {
                 .collect(),
         ),
         Vptr(r) => Expr::Vptr(loc, r),
-        InterfaceRef(r) => Expr::InterfaceRef(loc, Box::new(Expr::Resolved(loc, r))),
+        Constraint(r) => Expr::Constraint(loc, Box::new(Expr::Resolved(loc, r))),
         Stuck(_, _, _, _) => unreachable!(),
         Find(i, f) => Expr::Find(loc, i, f),
     })

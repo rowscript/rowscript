@@ -12,10 +12,10 @@ implements Functor for Foo {
 
 function numToStr(n: number): string;
 
-//function f0<M: type -> Functor, A, B>(f: (a: A) -> B, x: M<A>): M<B> {
-//    return map(f, x)
-//}
-//
-//function f1(): string {
-//    return f0(numToStr, {n: 42}).n
-//}
+function f0<M: Functor, A, B>(f: (a: A) -> B, x: M<A>): M<B> {
+    return map<M>(f, x)
+}
+
+function f1(): string {
+    return f0<Foo>(numToStr, {n: 42}).n
+}

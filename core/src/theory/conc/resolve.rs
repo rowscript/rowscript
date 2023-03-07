@@ -67,7 +67,11 @@ impl Resolver {
                 vtbl,
                 vtbl_lookup,
             },
-            Interface { fns, ims } => Interface { fns, ims },
+            Interface { im_ty, fns, ims } => Interface {
+                im_ty: self.expr(im_ty)?,
+                fns,
+                ims,
+            },
             Implements { i: (i, im), fns } => {
                 let loc = d.loc;
                 let i = self.expr(Box::new(Unresolved(loc, i)))?.resolved();
@@ -220,12 +224,12 @@ impl Resolver {
                 Switch(loc, self.expr(a)?, new)
             }
             Lookup(loc, o, n, a) => Lookup(loc, self.expr(o)?, n, self.expr(a)?),
-            InterfaceRef(loc, r) => InterfaceRef(loc, self.expr(r)?),
+            Constraint(loc, r) => Constraint(loc, self.expr(r)?),
 
             Resolved(loc, r) => Resolved(loc, r),
             Hole(loc) => Hole(loc),
             InsertedHole(loc) => InsertedHole(loc),
-            InterfaceHole(loc, r) => InterfaceHole(loc, r),
+            ConstraintHole(loc, r) => ConstraintHole(loc, r),
             Univ(loc) => Univ(loc),
             Unit(loc) => Unit(loc),
             TT(loc) => TT(loc),

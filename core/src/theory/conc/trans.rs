@@ -60,7 +60,7 @@ fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
         match p.as_rule() {
             Rule::row_id => tele.push(row_param(p)),
             Rule::implicit_id => tele.push(implicit_param(p)),
-            Rule::hkt_param => tele.push(hkt_param(p)),
+            Rule::constraint_param => tele.push(constraint_param(p)),
             Rule::param => untupled.push(Loc::from(p.as_span()), param(p)),
             Rule::type_expr => ret = Box::new(type_expr(p)),
             Rule::fn_body => {
@@ -345,12 +345,14 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     let name_pair = pairs.next().unwrap();
     let name_loc = Loc::from(name_pair.as_span());
     let name = Var::from(name_pair);
-    let ret = Box::new(InterfaceRef(
+    let ret = Box::new(Constraint(
         name_loc,
         Box::new(Resolved(name_loc, name.clone())),
     ));
 
-    let alias = Var::from(pairs.next().unwrap());
+    let alias_pair = pairs.next().unwrap();
+    let alias_loc = Loc::from(alias_pair.as_span());
+    let alias = Var::from(alias_pair);
 
     let mut tele = Tele::default();
     let mut fn_defs = Vec::default();
@@ -364,7 +366,7 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
                 let mut tele = vec![Param {
                     var: alias.clone(),
                     info: Implicit,
-                    typ: Expr::pi(&tele, ret.clone()),
+                    typ: ret.clone(),
                 }];
                 tele.extend(d.tele);
                 d.tele = tele;
@@ -383,6 +385,7 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
         tele: Default::default(),
         ret,
         body: Interface {
+            im_ty: Expr::pi(&tele, Box::new(Univ(alias_loc))),
             fns,
             ims: Default::default(),
         },
@@ -776,49 +779,16 @@ fn implicit_param(p: Pair<Rule>) -> Param<Expr> {
     }
 }
 
-fn hkt_param(p: Pair<Rule>) -> Param<Expr> {
+fn constraint_param(p: Pair<Rule>) -> Param<Expr> {
+    use Expr::*;
     let mut pairs = p.into_inner();
     let var = Var::from(pairs.next().unwrap());
-    let typ = Box::new(hkt_expr(pairs.next().unwrap()));
+    let r = Box::new(unresolved(pairs.next().unwrap()));
+    let typ = Box::new(Constraint(r.loc(), r));
     Param {
         var,
         info: Implicit,
         typ,
-    }
-}
-
-fn hkt_expr(t: Pair<Rule>) -> Expr {
-    let p = t.into_inner().next().unwrap();
-    match p.as_rule() {
-        Rule::hkt_fn => hkt_fn(p),
-        Rule::hkt_primary_expr => hkt_primary_expr(p),
-        _ => unreachable!(),
-    }
-}
-
-fn hkt_fn(f: Pair<Rule>) -> Expr {
-    use Expr::*;
-    let loc = Loc::from(f.as_span());
-    let mut pairs = f.into_inner();
-    Pi(
-        loc,
-        Param {
-            var: Var::unbound(),
-            info: Implicit,
-            typ: Box::new(hkt_primary_expr(pairs.next().unwrap())),
-        },
-        Box::new(hkt_expr(pairs.next().unwrap())),
-    )
-}
-
-fn hkt_primary_expr(t: Pair<Rule>) -> Expr {
-    use Expr::*;
-    let loc = Loc::from(t.as_span());
-    let p = t.into_inner().next().unwrap();
-    match p.as_rule() {
-        Rule::univ => Univ(loc),
-        Rule::tyref => unresolved(p),
-        _ => unreachable!(),
     }
 }
 

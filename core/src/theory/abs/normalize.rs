@@ -242,7 +242,7 @@ impl<'a> Normalizer<'a> {
             RowSat => Box::new(RowSat),
             RowRefl => Box::new(RowRefl),
             Vptr(r) => Box::new(Vptr(r)),
-            InterfaceRef(r) => Box::new(InterfaceRef(r)),
+            Constraint(r) => Box::new(Constraint(r)),
             Stuck(i, f, ai, x) => Box::new(Stuck(i, f, ai, self.term(x)?)),
             Find(i, f) => Box::new(Find(i, f)),
         })
