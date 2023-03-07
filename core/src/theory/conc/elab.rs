@@ -706,14 +706,19 @@ impl Elaborator {
         let ty_meta_var = self.vg.fresh();
         self.sigma.insert(
             ty_meta_var.clone(),
-            Def::new_constant_constraint(
+            Def {
                 loc,
-                ty_meta_var.clone(),
-                Box::new(match &k {
+                name: ty_meta_var.clone(),
+                tele: Default::default(),
+                ret: Box::new(match &k {
                     InterfaceMeta(r) => Term::InterfaceRef(r.clone()),
                     _ => Term::Univ,
                 }),
-            ),
+                body: Meta {
+                    k: k.clone(),
+                    s: None,
+                },
+            },
         );
         let ty = Box::new(Term::MetaRef(k.clone(), ty_meta_var, Default::default()));
 
@@ -727,7 +732,10 @@ impl Elaborator {
                 name: tm_meta_var.clone(),
                 tele,
                 ret: ty.clone(),
-                body: Meta(None),
+                body: Meta {
+                    k: k.clone(),
+                    s: None,
+                },
             },
         );
         (Box::new(Term::MetaRef(k, tm_meta_var, spine)), ty)

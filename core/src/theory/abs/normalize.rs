@@ -37,7 +37,7 @@ impl<'a> Normalizer<'a> {
                 let mut def = self.sigma.get(&x).unwrap().clone();
                 def.ret = self.term(def.ret)?;
                 let ret = match &def.body {
-                    Meta(s) => match s {
+                    Meta { s, .. } => match s {
                         Some(solved) => {
                             let mut ret = rename(Term::lam(&def.tele, Box::new(solved.clone())));
                             for (_, x) in sp {
@@ -46,9 +46,12 @@ impl<'a> Normalizer<'a> {
                             self.term(ret)?
                         }
                         None => Box::new(Self::auto_implicit(&*def.ret).map_or(
-                            MetaRef(k, x.clone(), sp),
+                            MetaRef(k.clone(), x.clone(), sp),
                             |tm| {
-                                def.body = Meta(Some(tm.clone()));
+                                def.body = Meta {
+                                    k,
+                                    s: Some(tm.clone()),
+                                };
                                 tm
                             },
                         )),

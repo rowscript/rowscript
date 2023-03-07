@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::theory::abs::data::Term;
+use crate::theory::abs::data::{MetaKind, Term};
 use crate::theory::abs::rename::rename;
 use crate::theory::conc::data::Expr;
 use crate::theory::ParamInfo::Explicit;
@@ -30,19 +30,6 @@ pub struct Def<T: Syntax> {
     pub body: Body<T>,
 }
 
-impl<T: Syntax> Def<T> {
-    pub fn new_constant_constraint(loc: Loc, name: Var, ret: Box<T>) -> Self {
-        use Body::*;
-        Self {
-            loc,
-            name,
-            tele: Default::default(),
-            ret,
-            body: Meta(None),
-        }
-    }
-}
-
 impl Def<Expr> {
     pub fn to_type(&self) -> Box<Expr> {
         Expr::pi(&self.tele, self.ret.clone())
@@ -60,7 +47,7 @@ impl Def<Term> {
             Interface { .. } => Box::new(Term::InterfaceRef(v)),
 
             Undefined => Box::new(Term::Undef(v)),
-            Meta(f) => match f {
+            Meta { s, .. } => match s {
                 None => unreachable!(),
                 Some(f) => rename(Term::lam(&self.tele, Box::new(f.clone()))),
             },
@@ -153,11 +140,13 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
-                Meta(s) => {
+                Meta { k, s } => {
                     let tele = Param::tele_to_string(&self.tele);
                     match s {
-                        Some(a) => format!("meta {} {tele}: {} {{\n\t{a}\n}}", self.name, self.ret),
-                        None => format!("meta {} {tele}: {};", self.name, self.ret),
+                        Some(a) => {
+                            format!("meta ?{k}{} {tele}: {} {{\n\t{a}\n}}", self.name, self.ret)
+                        }
+                        None => format!("meta {k}{} {tele}: {};", self.name, self.ret),
                     }
                 }
                 Findable(i) => format!(
@@ -196,6 +185,9 @@ pub enum Body<T: Syntax> {
     },
 
     Undefined,
-    Meta(Option<T>),
+    Meta {
+        k: MetaKind,
+        s: Option<T>,
+    },
     Findable(Var),
 }

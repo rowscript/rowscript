@@ -35,11 +35,14 @@ pub enum MetaKind {
 impl Display for MetaKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         use MetaKind::*;
-        f.write_str(match self {
-            UserMeta => "u",
-            InsertedMeta => "i",
-            InterfaceMeta(r) => r.as_str(),
-        })
+        f.write_str(
+            match self {
+                UserMeta => "?u".to_string(),
+                InsertedMeta => "?i".to_string(),
+                InterfaceMeta(r) => format!("?{r}"),
+            }
+            .as_str(),
+        )
     }
 }
 
@@ -132,7 +135,7 @@ impl Display for Term {
             match self {
                 Ref(r) => r.to_string(),
                 MetaRef(k, r, sp) => {
-                    let mut s = vec![format!("?{k}{r}")];
+                    let mut s = vec![format!("{k}{r}")];
                     s.extend(
                         sp.into_iter()
                             .map(|(i, tm)| match i {
