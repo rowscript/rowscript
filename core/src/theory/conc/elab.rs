@@ -173,6 +173,9 @@ impl Elaborator {
         use Expr::*;
 
         match &*e {
+            // FIXME: Make type inference as a separated component to support
+            //        the iterator: yielding a possible found implementation
+            //        each time for type checking to unify.
             App(loc, f, ai, x) => {
                 if let Some((i, f)) = self.to_findable(f) {
                     return Ok(self.findable_check(*loc, i, f, ai.clone(), x.clone(), ty)?);
@@ -334,13 +337,13 @@ impl Elaborator {
                     Box::new(Term::Pi(param, b_ty)),
                 )
             }
-            App(_, f, i, x) => {
+            App(_, f, ai, x) => {
                 let f_loc = f.loc();
                 let f_e = f.clone();
                 let (f, f_ty) = self.infer(f, hint)?;
 
-                if let Some(f_e) = Self::app_insert_holes(f_e, i.clone(), &f_ty)? {
-                    return self.infer(Box::new(App(f_loc, f_e, i, x)), hint);
+                if let Some(f_e) = Self::app_insert_holes(f_e, ai.clone(), &f_ty)? {
+                    return self.infer(Box::new(App(f_loc, f_e, ai, x)), hint);
                 }
 
                 let f_ty = match *f_ty {

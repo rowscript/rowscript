@@ -144,7 +144,7 @@ impl<T: Syntax> Display for Def<T> {
                     let tele = Param::tele_to_string(&self.tele);
                     match s {
                         Some(a) => {
-                            format!("meta ?{k}{} {tele}: {} {{\n\t{a}\n}}", self.name, self.ret)
+                            format!("meta {k}{} {tele}: {} {{\n\t{a}\n}}", self.name, self.ret)
                         }
                         None => format!("meta {k}{} {tele}: {};", self.name, self.ret),
                     }
