@@ -12,7 +12,9 @@ implements Functor for Foo {
 
 function numToStr(n: number): string;
 
-function f0<M: Functor, A, B>(f: (a: A) -> B, x: M<A>): M<B> {
+function f0<M: type -> type, A, B>(f: (a: A) -> B, x: M<A>): M<B>
+where M: Functor
+{
     return map<M>(f, x)
 }
 

@@ -172,17 +172,15 @@ impl Elaborator {
     fn check(&mut self, e: Box<Expr>, ty: &Box<Term>) -> Result<Box<Term>, Error> {
         use Expr::*;
 
-        match &*e {
-            // FIXME: Make type inference as a separated component to support
-            //        the iterator: yielding a possible found implementation
-            //        each time for type checking to unify.
+        let e = Box::new(match *e {
             App(loc, f, ai, x) => {
-                if let Some((i, f)) = self.to_findable(f) {
-                    return Ok(self.findable_check(*loc, i, f, ai.clone(), x.clone(), ty)?);
+                if let Some((i, f)) = self.get_findable(&f) {
+                    return Ok(self.findable_check(loc, i, f, ai, x, ty)?);
                 }
+                App(loc, f, ai, x)
             }
-            _ => {}
-        }
+            e => e,
+        });
 
         Ok(match *e {
             Let(_, var, maybe_typ, a, b) => {
@@ -813,14 +811,15 @@ impl Elaborator {
         })
     }
 
-    fn to_findable(&self, r: &Box<Expr>) -> Option<(Var, Var)> {
+    fn get_findable(&self, r: &Box<Expr>) -> Option<(Var, Var)> {
+        use Body::*;
         use Expr::*;
         match &**r {
             Resolved(_, f) => self
                 .sigma
                 .get(f)
                 .map(|d| match &d.body {
-                    Body::Findable(i) => Some((i.clone(), f.clone())),
+                    Findable(i) => Some((i.clone(), f.clone())),
                     _ => None,
                 })
                 .flatten(),

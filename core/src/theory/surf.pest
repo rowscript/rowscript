@@ -71,8 +71,9 @@ implicits =
   }
 row_ids = _{ row_id ~ ("," ~ row_id)* }
 implicit_params = _{ implicit_param ~ ("," ~ implicit_param)* }
-implicit_param = _{ constraint_param | implicit_id }
-constraint_param = { implicit_id ~ ":" ~ tyref }
+implicit_param = _{ hkt_param | implicit_id }
+hkt_param = { implicit_id ~ ":" ~ hkt_expr }
+hkt_expr = _{ univ ~ ("->" ~ univ)* }
 
 param = { param_id ~ ":" ~ type_expr }
 params = _{ "()" | "(" ~ param ~ ("," ~ param)* ~ ")" }
@@ -187,6 +188,7 @@ preds = _{ "where" ~ pred ~ ("," ~ pred)* }
 pred =
   { row_ord
   | row_eq
+  | implements_of
   }
 row_ord = { row_expr ~ (row_le | row_ge) ~ row_expr }
 row_le = { "<:" }
@@ -204,6 +206,7 @@ row_primary_expr =
 paren_fields = { "(" ~ field ~ ("," ~ field)* ~ ")" }
 row_concat = { row_primary_expr ~ "+" ~ row_expr }
 paren_row_expr = { "(" ~ row_expr ~ ")" }
+implements_of = { implicit_id ~ ":" ~ tyref }
 
 fn_def =
   { "function"

@@ -225,6 +225,7 @@ impl Resolver {
             }
             Lookup(loc, o, n, a) => Lookup(loc, self.expr(o)?, n, self.expr(a)?),
             Constraint(loc, r) => Constraint(loc, self.expr(r)?),
+            ImplementsOf(loc, a, b) => ImplementsOf(loc, self.expr(a)?, self.expr(b)?),
 
             Resolved(loc, r) => Resolved(loc, r),
             Hole(loc) => Hole(loc),

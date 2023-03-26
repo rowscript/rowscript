@@ -60,7 +60,7 @@ fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
         match p.as_rule() {
             Rule::row_id => tele.push(row_param(p)),
             Rule::implicit_id => tele.push(implicit_param(p)),
-            Rule::constraint_param => tele.push(constraint_param(p)),
+            Rule::hkt_param => tele.push(hkt_param(p)),
             Rule::param => untupled.push(Loc::from(p.as_span()), param(p)),
             Rule::type_expr => ret = Box::new(type_expr(p)),
             Rule::fn_body => {
@@ -513,6 +513,12 @@ fn pred(pred: Pair<Rule>) -> Param<Expr> {
                 let rhs = row_expr(p.next().unwrap());
                 Box::new(RowEq(loc, Box::new(lhs), Box::new(rhs)))
             }
+            Rule::implements_of => {
+                let mut p = p.into_inner();
+                let lhs = unresolved(p.next().unwrap());
+                let rhs = unresolved(p.next().unwrap());
+                Box::new(ImplementsOf(loc, Box::new(lhs), Box::new(rhs)))
+            }
             _ => unreachable!(),
         },
     }
@@ -779,12 +785,20 @@ fn implicit_param(p: Pair<Rule>) -> Param<Expr> {
     }
 }
 
-fn constraint_param(p: Pair<Rule>) -> Param<Expr> {
+fn hkt_param(p: Pair<Rule>) -> Param<Expr> {
     use Expr::*;
     let mut pairs = p.into_inner();
     let var = Var::from(pairs.next().unwrap());
-    let r = Box::new(unresolved(pairs.next().unwrap()));
-    let typ = Box::new(Constraint(r.loc(), r));
+    let kind = Box::new(Univ(Loc::from(pairs.next().unwrap().as_span())));
+    let typ = pairs.fold(kind, |a, b| {
+        let loc = Loc::from(b.as_span());
+        let p = Param {
+            var: Var::unbound(),
+            info: Implicit,
+            typ: Box::new(Univ(loc)),
+        };
+        Box::new(Pi(loc, p, a))
+    });
     Param {
         var,
         info: Implicit,
