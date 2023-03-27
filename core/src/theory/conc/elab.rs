@@ -666,6 +666,10 @@ impl Elaborator {
                 let ty = self.sigma.get(&f).unwrap().to_type();
                 (Box::new(Term::Ref(f)), ty)
             }
+            ImplementsOf(_, a) => {
+                let (tm, ty) = self.infer(a, hint)?;
+                todo!()
+            }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
             Unit(_) => (Box::new(Term::Unit), Box::new(Term::Univ)),

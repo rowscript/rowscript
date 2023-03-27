@@ -513,12 +513,7 @@ fn pred(pred: Pair<Rule>) -> Param<Expr> {
                 let rhs = row_expr(p.next().unwrap());
                 Box::new(RowEq(loc, Box::new(lhs), Box::new(rhs)))
             }
-            Rule::implements_of => {
-                let mut p = p.into_inner();
-                let lhs = unresolved(p.next().unwrap());
-                let rhs = unresolved(p.next().unwrap());
-                Box::new(ImplementsOf(loc, Box::new(lhs), Box::new(rhs)))
-            }
+            Rule::constraint_expr => Box::new(ImplementsOf(loc, Box::new(type_app(p)))),
             _ => unreachable!(),
         },
     }

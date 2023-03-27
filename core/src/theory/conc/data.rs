@@ -75,7 +75,7 @@ pub enum Expr {
 
     Constraint(Loc, Box<Self>),
     Find(Loc, Var, Var),
-    ImplementsOf(Loc, Box<Self>, Box<Self>),
+    ImplementsOf(Loc, Box<Self>),
 }
 
 impl Expr {
@@ -144,7 +144,7 @@ impl Expr {
             Vptr(loc, _) => loc,
             Constraint(loc, _) => loc,
             Find(loc, _, _) => loc,
-            ImplementsOf(loc, _, _) => loc,
+            ImplementsOf(loc, _) => loc,
         }
         .clone()
     }
@@ -278,7 +278,7 @@ impl Display for Expr {
                 Vptr(_, r) => r.to_string(),
                 Constraint(_, r) => r.to_string(),
                 Find(_, i, f) => format!("{i}.{f}"),
-                ImplementsOf(_, a, i) => format!("{a}: {i}"),
+                ImplementsOf(_, a) => a.to_string(),
             }
             .as_str(),
         )
