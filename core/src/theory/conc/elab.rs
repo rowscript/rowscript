@@ -316,6 +316,10 @@ impl Elaborator {
                     return self.infer(Box::new(App(f_loc, f_e, ai, x)), hint);
                 }
 
+                if let Term::Find(ty, i, f) = *f {
+                    todo!()
+                }
+
                 match *f_ty {
                     Term::Pi(p, b) => {
                         let x = self.guarded_check(
@@ -721,7 +725,7 @@ impl Elaborator {
         i: ArgInfo,
         f_ty: &Box<Term>,
     ) -> Result<Option<Box<Expr>>, Error> {
-        fn holes_to_insert(loc: Loc, name: String, mut ty: &Box<Term>) -> Result<u32, Error> {
+        fn holes_to_insert(loc: Loc, name: String, mut ty: &Box<Term>) -> Result<usize, Error> {
             let mut ret = Default::default();
             loop {
                 match &**ty {
@@ -743,14 +747,10 @@ impl Elaborator {
         Ok(match &**f_ty {
             Term::Pi(p, _) if p.info == Implicit => match i {
                 UnnamedExplicit => Some(Expr::holed_app(f_e)),
-                NamedImplicit(name) => {
-                    let holes = holes_to_insert(f_e.loc(), name, f_ty)?;
-                    if holes == 0 {
-                        None
-                    } else {
-                        Some((0..holes).into_iter().fold(f_e, |e, _| Expr::holed_app(e)))
-                    }
-                }
+                NamedImplicit(name) => match holes_to_insert(f_e.loc(), name, f_ty)? {
+                    0 => None,
+                    n => Some((0..n).fold(f_e, |e, _| Expr::holed_app(e))),
+                },
                 _ => None,
             },
             _ => None,

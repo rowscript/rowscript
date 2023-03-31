@@ -86,7 +86,7 @@ impl<T: Syntax> Display for Def<T> {
                     self.ret,
                 ),
                 Alias(t) => format!(
-                    "type {}{}: {} = {};",
+                    "type {} {}: {} = {};",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
@@ -121,7 +121,7 @@ impl<T: Syntax> Display for Def<T> {
                     )
                 }
                 Interface { fns, ims } => format!(
-                    "interface {}{}: {} {{\n{}\n{}}}",
+                    "interface {} {}: {} {{\n{}\n{}}}",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
