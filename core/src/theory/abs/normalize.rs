@@ -1,5 +1,5 @@
 use crate::theory::abs::data::Term::{App, Lam};
-use crate::theory::abs::data::{Dir, FieldMap, Term};
+use crate::theory::abs::data::{CaseMap, Dir, FieldMap, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
@@ -63,7 +63,7 @@ impl<'a> Normalizer<'a> {
             Let(p, a, b) => {
                 let a = self.term(a)?;
                 match &*a {
-                    MetaRef(_, _, _) => Box::new(Let(p, a, b)),
+                    MetaRef(_, _, _) => Box::new(Let(p, a, self.term(b)?)),
                     _ => self.with(&[(&p.var, &a)], b)?,
                 }
             }
@@ -86,23 +86,21 @@ impl<'a> Normalizer<'a> {
             TupleLet(p, q, a, b) => {
                 let a = self.term(a)?;
                 if let MetaRef(_, _, _) = &*a {
-                    Box::new(TupleLet(p, q, a, b))
+                    Box::new(TupleLet(p, q, a, self.term(b)?))
                 } else if let Tuple(x, y) = *a {
                     self.rho.insert(p.var, x);
                     self.rho.insert(q.var, y);
                     self.term(b)?
                 } else {
-                    Box::new(TupleLet(p, q, a, b))
+                    Box::new(TupleLet(p, q, a, self.term(b)?))
                 }
             }
             UnitLet(a, b) => {
                 let a = self.term(a)?;
-                if let MetaRef(_, _, _) = &*a {
-                    Box::new(UnitLet(a, b))
-                } else if let TT = *a {
+                if let TT = *a {
                     self.term(b)?
                 } else {
-                    Box::new(UnitLet(a, b))
+                    Box::new(UnitLet(a, self.term(b)?))
                 }
             }
             If(p, t, e) => {
@@ -221,22 +219,32 @@ impl<'a> Normalizer<'a> {
                             let (v, tm) = cs.get(&n).unwrap();
                             self.with(&[(v, &Box::new(x))], Box::new(tm.clone()))?
                         }
-                        r => Box::new(Switch(Box::new(r), cs)),
+                        r => Box::new(Switch(Box::new(r), self.case_map(cs)?)),
                     },
-                    a => Box::new(Switch(Box::new(a), cs)),
+                    a => Box::new(Switch(Box::new(a), self.case_map(cs)?)),
                 }
             }
-            ImplementsOf(a, i) => {
-                match &*a {
-                    Ref(_) => {}
-                    _ => self.check_constraint(&a, &i)?,
-                }
-                Box::new(ImplementsOf(a, i))
-            }
-            Find(ty, i, f) => match *ty {
-                Ref(r) => Box::new(Find(Box::new(Ref(r)), i, f)),
-                ty => self.find_implementation(Box::new(ty), i, f)?,
-            },
+            ImplementsOf(a, i) => Box::new(ImplementsOf(
+                match *self.term(a)? {
+                    Ref(r) => Box::new(Ref(r)),
+                    MetaRef(k, r, sp) => Box::new(MetaRef(k, r, sp)),
+                    ty => {
+                        let ty = Box::new(ty);
+                        self.check_constraint(&ty, &i)?;
+                        ty
+                    }
+                },
+                i,
+            )),
+            Find(ty, i, f) => Box::new(Find(
+                Box::new(match dbg!(*self.term(ty)?) {
+                    Ref(r) => Ref(r),
+                    MetaRef(k, r, sp) => MetaRef(k, r, sp),
+                    ty => return self.find_implementation(Box::new(ty), i, f),
+                }),
+                i,
+                f,
+            )),
 
             Univ => Box::new(Univ),
             Unit => Box::new(Unit),
@@ -286,6 +294,14 @@ impl<'a> Normalizer<'a> {
             info: p.info,
             typ: self.term(p.typ)?,
         })
+    }
+
+    fn case_map(&mut self, cs: CaseMap) -> Result<CaseMap, Error> {
+        let mut ret = CaseMap::default();
+        for (n, (v, tm)) in cs {
+            ret.insert(n, (v, *self.term(Box::new(tm))?));
+        }
+        Ok(ret)
     }
 
     fn auto_implicit(tm: &Term) -> Option<Term> {

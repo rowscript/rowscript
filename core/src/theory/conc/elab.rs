@@ -253,10 +253,12 @@ impl Elaborator {
                 let mut inferred = Normalizer::new(&mut self.sigma, loc).term(inferred_ty)?;
                 let expected = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
 
-                if let Some(f_e) = Self::app_insert_holes(f_e, UnnamedExplicit, &inferred)? {
-                    let (new_tm, new_ty) = self.infer(f_e, Some(ty))?;
-                    inferred_tm = new_tm;
-                    inferred = new_ty;
+                if Self::is_hole_insertable(&expected) {
+                    if let Some(f_e) = Self::app_insert_holes(f_e, UnnamedExplicit, &inferred)? {
+                        let (new_tm, new_ty) = self.infer(f_e, Some(ty))?;
+                        inferred_tm = new_tm;
+                        inferred = new_ty;
+                    }
                 }
 
                 Unifier::new(&mut self.sigma, loc).unify(&expected, &inferred)?;
@@ -314,10 +316,6 @@ impl Elaborator {
 
                 if let Some(f_e) = Self::app_insert_holes(f_e, ai.clone(), &f_ty)? {
                     return self.infer(Box::new(App(f_loc, f_e, ai, x)), hint);
-                }
-
-                if let Term::Find(ty, i, f) = *f {
-                    todo!()
                 }
 
                 match *f_ty {
@@ -718,6 +716,13 @@ impl Elaborator {
             },
         );
         (Box::new(Term::MetaRef(k, tm_meta_var, spine)), ty)
+    }
+
+    fn is_hole_insertable(expected: &Box<Term>) -> bool {
+        match &**expected {
+            Term::Pi(p, _) => p.info != Implicit,
+            _ => true,
+        }
     }
 
     fn app_insert_holes(

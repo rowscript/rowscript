@@ -15,9 +15,9 @@ function numToStr(n: number): string;
 function f0<M: type -> type, A, B>(f: (a: A) -> B, x: M<A>): M<B>
 where Functor<M>
 {
-    return map(f, x)
+    return map<M>(f, x)
 }
 
 function f1(): string {
-    return f0(numToStr, {n: 42}).n
+    return f0<Foo>(numToStr, {n: 42}).n
 }

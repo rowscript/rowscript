@@ -56,7 +56,11 @@ impl Def<Term> {
             },
             Findable(i) => {
                 let r = Box::new(Term::Ref(self.tele[0].var.clone()));
-                rename(Term::lam(&self.tele, Box::new(Term::Find(r, i.clone(), v))))
+                let mut f = Box::new(Term::Find(r, i.clone(), v));
+                for p in self.tele.iter().skip(1) {
+                    f = Box::new(Term::App(f, Box::new(Term::Ref(p.var.clone()))));
+                }
+                rename(Term::lam(&self.tele, f))
             }
             _ => unreachable!(),
         }
