@@ -34,12 +34,15 @@ Row polymorphism (or extensible types) is supported based on record concatenatio
 
 OOP style constructs are based on row polymorphism and hence just some syntactic sugar.
 
+### Interfaces
+
+Powerful construct `interface` that acts like Haskell's typeclasses.
+
 ## Roadmap
 
 * JavaScript code generation
     * [ ] Basic transpilation
     * [ ] FBIP (functional but in-place) and reuse analysis
-* [ ] Interface
 * [ ] Row existential quantifier
 * [ ] Datatype generics
 * [ ] Auto-deriving
