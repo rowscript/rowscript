@@ -1,6 +1,4 @@
-<center><img src="banner.jpg" alt="banner here"></center>
-
-# RowScript
+<h1 align="center">RowScript</h1>
 
 ![Rust Workflow](https://github.com/rowscript/rowscript/actions/workflows/rust.yml/badge.svg)
 
