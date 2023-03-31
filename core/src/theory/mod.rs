@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
@@ -6,7 +6,6 @@ use std::rc::Rc;
 use pest::iterators::Pair;
 use pest::Span;
 
-use crate::theory::abs::data::Term;
 use crate::{Error, Rule};
 
 pub mod abs;
@@ -53,22 +52,6 @@ impl RawNameSet {
             return Err(Error::DuplicateName(loc));
         }
         Ok(())
-    }
-}
-
-#[derive(Eq, PartialEq, Debug, Hash)]
-struct FindKey(Loc, Var);
-
-#[derive(Default, Debug)]
-pub struct Answers(HashMap<FindKey, Box<Term>>);
-
-impl Answers {
-    pub fn get(&self, loc: Loc, r: &Var) -> Option<Box<Term>> {
-        self.0.get(&FindKey(loc, r.clone())).map(|tm| tm.clone())
-    }
-
-    pub fn insert(&mut self, loc: Loc, r: Var, tm: Box<Term>) {
-        self.0.insert(FindKey(loc, r), tm);
     }
 }
 

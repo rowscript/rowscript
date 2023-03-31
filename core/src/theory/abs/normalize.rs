@@ -5,6 +5,7 @@ use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
+use crate::Error::UnresolvedImplementation;
 
 pub struct Normalizer<'a> {
     sigma: &'a mut Sigma,
@@ -225,6 +226,17 @@ impl<'a> Normalizer<'a> {
                     a => Box::new(Switch(Box::new(a), cs)),
                 }
             }
+            ImplementsOf(a, i) => {
+                match &*a {
+                    Ref(_) => {}
+                    _ => self.check_constraint(&a, &i)?,
+                }
+                Box::new(ImplementsOf(a, i))
+            }
+            Find(ty, i, f) => match *ty {
+                Ref(r) => Box::new(Find(Box::new(Ref(r)), i, f)),
+                ty => self.find_implementation(Box::new(ty), i, f)?,
+            },
 
             Univ => Box::new(Univ),
             Unit => Box::new(Unit),
@@ -242,9 +254,7 @@ impl<'a> Normalizer<'a> {
             RowSat => Box::new(RowSat),
             RowRefl => Box::new(RowRefl),
             Vptr(r) => Box::new(Vptr(r)),
-            Constraint(r) => Box::new(Constraint(r)),
-            Stuck(i, f, ai, x) => Box::new(Stuck(i, f, ai, self.term(x)?)),
-            Find(i, f) => Box::new(Find(i, f)),
+            ImplementsSat => Box::new(ImplementsSat),
         })
     }
 
@@ -283,7 +293,57 @@ impl<'a> Normalizer<'a> {
         match tm {
             RowEq(_, _) => Some(RowRefl),
             RowOrd(_, _, _) => Some(RowSat),
+            ImplementsOf(_, _) => Some(ImplementsSat),
             _ => None,
         }
+    }
+
+    fn check_constraint(&mut self, x: &Box<Term>, i: &Var) -> Result<(), Error> {
+        use Body::*;
+
+        let ims = match &self.sigma.get(i).unwrap().body {
+            Interface { ims, .. } => ims.clone(),
+            _ => unreachable!(),
+        };
+        for im in ims {
+            let y = match &self.sigma.get(&im).unwrap().body {
+                Implements { i: (_, im), .. } => self.sigma.get(im).unwrap().to_term(im.clone()),
+                _ => unreachable!(),
+            };
+            match Unifier::new(&mut self.sigma, self.loc).unify(&y, &x) {
+                Ok(_) => return Ok(()),
+                Err(_) => continue,
+            }
+        }
+        Err(UnresolvedImplementation(x.clone(), self.loc))
+    }
+
+    fn find_implementation(&mut self, ty: Box<Term>, i: Var, f: Var) -> Result<Box<Term>, Error> {
+        use Body::*;
+
+        let ims = match &self.sigma.get(&i).unwrap().body {
+            Interface { ims, .. } => ims.clone(),
+            _ => unreachable!(),
+        };
+
+        for im in ims.into_iter().rev() {
+            let (im_ty, im_fn) = match &self.sigma.get(&im).unwrap().body {
+                Implements {
+                    i: (_, im_ty), fns, ..
+                } => (
+                    self.sigma.get(&im_ty).unwrap().to_term(im_ty.clone()),
+                    fns.get(&f).unwrap().clone(),
+                ),
+                _ => unreachable!(),
+            };
+
+            if let Err(_) = Unifier::new(&mut self.sigma, self.loc).unify(&ty, &im_ty) {
+                continue;
+            }
+
+            return Ok(self.sigma.get(&im_fn).unwrap().to_term(im_fn));
+        }
+
+        Err(UnresolvedImplementation(ty, self.loc))
     }
 }

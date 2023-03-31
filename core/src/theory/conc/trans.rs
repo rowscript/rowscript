@@ -336,6 +336,10 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
 }
 
 fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
+    fn alias_type(loc: Loc, tele: &Tele<Expr>) -> Box<Expr> {
+        Expr::pi(tele, Box::new(Univ(loc)))
+    }
+
     use Body::*;
     use Expr::*;
 
@@ -343,30 +347,26 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     let mut pairs = i.into_inner();
 
     let name_pair = pairs.next().unwrap();
-    let name_loc = Loc::from(name_pair.as_span());
+    let ret = Box::new(Univ(Loc::from(name_pair.as_span())));
     let name = Var::from(name_pair);
-    let ret = Box::new(Constraint(
-        name_loc,
-        Box::new(Resolved(name_loc, name.clone())),
-    ));
 
     let alias_pair = pairs.next().unwrap();
     let alias_loc = Loc::from(alias_pair.as_span());
     let alias = Var::from(alias_pair);
 
-    let mut tele = Tele::default();
+    let mut im_tele = Tele::default();
     let mut fn_defs = Vec::default();
     let mut fns = Vec::default();
     for p in pairs {
         match p.as_rule() {
-            Rule::row_id => tele.push(row_param(p)),
-            Rule::implicit_id => tele.push(implicit_param(p)),
+            Rule::row_id => im_tele.push(row_param(p)),
+            Rule::implicit_id => im_tele.push(implicit_param(p)),
             Rule::interface_fn => {
                 let mut d = fn_postulate(p);
                 let mut tele = vec![Param {
                     var: alias.clone(),
                     info: Implicit,
-                    typ: ret.clone(),
+                    typ: alias_type(alias_loc, &im_tele),
                 }];
                 tele.extend(d.tele);
                 d.tele = tele;
@@ -382,10 +382,13 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     let mut defs = vec![Def {
         loc,
         name,
-        tele: Default::default(),
+        tele: vec![Param {
+            var: alias,
+            info: Implicit,
+            typ: alias_type(alias_loc, &im_tele),
+        }],
         ret,
         body: Interface {
-            im_ty: Expr::pi(&tele, Box::new(Univ(alias_loc))),
             fns,
             ims: Default::default(),
         },

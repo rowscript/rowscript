@@ -5,17 +5,16 @@ use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, Term};
 use crate::theory::abs::def::{gamma_to_tele, Body};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
-use crate::theory::abs::reify::reify;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Answers, Loc, Param, Tele, Var, VarGen, VPTR};
+use crate::theory::{Loc, Param, Tele, Var, VarGen, VPTR};
 use crate::Error;
 use crate::Error::{
-    ExpectedAlias, ExpectedClass, ExpectedEnum, ExpectedInterface, ExpectedObject, ExpectedPi,
-    ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplementation,
+    ExpectedAlias, ExpectedClass, ExpectedEnum, ExpectedImplementsOf, ExpectedInterface,
+    ExpectedObject, ExpectedPi, ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField,
     UnresolvedImplicitParam,
 };
 
@@ -24,7 +23,6 @@ pub struct Elaborator {
     sigma: Sigma,
     gamma: Gamma,
     vg: VarGen,
-    answers: Answers,
 }
 
 impl Elaborator {
@@ -93,11 +91,7 @@ impl Elaborator {
                 vtbl,
                 vtbl_lookup,
             },
-            Interface { im_ty, fns, ims } => Interface {
-                im_ty: self.check(im_ty, &Box::new(Term::Univ))?,
-                fns,
-                ims,
-            },
+            Interface { fns, ims } => Interface { fns, ims },
             Implements { i, fns } => {
                 self.push_implements(&d.name, &i, &fns)?;
                 Implements { i, fns }
@@ -171,16 +165,6 @@ impl Elaborator {
 
     fn check(&mut self, e: Box<Expr>, ty: &Box<Term>) -> Result<Box<Term>, Error> {
         use Expr::*;
-
-        let e = Box::new(match *e {
-            App(loc, f, ai, x) => {
-                if let Some((i, f)) = self.get_findable(&f) {
-                    return Ok(self.findable_check(loc, i, f, ai, x, ty)?);
-                }
-                App(loc, f, ai, x)
-            }
-            e => e,
-        });
 
         Ok(match *e {
             Let(_, var, maybe_typ, a, b) => {
@@ -269,24 +253,13 @@ impl Elaborator {
                 let mut inferred = Normalizer::new(&mut self.sigma, loc).term(inferred_ty)?;
                 let expected = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
 
-                if let Some(i) = Self::type_to_constraint(&expected, &inferred) {
-                    self.check_constraint(loc, &i, &inferred_tm)?;
-                } else {
-                    if let Some(f_e) = Self::app_insert_holes(f_e, UnnamedExplicit, &inferred)? {
-                        let (new_tm, new_ty) = self.infer(f_e, Some(ty))?;
-                        inferred_tm = new_tm;
-                        inferred = new_ty;
-                    }
-
-                    if let Term::Stuck(_, f, ai, x) = *inferred_tm {
-                        return self.check(
-                            Box::new(App(loc, Box::new(Resolved(loc, f)), ai, reify(loc, x))),
-                            ty,
-                        );
-                    }
-
-                    Unifier::new(&mut self.sigma, loc).unify(&expected, &inferred)?;
+                if let Some(f_e) = Self::app_insert_holes(f_e, UnnamedExplicit, &inferred)? {
+                    let (new_tm, new_ty) = self.infer(f_e, Some(ty))?;
+                    inferred_tm = new_tm;
+                    inferred = new_ty;
                 }
+
+                Unifier::new(&mut self.sigma, loc).unify(&expected, &inferred)?;
 
                 inferred_tm
             }
@@ -311,7 +284,6 @@ impl Elaborator {
             },
             Hole(loc) => self.insert_meta(loc, UserMeta),
             InsertedHole(loc) => self.insert_meta(loc, InsertedMeta),
-            ConstraintHole(loc, r) => self.insert_meta(loc, ConstraintMeta(r)),
             Pi(_, p, b) => {
                 let (param_ty, _) = self.infer(p.typ, hint)?;
                 let param = Param {
@@ -343,14 +315,6 @@ impl Elaborator {
                 if let Some(f_e) = Self::app_insert_holes(f_e, ai.clone(), &f_ty)? {
                     return self.infer(Box::new(App(f_loc, f_e, ai, x)), hint);
                 }
-
-                let f_ty = match *f_ty {
-                    Term::Constraint(r) => match &self.sigma.get(&r).unwrap().body {
-                        Body::Interface { im_ty, .. } => im_ty.clone(),
-                        _ => unreachable!(),
-                    },
-                    ty => Box::new(ty),
-                };
 
                 match *f_ty {
                     Term::Pi(p, b) => {
@@ -654,21 +618,16 @@ impl Elaborator {
                     tm => return Err(ExpectedClass(Box::new(tm), o_loc)),
                 }
             }
-            Constraint(_, r) => {
-                let tm = match *r {
-                    Resolved(_, r) => Box::new(Term::Constraint(r)),
-                    _ => unreachable!(),
-                };
-                let ty = tm.clone();
-                (tm, ty)
-            }
             Find(_, _, f) => {
                 let ty = self.sigma.get(&f).unwrap().to_type();
                 (Box::new(Term::Ref(f)), ty)
             }
-            ImplementsOf(_, a) => {
+            ImplementsOf(loc, a) => {
                 let (tm, ty) = self.infer(a, hint)?;
-                todo!()
+                match *tm {
+                    Term::ImplementsOf(a, i) => (Box::new(Term::ImplementsOf(a, i)), ty),
+                    tm => return Err(ExpectedImplementsOf(Box::new(tm), loc)),
+                }
             }
 
             Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
@@ -727,7 +686,6 @@ impl Elaborator {
 
     fn insert_meta(&mut self, loc: Loc, k: MetaKind) -> (Box<Term>, Box<Term>) {
         use Body::*;
-        use MetaKind::*;
 
         let ty_meta_var = self.vg.fresh();
         self.sigma.insert(
@@ -736,10 +694,7 @@ impl Elaborator {
                 loc,
                 name: ty_meta_var.clone(),
                 tele: Default::default(),
-                ret: Box::new(match &k {
-                    ConstraintMeta(r) => Term::Constraint(r.clone()),
-                    _ => Term::Univ,
-                }),
+                ret: Box::new(Term::Univ),
                 body: Meta(k.clone(), None),
             },
         );
@@ -766,11 +721,7 @@ impl Elaborator {
         i: ArgInfo,
         f_ty: &Box<Term>,
     ) -> Result<Option<Box<Expr>>, Error> {
-        fn holes_to_insert(
-            loc: Loc,
-            name: String,
-            mut ty: &Box<Term>,
-        ) -> Result<Vec<Option<Var>>, Error> {
+        fn holes_to_insert(loc: Loc, name: String, mut ty: &Box<Term>) -> Result<u32, Error> {
             let mut ret = Default::default();
             loop {
                 match &**ty {
@@ -782,10 +733,7 @@ impl Elaborator {
                             return Ok(ret);
                         }
                         ty = b;
-                        ret.push(match &*p.typ {
-                            Term::Constraint(r) => Some(r.clone()),
-                            _ => None,
-                        });
+                        ret += 1;
                     }
                     _ => unreachable!(),
                 }
@@ -794,128 +742,18 @@ impl Elaborator {
 
         Ok(match &**f_ty {
             Term::Pi(p, _) if p.info == Implicit => match i {
-                UnnamedExplicit => Some(Expr::holed_app(
-                    f_e,
-                    match &*p.typ {
-                        Term::Constraint(r) => Some(r.clone()),
-                        _ => None,
-                    },
-                )),
+                UnnamedExplicit => Some(Expr::holed_app(f_e)),
                 NamedImplicit(name) => {
                     let holes = holes_to_insert(f_e.loc(), name, f_ty)?;
-                    if holes.is_empty() {
+                    if holes == 0 {
                         None
                     } else {
-                        Some(holes.into_iter().fold(f_e, Expr::holed_app))
+                        Some((0..holes).into_iter().fold(f_e, |e, _| Expr::holed_app(e)))
                     }
                 }
                 _ => None,
             },
             _ => None,
         })
-    }
-
-    fn get_findable(&self, r: &Box<Expr>) -> Option<(Var, Var)> {
-        use Body::*;
-        use Expr::*;
-        match &**r {
-            Resolved(_, f) => self
-                .sigma
-                .get(f)
-                .map(|d| match &d.body {
-                    Findable(i) => Some((i.clone(), f.clone())),
-                    _ => None,
-                })
-                .flatten(),
-            _ => None,
-        }
-    }
-
-    fn findable_check(
-        &mut self,
-        loc: Loc,
-        i: Var,
-        f: Var,
-        ai: ArgInfo,
-        x: Box<Expr>,
-        ty: &Box<Term>,
-    ) -> Result<Box<Term>, Error> {
-        use Body::*;
-        use Expr::*;
-
-        if let Some(tm) = self.answers.get(loc, &f) {
-            return Ok(tm);
-        }
-
-        let ims = match &self.sigma.get(&i).unwrap().body {
-            Interface { ims, .. } => ims.clone(),
-            _ => unreachable!(),
-        };
-
-        for im in ims.into_iter().rev() {
-            let im_fn = match &self.sigma.get(&im).unwrap().body {
-                Implements { fns, .. } => fns.get(&f).unwrap().clone(),
-                _ => unreachable!(),
-            };
-            match self.check(
-                Box::new(App(
-                    loc,
-                    Box::new(Resolved(loc, im_fn)),
-                    ai.clone(),
-                    x.clone(),
-                )),
-                ty,
-            ) {
-                Ok(tm) => {
-                    self.answers.insert(loc, f, tm.clone());
-                    return Ok(tm);
-                }
-                Err(_) => continue,
-            }
-        }
-
-        self.check(
-            Box::new(App(
-                loc,
-                Box::new(Find(loc, i.clone(), f.clone())),
-                ai.clone(),
-                x.clone(),
-            )),
-            ty,
-        )?;
-
-        Ok(Box::new(Term::Stuck(i, f, ai, self.infer(x, Some(ty))?.0)))
-    }
-
-    fn type_to_constraint(expected: &Box<Term>, inferred: &Box<Term>) -> Option<Var> {
-        use Term::*;
-        let r = match &**expected {
-            Constraint(r) => r.clone(),
-            _ => return None,
-        };
-        match &**inferred {
-            Univ | Pi(_, _) | Sigma(_, _) => Some(r),
-            _ => None,
-        }
-    }
-
-    fn check_constraint(&mut self, loc: Loc, i: &Var, x: &Box<Term>) -> Result<(), Error> {
-        use Body::*;
-
-        let ims = match &self.sigma.get(i).unwrap().body {
-            Interface { ims, .. } => ims.clone(),
-            _ => unreachable!(),
-        };
-        for im in ims {
-            let y = match &self.sigma.get(&im).unwrap().body {
-                Implements { i: (_, im), .. } => self.sigma.get(im).unwrap().to_term(im.clone()),
-                _ => unreachable!(),
-            };
-            match Unifier::new(&mut self.sigma, loc).unify(&y, &x) {
-                Ok(_) => return Ok(()),
-                Err(_) => continue,
-            }
-        }
-        Err(UnresolvedImplementation(x.clone(), loc))
     }
 }

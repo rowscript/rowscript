@@ -37,9 +37,6 @@ impl<'a> Unifier<'a> {
                 Ok(())
             }
 
-            // A constraint is a subtype of universe.
-            (Univ, Constraint(_)) => Ok(()),
-
             (Let(p, a, b), Let(q, x, y)) => {
                 self.unify(&p.typ, &q.typ)?;
                 self.unify(a, x)?;
@@ -99,7 +96,6 @@ impl<'a> Unifier<'a> {
             (Num(_, a), Num(_, b)) if a == b => Ok(()),
             (Big(a), Big(b)) if a == b => Ok(()),
             (Vptr(a), Vptr(b)) if a == b => Ok(()),
-            (Constraint(a), Constraint(b)) if a == b => Ok(()),
 
             (Univ, Univ) => Ok(()),
             (Unit, Unit) => Ok(()),

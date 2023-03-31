@@ -58,7 +58,8 @@ impl Renamer {
                 }
                 Switch(a, m)
             }
-            Stuck(i, f, ai, x) => Stuck(i, f, ai, self.term(x)),
+            Find(ty, i, f) => Find(self.term(ty), i, f),
+            ImplementsOf(a, i) => ImplementsOf(self.term(a), i),
 
             Undef(x) => Undef(x),
             Univ => Univ,
@@ -77,8 +78,7 @@ impl Renamer {
             RowSat => RowSat,
             RowRefl => RowRefl,
             Vptr(r) => Vptr(r),
-            Constraint(r) => Constraint(r),
-            Find(i, f) => Find(i, f),
+            ImplementsSat => ImplementsSat,
         })
     }
 

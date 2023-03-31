@@ -44,14 +44,20 @@ impl Def<Term> {
             Postulate => Box::new(Term::Ref(v)),
             Alias(t) => rename(Term::lam(&self.tele, t.clone())),
             Class { object, .. } => rename(Term::lam(&self.tele, object.clone())),
-            Interface { .. } => Box::new(Term::Constraint(v)),
+            Interface { .. } => {
+                let r = Box::new(Term::Ref(self.tele[0].var.clone()));
+                rename(Term::lam(&self.tele, Box::new(Term::ImplementsOf(r, v))))
+            }
 
             Undefined => Box::new(Term::Undef(v)),
             Meta(_, s) => match s {
                 None => unreachable!(),
                 Some(f) => rename(Term::lam(&self.tele, Box::new(f.clone()))),
             },
-            Findable(i) => Box::new(Term::Find(i.clone(), v)),
+            Findable(i) => {
+                let r = Box::new(Term::Ref(self.tele[0].var.clone()));
+                rename(Term::lam(&self.tele, Box::new(Term::Find(r, i.clone(), v))))
+            }
             _ => unreachable!(),
         }
     }
@@ -114,9 +120,11 @@ impl<T: Syntax> Display for Def<T> {
                             .join(";\n\t")
                     )
                 }
-                Interface { im_ty, fns, ims } => format!(
-                    "interface {} for {im_ty} {{\n{}\n{}}}",
+                Interface { fns, ims } => format!(
+                    "interface {}{}: {} {{\n{}\n{}}}",
                     self.name,
+                    Param::tele_to_string(&self.tele),
+                    self.ret,
                     fns.iter()
                         .map(|f| format!("\t{f};\n"))
                         .collect::<Vec<_>>()
@@ -176,7 +184,6 @@ pub enum Body<T: Syntax> {
         vtbl_lookup: Var,
     },
     Interface {
-        im_ty: Box<T>,
         fns: Vec<Var>,
         ims: Vec<Var>,
     },

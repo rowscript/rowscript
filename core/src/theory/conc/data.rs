@@ -17,7 +17,6 @@ pub enum Expr {
 
     Hole(Loc),
     InsertedHole(Loc),
-    ConstraintHole(Loc, Var),
 
     Let(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
 
@@ -101,7 +100,6 @@ impl Expr {
             Resolved(loc, _) => loc,
             Hole(loc) => loc,
             InsertedHole(loc) => loc,
-            ConstraintHole(loc, _) => loc,
             Let(loc, _, _, _, _) => loc,
             Univ(loc) => loc,
             Pi(loc, _, _) => loc,
@@ -180,16 +178,11 @@ impl Expr {
         wrapped
     }
 
-    pub fn holed_app(f: Box<Self>, r: Option<Var>) -> Box<Self> {
+    pub fn holed_app(f: Box<Self>) -> Box<Self> {
         use ArgInfo::*;
         use Expr::*;
         let loc = f.loc();
-        Box::new(App(
-            loc,
-            f,
-            UnnamedImplicit,
-            Box::new(r.map_or(InsertedHole(loc), |r| ConstraintHole(loc, r))),
-        ))
+        Box::new(App(loc, f, UnnamedImplicit, Box::new(InsertedHole(loc))))
     }
 }
 
@@ -206,7 +199,6 @@ impl Display for Expr {
                 Resolved(_, r) => r.to_string(),
                 Hole(_) => "?".to_string(),
                 InsertedHole(_) => "?i".to_string(),
-                ConstraintHole(_, r) => format!("?{r}"),
                 Let(_, v, typ, a, b) => {
                     if let Some(ty) = typ {
                         format!("let {v}: {ty} = {a};\n\t{b}")

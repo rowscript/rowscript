@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::data::Term::{Lam, Pi};
-use crate::theory::conc::data::ArgInfo;
 use crate::theory::{Param, ParamInfo, Syntax, Tele, Var};
 
 pub type Spine = Vec<(ParamInfo, Term)>;
@@ -29,7 +28,6 @@ pub type CaseMap = HashMap<String, (Var, Term)>;
 pub enum MetaKind {
     UserMeta,
     InsertedMeta,
-    ConstraintMeta(Var),
 }
 
 impl Display for MetaKind {
@@ -39,7 +37,6 @@ impl Display for MetaKind {
             match self {
                 UserMeta => "?u".to_string(),
                 InsertedMeta => "?i".to_string(),
-                ConstraintMeta(r) => format!("?{r}"),
             }
             .as_str(),
         )
@@ -105,9 +102,9 @@ pub enum Term {
 
     Vptr(Var),
 
-    Constraint(Var),
-    Find(Var, Var),
-    Stuck(Var, Var, ArgInfo, Box<Self>),
+    Find(Box<Self>, Var, Var),
+    ImplementsOf(Box<Self>, Var),
+    ImplementsSat,
 }
 
 impl Term {
@@ -200,9 +197,9 @@ impl Display for Term {
                     )
                 }
                 Vptr(r) => r.to_string(),
-                Constraint(r) => r.to_string(),
-                Find(i, f) => format!("{i}.{f}"),
-                Stuck(i, f, _, x) => format!("({i}.{f} {x})"),
+                Find(ty, i, f) => format!("{i}.{f}<{ty}>"),
+                ImplementsOf(t, i) => format!("{t} implementsOf {i}"),
+                ImplementsSat => "implementsSat".to_string(),
             }
             .as_str(),
         )
