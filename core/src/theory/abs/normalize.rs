@@ -237,7 +237,7 @@ impl<'a> Normalizer<'a> {
                 i,
             )),
             Find(ty, i, f) => Box::new(Find(
-                Box::new(match dbg!(*self.term(ty)?) {
+                Box::new(match *self.term(ty)? {
                     Ref(r) => Ref(r),
                     MetaRef(k, r, sp) => MetaRef(k, r, sp),
                     ty => return self.find_implementation(Box::new(ty), i, f),
