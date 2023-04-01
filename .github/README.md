@@ -43,7 +43,6 @@ Powerful construct `interface` that acts like Haskell's typeclasses.
 * JavaScript code generation
     * [ ] Basic transpilation
     * [ ] FBIP (functional but in-place) and reuse analysis
-* [ ] Row existential quantifier
 * [ ] Datatype generics
 * [ ] Auto-deriving
 * [ ] Algebraic effects
