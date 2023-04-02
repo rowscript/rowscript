@@ -30,9 +30,6 @@ impl Elaborator {
         for d in defs {
             self.def(d)?;
         }
-        for (_, d) in &self.sigma {
-            println!("{d}");
-        }
         Ok(())
     }
 

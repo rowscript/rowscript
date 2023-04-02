@@ -17,6 +17,7 @@ use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
 use crate::theory::Loc;
 
+mod codegen;
 #[cfg(test)]
 mod tests;
 mod theory;
@@ -138,7 +139,7 @@ impl Driver {
     pub fn new(path: PathBuf) -> Self {
         Self {
             path,
-            elab: Elaborator::default(),
+            elab: Default::default(),
         }
     }
 
@@ -165,7 +166,10 @@ impl Driver {
     }
 
     fn check_text(&mut self, src: &str) -> Result<(), Error> {
-        self.elab
-            .defs(Resolver::default().defs(trans::file(RowsParser::parse(Rule::file, src)?))?)
+        RowsParser::parse(Rule::file, src)
+            .map_err(Error::from)
+            .map(trans::file)
+            .and_then(|d| Resolver::default().defs(d))
+            .and_then(|d| self.elab.defs(d))
     }
 }
