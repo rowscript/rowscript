@@ -20,17 +20,17 @@ use crate::Error::{
 
 #[derive(Debug, Default)]
 pub struct Elaborator {
-    sigma: Sigma,
+    pub sigma: Sigma,
     gamma: Gamma,
     vg: VarGen,
 }
 
 impl Elaborator {
-    pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<Vec<Def<Term>>, Error> {
+    pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<(), Error> {
         for d in defs {
             self.def(d)?;
         }
-        Ok(self.sigma.values().cloned().collect())
+        Ok(())
     }
 
     fn def(&mut self, d: Def<Expr>) -> Result<(), Error> {

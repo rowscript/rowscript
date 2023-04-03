@@ -1,6 +1,6 @@
 use crate::codegen::Target;
 use crate::theory::abs::data::Term;
-use crate::theory::abs::def::Def;
+use crate::theory::abs::def::{Def, Sigma};
 use crate::Error;
 
 #[derive(Default)]
@@ -11,7 +11,7 @@ impl Target for Noop {
         unreachable!()
     }
 
-    fn def(&self, _: Def<Term>, _: &mut String) -> Result<(), Error> {
+    fn def<'a>(&self, _: &mut String, _: &'a Sigma, _: &Def<Term>) -> Result<(), Error> {
         Ok(())
     }
 }
