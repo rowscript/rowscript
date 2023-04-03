@@ -38,6 +38,11 @@ impl Target for Es6 {
 
             Postulate => {}
             Alias(_) => {}
+            Ctor(_) => {}
+            VptrType(_) => {}
+            VptrCtor => {}
+            VtblType(_) => {}
+            VtblLookup => {}
             Interface { .. } => {}
             Implements { .. } => {}
             Meta(_, _) => {}
