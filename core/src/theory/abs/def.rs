@@ -46,6 +46,7 @@ impl Def<Term> {
 
             Class { object, .. } => self.to_lam_term(object),
             Ctor(f) => self.to_lam_term(f),
+            Method(f) => self.to_lam_term(f),
             VptrType(t) => self.to_lam_term(t),
             VptrCtor => self.to_ref_term(v),
             VtblType(t) => self.to_lam_term(t),
@@ -143,6 +144,12 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
+                Method(f) => format!(
+                    "method {} {}: {} {{\n\t{f}\n}}",
+                    self.name,
+                    Param::tele_to_string(&self.tele),
+                    self.ret,
+                ),
                 VptrType(t) => format!(
                     "vptr {} {}: {} = {t};",
                     self.name,
@@ -232,6 +239,7 @@ pub enum Body<T: Syntax> {
         vtbl_lookup: Var,
     },
     Ctor(Box<T>),
+    Method(Box<T>),
     VptrType(Box<T>),
     VptrCtor,
     VtblType(Box<T>),

@@ -222,6 +222,10 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
                 let mut m = fn_def(p, Some((Unresolved(loc, name.clone()), tele.clone())));
                 vtbl_fields.push((m.name.to_string(), *m.to_type()));
                 m.name = name.method(m.name);
+                m.body = match m.body {
+                    Fn(f) => Method(f),
+                    _ => unreachable!(),
+                };
                 methods.push(m.name.clone());
                 method_defs.push(m);
             }

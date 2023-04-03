@@ -90,6 +90,7 @@ impl Elaborator {
                 vtbl_lookup,
             },
             Ctor(f) => Ctor(self.check(f, &ret)?),
+            Method(f) => Method(self.check(f, &ret)?),
             VptrType(t) => VptrType(self.check(t, &ret)?),
             VptrCtor => VptrCtor,
             VtblType(t) => VtblType(self.check(t, &ret)?),

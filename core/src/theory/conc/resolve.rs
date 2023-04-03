@@ -66,6 +66,7 @@ impl Resolver {
                 vtbl_lookup,
             },
             Ctor(f) => Ctor(self.self_referencing_fn(&d.name, f)?),
+            Method(f) => Method(self.expr(f)?), // FIXME: currently cannot be recursive
             VptrType(t) => VptrType(self.expr(t)?),
             VptrCtor => VptrCtor,
             VtblType(t) => VtblType(self.expr(t)?),

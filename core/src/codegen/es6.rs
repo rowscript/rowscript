@@ -39,6 +39,7 @@ impl Target for Es6 {
             Postulate => {}
             Alias(_) => {}
             Ctor(_) => {}
+            Method(_) => {}
             VptrType(_) => {}
             VptrCtor => {}
             VtblType(_) => {}
