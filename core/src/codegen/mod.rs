@@ -11,7 +11,7 @@ pub mod noop;
 
 pub trait Target {
     fn filename(&self) -> &'static str;
-    fn def<'a>(&self, f: &mut String, sigma: &'a Sigma, def: &Def<Term>) -> Result<(), Error>;
+    fn def(&self, f: &mut String, sigma: &Sigma, def: &Def<Term>) -> Result<(), Error>;
 }
 
 pub struct Codegen<'a> {

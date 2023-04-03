@@ -7,17 +7,17 @@ use crate::Error;
 pub struct Es6 {}
 
 impl Es6 {
-    fn func<'a>(
+    fn func(
         &self,
         f: &mut String,
-        sigma: &'a Sigma,
+        sigma: &Sigma,
         def: &Def<Term>,
         body: &Box<Term>,
     ) -> Result<(), Error> {
         todo!()
     }
 
-    fn class<'a>(&self, f: &mut String, sigma: &'a Sigma, def: &Def<Term>) -> Result<(), Error> {
+    fn class(&self, f: &mut String, sigma: &Sigma, def: &Def<Term>) -> Result<(), Error> {
         todo!()
     }
 }
@@ -27,7 +27,7 @@ impl Target for Es6 {
         "index.js"
     }
 
-    fn def<'a>(&self, f: &mut String, sigma: &'a Sigma, def: &Def<Term>) -> Result<(), Error> {
+    fn def(&self, f: &mut String, sigma: &Sigma, def: &Def<Term>) -> Result<(), Error> {
         use Body::*;
 
         match &def.body {

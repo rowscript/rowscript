@@ -40,30 +40,45 @@ impl Def<Term> {
     pub fn to_term(&self, v: Var) -> Box<Term> {
         use Body::*;
         match &self.body {
-            Fn(f) => rename(Term::lam(&self.tele, f.clone())),
-            Postulate => Box::new(Term::Ref(v)),
-            Alias(t) => rename(Term::lam(&self.tele, t.clone())),
-            Class { object, .. } => rename(Term::lam(&self.tele, object.clone())),
+            Fn(f) => self.to_lam_term(f),
+            Postulate => self.to_ref_term(v),
+            Alias(t) => self.to_lam_term(t),
+
+            Class { object, .. } => self.to_lam_term(object),
+            Ctor(f) => self.to_lam_term(f),
+            VptrType(t) => self.to_lam_term(t),
+            VptrCtor => self.to_ref_term(v),
+            VtblType(t) => self.to_lam_term(t),
+            VtblLookup => self.to_ref_term(v),
+
             Interface { .. } => {
                 let r = Box::new(Term::Ref(self.tele[0].var.clone()));
-                rename(Term::lam(&self.tele, Box::new(Term::ImplementsOf(r, v))))
+                self.to_lam_term(&Box::new(Term::ImplementsOf(r, v)))
             }
-
-            Undefined => Box::new(Term::Undef(v)),
-            Meta(_, s) => match s {
-                None => unreachable!(),
-                Some(f) => rename(Term::lam(&self.tele, Box::new(f.clone()))),
-            },
+            Implements { .. } => unreachable!(),
             Findable(i) => {
                 let r = Box::new(Term::Ref(self.tele[0].var.clone()));
                 let mut f = Box::new(Term::Find(r, i.clone(), v));
                 for p in self.tele.iter().skip(1) {
                     f = Box::new(Term::App(f, Box::new(Term::Ref(p.var.clone()))));
                 }
-                rename(Term::lam(&self.tele, f))
+                self.to_lam_term(&f)
             }
-            _ => unreachable!(),
+
+            Undefined => Box::new(Term::Undef(v)),
+            Meta(_, s) => match s {
+                None => unreachable!(),
+                Some(f) => self.to_lam_term(&Box::new(f.clone())),
+            },
         }
+    }
+
+    fn to_lam_term(&self, f: &Box<Term>) -> Box<Term> {
+        rename(Term::lam(&self.tele, f.clone()))
+    }
+
+    fn to_ref_term(&self, v: Var) -> Box<Term> {
+        Box::new(Term::Ref(v))
     }
 
     pub fn to_type(&self) -> Box<Term> {
@@ -77,24 +92,22 @@ impl<T: Syntax> Display for Def<T> {
         f.write_str(
             match &self.body {
                 Fn(f) => format!(
-                    "function {} {}: {} {{\n\t{}\n}}",
+                    "function {} {}: {} {{\n\t{f}\n}}",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
-                    f
                 ),
                 Postulate => format!(
-                    "declare {} {}: {};",
+                    "declare function {} {}: {};",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
                 Alias(t) => format!(
-                    "type {} {}: {} = {};",
+                    "type {} {}: {} = {t};",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
-                    t,
                 ),
                 Class {
                     object,
@@ -124,6 +137,36 @@ impl<T: Syntax> Display for Def<T> {
                             .join(";\n\t")
                     )
                 }
+                Ctor(f) => format!(
+                    "constructor {} {}: {} {{\n\t{f}\n}}",
+                    self.name,
+                    Param::tele_to_string(&self.tele),
+                    self.ret,
+                ),
+                VptrType(t) => format!(
+                    "vptr {} {}: {} = {t};",
+                    self.name,
+                    Param::tele_to_string(&self.tele),
+                    self.ret,
+                ),
+                VptrCtor => format!(
+                    "vptr {} {}: {};",
+                    self.name,
+                    Param::tele_to_string(&self.tele),
+                    self.ret,
+                ),
+                VtblType(t) => format!(
+                    "vtbl {} {}: {} = {t};",
+                    self.name,
+                    Param::tele_to_string(&self.tele),
+                    self.ret,
+                ),
+                VtblLookup => format!(
+                    "vtbl {} {}: {};",
+                    self.name,
+                    Param::tele_to_string(&self.tele),
+                    self.ret,
+                ),
                 Interface { fns, ims } => format!(
                     "interface {} {}: {} {{\n{}\n{}}}",
                     self.name,
@@ -147,7 +190,7 @@ impl<T: Syntax> Display for Def<T> {
                 ),
 
                 Undefined => format!(
-                    "undefined {} {}: {}",
+                    "undefined {} {}: {};",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
@@ -162,7 +205,7 @@ impl<T: Syntax> Display for Def<T> {
                     }
                 }
                 Findable(i) => format!(
-                    "findable {i}.{} {}: {}",
+                    "findable {i}.{} {}: {};",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret
@@ -178,6 +221,7 @@ pub enum Body<T: Syntax> {
     Fn(Box<T>),
     Postulate,
     Alias(Box<T>),
+
     Class {
         object: Box<T>,
         methods: Vec<Var>,
@@ -187,6 +231,12 @@ pub enum Body<T: Syntax> {
         vtbl: Var,
         vtbl_lookup: Var,
     },
+    Ctor(Box<T>),
+    VptrType(Box<T>),
+    VptrCtor,
+    VtblType(Box<T>),
+    VtblLookup,
+
     Interface {
         fns: Vec<Var>,
         ims: Vec<Var>,
@@ -195,8 +245,8 @@ pub enum Body<T: Syntax> {
         i: (Var, Var),
         fns: HashMap<Var, Var>,
     },
+    Findable(Var),
 
     Undefined,
     Meta(MetaKind, Option<T>),
-    Findable(Var),
 }

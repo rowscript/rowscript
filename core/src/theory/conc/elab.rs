@@ -71,6 +71,7 @@ impl Elaborator {
             Fn(f) => Fn(self.check(f, &ret)?),
             Postulate => Postulate,
             Alias(t) => Alias(self.check(t, &ret)?),
+
             Class {
                 object,
                 methods,
@@ -88,13 +89,21 @@ impl Elaborator {
                 vtbl,
                 vtbl_lookup,
             },
+            Ctor(f) => Ctor(self.check(f, &ret)?),
+            VptrType(t) => VptrType(self.check(t, &ret)?),
+            VptrCtor => VptrCtor,
+            VtblType(t) => VtblType(self.check(t, &ret)?),
+            VtblLookup => VtblLookup,
+
             Interface { fns, ims } => Interface { fns, ims },
             Implements { i, fns } => {
                 self.push_implements(&d.name, &i, &fns)?;
                 Implements { i, fns }
             }
             Findable(i) => Findable(i),
-            _ => unreachable!(),
+
+            Undefined => unreachable!(),
+            Meta(_, _) => unreachable!(),
         };
 
         for n in checked {

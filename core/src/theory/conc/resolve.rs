@@ -44,12 +44,10 @@ impl Resolver {
         d.tele = tele;
         d.ret = self.expr(d.ret)?;
         d.body = match d.body {
-            Fn(f) => {
-                self.insert(&d.name);
-                Fn(self.expr(f)?)
-            }
+            Fn(f) => Fn(self.self_referencing_fn(&d.name, f)?),
             Postulate => Postulate,
             Alias(t) => Alias(self.expr(t)?),
+
             Class {
                 object,
                 methods,
@@ -67,6 +65,12 @@ impl Resolver {
                 vtbl,
                 vtbl_lookup,
             },
+            Ctor(f) => Ctor(self.self_referencing_fn(&d.name, f)?),
+            VptrType(t) => VptrType(self.expr(t)?),
+            VptrCtor => VptrCtor,
+            VtblType(t) => VtblType(self.expr(t)?),
+            VtblLookup => VtblLookup,
+
             Interface { fns, ims } => Interface { fns, ims },
             Implements { i: (i, im), fns } => {
                 let loc = d.loc;
@@ -85,7 +89,9 @@ impl Resolver {
                 }
             }
             Findable(i) => Findable(i),
-            _ => unreachable!(),
+
+            Undefined => unreachable!(),
+            Meta(_, _) => unreachable!(),
         };
 
         for x in removable {
@@ -243,5 +249,10 @@ impl Resolver {
             Vptr(loc, r) => Vptr(loc, r),
             Find(loc, i, f) => Find(loc, i, f),
         }))
+    }
+
+    fn self_referencing_fn(&mut self, name: &Var, f: Box<Expr>) -> Result<Box<Expr>, Error> {
+        self.insert(name);
+        self.expr(f)
     }
 }

@@ -234,7 +234,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         name: vptr_name.clone(),
         tele: tele.clone(),
         ret: Box::new(Univ(loc)),
-        body: Fn(Box::new(Vptr(loc, vtbl_lookup_name.clone()))),
+        body: VptrType(Box::new(Vptr(loc, vtbl_lookup_name.clone()))),
     };
     let vptr_ctor_def = Def {
         loc,
@@ -244,7 +244,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
             &tele,
             Unresolved(loc, vptr_name.clone()),
         )),
-        body: Postulate,
+        body: VptrCtor,
     };
 
     let mut ctor_untupled = UntupledParams::new(loc);
@@ -268,7 +268,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     let untupled_vars = ctor_untupled.unresolved();
     let untupled_loc = ctor_untupled.0;
     let tupled_param = Param::from(ctor_untupled);
-    let ctor_body = Fn(Expr::wrap_tuple_lets(
+    let ctor_body = Ctor(Expr::wrap_tuple_lets(
         untupled_loc,
         &tupled_param.var,
         untupled_vars,
@@ -307,7 +307,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         name: vtbl_name.clone(),
         tele: tele.clone(),
         ret: Box::new(Univ(loc)),
-        body: Fn(Box::new(Object(loc, Box::new(Fields(loc, vtbl_fields))))),
+        body: VtblType(Box::new(Object(loc, Box::new(Fields(loc, vtbl_fields))))),
     };
     let mut lookup_tele = tele.clone();
     lookup_tele.push(Param {
@@ -320,7 +320,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         name: vtbl_lookup_name,
         tele: lookup_tele,
         ret: Box::new(wrap_implicit_apps(&tele, Unresolved(loc, vtbl_name))),
-        body: Postulate,
+        body: VtblLookup,
     };
 
     let mut defs = vec![
