@@ -3,7 +3,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, ValueEnum};
 
-use rowscript_core::codegen::{es6, noop, Codegen};
+use rowscript_core::codegen::{es6, noop, Target};
 use rowscript_core::Driver;
 
 #[derive(Parser)]
@@ -11,27 +11,27 @@ use rowscript_core::Driver;
 struct Args {
     #[arg(index = 1, default_value = ".")]
     path: PathBuf,
-    #[arg(short, long, value_enum, default_value_t = DEFAULT_TARGET)]
-    target: Target,
+    #[arg(short, long, value_enum, default_value_t = DEFAULT_TARGET_ID)]
+    target: TargetID,
 }
 
 #[cfg(feature = "codegen-es6")]
-const DEFAULT_TARGET: Target = Target::Es6;
+const DEFAULT_TARGET_ID: TargetID = TargetID::Es6;
 #[cfg(not(feature = "codegen-es6"))]
-const DEFAULT_TARGET: Target = Target::Noop;
+const DEFAULT_TARGET_ID: TargetID = TargetID::Noop;
 
 #[derive(Copy, Clone, ValueEnum)]
-enum Target {
+enum TargetID {
     Noop,
     #[cfg(feature = "codegen-es6")]
     Es6,
 }
 
-impl Into<Box<dyn Codegen>> for Target {
-    fn into(self) -> Box<dyn Codegen> {
+impl Into<Box<dyn Target>> for TargetID {
+    fn into(self) -> Box<dyn Target> {
         match self {
-            Target::Noop => Box::new(noop::Noop::default()),
-            Target::Es6 => Box::new(es6::Es6::default()),
+            TargetID::Noop => Box::new(noop::Noop::default()),
+            TargetID::Es6 => Box::new(es6::Es6::default()),
         }
     }
 }

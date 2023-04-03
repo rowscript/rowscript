@@ -9,8 +9,9 @@ use pest::Parser;
 use pest_derive::Parser;
 use thiserror::Error;
 
-use crate::codegen::Codegen;
+use crate::codegen::{Codegen, Target};
 use crate::theory::abs::data::Term;
+use crate::theory::abs::def::Def;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
@@ -142,7 +143,9 @@ impl Driver {
         }
     }
 
-    pub fn run(&mut self, cg: Box<dyn Codegen>) -> Result<(), Error> {
+    pub fn run(&mut self, target: Box<dyn Target>) -> Result<(), Error> {
+        let mut pkg_defs = Vec::default();
+
         for r in self.path.read_dir()? {
             let entry = r?;
             if entry.file_type()?.is_dir() {
@@ -154,29 +157,24 @@ impl Driver {
                 Some(e) if e != "rows" => continue,
                 _ => {
                     let src = read_to_string(&file)?;
-                    self.check_text(src.as_str()).map_err(|e| {
+                    pkg_defs.extend(self.check_text(src.as_str()).map_err(|e| {
                         e.print(file.to_str().unwrap(), src);
                         e
-                    })?;
+                    })?);
                 }
             }
         }
 
-        self.gen(cg)?;
+        Codegen::new(pkg_defs, self.path.clone(), target).package()?;
 
         Ok(())
     }
 
-    fn check_text(&mut self, src: &str) -> Result<(), Error> {
+    fn check_text(&mut self, src: &str) -> Result<Vec<Def<Term>>, Error> {
         RowsParser::parse(Rule::file, src)
             .map_err(Error::from)
             .map(trans::file)
             .and_then(|d| Resolver::default().defs(d))
             .and_then(|d| self.elab.defs(d))
-    }
-
-    fn gen(&self, _: Box<dyn Codegen>) -> Result<(), Error> {
-        // TODO
-        Ok(())
     }
 }

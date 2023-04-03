@@ -26,11 +26,11 @@ pub struct Elaborator {
 }
 
 impl Elaborator {
-    pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<(), Error> {
+    pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<Vec<Def<Term>>, Error> {
         for d in defs {
             self.def(d)?;
         }
-        Ok(())
+        Ok(self.sigma.values().cloned().collect())
     }
 
     fn def(&mut self, d: Def<Expr>) -> Result<(), Error> {
