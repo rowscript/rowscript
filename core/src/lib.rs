@@ -1,7 +1,7 @@
 use std::fs::read_to_string;
-use std::io;
 use std::ops::Range;
 use std::path::PathBuf;
+use std::{fmt, io};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use pest::error::InputLocation;
@@ -25,7 +25,6 @@ mod theory;
 pub enum Error {
     #[error("IO error")]
     IO(#[from] io::Error),
-
     #[error("parse error")]
     Parsing(#[from] pest::error::Error<Rule>),
 
@@ -65,18 +64,23 @@ pub enum Error {
     NonUnifiable(Box<Term>, Box<Term>, Loc),
     #[error("field(s) \"{0}\" not contained in \"{1}\"")]
     NonRowSat(Box<Term>, Box<Term>, Loc),
+
+    #[error("format error")]
+    Fmt(#[from] fmt::Error),
 }
 
 const PARSER_FAILED: &str = "failed while parsing";
 const RESOLVER_FAILED: &str = "failed while resolving";
 const CHECKER_FAILED: &str = "failed while typechecking";
 const UNIFIER_FAILED: &str = "failed while unifying";
+const CODEGEN_FAILED: &str = "failed while code generation";
 
 impl Error {
     fn print<F: AsRef<str>, S: AsRef<str>>(&self, file: F, source: S) {
         use Error::*;
+
         let (range, title, msg) = match self {
-            IO(_) => (0..source.as_ref().len(), PARSER_FAILED, None),
+            IO(_) => (Range::default(), PARSER_FAILED, None),
             Parsing(e) => {
                 let range = match e.location {
                     InputLocation::Pos(start) => start..source.as_ref().len(),
@@ -104,6 +108,8 @@ impl Error {
 
             NonUnifiable(_, _, loc) => self.simple_message(loc, UNIFIER_FAILED),
             NonRowSat(_, _, loc) => self.simple_message(loc, UNIFIER_FAILED),
+
+            Fmt(_) => (Range::default(), CODEGEN_FAILED, None),
         };
         let mut b = Report::build(ReportKind::Error, file.as_ref(), range.start)
             .with_message(title)
