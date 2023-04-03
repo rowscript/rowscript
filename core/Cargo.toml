@@ -3,6 +3,9 @@ name = "rowscript-core"
 version = "0.8.0"
 edition = "2021"
 
+[features]
+codegen-es6 = []
+
 [dependencies.pest]
 version = "2.4.1"
 features = ["fast-line-col"]

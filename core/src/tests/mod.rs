@@ -1,6 +1,7 @@
 use std::env;
 use std::path::PathBuf;
 
+use crate::codegen::noop::Noop;
 use crate::{Driver, Error};
 
 mod fail_parse;
@@ -31,7 +32,7 @@ fn check_helper(mod_path: &str) -> Result<(), Error> {
         "tests",
         mod_path.to_string().split("::").last().unwrap(),
     ]);
-    Driver::new(pkg).check()
+    Driver::new(pkg).run(Box::new(Noop::default()))
 }
 
 pub fn check_ok(mod_path: &str) {

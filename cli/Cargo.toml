@@ -3,6 +3,13 @@ name = "rowscript"
 version = "0.8.0"
 edition = "2021"
 
-[dependencies]
-rowscript-core = { path = "../core" }
-clap = { version = "4.0", features = ["derive"] }
+[features]
+default = ["codegen-es6"]
+codegen-es6 = ["rowscript-core/codegen-es6"]
+
+[dependencies.rowscript-core]
+path = "../core"
+
+[dependencies.clap]
+version = "4.0"
+features = ["derive"]

@@ -1,5 +1,3 @@
-extern crate core;
-
 use std::fs::read_to_string;
 use std::io;
 use std::ops::Range;
@@ -11,13 +9,14 @@ use pest::Parser;
 use pest_derive::Parser;
 use thiserror::Error;
 
+use crate::codegen::Codegen;
 use crate::theory::abs::data::Term;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
 use crate::theory::Loc;
 
-mod codegen;
+pub mod codegen;
 #[cfg(test)]
 mod tests;
 mod theory;
@@ -143,7 +142,7 @@ impl Driver {
         }
     }
 
-    pub fn check(&mut self) -> Result<(), Error> {
+    pub fn run(&mut self, cg: Box<dyn Codegen>) -> Result<(), Error> {
         for r in self.path.read_dir()? {
             let entry = r?;
             if entry.file_type()?.is_dir() {
@@ -162,6 +161,9 @@ impl Driver {
                 }
             }
         }
+
+        self.gen(cg)?;
+
         Ok(())
     }
 
@@ -171,5 +173,10 @@ impl Driver {
             .map(trans::file)
             .and_then(|d| Resolver::default().defs(d))
             .and_then(|d| self.elab.defs(d))
+    }
+
+    fn gen(&self, _: Box<dyn Codegen>) -> Result<(), Error> {
+        // TODO
+        Ok(())
     }
 }
