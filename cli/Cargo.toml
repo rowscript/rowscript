@@ -9,6 +9,7 @@ codegen-es6 = ["rowscript-core/codegen-es6"]
 
 [dependencies.rowscript-core]
 path = "../core"
+default-features = false
 
 [dependencies.clap]
 version = "4.0"

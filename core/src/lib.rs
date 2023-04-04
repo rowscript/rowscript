@@ -67,6 +67,8 @@ pub enum Error {
 
     #[error("format error")]
     Fmt(#[from] fmt::Error),
+    #[error("code generation error")]
+    Codegen,
 }
 
 const PARSER_FAILED: &str = "failed while parsing";
@@ -110,6 +112,7 @@ impl Error {
             NonRowSat(_, _, loc) => self.simple_message(loc, UNIFIER_FAILED),
 
             Fmt(_) => (Range::default(), CODEGEN_FAILED, None),
+            Codegen => (Range::default(), CODEGEN_FAILED, None),
         };
         let mut b = Report::build(ReportKind::Error, file.as_ref(), range.start)
             .with_message(title)

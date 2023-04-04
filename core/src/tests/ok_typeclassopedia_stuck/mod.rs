@@ -1,6 +1,6 @@
-use crate::tests::check_ok;
+use crate::tests::run_ok;
 
 #[test]
 fn test_typeclassopedia_stuck() {
-    check_ok(module_path!())
+    run_ok(module_path!())
 }

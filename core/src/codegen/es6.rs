@@ -31,7 +31,8 @@ impl Es6 {
         ctor: &Def<Term>,
         meths: Vec<&Def<Term>>,
     ) -> Result<(), Error> {
-        todo!()
+        // TODO
+        Ok(())
     }
 
     fn term(&self, f: &mut String, sigma: &Sigma, tm: &Box<Term>) -> Result<(), Error> {
