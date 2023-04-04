@@ -26,14 +26,15 @@ pub struct Elaborator {
 }
 
 impl Elaborator {
-    pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<(), Error> {
+    pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<Vec<Def<Term>>, Error> {
+        let mut ret = Vec::default();
         for d in defs {
-            self.def(d)?;
+            ret.push(self.def(d)?);
         }
-        Ok(())
+        Ok(ret)
     }
 
-    fn def(&mut self, d: Def<Expr>) -> Result<(), Error> {
+    fn def(&mut self, d: Def<Expr>) -> Result<Def<Term>, Error> {
         use Body::*;
 
         let mut checked = Vec::default();
@@ -111,9 +112,10 @@ impl Elaborator {
             self.gamma.remove(&n);
         }
 
-        self.sigma.get_mut(&d.name).unwrap().body = body;
+        let mut checked = self.sigma.get_mut(&d.name).unwrap();
+        checked.body = body;
 
-        Ok(())
+        Ok(checked.clone())
     }
 
     fn push_implements(

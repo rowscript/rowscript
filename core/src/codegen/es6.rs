@@ -1,12 +1,12 @@
 use std::fmt::Write;
 
-use crate::codegen::Target;
+use crate::codegen::{GuardedWriter, Target};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::Error;
 
 #[derive(Default)]
-pub struct Es6 {}
+pub struct Es6;
 
 impl Es6 {
     fn func(
@@ -16,9 +16,12 @@ impl Es6 {
         def: &Def<Term>,
         body: &Box<Term>,
     ) -> Result<(), Error> {
-        writeln!(f, "function {}() {{", def.name)?;
+        let mut w = GuardedWriter::new(f);
+        write!(w, "function {}() ", def.name);
+        {
+            let _g = w.braces();
+        }
         // TODO
-        writeln!(f, "}}")?;
         Ok(())
     }
 
@@ -45,11 +48,11 @@ impl Target for Es6 {
         "index.js"
     }
 
-    fn def(&self, f: &mut String, sigma: &Sigma, def: &Def<Term>) -> Result<(), Error> {
+    fn def(&self, f: &mut String, sigma: &Sigma, def: Def<Term>) -> Result<(), Error> {
         use Body::*;
 
         match &def.body {
-            Fn(body) => self.func(f, sigma, def, body)?,
+            Fn(body) => self.func(f, sigma, &def, body)?,
             Class {
                 object,
                 ctor,
@@ -58,7 +61,7 @@ impl Target for Es6 {
             } => self.class(
                 f,
                 sigma,
-                def,
+                &def,
                 object,
                 sigma.get(ctor).unwrap(),
                 methods.iter().map(|n| sigma.get(n).unwrap()).collect(),
