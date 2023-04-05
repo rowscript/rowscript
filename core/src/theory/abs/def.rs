@@ -57,6 +57,7 @@ impl Def<Term> {
                 self.to_lam_term(&Box::new(Term::ImplementsOf(r, v)))
             }
             Implements { .. } => unreachable!(),
+            ImplementsFn(f) => self.to_lam_term(f),
             Findable(i) => {
                 let r = Box::new(Term::Ref(self.tele[0].var.clone()));
                 let mut f = Box::new(Term::Find(r, i.clone(), v));
@@ -195,6 +196,12 @@ impl<T: Syntax> Display for Def<T> {
                         .collect::<Vec<_>>()
                         .concat()
                 ),
+                ImplementsFn(f) => format!(
+                    "implements function {} {}: {} {{\n\t{f}\n}}",
+                    self.name,
+                    Param::tele_to_string(&self.tele),
+                    self.ret,
+                ),
 
                 Undefined => format!(
                     "undefined {} {}: {};",
@@ -253,6 +260,7 @@ pub enum Body<T: Syntax> {
         i: (Var, Var),
         fns: HashMap<Var, Var>,
     },
+    ImplementsFn(Box<T>),
     Findable(Var),
 
     Undefined,

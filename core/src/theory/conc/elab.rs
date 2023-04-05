@@ -102,6 +102,7 @@ impl Elaborator {
                 self.push_implements(&d.name, &i, &fns)?;
                 Implements { i, fns }
             }
+            ImplementsFn(f) => ImplementsFn(self.check(f, &ret)?),
             Findable(i) => Findable(i),
 
             Undefined => unreachable!(),

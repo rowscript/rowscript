@@ -419,6 +419,10 @@ fn implements_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
         let fn_name = def.name.implement_func(&i, &im);
         fns.insert(def.name.clone(), fn_name.clone());
         def.name = fn_name;
+        def.body = match def.body {
+            Fn(f) => ImplementsFn(f),
+            _ => unreachable!(),
+        };
         defs.push(def);
     }
 
