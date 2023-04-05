@@ -11,7 +11,7 @@ impl Target for Noop {
         unreachable!()
     }
 
-    fn def(&self, _: &mut String, _: &Sigma, _: Def<Term>) -> Result<(), Error> {
+    fn defs(&self, _: &mut Vec<u8>, _: &Sigma, _: Vec<Def<Term>>) -> Result<(), Error> {
         Ok(())
     }
 }

@@ -8,7 +8,7 @@ use swc_common::SourceMap;
 use swc_ecma_parser::lexer::Lexer;
 use swc_ecma_parser::{Parser, Syntax};
 
-use crate::codegen::es6::Es6;
+use crate::codegen::ecma::Ecma;
 use crate::codegen::Target;
 use crate::{Driver, Error};
 
@@ -34,7 +34,7 @@ mod ok_typeclassopedia;
 mod ok_typeclassopedia_stuck;
 
 fn run_helper(mod_path: &str) -> Result<(), Error> {
-    let target = Es6::default();
+    let target = Ecma::default();
     let pkg = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("src")
         .join("tests")

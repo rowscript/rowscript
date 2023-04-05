@@ -4,8 +4,8 @@ version = "0.8.0"
 edition = "2021"
 
 [features]
-default = ["codegen-es6"]
-codegen-es6 = ["rowscript-core/codegen-es6"]
+default = ["codegen-ecma"]
+codegen-ecma = ["rowscript-core/codegen-ecma"]
 
 [dependencies.rowscript-core]
 path = "../core"

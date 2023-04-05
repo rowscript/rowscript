@@ -3,7 +3,7 @@ use std::process::ExitCode;
 
 use clap::{Parser, ValueEnum};
 
-use rowscript_core::codegen::{es6, noop, Target};
+use rowscript_core::codegen::{ecma, noop, Target};
 use rowscript_core::Driver;
 
 #[derive(Parser)]
@@ -15,23 +15,23 @@ struct Args {
     target: TargetID,
 }
 
-#[cfg(feature = "codegen-es6")]
-const DEFAULT_TARGET_ID: TargetID = TargetID::Es6;
-#[cfg(not(feature = "codegen-es6"))]
+#[cfg(feature = "codegen-ecma")]
+const DEFAULT_TARGET_ID: TargetID = TargetID::Ecma;
+#[cfg(not(feature = "codegen-ecma"))]
 const DEFAULT_TARGET_ID: TargetID = TargetID::Noop;
 
 #[derive(Copy, Clone, ValueEnum)]
 enum TargetID {
     Noop,
-    #[cfg(feature = "codegen-es6")]
-    Es6,
+    #[cfg(feature = "codegen-ecma")]
+    Ecma,
 }
 
 impl Into<Box<dyn Target>> for TargetID {
     fn into(self) -> Box<dyn Target> {
         match self {
             TargetID::Noop => Box::new(noop::Noop::default()),
-            TargetID::Es6 => Box::new(es6::Es6::default()),
+            TargetID::Ecma => Box::new(ecma::Ecma::default()),
         }
     }
 }

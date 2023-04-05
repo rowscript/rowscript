@@ -4,8 +4,13 @@ version = "0.8.0"
 edition = "2021"
 
 [features]
-default = ["codegen-es6"]
-codegen-es6 = []
+default = ["codegen-ecma"]
+codegen-ecma = [
+    "dep:swc_ecma_parser",
+    "dep:swc_ecma_ast",
+    "dep:swc_ecma_codegen",
+    "dep:swc_common",
+]
 
 [dependencies.pest]
 version = "2.4.1"
@@ -20,9 +25,8 @@ version = "1.0.37"
 [dependencies.ariadne]
 version = "0.2.0"
 
-[dev-dependencies.swc_ecma_parser]
-version = "0.132.5"
-
-[dev-dependencies.swc_common]
-version = "0.30.4"
-features = ["tty-emitter"]
+[dependencies]
+swc_ecma_parser = { version = "0.132.5", optional = true }
+swc_ecma_ast = { version = "0.102.4", optional = true }
+swc_ecma_codegen = { version = "0.137.5", optional = true }
+swc_common = { version = "0.30.4", features = ["tty-emitter"], optional = true }
