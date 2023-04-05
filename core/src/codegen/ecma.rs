@@ -1,14 +1,16 @@
 use std::rc::Rc;
 
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
-use swc_ecma_ast::{BlockStmt, Decl, FnDecl, Function, Ident, Module, ModuleItem, Stmt};
+use swc_ecma_ast::{
+    BindingIdent, BlockStmt, Decl, FnDecl, Function, Ident, Module, ModuleItem, Param, Pat, Stmt,
+};
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
 
 use crate::codegen::Target;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
-use crate::theory::{Loc, Var};
+use crate::theory::{Loc, Tele, Var, TUPLED};
 use crate::Error;
 
 #[derive(Default)]
@@ -33,15 +35,15 @@ impl Ecma {
         }
     }
 
-    fn func(&self, sigma: &Sigma, def: &Def<Term>, body: &Box<Term>) -> Result<Decl, Error> {
-        // TODO
+    fn func(sigma: &Sigma, def: &Def<Term>, body: &Box<Term>) -> Result<Decl, Error> {
         Ok(Decl::Fn(FnDecl {
             ident: Self::ident(def.loc, &def.name),
             declare: false,
             function: Box::new(Function {
-                params: Default::default(),
+                params: Self::params(def.loc, &def.tele),
                 decorators: Default::default(),
                 span: def.loc.into(),
+                // TODO
                 body: Some(BlockStmt {
                     span: def.loc.into(),
                     stmts: Default::default(),
@@ -55,7 +57,6 @@ impl Ecma {
     }
 
     fn class(
-        &self,
         sigma: &Sigma,
         def: &Def<Term>,
         object: &Box<Term>,
@@ -65,7 +66,34 @@ impl Ecma {
         todo!()
     }
 
-    fn term(&self, sigma: &Sigma, tm: &Box<Term>) -> Result<(), Error> {
+    fn params(loc: Loc, tele: &Tele<Term>) -> Vec<Param> {
+        let mut params = Vec::default();
+        for p in tele {
+            if p.var.as_str() != TUPLED {
+                continue;
+            }
+            let mut tm = &p.typ;
+            loop {
+                match &**tm {
+                    Term::Sigma(p, b) => {
+                        params.push(Param {
+                            span: loc.into(),
+                            decorators: Default::default(),
+                            pat: Pat::Ident(BindingIdent {
+                                id: Self::ident(loc, &p.var),
+                                type_ann: None,
+                            }),
+                        });
+                        tm = b;
+                    }
+                    _ => break,
+                }
+            }
+        }
+        params
+    }
+
+    fn term(sigma: &Sigma, tm: &Box<Term>) -> Result<(), Error> {
         todo!()
     }
 }
@@ -82,7 +110,7 @@ impl Target for Ecma {
 
         for def in defs {
             body.push(ModuleItem::Stmt(Stmt::Decl(match &def.body {
-                Fn(body) => self.func(sigma, &def, body)?,
+                Fn(body) => Self::func(sigma, &def, body)?,
                 Class {
                     object,
                     ctor,
@@ -90,7 +118,7 @@ impl Target for Ecma {
                     ..
                 } => continue,
                 // TODO
-                // } => self.class(
+                // } => Self::class(
                 //     sigma,
                 //     &def,
                 //     object,

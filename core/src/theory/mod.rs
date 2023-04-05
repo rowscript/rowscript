@@ -60,7 +60,8 @@ pub struct Var {
     name: Name,
 }
 
-const VPTR: &str = "__vptr";
+pub const VPTR: &str = "__vptr";
+pub const TUPLED: &str = "_tupled";
 
 impl Var {
     fn new<S: AsRef<str>>(name: S) -> Self {
@@ -74,7 +75,7 @@ impl Var {
     }
 
     pub fn tupled() -> Self {
-        Self::new("_tupled")
+        Self::new(TUPLED)
     }
 
     pub fn untupled_right(&self) -> Self {
@@ -180,9 +181,9 @@ pub enum ParamInfo {
 
 #[derive(Debug, Clone)]
 pub struct Param<T: Syntax> {
-    var: Var,
-    info: ParamInfo,
-    typ: Box<T>,
+    pub var: Var,
+    pub info: ParamInfo,
+    pub typ: Box<T>,
 }
 
 pub type Tele<T> = Vec<Param<T>>;
