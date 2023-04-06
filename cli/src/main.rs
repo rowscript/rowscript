@@ -38,7 +38,7 @@ impl Into<Box<dyn Target>> for TargetID {
 
 fn main() -> ExitCode {
     let args = Args::parse();
-    Driver::new(args.path)
-        .run(args.target.into())
+    Driver::new(args.path, args.target.into())
+        .run()
         .map_or(ExitCode::FAILURE, |_| ExitCode::SUCCESS)
 }

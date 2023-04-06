@@ -62,6 +62,7 @@ pub struct Var {
 
 pub const VPTR: &str = "__vptr";
 pub const TUPLED: &str = "_tupled";
+pub const UNTUPLED_RHS: &str = "_untupled_";
 
 impl Var {
     fn new<S: AsRef<str>>(name: S) -> Self {
@@ -78,16 +79,16 @@ impl Var {
         Self::new(TUPLED)
     }
 
-    pub fn untupled_right(&self) -> Self {
-        Self::new(format!("_untupled_{}", self))
+    pub fn untupled_rhs(&self) -> Self {
+        Self::new(format!("{UNTUPLED_RHS}{self}"))
     }
 
     pub fn method(&self, m: Self) -> Self {
-        Self::new(format!("{}__{}", self, m))
+        Self::new(format!("{self}__{m}"))
     }
 
     pub fn ctor(&self) -> Self {
-        Self::new(format!("{}__new", self))
+        Self::new(format!("{self}__new"))
     }
 
     pub fn vptr() -> Self {
@@ -95,27 +96,27 @@ impl Var {
     }
 
     pub fn vptr_type(&self) -> Self {
-        Self::new(format!("{}__vptr", self))
+        Self::new(format!("{self}__vptr"))
     }
 
     pub fn vptr_ctor(&self) -> Self {
-        Self::new(format!("{}__vptrNew", self))
+        Self::new(format!("{self}__vptrNew"))
     }
 
     pub fn vtbl_type(&self) -> Self {
-        Self::new(format!("{}__vtbl", self))
+        Self::new(format!("{self}__vtbl"))
     }
 
     pub fn vtbl_lookup(&self) -> Self {
-        Self::new(format!("{}__vtblLookup", self))
+        Self::new(format!("{self}__vtblLookup"))
     }
 
     pub fn implements(&self, im: &Self) -> Self {
-        Self::new(format!("{}__for__{}", self, im))
+        Self::new(format!("{self}__for__{im}"))
     }
 
     pub fn implement_func(&self, i: &Self, im: &Self) -> Self {
-        Self::new(format!("{}__for__{}__{}", i, im, self))
+        Self::new(format!("{i}__for__{im}__{self}"))
     }
 
     pub fn id(&self) -> usize {

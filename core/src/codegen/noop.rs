@@ -4,14 +4,14 @@ use crate::theory::abs::def::{Def, Sigma};
 use crate::Error;
 
 #[derive(Default)]
-pub struct Noop {}
+pub struct Noop;
 
 impl Target for Noop {
     fn filename(&self) -> &'static str {
         unreachable!()
     }
 
-    fn defs(&self, _: &mut Vec<u8>, _: &Sigma, _: Vec<Def<Term>>) -> Result<(), Error> {
+    fn package(&self, _: &mut Vec<u8>, _: &Sigma, _: Vec<Def<Term>>) -> Result<(), Error> {
         Ok(())
     }
 }

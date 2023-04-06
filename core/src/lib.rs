@@ -1,4 +1,4 @@
-use std::fs::read_to_string;
+use std::fs::{read_to_string, write};
 use std::ops::Range;
 use std::path::PathBuf;
 use std::{fmt, io};
@@ -9,7 +9,7 @@ use pest::Parser;
 use pest_derive::Parser;
 use thiserror::Error;
 
-use crate::codegen::{Codegen, Target};
+use crate::codegen::Target;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::elab::Elaborator;
@@ -142,17 +142,23 @@ struct RowsParser;
 pub struct Driver {
     path: PathBuf,
     elab: Elaborator,
+    target: Box<dyn Target>,
 }
 
 impl Driver {
-    pub fn new(path: PathBuf) -> Self {
+    pub fn new(path: PathBuf, target: Box<dyn Target>) -> Self {
         Self {
             path,
             elab: Default::default(),
+            target,
         }
     }
 
-    pub fn run(&mut self, target: Box<dyn Target>) -> Result<(), Error> {
+    pub fn outfile_path(&self) -> PathBuf {
+        self.path.join(self.target.filename())
+    }
+
+    pub fn run(&mut self) -> Result<(), Error> {
         let mut defs = Vec::default();
 
         for r in self.path.read_dir()? {
@@ -174,7 +180,11 @@ impl Driver {
             }
         }
 
-        Codegen::new(&self.elab.sigma, defs, self.path.clone(), target).package()?;
+        let mut buf = Vec::default();
+        self.target.package(&mut buf, &self.elab.sigma, defs)?;
+        if !buf.is_empty() {
+            write(self.outfile_path(), buf)?;
+        }
 
         Ok(())
     }

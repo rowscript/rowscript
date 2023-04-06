@@ -1,14 +1,24 @@
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
+#[cfg(feature = "codegen-ecma")]
 use std::rc::Rc;
 
-use swc_common::errors::{ColorConfig, Handler};
-use swc_common::input::StringInput;
-use swc_common::SourceMap;
-use swc_ecma_parser::lexer::Lexer;
-use swc_ecma_parser::{Parser, Syntax};
+#[cfg(feature = "codegen-ecma")]
+use swc_common::{
+    errors::{ColorConfig, Handler},
+    input::StringInput,
+    SourceMap,
+};
+#[cfg(feature = "codegen-ecma")]
+use swc_ecma_parser::{
+    lexer::Lexer,
+    {Parser, Syntax},
+};
 
+#[cfg(feature = "codegen-ecma")]
 use crate::codegen::ecma::Ecma;
+#[cfg(not(feature = "codegen-ecma"))]
+use crate::codegen::noop::Noop;
 use crate::codegen::Target;
 use crate::{Driver, Error};
 
@@ -33,22 +43,38 @@ mod ok_postulate_type;
 mod ok_typeclassopedia;
 mod ok_typeclassopedia_stuck;
 
+#[cfg(not(feature = "codegen-ecma"))]
+fn run_target() -> Box<dyn Target> {
+    Box::new(Noop::default())
+}
+
+#[cfg(feature = "codegen-ecma")]
+fn run_target() -> Box<dyn Target> {
+    Box::new(Ecma::default())
+}
+
 fn run_helper(mod_path: &str) -> Result<(), Error> {
-    let target = Ecma::default();
+    let target = run_target();
     let pkg = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("src")
         .join("tests")
         .join(mod_path.to_string().split("::").last().unwrap());
-    let outfile = pkg.join(target.filename());
-    Driver::new(pkg).run(Box::new(target))?;
-    parse_js(outfile.as_path())
+    let mut driver = Driver::new(pkg, target);
+    driver.run()?;
+    parse_outfile(&driver)
 }
 
-fn parse_js(path: &Path) -> Result<(), Error> {
+#[cfg(not(feature = "codegen-ecma"))]
+fn parse_outfile(_: &Driver) -> Result<(), Error> {
+    return Ok(());
+}
+
+#[cfg(feature = "codegen-ecma")]
+fn parse_outfile(d: &Driver) -> Result<(), Error> {
     let cm = Rc::<SourceMap>::default();
     let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(cm.clone()));
 
-    let file = cm.load_file(path)?;
+    let file = cm.load_file(d.outfile_path().as_path())?;
     let mut parser = Parser::new_from(Lexer::new(
         Syntax::Es(Default::default()),
         Default::default(),
