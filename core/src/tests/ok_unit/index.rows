@@ -1,0 +1,8 @@
+function f(): unit {
+    return
+}
+
+function g() {
+    let a = ();
+    return a
+}

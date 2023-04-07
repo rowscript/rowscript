@@ -42,6 +42,7 @@ mod ok_implicit_unnamed;
 mod ok_postulate_type;
 // mod ok_typeclassopedia;
 // mod ok_typeclassopedia_stuck;
+mod ok_unit;
 
 #[cfg(not(feature = "codegen-ecma"))]
 fn run_target() -> Box<dyn Target> {

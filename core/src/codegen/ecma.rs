@@ -2,6 +2,7 @@ use std::rc::Rc;
 use std::str::FromStr;
 
 use num_bigint::BigInt as BigIntValue;
+use swc_atoms::js_word;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
     BigInt as JsBigInt, BindingIdent, BlockStmt, Bool, CondExpr, Decl, Expr, FnDecl, Function,
@@ -44,6 +45,14 @@ impl Ecma {
         Pat::Ident(BindingIdent {
             id: Self::ident(loc, v),
             type_ann: None,
+        })
+    }
+
+    fn undefined() -> Expr {
+        Expr::Ident(Ident {
+            span: DUMMY_SP,
+            sym: js_word!("undefined"),
+            optional: false,
         })
     }
 
@@ -120,7 +129,7 @@ impl Ecma {
             decls: vec![VarDeclarator {
                 span: loc.into(),
                 name: Self::ident_pat(loc, v),
-                init: Self::expr(sigma, loc, tm)?,
+                init: Some(Self::expr(sigma, loc, tm)?),
                 definite: false,
             }],
         }))))
@@ -143,7 +152,7 @@ impl Ecma {
                 _ => {
                     stmts.push(Stmt::Return(ReturnStmt {
                         span: loc.into(),
-                        arg: Self::expr(sigma, loc, tm)?,
+                        arg: Some(Self::expr(sigma, loc, tm)?),
                     }));
                     break;
                 }
@@ -152,44 +161,44 @@ impl Ecma {
         Ok(stmts)
     }
 
-    fn expr(sigma: &Sigma, loc: Loc, tm: &Box<Term>) -> Result<Option<Box<Expr>>, Error> {
+    fn expr(sigma: &Sigma, loc: Loc, tm: &Box<Term>) -> Result<Box<Expr>, Error> {
         use Term::*;
         Ok(match &**tm {
             MetaRef(_, _, _) => return Err(UnsolvedMeta(tm.clone(), loc)),
 
-            Ref(r) => Some(Box::new(Expr::Ident(Self::ident(loc, r)))),
+            Ref(r) => Box::new(Expr::Ident(Self::ident(loc, r))),
             Lam(p, b) => todo!(),
             App(f, x) => todo!("type application or tupled arguments"),
-            TT => None,
-            False => Some(Box::new(Expr::Lit(Lit::Bool(Bool {
+            TT => Box::new(Self::undefined()),
+            False => Box::new(Expr::Lit(Lit::Bool(Bool {
                 span: loc.into(),
                 value: false,
-            })))),
-            True => Some(Box::new(Expr::Lit(Lit::Bool(Bool {
+            }))),
+            True => Box::new(Expr::Lit(Lit::Bool(Bool {
                 span: loc.into(),
                 value: true,
-            })))),
-            If(p, t, e) => Some(Box::new(Expr::Cond(CondExpr {
-                span: loc.into(),
-                test: Self::expr(sigma, loc, p)?.unwrap(),
-                cons: Self::expr(sigma, loc, t)?.unwrap(),
-                alt: Self::expr(sigma, loc, e)?.unwrap(),
             }))),
-            Str(s) => Some(Box::new(Expr::Lit(Lit::Str(JsStr {
+            If(p, t, e) => Box::new(Expr::Cond(CondExpr {
+                span: loc.into(),
+                test: Self::expr(sigma, loc, p)?,
+                cons: Self::expr(sigma, loc, t)?,
+                alt: Self::expr(sigma, loc, e)?,
+            })),
+            Str(s) => Box::new(Expr::Lit(Lit::Str(JsStr {
                 span: loc.into(),
                 value: s.as_str().into(),
                 raw: None,
-            })))),
-            Num(_, v) => Some(Box::new(Expr::Lit(Lit::Num(JsNumber {
+            }))),
+            Num(_, v) => Box::new(Expr::Lit(Lit::Num(JsNumber {
                 span: loc.into(),
                 value: v.clone(),
                 raw: None,
-            })))),
-            Big(v) => Some(Box::new(Expr::Lit(Lit::BigInt(JsBigInt {
+            }))),
+            Big(v) => Box::new(Expr::Lit(Lit::BigInt(JsBigInt {
                 span: loc.into(),
                 value: Box::new(BigIntValue::from_str(v).unwrap()),
                 raw: None,
-            })))),
+            }))),
             Obj(_) => todo!("build internal fields into object literals"),
             Concat(_, _) => todo!("object literals in-place updates"),
             Access(_, _) => todo!("object access"),
