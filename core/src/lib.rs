@@ -1,7 +1,7 @@
 use std::fs::{read_to_string, write};
+use std::io;
 use std::ops::Range;
 use std::path::PathBuf;
-use std::{fmt, io};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use pest::error::InputLocation;
@@ -66,17 +66,17 @@ pub enum Error {
     #[error("field(s) \"{0}\" not contained in \"{1}\"")]
     NonRowSat(Box<Term>, Box<Term>, Loc),
 
-    #[error("format error")]
-    Fmt(#[from] fmt::Error),
     #[error("code generation error")]
     Codegen,
+    #[error("unsolved meta \"{0}\"")]
+    UnsolvedMeta(Box<Term>, Loc),
 }
 
 const PARSER_FAILED: &str = "failed while parsing";
 const RESOLVER_FAILED: &str = "failed while resolving";
 const CHECKER_FAILED: &str = "failed while typechecking";
 const UNIFIER_FAILED: &str = "failed while unifying";
-const CODEGEN_FAILED: &str = "failed while code generation";
+const CODEGEN_FAILED: &str = "failed while generating code";
 
 impl Error {
     fn print<F: AsRef<str>, S: AsRef<str>>(&self, file: F, source: S) {
@@ -112,8 +112,8 @@ impl Error {
             NonUnifiable(_, _, loc) => self.simple_message(loc, UNIFIER_FAILED),
             NonRowSat(_, _, loc) => self.simple_message(loc, UNIFIER_FAILED),
 
-            Fmt(_) => (Range::default(), CODEGEN_FAILED, None),
             Codegen => (Range::default(), CODEGEN_FAILED, None),
+            UnsolvedMeta(_, loc) => self.simple_message(loc, CODEGEN_FAILED),
         };
         let mut b = Report::build(ReportKind::Error, file.as_ref(), range.start)
             .with_message(title)

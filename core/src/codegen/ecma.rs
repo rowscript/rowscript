@@ -1,9 +1,12 @@
 use std::rc::Rc;
+use std::str::FromStr;
 
+use num_bigint::BigInt as BigIntValue;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
-    BindingIdent, BlockStmt, Decl, Expr, FnDecl, Function, Ident, Lit, Module, ModuleItem, Number,
-    Param, Pat, ReturnStmt, Stmt, VarDecl, VarDeclKind, VarDeclarator,
+    BigInt as JsBigInt, BindingIdent, BlockStmt, Bool, CondExpr, Decl, Expr, FnDecl, Function,
+    Ident, Lit, Module, ModuleItem, Number as JsNumber, Param, Pat, ReturnStmt, Stmt, Str as JsStr,
+    VarDecl, VarDeclKind, VarDeclarator,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -13,6 +16,7 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::{Loc, Tele, Var, TUPLED, UNTUPLED_RHS};
 use crate::Error;
+use crate::Error::UnsolvedMeta;
 
 #[derive(Default)]
 pub struct Ecma;
@@ -149,12 +153,53 @@ impl Ecma {
     }
 
     fn expr(sigma: &Sigma, loc: Loc, tm: &Box<Term>) -> Result<Option<Box<Expr>>, Error> {
-        // TODO
-        Ok(Some(Box::new(Expr::Lit(Lit::Num(Number {
-            span: loc.into(),
-            value: 42.0,
-            raw: None,
-        })))))
+        use Term::*;
+        Ok(match &**tm {
+            MetaRef(_, _, _) => return Err(UnsolvedMeta(tm.clone(), loc)),
+
+            Ref(r) => Some(Box::new(Expr::Ident(Self::ident(loc, r)))),
+            Lam(p, b) => todo!(),
+            App(f, x) => todo!("type application or tupled arguments"),
+            TT => None,
+            False => Some(Box::new(Expr::Lit(Lit::Bool(Bool {
+                span: loc.into(),
+                value: false,
+            })))),
+            True => Some(Box::new(Expr::Lit(Lit::Bool(Bool {
+                span: loc.into(),
+                value: true,
+            })))),
+            If(p, t, e) => Some(Box::new(Expr::Cond(CondExpr {
+                span: loc.into(),
+                test: Self::expr(sigma, loc, p)?.unwrap(),
+                cons: Self::expr(sigma, loc, t)?.unwrap(),
+                alt: Self::expr(sigma, loc, e)?.unwrap(),
+            }))),
+            Str(s) => Some(Box::new(Expr::Lit(Lit::Str(JsStr {
+                span: loc.into(),
+                value: s.as_str().into(),
+                raw: None,
+            })))),
+            Num(_, v) => Some(Box::new(Expr::Lit(Lit::Num(JsNumber {
+                span: loc.into(),
+                value: v.clone(),
+                raw: None,
+            })))),
+            Big(v) => Some(Box::new(Expr::Lit(Lit::BigInt(JsBigInt {
+                span: loc.into(),
+                value: Box::new(BigIntValue::from_str(v).unwrap()),
+                raw: None,
+            })))),
+            Obj(_) => todo!("build internal fields into object literals"),
+            Concat(_, _) => todo!("object literals in-place updates"),
+            Access(_, _) => todo!("object access"),
+            Downcast(_, _) => todo!("delete a field from object literals"),
+            Variant(_) => todo!("single-field object literal"),
+            Upcast(a, _) => Self::expr(sigma, loc, a)?,
+            Switch(_, _) => todo!("switch on the object literal's sole field"),
+
+            _ => unreachable!(),
+        })
     }
 }
 
