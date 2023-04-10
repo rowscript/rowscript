@@ -168,7 +168,7 @@ impl Ecma {
 
             Ref(r) => Box::new(Expr::Ident(Self::ident(loc, r))),
             Lam(p, b) => todo!(),
-            App(f, x) => todo!("type application or tupled arguments"),
+            App(f, i, x) => todo!("type application or tupled arguments"),
             TT => Box::new(Self::undefined()),
             False => Box::new(Expr::Lit(Lit::Bool(Bool {
                 span: loc.into(),

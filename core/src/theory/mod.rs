@@ -6,6 +6,7 @@ use std::rc::Rc;
 use pest::iterators::Pair;
 use pest::Span;
 
+use crate::theory::conc::data::ArgInfo;
 use crate::{Error, Rule};
 
 pub mod abs;
@@ -178,6 +179,17 @@ pub trait Syntax: Display {}
 pub enum ParamInfo {
     Explicit,
     Implicit,
+}
+
+impl Into<ArgInfo> for ParamInfo {
+    fn into(self) -> ArgInfo {
+        use ArgInfo::*;
+        use ParamInfo::*;
+        match self {
+            Explicit => UnnamedExplicit,
+            Implicit => UnnamedImplicit,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

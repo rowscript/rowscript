@@ -62,7 +62,11 @@ impl Def<Term> {
                 let r = Box::new(Term::Ref(self.tele[0].var.clone()));
                 let mut f = Box::new(Term::Find(r, i.clone(), v));
                 for p in self.tele.iter().skip(1) {
-                    f = Box::new(Term::App(f, Box::new(Term::Ref(p.var.clone()))));
+                    f = Box::new(Term::App(
+                        f,
+                        p.info.into(),
+                        Box::new(Term::Ref(p.var.clone())),
+                    ));
                 }
                 self.to_lam_term(&f)
             }

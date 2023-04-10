@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::data::Term::{Lam, Pi};
+use crate::theory::conc::data::ArgInfo;
 use crate::theory::{Param, ParamInfo, Syntax, Tele, Var};
 
 pub type Spine = Vec<(ParamInfo, Term)>;
@@ -55,7 +56,7 @@ pub enum Term {
 
     Pi(Param<Self>, Box<Self>),
     Lam(Param<Self>, Box<Self>),
-    App(Box<Self>, Box<Self>),
+    App(Box<Self>, ArgInfo, Box<Self>),
 
     Sigma(Param<Self>, Box<Self>),
     Tuple(Box<Self>, Box<Self>),
@@ -148,7 +149,7 @@ impl Display for Term {
                 Univ => "type".to_string(),
                 Pi(p, b) => format!("{p} -> {b}"),
                 Lam(p, b) => format!("{p} => {b}"),
-                App(f, x) => format!("({f} {x})"),
+                App(f, _, x) => format!("({f} {x})"),
                 Sigma(p, b) => format!("{p} * {b}"),
                 Tuple(a, b) => format!("({a}, {b})"),
                 TupleLet(p, q, a, b) => format!("let ({p}, {q}) = {a};\n\t{b}"),

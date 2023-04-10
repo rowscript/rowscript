@@ -49,11 +49,14 @@ impl<'a> Unifier<'a> {
                 self.unify(a, &b)
             }
             (Lam(p, a), Lam(_, _)) => {
-                let b = Normalizer::new(self.sigma, self.loc)
-                    .apply(Box::new(rhs.clone()), &[Box::new(Ref(p.var.clone()))])?;
+                let b = Normalizer::new(self.sigma, self.loc).apply(
+                    Box::new(rhs.clone()),
+                    p.info.into(),
+                    &[Box::new(Ref(p.var.clone()))],
+                )?;
                 self.unify(a, &b)
             }
-            (App(f, x), App(g, y)) => {
+            (App(f, i, x), App(g, j, y)) if i == j => {
                 self.unify(f, g)?;
                 self.unify(x, y)
             }

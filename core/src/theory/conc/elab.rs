@@ -341,7 +341,11 @@ impl Elaborator {
                         )?;
                         let applied_ty =
                             Normalizer::new(&mut self.sigma, f_loc).with(&[(&p.var, &x)], b)?;
-                        let applied = Normalizer::new(&mut self.sigma, f_loc).apply(f, &[x])?;
+                        let applied = Normalizer::new(&mut self.sigma, f_loc).apply(
+                            f,
+                            p.info.into(),
+                            &[x],
+                        )?;
                         (applied, applied_ty)
                     }
                     ty => return Err(ExpectedPi(Box::new(ty), f_loc)),

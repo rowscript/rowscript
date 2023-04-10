@@ -24,7 +24,7 @@ impl Renamer {
             }
             Pi(p, c) => Pi(self.param(p), self.term(c)),
             Lam(p, b) => Lam(self.param(p), self.term(b)),
-            App(f, x) => App(self.term(f), self.term(x)),
+            App(f, i, x) => App(self.term(f), i, self.term(x)),
             Sigma(p, c) => Sigma(self.param(p), self.term(c)),
             Tuple(a, b) => Tuple(self.term(a), self.term(b)),
             TupleLet(x, y, a, b) => {

@@ -3,6 +3,8 @@ use crate::theory::abs::data::{CaseMap, Dir, FieldMap, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
+use crate::theory::conc::data::ArgInfo;
+use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
 use crate::Error::UnresolvedImplementation;
@@ -42,7 +44,7 @@ impl<'a> Normalizer<'a> {
                         Some(solved) => {
                             let mut ret = rename(Term::lam(&def.tele, Box::new(solved.clone())));
                             for (_, x) in sp {
-                                ret = Box::new(App(ret, Box::new(x)))
+                                ret = Box::new(App(ret, UnnamedExplicit, Box::new(x)))
                             }
                             self.term(ret)?
                         }
@@ -69,16 +71,16 @@ impl<'a> Normalizer<'a> {
             }
             Pi(p, b) => Box::new(Pi(self.param(p)?, self.term(b)?)),
             Lam(p, b) => Box::new(Lam(self.param(p)?, self.term(b)?)),
-            App(f, x) => {
+            App(f, ai, x) => {
                 let f = self.term(f)?;
                 let x = self.term(x)?;
                 if let MetaRef(_, _, _) = &*x {
-                    Box::new(App(f, x))
+                    Box::new(App(f, ai, x))
                 } else if let Lam(p, b) = *f {
                     self.rho.insert(p.var, x);
                     self.term(b)?
                 } else {
-                    Box::new(App(f, x))
+                    Box::new(App(f, ai, x))
                 }
             }
             Sigma(p, b) => Box::new(Sigma(self.param(p)?, self.term(b)?)),
@@ -275,14 +277,19 @@ impl<'a> Normalizer<'a> {
         self.term(tm)
     }
 
-    pub fn apply(&mut self, f: Box<Term>, args: &[Box<Term>]) -> Result<Box<Term>, Error> {
+    pub fn apply(
+        &mut self,
+        f: Box<Term>,
+        ai: ArgInfo,
+        args: &[Box<Term>],
+    ) -> Result<Box<Term>, Error> {
         let mut ret = f.clone();
         for x in args {
             match *ret {
                 Lam(p, b) => {
                     ret = self.with(&[(&p.var, x)], b)?;
                 }
-                _ => ret = Box::new(App(ret, x.clone())),
+                _ => ret = Box::new(App(ret, ai.clone(), x.clone())),
             }
         }
         Ok(ret)
