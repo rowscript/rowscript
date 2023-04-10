@@ -5,9 +5,10 @@ use num_bigint::BigInt as BigIntValue;
 use swc_atoms::js_word;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
-    BigInt as JsBigInt, BindingIdent, BlockStmt, Bool, CallExpr, Callee, CondExpr, Decl, Expr,
-    ExprOrSpread, FnDecl, Function, Ident, Lit, Module, ModuleItem, Number as JsNumber, Param, Pat,
-    ReturnStmt, Stmt, Str as JsStr, VarDecl, VarDeclKind, VarDeclarator,
+    ArrowExpr, BigInt as JsBigInt, BindingIdent, BlockStmt, BlockStmtOrExpr, Bool, CallExpr,
+    Callee, CondExpr, Decl, Expr, ExprOrSpread, FnDecl, Function, Ident, Lit, Module, ModuleItem,
+    Number as JsNumber, Param as JsParam, Pat, ReturnStmt, Stmt, Str as JsStr, VarDecl,
+    VarDeclKind, VarDeclarator,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -16,7 +17,8 @@ use crate::codegen::Target;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
-use crate::theory::{Loc, Tele, Var, TUPLED, UNTUPLED_RHS};
+use crate::theory::ParamInfo::Explicit;
+use crate::theory::{Loc, Param, Tele, Var, TUPLED, UNTUPLED_RHS};
 use crate::Error;
 use crate::Error::UnsolvedMeta;
 
@@ -65,10 +67,7 @@ impl Ecma {
                 params: Self::type_erased_params(def.loc, &def.tele),
                 decorators: Default::default(),
                 span: def.loc.into(),
-                body: Some(BlockStmt {
-                    span: def.loc.into(),
-                    stmts: Self::block(sigma, def.loc, &Self::strip_untupled_lets(body))?,
-                }),
+                body: Some(Self::block(sigma, def.loc, body)?),
                 is_generator: false,
                 is_async: false,
                 type_params: None,
@@ -87,39 +86,39 @@ impl Ecma {
         todo!()
     }
 
-    fn type_erased_params(loc: Loc, tele: &Tele<Term>) -> Vec<Param> {
-        let mut params = Vec::default();
-        for p in tele {
-            if p.var.as_str() != TUPLED {
-                continue;
-            }
-            let mut tm = &p.typ;
-            loop {
-                match &**tm {
-                    Term::Sigma(p, b) => {
-                        params.push(Param {
-                            span: loc.into(),
-                            decorators: Default::default(),
-                            pat: Self::ident_pat(loc, &p.var),
-                        });
-                        tm = b;
-                    }
-                    _ => break,
-                }
-            }
-        }
-        params
-    }
-
-    fn strip_untupled_lets(mut tm: &Box<Term>) -> Box<Term> {
-        use Term::*;
+    fn type_erased_param_pat(loc: Loc, p: &Param<Term>) -> Vec<Pat> {
+        let mut pats = Vec::default();
+        let mut tm = &p.typ;
         loop {
             match &**tm {
-                TupleLet(_, q, _, b) if q.var.as_str().starts_with(UNTUPLED_RHS) => tm = b,
+                Term::Sigma(p, b) => {
+                    pats.push(Self::ident_pat(loc, &p.var));
+                    tm = b;
+                }
                 _ => break,
             }
         }
-        tm.clone()
+        pats
+    }
+
+    fn type_erased_param_pats(loc: Loc, tele: &Tele<Term>) -> Vec<Pat> {
+        for p in tele {
+            if p.var.as_str() == TUPLED {
+                return Self::type_erased_param_pat(loc, p);
+            }
+        }
+        unreachable!()
+    }
+
+    fn type_erased_params(loc: Loc, tele: &Tele<Term>) -> Vec<JsParam> {
+        Self::type_erased_param_pats(loc, tele)
+            .into_iter()
+            .map(|pat| JsParam {
+                span: loc.into(),
+                decorators: Default::default(),
+                pat,
+            })
+            .collect()
     }
 
     fn untuple_args(
@@ -159,9 +158,23 @@ impl Ecma {
         }))))
     }
 
-    fn block(sigma: &Sigma, loc: Loc, mut tm: &Box<Term>) -> Result<Vec<Stmt>, Error> {
+    fn block(sigma: &Sigma, loc: Loc, body: &Box<Term>) -> Result<BlockStmt, Error> {
+        fn strip_untupled_lets(mut tm: &Box<Term>) -> Box<Term> {
+            use Term::*;
+            loop {
+                match &**tm {
+                    TupleLet(_, q, _, b) if q.var.as_str().starts_with(UNTUPLED_RHS) => tm = b,
+                    _ => break,
+                }
+            }
+            tm.clone()
+        }
+
         use Term::*;
+
+        let mut tm = &strip_untupled_lets(body);
         let mut stmts = Vec::default();
+
         loop {
             match &**tm {
                 Let(p, a, b) => {
@@ -182,7 +195,10 @@ impl Ecma {
                 }
             }
         }
-        Ok(stmts)
+        Ok(BlockStmt {
+            span: loc.into(),
+            stmts,
+        })
     }
 
     fn expr(sigma: &Sigma, loc: Loc, tm: &Box<Term>) -> Result<Box<Expr>, Error> {
@@ -191,7 +207,18 @@ impl Ecma {
             MetaRef(_, _, _) => return Err(UnsolvedMeta(tm.clone(), loc)),
 
             Ref(r) => Box::new(Expr::Ident(Self::ident(loc, r))),
-            Lam(p, b) => todo!(),
+            Lam(p, b) => match p.info {
+                Explicit => Box::new(Expr::Arrow(ArrowExpr {
+                    span: loc.into(),
+                    params: Self::type_erased_param_pat(loc, p),
+                    body: Box::new(BlockStmtOrExpr::BlockStmt(Self::block(sigma, loc, b)?)),
+                    is_async: false,
+                    is_generator: false,
+                    type_params: None,
+                    return_type: None,
+                })),
+                _ => Self::expr(sigma, loc, b)?,
+            },
             App(f, i, x) => match i {
                 UnnamedExplicit => Box::new(Expr::Call(CallExpr {
                     span: loc.into(),
