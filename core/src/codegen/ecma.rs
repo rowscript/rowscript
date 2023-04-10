@@ -7,7 +7,7 @@ use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
     ArrowExpr, BigInt as JsBigInt, BindingIdent, BlockStmt, BlockStmtOrExpr, Bool, CallExpr,
     Callee, CondExpr, Decl, Expr, ExprOrSpread, FnDecl, Function, Ident, Lit, Module, ModuleItem,
-    Number as JsNumber, Param as JsParam, Pat, ReturnStmt, Stmt, Str as JsStr, VarDecl,
+    Number as JsNumber, Param as JsParam, ParenExpr, Pat, ReturnStmt, Stmt, Str as JsStr, VarDecl,
     VarDeclKind, VarDeclarator,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
@@ -205,6 +205,29 @@ impl Ecma {
         use Term::*;
         Ok(match &**tm {
             MetaRef(_, _, _) => return Err(UnsolvedMeta(tm.clone(), loc)),
+
+            Let(p, a, b) => Box::new(Expr::Call(CallExpr {
+                span: loc.into(),
+                callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
+                    span: loc.into(),
+                    expr: Box::new(Expr::Arrow(ArrowExpr {
+                        span: loc.into(),
+                        params: vec![Self::ident_pat(loc, &p.var)],
+                        body: Box::new(BlockStmtOrExpr::Expr(Self::expr(sigma, loc, b)?)),
+                        is_async: false,
+                        is_generator: false,
+                        type_params: None,
+                        return_type: None,
+                    })),
+                }))),
+                args: vec![ExprOrSpread {
+                    spread: None,
+                    expr: Self::expr(sigma, loc, a)?,
+                }],
+                type_args: None,
+            })),
+            TupleLet(p, q, a, b) => todo!("encode with lambda expression"),
+            UnitLet(a, b) => todo!("encode with lambda expression"),
 
             Ref(r) => Box::new(Expr::Ident(Self::ident(loc, r))),
             Lam(p, b) => match p.info {

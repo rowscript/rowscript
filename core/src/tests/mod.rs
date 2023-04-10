@@ -25,7 +25,7 @@ use crate::{Driver, Error};
 mod fail_parse;
 mod fail_resolve;
 // mod ok_alias;
-// mod ok_bool;
+mod ok_bool;
 // mod ok_enum;
 mod ok_fn;
 // mod ok_fn_recur;
@@ -40,7 +40,7 @@ mod ok_implicit_unnamed;
 // mod ok_oop_generics;
 mod ok_postulate_fn;
 mod ok_postulate_type;
-// mod ok_typeclassopedia;
+mod ok_typeclassopedia;
 // mod ok_typeclassopedia_stuck;
 mod ok_unit;
 

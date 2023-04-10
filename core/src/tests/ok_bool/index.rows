@@ -4,7 +4,8 @@ function f(): number {
         b
     } else {
         let c: number = 69;
-        c
+        let d = c;
+        d
     };
     return a
 }
