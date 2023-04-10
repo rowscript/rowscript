@@ -5,9 +5,9 @@ use num_bigint::BigInt as BigIntValue;
 use swc_atoms::js_word;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
-    BigInt as JsBigInt, BindingIdent, BlockStmt, Bool, CondExpr, Decl, Expr, FnDecl, Function,
-    Ident, Lit, Module, ModuleItem, Number as JsNumber, Param, Pat, ReturnStmt, Stmt, Str as JsStr,
-    VarDecl, VarDeclKind, VarDeclarator,
+    BigInt as JsBigInt, BindingIdent, BlockStmt, Bool, CallExpr, Callee, CondExpr, Decl, Expr,
+    ExprOrSpread, FnDecl, Function, Ident, Lit, Module, ModuleItem, Number as JsNumber, Param, Pat,
+    ReturnStmt, Stmt, Str as JsStr, VarDecl, VarDeclKind, VarDeclarator,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -15,6 +15,7 @@ use swc_ecma_codegen::Emitter;
 use crate::codegen::Target;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
+use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::{Loc, Tele, Var, TUPLED, UNTUPLED_RHS};
 use crate::Error;
 use crate::Error::UnsolvedMeta;
@@ -61,7 +62,7 @@ impl Ecma {
             ident: Self::ident(def.loc, &def.name),
             declare: false,
             function: Box::new(Function {
-                params: Self::params(def.loc, &def.tele),
+                params: Self::type_erased_params(def.loc, &def.tele),
                 decorators: Default::default(),
                 span: def.loc.into(),
                 body: Some(BlockStmt {
@@ -86,7 +87,7 @@ impl Ecma {
         todo!()
     }
 
-    fn params(loc: Loc, tele: &Tele<Term>) -> Vec<Param> {
+    fn type_erased_params(loc: Loc, tele: &Tele<Term>) -> Vec<Param> {
         let mut params = Vec::default();
         for p in tele {
             if p.var.as_str() != TUPLED {
@@ -119,6 +120,29 @@ impl Ecma {
             }
         }
         tm.clone()
+    }
+
+    fn untuple_args(
+        sigma: &Sigma,
+        loc: Loc,
+        mut tm: &Box<Term>,
+    ) -> Result<Vec<ExprOrSpread>, Error> {
+        use Term::*;
+        let mut ret = Vec::default();
+        loop {
+            match &**tm {
+                Tuple(a, b) => {
+                    ret.push(ExprOrSpread {
+                        spread: None,
+                        expr: Self::expr(sigma, loc, a)?,
+                    });
+                    tm = b
+                }
+                TT => break,
+                _ => unreachable!(),
+            }
+        }
+        Ok(ret)
     }
 
     fn const_decl_stmt(sigma: &Sigma, loc: Loc, v: &Var, tm: &Box<Term>) -> Result<Stmt, Error> {
@@ -168,7 +192,15 @@ impl Ecma {
 
             Ref(r) => Box::new(Expr::Ident(Self::ident(loc, r))),
             Lam(p, b) => todo!(),
-            App(f, i, x) => todo!("type application or tupled arguments"),
+            App(f, i, x) => match i {
+                UnnamedExplicit => Box::new(Expr::Call(CallExpr {
+                    span: loc.into(),
+                    callee: Callee::Expr(Self::expr(sigma, loc, f)?),
+                    args: Self::untuple_args(sigma, loc, x)?,
+                    type_args: None,
+                })),
+                _ => Self::expr(sigma, loc, f)?,
+            },
             TT => Box::new(Self::undefined()),
             False => Box::new(Expr::Lit(Lit::Bool(Bool {
                 span: loc.into(),
