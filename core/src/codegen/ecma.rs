@@ -6,9 +6,10 @@ use swc_atoms::js_word;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
     ArrowExpr, BigInt as JsBigInt, BindingIdent, BlockStmt, BlockStmtOrExpr, Bool, CallExpr,
-    Callee, CondExpr, Decl, Expr, ExprOrSpread, FnDecl, Function, Ident, Lit, Module, ModuleItem,
-    Number as JsNumber, Param as JsParam, ParenExpr, Pat, ReturnStmt, Stmt, Str as JsStr, VarDecl,
-    VarDeclKind, VarDeclarator,
+    Callee, CondExpr, Decl, Expr, ExprOrSpread, FnDecl, Function, Ident, KeyValueProp, Lit,
+    MemberExpr, MemberProp, Module, ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam,
+    ParenExpr, Pat, Prop, PropName, PropOrSpread, ReturnStmt, SpreadElement, Stmt, Str as JsStr,
+    VarDecl, VarDeclKind, VarDeclarator,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -36,12 +37,16 @@ impl Into<Span> for Loc {
 }
 
 impl Ecma {
-    fn ident(loc: Loc, v: &Var) -> Ident {
+    fn str_ident(loc: Loc, s: &str) -> Ident {
         Ident {
             span: loc.into(),
-            sym: v.as_str().into(),
+            sym: s.into(),
             optional: false,
         }
+    }
+
+    fn ident(loc: Loc, v: &Var) -> Ident {
+        Self::str_ident(loc, v.as_str())
     }
 
     fn ident_pat(loc: Loc, v: &Var) -> Pat {
@@ -57,6 +62,17 @@ impl Ecma {
             sym: js_word!("undefined"),
             optional: false,
         })
+    }
+
+    fn access(sigma: &Sigma, loc: Loc, a: &Box<Term>, n: &String) -> Result<Box<Expr>, Error> {
+        Ok(Box::new(Expr::Member(MemberExpr {
+            span: loc.into(),
+            obj: Box::new(Expr::Paren(ParenExpr {
+                span: loc.into(),
+                expr: Self::expr(sigma, loc, a)?,
+            })),
+            prop: MemberProp::Ident(Self::str_ident(loc, n.as_str())),
+        })))
     }
 
     fn func(sigma: &Sigma, def: &Def<Term>, body: &Box<Term>) -> Result<Decl, Error> {
@@ -281,10 +297,52 @@ impl Ecma {
                 value: Box::new(BigIntValue::from_str(v).unwrap()),
                 raw: None,
             }))),
-            Obj(_) => todo!("build internal fields into object literals"),
-            Concat(_, _) => todo!("object literals in-place updates"),
-            Access(_, _) => todo!("object access"),
-            Downcast(_, _) => todo!("delete a field from object literals"),
+            Obj(f) => match &**f {
+                Fields(fields) => {
+                    let mut props = Vec::default();
+                    for (name, tm) in fields {
+                        props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                            key: PropName::Ident(Self::str_ident(loc, name.as_str())),
+                            value: Self::expr(sigma, loc, &Box::new(tm.clone()))?,
+                        }))));
+                    }
+                    Box::new(Expr::Object(ObjectLit {
+                        span: loc.into(),
+                        props,
+                    }))
+                }
+                _ => unreachable!(),
+            },
+            Concat(a, b) => Box::new(Expr::Object(ObjectLit {
+                span: loc.into(),
+                props: vec![
+                    PropOrSpread::Spread(SpreadElement {
+                        dot3_token: loc.into(),
+                        expr: Self::expr(sigma, loc, a)?,
+                    }),
+                    PropOrSpread::Spread(SpreadElement {
+                        dot3_token: loc.into(),
+                        expr: Self::expr(sigma, loc, b)?,
+                    }),
+                ],
+            })),
+            Access(a, n) => Self::access(sigma, loc, a, n)?,
+            Downcast(a, f) => match &**f {
+                Fields(fields) => {
+                    let mut props = Vec::default();
+                    for (name, _) in fields {
+                        props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                            key: PropName::Ident(Self::str_ident(loc, name)),
+                            value: Self::access(sigma, loc, a, name)?,
+                        }))))
+                    }
+                    Box::new(Expr::Object(ObjectLit {
+                        span: loc.into(),
+                        props,
+                    }))
+                }
+                _ => unreachable!(),
+            },
             Variant(_) => todo!("single-field object literal"),
             Upcast(a, _) => Self::expr(sigma, loc, a)?,
             Switch(_, _) => todo!("switch on the object literal's sole field"),
