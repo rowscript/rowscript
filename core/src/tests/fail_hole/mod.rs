@@ -3,11 +3,10 @@ use crate::theory::Loc;
 use crate::Error;
 
 #[test]
-fn test_resolve() {
+fn test_hole() {
     match run_err(module_path!()) {
-        Error::UnresolvedVar(Loc { line, col, .. }) => {
-            assert_eq!(line, 7);
-            assert_eq!(col, 9);
+        Error::UnsolvedMeta(_, Loc { end, .. }) => {
+            assert_eq!(end, 25);
         }
         _ => assert!(false),
     }

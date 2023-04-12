@@ -11,7 +11,6 @@ use thiserror::Error;
 
 use crate::codegen::Target;
 use crate::theory::abs::data::Term;
-use crate::theory::abs::def::Def;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
@@ -78,61 +77,64 @@ const CHECKER_FAILED: &str = "failed while typechecking";
 const UNIFIER_FAILED: &str = "failed while unifying";
 const CODEGEN_FAILED: &str = "failed while generating code";
 
-impl Error {
-    fn print<F: AsRef<str>, S: AsRef<str>>(&self, file: F, source: S) {
-        use Error::*;
+fn print_err<F: AsRef<str>, S: AsRef<str>>(e: Error, file: F, source: S) -> Error {
+    fn simple_message<'a>(
+        e: &Error,
+        loc: &Loc,
+        msg: &'a str,
+    ) -> (Range<usize>, &'a str, Option<String>) {
+        (loc.start..loc.end, msg, Some(e.to_string()))
+    }
 
-        let (range, title, msg) = match self {
-            IO(_) => (Range::default(), PARSER_FAILED, None),
-            Parsing(e) => {
-                let range = match e.location {
-                    InputLocation::Pos(start) => start..source.as_ref().len(),
-                    InputLocation::Span((start, end)) => start..end,
-                };
-                (range, PARSER_FAILED, Some(e.variant.message().to_string()))
-            }
+    use Error::*;
 
-            UnresolvedVar(loc) => self.simple_message(loc, RESOLVER_FAILED),
-            DuplicateName(loc) => self.simple_message(loc, RESOLVER_FAILED),
-
-            UnresolvedImplicitParam(_, loc) => self.simple_message(loc, CHECKER_FAILED),
-            ExpectedPi(_, loc) => self.simple_message(loc, CHECKER_FAILED),
-            ExpectedSigma(_, loc) => self.simple_message(loc, CHECKER_FAILED),
-            ExpectedObject(_, loc) => self.simple_message(loc, CHECKER_FAILED),
-            ExpectedEnum(_, loc) => self.simple_message(loc, CHECKER_FAILED),
-            FieldsUnknown(_, loc) => self.simple_message(loc, CHECKER_FAILED),
-            ExpectedClass(_, loc) => self.simple_message(loc, CHECKER_FAILED),
-            NonExhaustive(_, loc) => self.simple_message(loc, CHECKER_FAILED),
-            UnresolvedField(_, _, loc) => self.simple_message(loc, CHECKER_FAILED),
-            ExpectedInterface(_, loc) => self.simple_message(loc, CHECKER_FAILED),
-            ExpectedAlias(_, loc) => self.simple_message(loc, CHECKER_FAILED),
-            UnresolvedImplementation(_, loc) => self.simple_message(loc, CHECKER_FAILED),
-            ExpectedImplementsOf(_, loc) => self.simple_message(loc, CHECKER_FAILED),
-
-            NonUnifiable(_, _, loc) => self.simple_message(loc, UNIFIER_FAILED),
-            NonRowSat(_, _, loc) => self.simple_message(loc, UNIFIER_FAILED),
-
-            Codegen => (Range::default(), CODEGEN_FAILED, None),
-            UnsolvedMeta(_, loc) => self.simple_message(loc, CODEGEN_FAILED),
-        };
-        let mut b = Report::build(ReportKind::Error, file.as_ref(), range.start)
-            .with_message(title)
-            .with_code(1);
-        if let Some(m) = msg {
-            b = b.with_label(
-                Label::new((file.as_ref(), range))
-                    .with_message(m)
-                    .with_color(Color::Red),
-            );
+    let (range, title, msg) = match &e {
+        IO(_) => (Range::default(), PARSER_FAILED, None),
+        Parsing(e) => {
+            let range = match e.location {
+                InputLocation::Pos(start) => start..source.as_ref().len(),
+                InputLocation::Span((start, end)) => start..end,
+            };
+            (range, PARSER_FAILED, Some(e.variant.message().to_string()))
         }
-        b.finish()
-            .print((file.as_ref(), Source::from(source.as_ref())))
-            .unwrap();
-    }
 
-    fn simple_message(&self, loc: &Loc, msg: &'static str) -> (Range<usize>, &str, Option<String>) {
-        (loc.start..loc.end, msg, Some(self.to_string()))
+        UnresolvedVar(loc) => simple_message(&e, loc, RESOLVER_FAILED),
+        DuplicateName(loc) => simple_message(&e, loc, RESOLVER_FAILED),
+
+        UnresolvedImplicitParam(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
+        ExpectedPi(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
+        ExpectedSigma(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
+        ExpectedObject(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
+        ExpectedEnum(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
+        FieldsUnknown(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
+        ExpectedClass(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
+        NonExhaustive(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
+        UnresolvedField(_, _, loc) => simple_message(&e, loc, CHECKER_FAILED),
+        ExpectedInterface(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
+        ExpectedAlias(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
+        UnresolvedImplementation(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
+        ExpectedImplementsOf(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
+
+        NonUnifiable(_, _, loc) => simple_message(&e, loc, UNIFIER_FAILED),
+        NonRowSat(_, _, loc) => simple_message(&e, loc, UNIFIER_FAILED),
+
+        Codegen => (Range::default(), CODEGEN_FAILED, None),
+        UnsolvedMeta(_, loc) => simple_message(&e, loc, CODEGEN_FAILED),
+    };
+    let mut b = Report::build(ReportKind::Error, file.as_ref(), range.start)
+        .with_message(title)
+        .with_code(1);
+    if let Some(m) = msg {
+        b = b.with_label(
+            Label::new((file.as_ref(), range))
+                .with_message(m)
+                .with_color(Color::Red),
+        );
     }
+    b.finish()
+        .print((file.as_ref(), Source::from(source.as_ref())))
+        .unwrap();
+    e
 }
 
 #[derive(Parser)]
@@ -159,7 +161,7 @@ impl Driver {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
-        let mut defs = Vec::default();
+        let mut files = Vec::default();
 
         for r in self.path.read_dir()? {
             let entry = r?;
@@ -172,28 +174,28 @@ impl Driver {
                 Some(e) if e != "rows" => continue,
                 _ => {
                     let src = read_to_string(&file)?;
-                    defs.extend(self.check_text(src.as_str()).map_err(|e| {
-                        e.print(file.to_str().unwrap(), src);
-                        e
-                    })?);
+                    let path = file.to_str().unwrap().to_string();
+                    let defs = RowsParser::parse(Rule::file, src.as_str())
+                        .map_err(Error::from)
+                        .map(trans::file)
+                        .and_then(|d| Resolver::default().defs(d))
+                        .and_then(|d| self.elab.defs(d))
+                        .map_err(|e| print_err(e, &path, &src))?;
+                    files.push((path, src, defs));
                 }
             }
         }
 
         let mut buf = Vec::default();
-        self.target.package(&mut buf, &self.elab.sigma, defs)?;
+        for (path, src, defs) in files {
+            self.target
+                .package(&mut buf, &self.elab.sigma, defs)
+                .map_err(|e| print_err(e, &path, &src))?;
+        }
         if !buf.is_empty() {
-            write(self.outfile_path(), buf)?;
+            write(self.outfile_path(), buf)?
         }
 
         Ok(())
-    }
-
-    fn check_text(&mut self, src: &str) -> Result<Vec<Def<Term>>, Error> {
-        RowsParser::parse(Rule::file, src)
-            .map_err(Error::from)
-            .map(trans::file)
-            .and_then(|d| Resolver::default().defs(d))
-            .and_then(|d| self.elab.defs(d))
     }
 }

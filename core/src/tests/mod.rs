@@ -29,7 +29,7 @@ mod ok_bool;
 // mod ok_enum;
 mod ok_fn;
 // mod ok_fn_recur;
-// mod ok_hole;
+mod fail_hole;
 mod ok_implicit_named;
 mod ok_implicit_unnamed;
 // mod ok_interface;
