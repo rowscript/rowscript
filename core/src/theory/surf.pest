@@ -32,7 +32,8 @@ tyref =
 hole = { "?" }
 univ = { "type" }
 
-string = @{ "\"" ~ (unescaped_string_fragment | escaped_string_fragment)* ~ "\"" }
+string = { "\"" ~ unquoted_string_part ~ "\"" }
+unquoted_string_part = @{ (unescaped_string_fragment | escaped_string_fragment)* }
 unescaped_string_fragment = @{ (!("\"" | "\\") ~ ANY)+ }
 escaped_string_fragment =
  @{ "\\"

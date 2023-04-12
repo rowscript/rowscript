@@ -343,7 +343,19 @@ impl Ecma {
                 }
                 _ => unreachable!(),
             },
-            Variant(_) => todo!("single-field object literal"),
+            Variant(f) => match &**f {
+                Fields(fields) => {
+                    let (name, tm) = fields.iter().nth(0).unwrap();
+                    Box::new(Expr::Object(ObjectLit {
+                        span: loc.into(),
+                        props: vec![PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                            key: PropName::Ident(Self::str_ident(loc, name)),
+                            value: Self::expr(sigma, loc, &Box::new(tm.clone()))?,
+                        })))],
+                    }))
+                }
+                _ => unreachable!(),
+            },
             Upcast(a, _) => Self::expr(sigma, loc, a)?,
             Switch(_, _) => todo!("switch on the object literal's sole field"),
 
