@@ -7,7 +7,7 @@ use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
-use crate::Error::UnresolvedImplementation;
+use crate::Error::{UnresolvedField, UnresolvedImplementation};
 
 pub struct Normalizer<'a> {
     sigma: &'a mut Sigma,
@@ -202,15 +202,19 @@ impl<'a> Normalizer<'a> {
             Variant(r) => Box::new(Variant(self.term(r)?)),
             Upcast(a, f) => {
                 let a = self.term(a)?;
-                Box::new(match (&*a, &*f) {
+                match (&*a, &*f) {
                     (Variant(o), Fields(y)) => match &**o {
-                        Fields(x) => Variant(Box::new(Fields(
-                            x.iter().map(|(n, _)| (n.clone(), y[n].clone())).collect(),
-                        ))),
-                        _ => Upcast(a, f),
+                        Fields(x) => {
+                            let name = x.iter().nth(0).unwrap().0;
+                            if !y.contains_key(name) {
+                                return Err(UnresolvedField(name.clone(), f, self.loc));
+                            }
+                            a
+                        }
+                        _ => Box::new(Upcast(a, f)),
                     },
-                    _ => Upcast(a, f),
-                })
+                    _ => Box::new(Upcast(a, f)),
+                }
             }
             Switch(a, cs) => {
                 let a = self.term(a)?;
