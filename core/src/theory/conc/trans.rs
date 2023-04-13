@@ -594,6 +594,14 @@ fn fn_body(b: Pair<Rule>) -> Expr {
             let (id, typ, tm) = partial_let(&mut l);
             Let(loc, id, typ, tm, Box::new(fn_body(l.next().unwrap())))
         }
+        Rule::fn_body_unit_let => {
+            let mut l = p.into_inner();
+            UnitLet(
+                loc,
+                Box::new(expr(l.next().unwrap())),
+                Box::new(fn_body(l.next().unwrap())),
+            )
+        }
         Rule::fn_body_ret => p.into_inner().next().map_or(TT(loc), expr),
         _ => unreachable!(),
     }
@@ -728,15 +736,23 @@ fn expr(e: Pair<Rule>) -> Expr {
 fn branch(b: Pair<Rule>) -> Expr {
     use Expr::*;
 
-    let pair = b.into_inner().next().unwrap();
-    let loc = Loc::from(pair.as_span());
-    match pair.as_rule() {
+    let p = b.into_inner().next().unwrap();
+    let loc = Loc::from(p.as_span());
+    match p.as_rule() {
         Rule::branch_let => {
-            let mut l = pair.into_inner();
+            let mut l = p.into_inner();
             let (id, typ, tm) = partial_let(&mut l);
             Let(loc, id, typ, tm, Box::new(branch(l.next().unwrap())))
         }
-        Rule::expr => expr(pair),
+        Rule::branch_unit_let => {
+            let mut l = p.into_inner();
+            UnitLet(
+                loc,
+                Box::new(expr(l.next().unwrap())),
+                Box::new(branch(l.next().unwrap())),
+            )
+        }
+        Rule::expr => expr(p),
         _ => unreachable!(),
     }
 }

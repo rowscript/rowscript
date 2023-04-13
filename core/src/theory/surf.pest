@@ -144,8 +144,13 @@ boolean_if =
   ~ "{" ~ branch ~ "}"
   ~ "else" ~ "{" ~ branch ~ "}"
   }
-branch = { branch_let | expr }
+branch =
+  { branch_let
+  | branch_unit_let
+  | expr
+  }
 branch_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" ~ branch }
+branch_unit_let = { expr ~ ";" ~ branch }
 new_expr = { "new" ~ class_id ~ ("<" ~ type_args ~ ">")? ~ args }
 method_app = { ("(" ~ expr ~ ")" | idref) ~ "." ~ prop_id ~ args+ }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
@@ -219,8 +224,13 @@ fn_def =
   ~ fn_body_block
   }
 fn_body_block = _{ "{" ~ fn_body ~ "}" }
-fn_body = { fn_body_let | fn_body_ret }
+fn_body =
+  { fn_body_let
+  | fn_body_unit_let
+  | fn_body_ret
+  }
 fn_body_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" ~ fn_body }
+fn_body_unit_let = { expr ~ ";" ~ fn_body }
 fn_body_ret = { "return" ~ expr? }
 
 fn_postulate =

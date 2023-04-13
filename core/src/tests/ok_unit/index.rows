@@ -6,3 +6,19 @@ function g() {
     let a = ();
     return a
 }
+
+function h() {
+    g();
+    return
+}
+
+function log();
+
+function i() {
+    return if (true) {
+        log();
+        f()
+    } else {
+        g()
+    }
+}

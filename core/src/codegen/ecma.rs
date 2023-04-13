@@ -163,6 +163,34 @@ impl Ecma {
         Ok(ret)
     }
 
+    fn lambda_encoded_let(
+        loc: Loc,
+        v: Option<&Var>,
+        a: &Box<Term>,
+        b: &Box<Term>,
+    ) -> Result<Box<Expr>, Error> {
+        Ok(Box::new(Expr::Call(CallExpr {
+            span: loc.into(),
+            callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
+                span: loc.into(),
+                expr: Box::new(Expr::Arrow(ArrowExpr {
+                    span: loc.into(),
+                    params: v.map_or_else(|| Default::default(), |v| vec![Self::ident_pat(loc, v)]),
+                    body: Box::new(BlockStmtOrExpr::Expr(Self::expr(loc, b)?)),
+                    is_async: false,
+                    is_generator: false,
+                    type_params: None,
+                    return_type: None,
+                })),
+            }))),
+            args: vec![ExprOrSpread {
+                spread: None,
+                expr: Self::expr(loc, a)?,
+            }],
+            type_args: None,
+        })))
+    }
+
     fn const_decl_stmt(loc: Loc, v: &Var, tm: &Box<Term>) -> Result<Stmt, Error> {
         Ok(Stmt::Decl(Decl::Var(Box::new(VarDecl {
             span: loc.into(),
@@ -225,27 +253,8 @@ impl Ecma {
         Ok(match &**tm {
             MetaRef(_, _, _) => return Err(UnsolvedMeta(tm.clone(), loc)),
 
-            Let(p, a, b) => Box::new(Expr::Call(CallExpr {
-                span: loc.into(),
-                callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
-                    span: loc.into(),
-                    expr: Box::new(Expr::Arrow(ArrowExpr {
-                        span: loc.into(),
-                        params: vec![Self::ident_pat(loc, &p.var)],
-                        body: Box::new(BlockStmtOrExpr::Expr(Self::expr(loc, b)?)),
-                        is_async: false,
-                        is_generator: false,
-                        type_params: None,
-                        return_type: None,
-                    })),
-                }))),
-                args: vec![ExprOrSpread {
-                    spread: None,
-                    expr: Self::expr(loc, a)?,
-                }],
-                type_args: None,
-            })),
-            UnitLet(a, b) => todo!("encode with lambda expression"),
+            Let(p, a, b) => Self::lambda_encoded_let(loc, Some(&p.var), a, b)?,
+            UnitLet(a, b) => Self::lambda_encoded_let(loc, None, a, b)?,
 
             Ref(r) | Undef(r) => Box::new(Expr::Ident(Self::ident(loc, r))),
             Lam(p, b) => match p.info {
