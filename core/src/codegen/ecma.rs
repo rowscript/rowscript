@@ -23,9 +23,6 @@ use crate::theory::{Loc, Param, Tele, Var, TUPLED, UNTUPLED_RHS};
 use crate::Error;
 use crate::Error::UnsolvedMeta;
 
-#[derive(Default)]
-pub struct Ecma;
-
 impl Into<Span> for Loc {
     fn into(self) -> Span {
         Span {
@@ -35,6 +32,12 @@ impl Into<Span> for Loc {
         }
     }
 }
+
+const JS_ENUM_TAG: &str = "__rowsT";
+const JS_ENUM_VAL: &str = "__rowsV";
+
+#[derive(Default)]
+pub struct Ecma;
 
 impl Ecma {
     fn str_ident(loc: Loc, s: &str) -> Ident {
@@ -348,10 +351,20 @@ impl Ecma {
                     let (name, tm) = fields.iter().nth(0).unwrap();
                     Box::new(Expr::Object(ObjectLit {
                         span: loc.into(),
-                        props: vec![PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                            key: PropName::Ident(Self::str_ident(loc, name)),
-                            value: Self::expr(sigma, loc, &Box::new(tm.clone()))?,
-                        })))],
+                        props: vec![
+                            PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                                key: PropName::Ident(Self::str_ident(loc, JS_ENUM_TAG)),
+                                value: Box::new(Expr::Lit(Lit::Str(JsStr {
+                                    span: loc.into(),
+                                    value: name.as_str().into(),
+                                    raw: None,
+                                }))),
+                            }))),
+                            PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                                key: PropName::Ident(Self::str_ident(loc, JS_ENUM_VAL)),
+                                value: Self::expr(sigma, loc, &Box::new(tm.clone()))?,
+                            }))),
+                        ],
                     }))
                 }
                 _ => unreachable!(),
