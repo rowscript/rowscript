@@ -32,8 +32,8 @@ mod ok_fn;
 mod ok_fn_recur;
 mod ok_implicit_named;
 mod ok_implicit_unnamed;
-// mod ok_interface;
-// mod ok_interface_stuck;
+mod ok_interface;
+mod ok_interface_stuck;
 mod ok_object;
 mod ok_object_rowpoly;
 // mod ok_oop;
@@ -41,7 +41,7 @@ mod ok_object_rowpoly;
 mod ok_postulate_fn;
 mod ok_postulate_type;
 mod ok_typeclassopedia;
-// mod ok_typeclassopedia_stuck;
+mod ok_typeclassopedia_stuck;
 mod ok_unit;
 
 #[cfg(not(feature = "codegen-ecma"))]
@@ -89,7 +89,7 @@ fn parse_outfile(d: &Driver) -> Result<(), Error> {
 
     parser.parse_module().map_err(|e| {
         e.into_diagnostic(&handler).emit();
-        Error::Codegen
+        Error::CodegenTest
     })?;
 
     Ok(())

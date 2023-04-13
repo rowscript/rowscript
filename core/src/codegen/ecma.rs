@@ -21,7 +21,7 @@ use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::ParamInfo::Explicit;
 use crate::theory::{Loc, Param, Tele, Var, TUPLED, UNTUPLED_RHS};
 use crate::Error;
-use crate::Error::UnsolvedMeta;
+use crate::Error::{NonErasable, UnsolvedMeta};
 
 impl Into<Span> for Loc {
     fn into(self) -> Span {
@@ -78,21 +78,25 @@ impl Ecma {
         })))
     }
 
-    fn func(sigma: &Sigma, def: &Def<Term>, body: &Box<Term>) -> Result<Decl, Error> {
-        Ok(Decl::Fn(FnDecl {
-            ident: Self::ident(def.loc, &def.name),
-            declare: false,
-            function: Box::new(Function {
-                params: Self::type_erased_params(def.loc, &def.tele),
-                decorators: Default::default(),
-                span: def.loc.into(),
-                body: Some(Self::block(sigma, def.loc, body)?),
-                is_generator: false,
-                is_async: false,
-                type_params: None,
-                return_type: None,
-            }),
-        }))
+    fn func(sigma: &Sigma, def: &Def<Term>, body: &Box<Term>) -> Result<Option<Decl>, Error> {
+        match Self::block(sigma, def.loc, body) {
+            Ok(blk) => Ok(Some(Decl::Fn(FnDecl {
+                ident: Self::ident(def.loc, &def.name),
+                declare: false,
+                function: Box::new(Function {
+                    params: Self::type_erased_params(def.loc, &def.tele),
+                    decorators: Default::default(),
+                    span: def.loc.into(),
+                    body: Some(blk),
+                    is_generator: false,
+                    is_async: false,
+                    type_params: None,
+                    return_type: None,
+                }),
+            }))),
+            Err(Error::NonErasable(_, _)) => Ok(None),
+            Err(e) => Err(e),
+        }
     }
 
     fn class(
@@ -426,6 +430,7 @@ impl Ecma {
                     type_args: None,
                 }))
             }
+            Find(_, _, f) => return Err(NonErasable(Box::new(Ref(f.clone())), loc)),
 
             _ => unreachable!(),
         })
@@ -444,7 +449,10 @@ impl Target for Ecma {
 
         for def in defs {
             body.push(ModuleItem::Stmt(Stmt::Decl(match &def.body {
-                Fn(body) => Self::func(sigma, &def, body)?,
+                Fn(body) => match Self::func(sigma, &def, body)? {
+                    Some(decl) => decl,
+                    None => continue,
+                },
                 Class {
                     object,
                     ctor,

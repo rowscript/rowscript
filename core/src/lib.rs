@@ -65,10 +65,14 @@ pub enum Error {
     #[error("field(s) \"{0}\" not contained in \"{1}\"")]
     NonRowSat(Box<Term>, Box<Term>, Loc),
 
-    #[error("code generation error")]
-    Codegen,
     #[error("unsolved meta \"{0}\"")]
     UnsolvedMeta(Box<Term>, Loc),
+    #[error("not erasable term \"{0}\"")]
+    NonErasable(Box<Term>, Loc),
+
+    #[cfg(test)]
+    #[error("codegen error")]
+    CodegenTest,
 }
 
 const PARSER_FAILED: &str = "failed while parsing";
@@ -118,8 +122,10 @@ fn print_err<F: AsRef<str>, S: AsRef<str>>(e: Error, file: F, source: S) -> Erro
         NonUnifiable(_, _, loc) => simple_message(&e, loc, UNIFIER_FAILED),
         NonRowSat(_, _, loc) => simple_message(&e, loc, UNIFIER_FAILED),
 
-        Codegen => (Range::default(), CODEGEN_FAILED, None),
         UnsolvedMeta(_, loc) => simple_message(&e, loc, CODEGEN_FAILED),
+        NonErasable(_, loc) => simple_message(&e, loc, CODEGEN_FAILED),
+
+        CodegenTest => (Range::default(), CODEGEN_FAILED, None),
     };
     let mut b = Report::build(ReportKind::Error, file.as_ref(), range.start)
         .with_message(title)
