@@ -247,7 +247,7 @@ impl Ecma {
             })),
             UnitLet(a, b) => todo!("encode with lambda expression"),
 
-            Ref(r) => Box::new(Expr::Ident(Self::ident(loc, r))),
+            Ref(r) | Undef(r) => Box::new(Expr::Ident(Self::ident(loc, r))),
             Lam(p, b) => match p.info {
                 Explicit => Box::new(Expr::Arrow(ArrowExpr {
                     span: loc.into(),
