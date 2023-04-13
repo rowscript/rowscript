@@ -6,10 +6,10 @@ use swc_atoms::js_word;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
     ArrowExpr, BigInt as JsBigInt, BindingIdent, BlockStmt, BlockStmtOrExpr, Bool, CallExpr,
-    Callee, CondExpr, Decl, Expr, ExprOrSpread, FnDecl, Function, Ident, KeyValueProp, Lit,
-    MemberExpr, MemberProp, Module, ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam,
-    ParenExpr, Pat, Prop, PropName, PropOrSpread, ReturnStmt, SpreadElement, Stmt, Str as JsStr,
-    VarDecl, VarDeclKind, VarDeclarator,
+    Callee, ComputedPropName, CondExpr, Decl, Expr, ExprOrSpread, FnDecl, Function, Ident,
+    KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleItem, Number as JsNumber, ObjectLit,
+    Param as JsParam, ParenExpr, Pat, Prop, PropName, PropOrSpread, ReturnStmt, SpreadElement,
+    Stmt, Str as JsStr, VarDecl, VarDeclKind, VarDeclarator,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -200,7 +200,7 @@ impl Ecma {
                     stmts.push(Self::const_decl_stmt(sigma, loc, &p.var, a)?);
                     tm = b
                 }
-                TupleLet(_, _, _, _) => todo!(),
+                TupleLet(_, _, _, _) => unreachable!(),
                 UnitLet(a, b) => {
                     stmts.push(Self::const_decl_stmt(sigma, loc, &Var::unbound(), a)?);
                     tm = b
@@ -245,7 +245,6 @@ impl Ecma {
                 }],
                 type_args: None,
             })),
-            TupleLet(p, q, a, b) => todo!("encode with lambda expression"),
             UnitLet(a, b) => todo!("encode with lambda expression"),
 
             Ref(r) => Box::new(Expr::Ident(Self::ident(loc, r))),
@@ -370,7 +369,63 @@ impl Ecma {
                 _ => unreachable!(),
             },
             Upcast(a, _) => Self::expr(sigma, loc, a)?,
-            Switch(_, _) => todo!("switch on the object literal's sole field"),
+            Switch(a, cs) => {
+                // ({Some: a => a + 1, None: () => undefined}[a.__rowsT])(a.__rowsV)
+                let mut props = Vec::default();
+                for (n, (v, tm)) in cs {
+                    props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                        key: PropName::Ident(Self::str_ident(loc, n.as_str())),
+                        value: Box::new(Expr::Arrow(ArrowExpr {
+                            span: loc.into(),
+                            params: vec![Self::ident_pat(loc, v)],
+                            body: Box::new(BlockStmtOrExpr::BlockStmt(Self::block(
+                                sigma,
+                                loc,
+                                &Box::new(tm.clone()),
+                            )?)),
+                            is_async: false,
+                            is_generator: false,
+                            type_params: None,
+                            return_type: None,
+                        })),
+                    }))))
+                }
+                let branches = Box::new(Expr::Object(ObjectLit {
+                    span: loc.into(),
+                    props,
+                }));
+                let obj = Self::expr(sigma, loc, a)?;
+                let tag = Box::new(Expr::Member(MemberExpr {
+                    span: loc.into(),
+                    obj: obj.clone(),
+                    prop: MemberProp::Ident(Self::str_ident(loc, JS_ENUM_TAG)),
+                }));
+                let arg = Box::new(Expr::Member(MemberExpr {
+                    span: loc.into(),
+                    obj,
+                    prop: MemberProp::Ident(Self::str_ident(loc, JS_ENUM_VAL)),
+                }));
+                let branch = Box::new(Expr::Member(MemberExpr {
+                    span: loc.into(),
+                    obj: branches,
+                    prop: MemberProp::Computed(ComputedPropName {
+                        span: loc.into(),
+                        expr: tag,
+                    }),
+                }));
+                Box::new(Expr::Call(CallExpr {
+                    span: loc.into(),
+                    callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
+                        span: loc.into(),
+                        expr: branch,
+                    }))),
+                    args: vec![ExprOrSpread {
+                        spread: None,
+                        expr: arg,
+                    }],
+                    type_args: None,
+                }))
+            }
 
             _ => unreachable!(),
         })
