@@ -28,6 +28,7 @@ mod fail_resolve;
 mod ok_alias;
 mod ok_bool;
 mod ok_enum;
+mod ok_enum_rowpoly;
 mod ok_fn;
 mod ok_fn_recur;
 mod ok_implicit_named;
