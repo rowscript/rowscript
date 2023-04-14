@@ -66,15 +66,6 @@ OOP style constructs are based on row polymorphism and hence just some syntactic
 
 Powerful construct `interface` that acts like Haskell's typeclasses.
 
-## Roadmap
-
-* JavaScript code generation
-    * [ ] Basic transpilation
-    * [ ] FBIP (functional but in-place) and reuse analysis
-* [ ] Datatype generics
-* [ ] Auto-deriving
-* [ ] Algebraic effects
-
 ## License
 
 MIT
