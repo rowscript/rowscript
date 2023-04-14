@@ -19,7 +19,7 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::ParamInfo::Explicit;
-use crate::theory::{Loc, Param, Tele, Var, TUPLED, UNTUPLED_RHS};
+use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNTUPLED_RHS};
 use crate::Error;
 use crate::Error::{NonErasable, UnsolvedMeta};
 
@@ -33,8 +33,9 @@ impl Into<Span> for Loc {
     }
 }
 
-const JS_ENUM_TAG: &str = "__rowsT";
-const JS_ENUM_VAL: &str = "__rowsV";
+const JS_ESCAPED_THIS: &str = "_this";
+const JS_ENUM_TAG: &str = "__enumT";
+const JS_ENUM_VAL: &str = "__enumV";
 
 #[derive(Default)]
 pub struct Ecma;
@@ -43,7 +44,11 @@ impl Ecma {
     fn str_ident(loc: Loc, s: &str) -> Ident {
         Ident {
             span: loc.into(),
-            sym: s.into(),
+            sym: match s {
+                THIS => JS_ESCAPED_THIS,
+                s => s,
+            }
+            .into(),
             optional: false,
         }
     }
@@ -78,35 +83,42 @@ impl Ecma {
         })))
     }
 
-    fn func(def: &Def<Term>, body: &Box<Term>) -> Result<Option<Decl>, Error> {
-        match Self::block(def.loc, body) {
-            Ok(blk) => Ok(Some(Decl::Fn(FnDecl {
-                ident: Self::ident(def.loc, &def.name),
-                declare: false,
-                function: Box::new(Function {
-                    params: Self::type_erased_params(def.loc, &def.tele),
-                    decorators: Default::default(),
-                    span: def.loc.into(),
-                    body: Some(blk),
-                    is_generator: false,
-                    is_async: false,
-                    type_params: None,
-                    return_type: None,
-                }),
-            }))),
-            Err(Error::NonErasable(_, _)) => Ok(None),
-            Err(e) => Err(e),
-        }
+    fn func(def: &Def<Term>, body: &Box<Term>) -> Result<ModuleItem, Error> {
+        Ok(ModuleItem::Stmt(Stmt::Decl(Decl::Fn(FnDecl {
+            ident: Self::ident(def.loc, &def.name),
+            declare: false,
+            function: Box::new(Function {
+                params: Self::type_erased_params(def.loc, &def.tele),
+                decorators: Default::default(),
+                span: def.loc.into(),
+                body: Some(Self::block(def.loc, body)?),
+                is_generator: false,
+                is_async: false,
+                type_params: None,
+                return_type: None,
+            }),
+        }))))
     }
 
     fn class(
-        sigma: &Sigma,
         def: &Def<Term>,
         object: &Box<Term>,
         ctor: &Def<Term>,
         meths: Vec<&Def<Term>>,
-    ) -> Result<Decl, Error> {
-        todo!()
+    ) -> Result<Vec<ModuleItem>, Error> {
+        use Body::*;
+
+        let mut decls = Vec::default();
+        for m in meths {
+            decls.push(Self::func(
+                m,
+                match &m.body {
+                    Method(f) => f,
+                    _ => unreachable!(),
+                },
+            )?);
+        }
+        Ok(decls)
     }
 
     fn type_erased_param_pat(loc: Loc, p: &Param<Term>) -> Vec<Pat> {
@@ -157,7 +169,11 @@ impl Ecma {
                     tm = b
                 }
                 TT => break,
-                _ => unreachable!(),
+                // _ => unreachable!(),
+                e => {
+                    dbg!(e);
+                    unreachable!()
+                }
             }
         }
         Ok(ret)
@@ -436,7 +452,11 @@ impl Ecma {
             }
             Find(_, _, f) => return Err(NonErasable(Box::new(Ref(f.clone())), loc)),
 
-            _ => unreachable!(),
+            // _ => unreachable!(),
+            e => {
+                println!("{e}");
+                unreachable!()
+            }
         })
     }
 }
@@ -446,34 +466,32 @@ impl Target for Ecma {
         "index.js"
     }
 
-    fn package(&self, buf: &mut Vec<u8>, sigma: &Sigma, defs: Vec<Def<Term>>) -> Result<(), Error> {
+    fn module(&self, buf: &mut Vec<u8>, sigma: &Sigma, defs: Vec<Def<Term>>) -> Result<(), Error> {
         use Body::*;
 
         let mut body = Vec::<ModuleItem>::default();
 
         for def in defs {
-            body.push(ModuleItem::Stmt(Stmt::Decl(match &def.body {
-                Fn(body) => match Self::func(&def, body)? {
-                    Some(decl) => decl,
-                    None => continue,
+            match &def.body {
+                Fn(f) => match Self::func(&def, f) {
+                    Ok(decl) => body.push(decl),
+                    Err(NonErasable(_, _)) => continue,
+                    Err(e) => return Err(e),
                 },
                 Class {
                     object,
                     ctor,
                     methods,
                     ..
-                } => continue,
-                // TODO
-                // } => Self::class(
-                //     sigma,
-                //     &def,
-                //     object,
-                //     sigma.get(ctor).unwrap(),
-                //     methods.iter().map(|n| sigma.get(n).unwrap()).collect(),
-                // )?,
+                } => body.extend(Self::class(
+                    &def,
+                    object,
+                    sigma.get(ctor).unwrap(),
+                    methods.iter().map(|n| sigma.get(n).unwrap()).collect(),
+                )?),
                 Undefined => unreachable!(),
                 _ => continue,
-            })))
+            }
         }
 
         let m = Module {

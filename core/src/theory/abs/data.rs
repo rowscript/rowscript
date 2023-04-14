@@ -161,7 +161,7 @@ impl Display for Term {
                 True => "true".to_string(),
                 If(p, t, e) => format!("if {p} {{ {t} }} else {{ {e} }}"),
                 String => "string".to_string(),
-                Str(v) => v.clone(),
+                Str(v) => format!("\"{v}\""),
                 Number => "number".to_string(),
                 Num(v, _) => v.clone(),
                 BigInt => "bigint".to_string(),

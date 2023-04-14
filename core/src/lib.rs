@@ -1,4 +1,4 @@
-use std::fs::{read_to_string, write};
+use std::fs::read_to_string;
 use std::io;
 use std::ops::Range;
 use std::path::PathBuf;
@@ -9,7 +9,7 @@ use pest::Parser;
 use pest_derive::Parser;
 use thiserror::Error;
 
-use crate::codegen::Target;
+use crate::codegen::{Codegen, Target};
 use crate::theory::abs::data::Term;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::resolve::Resolver;
@@ -150,20 +150,17 @@ struct RowsParser;
 pub struct Driver {
     path: PathBuf,
     elab: Elaborator,
-    target: Box<dyn Target>,
+    codegen: Codegen,
 }
 
 impl Driver {
     pub fn new(path: PathBuf, target: Box<dyn Target>) -> Self {
+        let codegen = Codegen::new(target, &path);
         Self {
             path,
             elab: Default::default(),
-            target,
+            codegen,
         }
-    }
-
-    pub fn outfile_path(&self) -> PathBuf {
-        self.path.join(self.target.filename())
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
@@ -192,16 +189,6 @@ impl Driver {
             }
         }
 
-        let mut buf = Vec::default();
-        for (path, src, defs) in files {
-            self.target
-                .package(&mut buf, &self.elab.sigma, defs)
-                .map_err(|e| print_err(e, &path, &src))?;
-        }
-        if !buf.is_empty() {
-            write(self.outfile_path(), buf)?
-        }
-
-        Ok(())
+        self.codegen.module(&self.elab.sigma, files)
     }
 }

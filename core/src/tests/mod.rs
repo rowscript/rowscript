@@ -76,7 +76,7 @@ fn parse_outfile(d: &Driver) -> Result<(), Error> {
     let cm = Rc::<SourceMap>::default();
     let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(cm.clone()));
 
-    let file = cm.load_file(d.outfile_path().as_path())?;
+    let file = cm.load_file(d.codegen.outfile.as_path())?;
     let mut parser = Parser::new_from(Lexer::new(
         Syntax::Es(Default::default()),
         Default::default(),

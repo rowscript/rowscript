@@ -9,3 +9,7 @@ function f() {
     let a = new Foo("John");
     return a.sayHi()
 }
+
+function g() {
+    return f()
+}

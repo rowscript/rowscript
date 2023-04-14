@@ -234,7 +234,7 @@ impl Display for Expr {
                 True(_) => "true".to_string(),
                 If(_, p, t, e) => format!("if {p} {{ {t} }} else {{ {e} }}"),
                 String(_) => "string".to_string(),
-                Str(_, v) => v.clone(),
+                Str(_, v) => format!("\"{v}\""),
                 Number(_) => "number".to_string(),
                 Num(_, v) => v.clone(),
                 BigInt(_) => "bigint".to_string(),

@@ -48,7 +48,7 @@ fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
         untupled.push(
             loc,
             Param {
-                var: Var::new("this"),
+                var: Var::this(),
                 info: Explicit,
                 typ: Box::new(wrap_implicit_apps(&implicits, ty)),
             },

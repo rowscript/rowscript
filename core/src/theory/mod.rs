@@ -64,6 +64,7 @@ pub struct Var {
 pub const VPTR: &str = "__vptr";
 pub const TUPLED: &str = "_tupled";
 pub const UNTUPLED_RHS: &str = "_untupled_";
+pub const THIS: &str = "this";
 
 impl Var {
     fn new<S: AsRef<str>>(name: S) -> Self {
@@ -78,6 +79,10 @@ impl Var {
 
     pub fn tupled() -> Self {
         Self::new(TUPLED)
+    }
+
+    pub fn this() -> Self {
+        Self::new(THIS)
     }
 
     pub fn untupled_rhs(&self) -> Self {

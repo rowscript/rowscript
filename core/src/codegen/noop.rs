@@ -11,7 +11,7 @@ impl Target for Noop {
         unreachable!()
     }
 
-    fn package(&self, _: &mut Vec<u8>, _: &Sigma, _: Vec<Def<Term>>) -> Result<(), Error> {
+    fn module(&self, _: &mut Vec<u8>, _: &Sigma, _: Vec<Def<Term>>) -> Result<(), Error> {
         Ok(())
     }
 }
