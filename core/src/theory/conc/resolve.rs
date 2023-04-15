@@ -68,9 +68,9 @@ impl Resolver {
             Ctor(f) => Ctor(self.self_referencing_fn(&d.name, f)?),
             Method(f) => Method(self.expr(f)?), // FIXME: currently cannot be recursive
             VptrType(t) => VptrType(self.expr(t)?),
-            VptrCtor => VptrCtor,
+            VptrCtor(t) => VptrCtor(t),
             VtblType(t) => VtblType(self.expr(t)?),
-            VtblLookup => VtblLookup,
+            VtblLookup(t) => VtblLookup(t),
 
             Interface { fns, ims } => Interface { fns, ims },
             Implements { i: (i, im), fns } => {
@@ -228,6 +228,13 @@ impl Resolver {
                 Switch(loc, self.expr(a)?, new)
             }
             Lookup(loc, o, n, a) => Lookup(loc, self.expr(o)?, n, self.expr(a)?),
+            Vptr(loc, r, ts) => {
+                let mut types = Vec::default();
+                for t in ts {
+                    types.push(*self.expr(Box::new(t))?);
+                }
+                Vptr(loc, r, types)
+            }
             Constraint(loc, r) => Constraint(loc, self.expr(r)?),
             ImplementsOf(loc, a) => ImplementsOf(loc, self.expr(a)?),
 
@@ -248,7 +255,6 @@ impl Resolver {
             Big(loc, v) => Big(loc, v),
             Row(loc) => Row(loc),
             Access(loc, n) => Access(loc, n),
-            Vptr(loc, r) => Vptr(loc, r),
             Find(loc, i, f) => Find(loc, i, f),
         }))
     }

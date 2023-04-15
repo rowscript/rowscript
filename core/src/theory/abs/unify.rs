@@ -98,7 +98,7 @@ impl<'a> Unifier<'a> {
             (Str(a), Str(b)) if a == b => Ok(()),
             (Num(_, a), Num(_, b)) if a == b => Ok(()),
             (Big(a), Big(b)) if a == b => Ok(()),
-            (Vptr(a), Vptr(b)) if a == b => Ok(()),
+            (Vptr(a, _), Vptr(b, _)) if a == b => Ok(()),
 
             (Univ, Univ) => Ok(()),
             (Unit, Unit) => Ok(()),

@@ -49,9 +49,15 @@ impl Def<Term> {
             Ctor(f) => self.to_lam_term(f),
             Method(f) => self.to_lam_term(f),
             VptrType(t) => self.to_lam_term(t),
-            VptrCtor => Box::new(Vp(v)),
+            VptrCtor(t) => self.to_lam_term(&Box::new(Vp(
+                t.clone(),
+                self.tele.iter().map(|p| Term::Ref(p.var.clone())).collect(),
+            ))),
             VtblType(t) => self.to_lam_term(t),
-            VtblLookup => self.to_ref_term(v),
+            VtblLookup(t) => self.to_lam_term(&Box::new(Term::Lookup(
+                t.clone(),
+                self.tele.iter().map(|p| Term::Ref(p.var.clone())).collect(),
+            ))),
 
             Interface { .. } => {
                 let r = Box::new(Term::Ref(self.tele[0].var.clone()));
@@ -126,7 +132,7 @@ impl<T: Syntax> Display for Def<T> {
                     vtbl_lookup,
                 } => {
                     format!(
-                        "class {}{} {{
+                        "class {} {} {{
     {object}
     {};
     {ctor};
@@ -141,7 +147,7 @@ impl<T: Syntax> Display for Def<T> {
                             .iter()
                             .map(|m| m.1.to_string())
                             .collect::<Vec<_>>()
-                            .join(";\n\t")
+                            .join(";\n    ")
                     )
                 }
                 Ctor(f) => format!(
@@ -162,9 +168,8 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
-                VptrCtor => format!(
-                    "vptr {} {}: {};",
-                    self.name,
+                VptrCtor(t) => format!(
+                    "vptr {t} {}: {};",
                     Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
@@ -174,9 +179,8 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
-                VtblLookup => format!(
-                    "vtbl {} {}: {};",
-                    self.name,
+                VtblLookup(t) => format!(
+                    "vtbl {t} {}: {};",
                     Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
@@ -253,9 +257,9 @@ pub enum Body<T: Syntax> {
     Ctor(Box<T>),
     Method(Box<T>),
     VptrType(Box<T>),
-    VptrCtor,
+    VptrCtor(String),
     VtblType(Box<T>),
-    VtblLookup,
+    VtblLookup(String),
 
     Interface {
         fns: Vec<Var>,

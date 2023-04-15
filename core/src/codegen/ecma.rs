@@ -309,24 +309,15 @@ impl Ecma {
                 })),
                 _ => Self::expr(sigma, loc, b)?,
             },
-            App(f, i, x) => match &**f {
-                Ref(r) if r.as_str().ends_with(VTBL_LOOKUP) => Box::new(Expr::Member(MemberExpr {
+
+            App(f, i, x) => match i {
+                UnnamedExplicit => Box::new(Expr::Call(CallExpr {
                     span: loc.into(),
-                    obj: Box::new(Self::global_vtbl()),
-                    prop: MemberProp::Computed(ComputedPropName {
-                        span: loc.into(),
-                        expr: Self::expr(sigma, loc, x)?,
-                    }),
+                    callee: Callee::Expr(Self::expr(sigma, loc, f)?),
+                    args: Self::untuple_args(sigma, loc, x)?,
+                    type_args: None,
                 })),
-                _ => match i {
-                    UnnamedExplicit => Box::new(Expr::Call(CallExpr {
-                        span: loc.into(),
-                        callee: Callee::Expr(Self::expr(sigma, loc, f)?),
-                        args: Self::untuple_args(sigma, loc, x)?,
-                        type_args: None,
-                    })),
-                    _ => Self::expr(sigma, loc, f)?,
-                },
+                _ => Self::expr(sigma, loc, f)?,
             },
             TT => Box::new(Expr::Ident(Self::undefined())),
             False => Box::new(Expr::Lit(Lit::Bool(Bool {
@@ -485,11 +476,20 @@ impl Ecma {
                     type_args: None,
                 }))
             }
-            Vp(r) => Box::new(Expr::Lit(Lit::Str(JsStr {
+            // TODO: Type information.
+            Vp(r, _) => Box::new(Expr::Lit(Lit::Str(JsStr {
                 span: loc.into(),
                 value: r.as_str().into(),
                 raw: None,
             }))),
+            Lookup(_, args) => Box::new(Expr::Member(MemberExpr {
+                span: loc.into(),
+                obj: Box::new(Self::global_vtbl()),
+                prop: MemberProp::Computed(ComputedPropName {
+                    span: loc.into(),
+                    expr: Self::expr(sigma, loc, &Box::new(args.last().unwrap().clone()))?,
+                }),
+            })),
             Find(_, _, f) => return Err(NonErasable(Box::new(Ref(f.clone())), loc)),
 
             _ => unreachable!(),
@@ -506,12 +506,7 @@ impl Ecma {
                     Err(NonErasable(_, _)) => continue,
                     Err(e) => return Err(e),
                 },
-                Class {
-                    ctor,
-                    vptr_ctor,
-                    methods,
-                    ..
-                } => self.class_decl(sigma, ctor, vptr_ctor, methods)?,
+                Class { ctor, methods, .. } => self.class_decl(sigma, &def.name, ctor, methods)?,
                 Undefined => unreachable!(),
                 _ => continue,
             })
@@ -522,14 +517,14 @@ impl Ecma {
     fn class_decl(
         &mut self,
         sigma: &Sigma,
+        name: &Var,
         ctor: &Var,
-        vptr_ctor: &Var,
         meths: &Vec<(String, Var)>,
     ) -> Result<ModuleItem, Error> {
         use Body::*;
 
         self.vtbl.insert(
-            vptr_ctor.to_string(),
+            name.to_string(),
             meths
                 .iter()
                 .map(|(m, f)| (m.clone(), sigma.get(f).unwrap().clone()))

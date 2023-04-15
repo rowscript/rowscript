@@ -101,8 +101,9 @@ pub enum Term {
     Upcast(Box<Self>, Box<Self>),
     Switch(Box<Self>, CaseMap),
 
-    Vptr(Var),
-    Vp(Var),
+    Vptr(Var, Vec<Self>),
+    Vp(String, Vec<Self>),
+    Lookup(String, Vec<Self>),
 
     Find(Box<Self>, Var, Var),
     ImplementsOf(Box<Self>, Var),
@@ -198,8 +199,27 @@ impl Display for Term {
                             .join("\n")
                     )
                 }
-                Vptr(r) => format!("vptr({r})"),
-                Vp(r) => r.to_string(),
+                Vptr(r, ts) => format!(
+                    "vptr@{r}<{}>",
+                    ts.iter()
+                        .map(|t| t.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+                Vp(r, ts) => format!(
+                    "vptr@{r}({})",
+                    ts.iter()
+                        .map(|t| t.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+                Lookup(r, args) => format!(
+                    "lookup@{r}({})",
+                    args.iter()
+                        .map(|a| a.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
                 Find(ty, i, f) => format!("{i}.{f}<{ty}>"),
                 ImplementsOf(t, i) => format!("{t} implementsOf {i}"),
                 ImplementsSat => "implementsSat".to_string(),

@@ -93,9 +93,9 @@ impl Elaborator {
             Ctor(f) => Ctor(self.check(f, &ret)?),
             Method(f) => Method(self.check(f, &ret)?),
             VptrType(t) => VptrType(self.check(t, &ret)?),
-            VptrCtor => VptrCtor,
+            VptrCtor(t) => VptrCtor(t),
             VtblType(t) => VtblType(self.check(t, &ret)?),
-            VtblLookup => VtblLookup,
+            VtblLookup(t) => VtblLookup(t),
 
             Interface { fns, ims } => Interface { fns, ims },
             Implements { i, fns } => {
@@ -596,7 +596,7 @@ impl Elaborator {
                     Term::Object(f) => match *f {
                         Term::Fields(f) => match f.get(VPTR) {
                             Some(vp) => match vp {
-                                Term::Vptr(v) => {
+                                Term::Vptr(v, _) => {
                                     let desugared = Box::new(App(
                                         loc,
                                         Box::new(App(
@@ -634,6 +634,13 @@ impl Elaborator {
                     tm => return Err(ExpectedClass(Box::new(tm), o_loc)),
                 }
             }
+            Vptr(_, r, ts) => {
+                let mut types = Vec::default();
+                for t in ts {
+                    types.push(*self.infer(Box::new(t), hint)?.0);
+                }
+                (Box::new(Term::Vptr(r, types)), Box::new(Term::Univ))
+            }
             Find(_, _, f) => {
                 let ty = self.sigma.get(&f).unwrap().to_type();
                 (Box::new(Term::Ref(f)), ty)
@@ -662,7 +669,6 @@ impl Elaborator {
             BigInt(_) => (Box::new(Term::BigInt), Box::new(Term::Univ)),
             Big(_, v) => (Box::new(Term::Big(v)), Box::new(Term::BigInt)),
             Row(_) => (Box::new(Term::Row), Box::new(Term::Univ)),
-            Vptr(_, r) => (Box::new(Term::Vptr(r)), Box::new(Term::Univ)),
 
             _ => unreachable!(),
         })

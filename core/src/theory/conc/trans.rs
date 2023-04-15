@@ -191,6 +191,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     let mut pairs = c.into_inner();
 
     let name = Var::from(pairs.next().unwrap());
+    let name_str = name.to_string();
     let vptr_name = name.vptr_type();
     let vptr_ctor_name = name.vptr_ctor();
     let ctor_name = name.ctor();
@@ -243,7 +244,13 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         name: vptr_name.clone(),
         tele: tele.clone(),
         ret: Box::new(Univ(loc)),
-        body: VptrType(Box::new(Vptr(loc, vtbl_lookup_name.clone()))),
+        body: VptrType(Box::new(Vptr(
+            loc,
+            vtbl_lookup_name.clone(),
+            tele.iter()
+                .map(|p| Unresolved(loc, p.var.clone()))
+                .collect(),
+        ))),
     };
     let vptr_ctor_def = Def {
         loc,
@@ -253,7 +260,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
             &tele,
             Unresolved(loc, vptr_name.clone()),
         )),
-        body: VptrCtor,
+        body: VptrCtor(name_str.clone()),
     };
 
     let mut ctor_untupled = UntupledParams::new(loc);
@@ -320,7 +327,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     };
     let mut lookup_tele = tele.clone();
     lookup_tele.push(Param {
-        var: Var::unbound(),
+        var: Var::new("vp"),
         info: Explicit,
         typ: Box::new(wrap_implicit_apps(&tele, Unresolved(loc, vptr_name))),
     });
@@ -329,7 +336,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         name: vtbl_lookup_name,
         tele: lookup_tele,
         ret: Box::new(wrap_implicit_apps(&tele, Unresolved(loc, vtbl_name))),
-        body: VtblLookup,
+        body: VtblLookup(name_str),
     };
 
     let mut defs = vec![

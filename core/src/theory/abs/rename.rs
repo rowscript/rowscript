@@ -58,6 +58,12 @@ impl Renamer {
                 }
                 Switch(a, m)
             }
+            Vptr(r, ts) => Vptr(r, ts.into_iter().map(|t| *self.term(Box::new(t))).collect()),
+            Vp(r, ts) => Vp(r, ts.into_iter().map(|t| *self.term(Box::new(t))).collect()),
+            Lookup(r, args) => Lookup(
+                r,
+                args.into_iter().map(|a| *self.term(Box::new(a))).collect(),
+            ),
             Find(ty, i, f) => Find(self.term(ty), i, f),
             ImplementsOf(a, i) => ImplementsOf(self.term(a), i),
 
@@ -77,8 +83,6 @@ impl Renamer {
             Row => Row,
             RowSat => RowSat,
             RowRefl => RowRefl,
-            Vptr(r) => Vptr(r),
-            Vp(r) => Vp(r),
             ImplementsSat => ImplementsSat,
         })
     }

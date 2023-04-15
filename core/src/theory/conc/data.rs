@@ -70,7 +70,7 @@ pub enum Expr {
     Switch(Loc, Box<Self>, Vec<(String, Var, Self)>),
 
     Lookup(Loc, Box<Self>, String, Box<Self>),
-    Vptr(Loc, Var),
+    Vptr(Loc, Var, Vec<Self>),
 
     Constraint(Loc, Box<Self>),
     Find(Loc, Var, Var),
@@ -139,7 +139,7 @@ impl Expr {
             Upcast(loc, _) => loc,
             Switch(loc, _, _) => loc,
             Lookup(loc, _, _, _) => loc,
-            Vptr(loc, _) => loc,
+            Vptr(loc, _, _) => loc,
             Constraint(loc, _) => loc,
             Find(loc, _, _) => loc,
             ImplementsOf(loc, _) => loc,
@@ -267,7 +267,13 @@ impl Display for Expr {
                         .join("\n")
                 ),
                 Lookup(_, o, n, a) => format!("{o}.{n}{a}"),
-                Vptr(_, r) => format!("vptr({r})"),
+                Vptr(_, r, ts) => format!(
+                    "vptr@{r}<{}>",
+                    ts.iter()
+                        .map(|t| t.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
                 Constraint(_, r) => r.to_string(),
                 Find(_, i, f) => format!("{i}.{f}"),
                 ImplementsOf(_, a) => a.to_string(),

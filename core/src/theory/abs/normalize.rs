@@ -230,6 +230,27 @@ impl<'a> Normalizer<'a> {
                     a => Box::new(Switch(Box::new(a), self.case_map(cs)?)),
                 }
             }
+            Vptr(r, ts) => {
+                let mut types = Vec::default();
+                for t in ts {
+                    types.push(*self.term(Box::new(t))?)
+                }
+                Box::new(Vptr(r, types))
+            }
+            Vp(r, ts) => {
+                let mut types = Vec::default();
+                for t in ts {
+                    types.push(*self.term(Box::new(t))?)
+                }
+                Box::new(Vp(r, types))
+            }
+            Lookup(r, args) => {
+                let mut tms = Vec::default();
+                for arg in args {
+                    tms.push(*self.term(Box::new(arg))?)
+                }
+                Box::new(Lookup(r, tms))
+            }
             ImplementsOf(a, i) => Box::new(ImplementsOf(
                 match *self.term(a)? {
                     Ref(r) => Box::new(Ref(r)),
@@ -267,8 +288,6 @@ impl<'a> Normalizer<'a> {
             Row => Box::new(Row),
             RowSat => Box::new(RowSat),
             RowRefl => Box::new(RowRefl),
-            Vptr(r) => Box::new(Vptr(r)),
-            Vp(r) => Box::new(Vp(r)),
             ImplementsSat => Box::new(ImplementsSat),
         })
     }
