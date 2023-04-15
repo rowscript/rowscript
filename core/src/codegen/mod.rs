@@ -1,7 +1,6 @@
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Def, Sigma};
 use crate::{print_err, Error};
-use std::collections::HashMap;
 use std::fs::write;
 use std::path::PathBuf;
 
@@ -11,14 +10,16 @@ pub mod noop;
 
 pub trait Target {
     fn filename(&self) -> &'static str;
-    fn module(&self, buf: &mut Vec<u8>, sigma: &Sigma, defs: Vec<Def<Term>>) -> Result<(), Error>;
+    fn decls(
+        &mut self,
+        buf: &mut Vec<u8>,
+        sigma: &Sigma,
+        defs: Vec<Def<Term>>,
+    ) -> Result<(), Error>;
 }
-
-pub type Vtbl = HashMap<String, Vec<Def<Term>>>;
 
 pub struct Codegen {
     target: Box<dyn Target>,
-    vtbl: Vtbl,
     buf: Vec<u8>,
     pub outfile: PathBuf,
 }
@@ -28,7 +29,6 @@ impl Codegen {
         let outfile = outdir.join(target.filename());
         Self {
             target,
-            vtbl: Default::default(),
             buf: Default::default(),
             outfile,
         }
@@ -41,7 +41,7 @@ impl Codegen {
     ) -> Result<(), Error> {
         for (path, src, defs) in files {
             self.target
-                .module(&mut self.buf, sigma, defs)
+                .decls(&mut self.buf, sigma, defs)
                 .map_err(|e| print_err(e, &path, &src))?;
         }
         if !self.buf.is_empty() {

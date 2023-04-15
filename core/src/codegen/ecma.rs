@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::str::FromStr;
 
@@ -37,8 +38,12 @@ const JS_ESCAPED_THIS: &str = "_this";
 const JS_ENUM_TAG: &str = "__enumT";
 const JS_ENUM_VAL: &str = "__enumV";
 
+type Vtbl = HashMap<String, Vec<Def<Term>>>;
+
 #[derive(Default)]
-pub struct Ecma;
+pub struct Ecma {
+    vtbl: Vtbl,
+}
 
 impl Ecma {
     fn str_ident(loc: Loc, s: &str) -> Ident {
@@ -459,18 +464,14 @@ impl Ecma {
             }
         })
     }
-}
 
-impl Target for Ecma {
-    fn filename(&self) -> &'static str {
-        "index.js"
-    }
-
-    fn module(&self, buf: &mut Vec<u8>, sigma: &Sigma, defs: Vec<Def<Term>>) -> Result<(), Error> {
+    fn decls(
+        &mut self,
+        body: &mut Vec<ModuleItem>,
+        sigma: &Sigma,
+        defs: Vec<Def<Term>>,
+    ) -> Result<(), Error> {
         use Body::*;
-
-        let mut body = Vec::<ModuleItem>::default();
-
         for def in defs {
             match &def.body {
                 Fn(f) => match Self::func(&def, f) {
@@ -493,6 +494,24 @@ impl Target for Ecma {
                 _ => continue,
             }
         }
+        Ok(())
+    }
+}
+
+impl Target for Ecma {
+    fn filename(&self) -> &'static str {
+        "index.js"
+    }
+
+    fn decls(
+        &mut self,
+        buf: &mut Vec<u8>,
+        sigma: &Sigma,
+        defs: Vec<Def<Term>>,
+    ) -> Result<(), Error> {
+        let mut body = Vec::<ModuleItem>::default();
+
+        self.decls(&mut body, sigma, defs)?;
 
         let m = Module {
             span: DUMMY_SP,
