@@ -37,7 +37,7 @@ mod ok_interface;
 mod ok_interface_stuck;
 mod ok_object;
 mod ok_object_rowpoly;
-// mod ok_oop;
+mod ok_oop;
 // mod ok_oop_generics;
 mod ok_postulate_fn;
 mod ok_postulate_type;

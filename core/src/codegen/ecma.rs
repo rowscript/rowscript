@@ -3,14 +3,14 @@ use std::rc::Rc;
 use std::str::FromStr;
 
 use num_bigint::BigInt as BigIntValue;
-use swc_atoms::js_word;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
-    ArrowExpr, BigInt as JsBigInt, BindingIdent, BlockStmt, BlockStmtOrExpr, Bool, CallExpr,
-    Callee, ComputedPropName, CondExpr, Decl, Expr, ExprOrSpread, FnDecl, Function, Ident,
-    KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleItem, Number as JsNumber, ObjectLit,
-    Param as JsParam, ParenExpr, Pat, Prop, PropName, PropOrSpread, ReturnStmt, SpreadElement,
-    Stmt, Str as JsStr, VarDecl, VarDeclKind, VarDeclarator,
+    ArrowExpr, AssignExpr, AssignOp, BigInt as JsBigInt, BindingIdent, BlockStmt, BlockStmtOrExpr,
+    Bool, CallExpr, Callee, ComputedPropName, CondExpr, Decl, Expr, ExprOrSpread, ExprStmt, FnDecl,
+    FnExpr, Function, Ident, KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleItem,
+    Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, PatOrExpr, Prop, PropName,
+    PropOrSpread, ReturnStmt, SpreadElement, Stmt, Str as JsStr, VarDecl, VarDeclKind,
+    VarDeclarator,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -20,7 +20,7 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::ParamInfo::Explicit;
-use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNTUPLED_RHS};
+use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNTUPLED_RHS, VPTR, VTBL_LOOKUP};
 use crate::Error;
 use crate::Error::{NonErasable, UnsolvedMeta};
 
@@ -38,7 +38,7 @@ const JS_ESCAPED_THIS: &str = "_this";
 const JS_ENUM_TAG: &str = "__enumT";
 const JS_ENUM_VAL: &str = "__enumV";
 
-type Vtbl = HashMap<String, Vec<Def<Term>>>;
+type Vtbl = HashMap<String, Vec<(String, Def<Term>)>>;
 
 #[derive(Default)]
 pub struct Ecma {
@@ -46,6 +46,14 @@ pub struct Ecma {
 }
 
 impl Ecma {
+    fn special_ident(s: &str) -> Ident {
+        Ident {
+            span: DUMMY_SP,
+            sym: s.into(),
+            optional: false,
+        }
+    }
+
     fn str_ident(loc: Loc, s: &str) -> Ident {
         Ident {
             span: loc.into(),
@@ -69,11 +77,19 @@ impl Ecma {
         })
     }
 
-    fn undefined() -> Expr {
-        Expr::Ident(Ident {
+    fn undefined() -> Ident {
+        Self::special_ident("undefined")
+    }
+
+    fn global_this() -> Ident {
+        Self::special_ident("globalThis")
+    }
+
+    fn global_vtbl() -> Expr {
+        Expr::Member(MemberExpr {
             span: DUMMY_SP,
-            sym: js_word!("undefined"),
-            optional: false,
+            obj: Box::new(Expr::Ident(Self::global_this())),
+            prop: MemberProp::Ident(Self::special_ident(VPTR)),
         })
     }
 
@@ -88,42 +104,32 @@ impl Ecma {
         })))
     }
 
-    fn func(def: &Def<Term>, body: &Box<Term>) -> Result<ModuleItem, Error> {
+    fn func(def: &Def<Term>, body: &Box<Term>) -> Result<Box<Function>, Error> {
+        Ok(Box::new(Function {
+            params: Self::type_erased_params(def.loc, &def.tele),
+            decorators: Default::default(),
+            span: def.loc.into(),
+            body: Some(Self::block(def.loc, body)?),
+            is_generator: false,
+            is_async: false,
+            type_params: None,
+            return_type: None,
+        }))
+    }
+
+    fn func_decl(def: &Def<Term>, body: &Box<Term>) -> Result<ModuleItem, Error> {
         Ok(ModuleItem::Stmt(Stmt::Decl(Decl::Fn(FnDecl {
             ident: Self::ident(def.loc, &def.name),
             declare: false,
-            function: Box::new(Function {
-                params: Self::type_erased_params(def.loc, &def.tele),
-                decorators: Default::default(),
-                span: def.loc.into(),
-                body: Some(Self::block(def.loc, body)?),
-                is_generator: false,
-                is_async: false,
-                type_params: None,
-                return_type: None,
-            }),
+            function: Self::func(def, body)?,
         }))))
     }
 
-    fn class(
-        def: &Def<Term>,
-        object: &Box<Term>,
-        ctor: &Def<Term>,
-        meths: Vec<&Def<Term>>,
-    ) -> Result<Vec<ModuleItem>, Error> {
-        use Body::*;
-
-        let mut decls = Vec::default();
-        for m in meths {
-            decls.push(Self::func(
-                m,
-                match &m.body {
-                    Method(f) => f,
-                    _ => unreachable!(),
-                },
-            )?);
-        }
-        Ok(decls)
+    fn func_expr(def: &Def<Term>, body: &Box<Term>) -> Result<Expr, Error> {
+        Ok(Expr::Fn(FnExpr {
+            ident: None,
+            function: Self::func(def, body)?,
+        }))
     }
 
     fn type_erased_param_pat(loc: Loc, p: &Param<Term>) -> Vec<Pat> {
@@ -174,11 +180,7 @@ impl Ecma {
                     tm = b
                 }
                 TT => break,
-                // _ => unreachable!(),
-                e => {
-                    dbg!(e);
-                    unreachable!()
-                }
+                _ => unreachable!(),
             }
         }
         Ok(ret)
@@ -290,16 +292,26 @@ impl Ecma {
                 })),
                 _ => Self::expr(loc, b)?,
             },
-            App(f, i, x) => match i {
-                UnnamedExplicit => Box::new(Expr::Call(CallExpr {
+            App(f, i, x) => match &**f {
+                Ref(r) if r.as_str().ends_with(VTBL_LOOKUP) => Box::new(Expr::Member(MemberExpr {
                     span: loc.into(),
-                    callee: Callee::Expr(Self::expr(loc, f)?),
-                    args: Self::untuple_args(loc, x)?,
-                    type_args: None,
+                    obj: Box::new(Self::global_vtbl()),
+                    prop: MemberProp::Computed(ComputedPropName {
+                        span: loc.into(),
+                        expr: Self::expr(loc, x)?,
+                    }),
                 })),
-                _ => Self::expr(loc, f)?,
+                _ => match i {
+                    UnnamedExplicit => Box::new(Expr::Call(CallExpr {
+                        span: loc.into(),
+                        callee: Callee::Expr(Self::expr(loc, f)?),
+                        args: Self::untuple_args(loc, x)?,
+                        type_args: None,
+                    })),
+                    _ => Self::expr(loc, f)?,
+                },
             },
-            TT => Box::new(Self::undefined()),
+            TT => Box::new(Expr::Ident(Self::undefined())),
             False => Box::new(Expr::Lit(Lit::Bool(Bool {
                 span: loc.into(),
                 value: false,
@@ -455,46 +467,106 @@ impl Ecma {
                     type_args: None,
                 }))
             }
+            VtblRef(r) => Box::new(Expr::Lit(Lit::Str(JsStr {
+                span: loc.into(),
+                value: r.as_str().into(),
+                raw: None,
+            }))),
             Find(_, _, f) => return Err(NonErasable(Box::new(Ref(f.clone())), loc)),
 
-            // _ => unreachable!(),
-            e => {
-                println!("{e}");
-                unreachable!()
-            }
+            _ => unreachable!(),
         })
     }
 
-    fn decls(
-        &mut self,
-        body: &mut Vec<ModuleItem>,
-        sigma: &Sigma,
-        defs: Vec<Def<Term>>,
-    ) -> Result<(), Error> {
+    fn decls(&mut self, sigma: &Sigma, defs: Vec<Def<Term>>) -> Result<Vec<ModuleItem>, Error> {
         use Body::*;
+        let mut ret = Vec::default();
         for def in defs {
-            match &def.body {
-                Fn(f) => match Self::func(&def, f) {
-                    Ok(decl) => body.push(decl),
+            ret.push(match &def.body {
+                Fn(f) => match Self::func_decl(&def, f) {
+                    Ok(d) => d,
                     Err(NonErasable(_, _)) => continue,
                     Err(e) => return Err(e),
                 },
                 Class {
-                    object,
                     ctor,
+                    vptr_ctor,
                     methods,
                     ..
-                } => body.extend(Self::class(
-                    &def,
-                    object,
-                    sigma.get(ctor).unwrap(),
-                    methods.iter().map(|n| sigma.get(n).unwrap()).collect(),
-                )?),
+                } => self.class_decl(sigma, ctor, vptr_ctor, methods)?,
                 Undefined => unreachable!(),
                 _ => continue,
-            }
+            })
         }
-        Ok(())
+        Ok(ret)
+    }
+
+    fn class_decl(
+        &mut self,
+        sigma: &Sigma,
+        ctor: &Var,
+        vptr_ctor: &Var,
+        meths: &Vec<(String, Var)>,
+    ) -> Result<ModuleItem, Error> {
+        use Body::*;
+
+        self.vtbl.insert(
+            vptr_ctor.to_string(),
+            meths
+                .iter()
+                .map(|(m, f)| (m.clone(), sigma.get(f).unwrap().clone()))
+                .collect(),
+        );
+
+        let ctor_def = sigma.get(ctor).unwrap();
+        Self::func_decl(
+            ctor_def,
+            match &ctor_def.body {
+                Ctor(f) => f,
+                _ => unreachable!(),
+            },
+        )
+    }
+
+    fn vtbl_decl(&self) -> Result<ModuleItem, Error> {
+        use Body::*;
+
+        let mut props = Vec::default();
+        for (cls, meths) in &self.vtbl {
+            let mut meth_props = Vec::default();
+            for (name, m) in meths {
+                meth_props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                    key: PropName::Ident(Self::str_ident(m.loc, name.as_str())),
+                    value: Box::new(Self::func_expr(
+                        &m,
+                        match &m.body {
+                            Method(f) => f,
+                            _ => unreachable!(),
+                        },
+                    )?),
+                }))))
+            }
+            props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                key: PropName::Ident(Self::special_ident(cls.as_str())),
+                value: Box::new(Expr::Object(ObjectLit {
+                    span: DUMMY_SP,
+                    props: meth_props,
+                })),
+            }))))
+        }
+
+        Ok(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+            span: DUMMY_SP,
+            expr: Box::new(Expr::Assign(AssignExpr {
+                span: Default::default(),
+                op: AssignOp::Assign,
+                left: PatOrExpr::Expr(Box::new(Self::global_vtbl())),
+                right: Box::new(Expr::Object(ObjectLit {
+                    span: DUMMY_SP,
+                    props,
+                })),
+            })),
+        })))
     }
 }
 
@@ -509,9 +581,8 @@ impl Target for Ecma {
         sigma: &Sigma,
         defs: Vec<Def<Term>>,
     ) -> Result<(), Error> {
-        let mut body = Vec::<ModuleItem>::default();
-
-        self.decls(&mut body, sigma, defs)?;
+        let mut body = self.decls(sigma, defs)?;
+        body.push(self.vtbl_decl()?);
 
         let m = Module {
             span: DUMMY_SP,

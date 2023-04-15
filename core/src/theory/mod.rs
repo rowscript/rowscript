@@ -61,9 +61,12 @@ pub struct Var {
     name: Name,
 }
 
-pub const VPTR: &str = "__vptr";
 pub const TUPLED: &str = "_tupled";
 pub const UNTUPLED_RHS: &str = "_untupled_";
+
+pub const VPTR: &str = "__vptr";
+pub const VTBL_LOOKUP: &str = "__vtblLookup";
+
 pub const THIS: &str = "this";
 
 impl Var {
@@ -114,7 +117,7 @@ impl Var {
     }
 
     pub fn vtbl_lookup(&self) -> Self {
-        Self::new(format!("{self}__vtblLookup"))
+        Self::new(format!("{self}{VTBL_LOOKUP}"))
     }
 
     pub fn implements(&self, im: &Self) -> Self {

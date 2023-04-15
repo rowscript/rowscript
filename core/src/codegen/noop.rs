@@ -8,7 +8,7 @@ pub struct Noop;
 
 impl Target for Noop {
     fn filename(&self) -> &'static str {
-        unreachable!()
+        ""
     }
 
     fn decls(&mut self, _: &mut Vec<u8>, _: &Sigma, _: Vec<Def<Term>>) -> Result<(), Error> {

@@ -221,12 +221,17 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
             Rule::class_method => {
                 let mut m = fn_def(p, Some((Unresolved(loc, name.clone()), tele.clone())));
                 vtbl_fields.push((m.name.to_string(), *m.to_type()));
-                m.name = name.method(m.name);
+
+                let meth_name = m.name.to_string();
+                let fn_name = name.method(m.name);
+                m.name = fn_name.clone();
+
                 m.body = match m.body {
                     Fn(f) => Method(f),
                     _ => unreachable!(),
                 };
-                methods.push(m.name.clone());
+
+                methods.push((meth_name, fn_name));
                 method_defs.push(m);
             }
             _ => unreachable!(),

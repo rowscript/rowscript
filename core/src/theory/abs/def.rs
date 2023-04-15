@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 
+use crate::theory::abs::data::Term::VtblRef;
 use crate::theory::abs::data::{MetaKind, Term};
 use crate::theory::abs::rename::rename;
 use crate::theory::conc::data::Expr;
@@ -48,7 +49,7 @@ impl Def<Term> {
             Ctor(f) => self.to_lam_term(f),
             Method(f) => self.to_lam_term(f),
             VptrType(t) => self.to_lam_term(t),
-            VptrCtor => self.to_ref_term(v),
+            VptrCtor => Box::new(VtblRef(v)),
             VtblType(t) => self.to_lam_term(t),
             VtblLookup => self.to_ref_term(v),
 
@@ -138,7 +139,7 @@ impl<T: Syntax> Display for Def<T> {
                         Param::tele_to_string(&self.tele),
                         methods
                             .iter()
-                            .map(|m| m.to_string())
+                            .map(|m| m.1.to_string())
                             .collect::<Vec<_>>()
                             .join(";\n\t")
                     )
@@ -242,7 +243,7 @@ pub enum Body<T: Syntax> {
 
     Class {
         object: Box<T>,
-        methods: Vec<Var>,
+        methods: Vec<(String, Var)>,
         ctor: Var,
         vptr: Var,
         vptr_ctor: Var,
