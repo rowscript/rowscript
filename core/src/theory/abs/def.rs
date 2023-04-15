@@ -51,7 +51,7 @@ impl Def<Term> {
             VptrType(t) => self.to_lam_term(t),
             VptrCtor => Box::new(VtblRef(v)),
             VtblType(t) => self.to_lam_term(t),
-            VtblLookup => self.to_ref_term(v),
+            VtblLookup => self.to_lam_term(&self.to_ref_term(v)),
 
             Interface { .. } => {
                 let r = Box::new(Term::Ref(self.tele[0].var.clone()));

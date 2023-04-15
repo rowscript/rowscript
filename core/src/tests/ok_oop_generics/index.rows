@@ -16,3 +16,7 @@ function f() {
     let a = new Foo("John", 42);
     return a.sayHi()
 }
+
+function g() {
+    return f()
+}
