@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::theory::abs::data::Term::VtblRef;
+use crate::theory::abs::data::Term::Vp;
 use crate::theory::abs::data::{MetaKind, Term};
 use crate::theory::abs::rename::rename;
 use crate::theory::conc::data::Expr;
@@ -49,9 +49,9 @@ impl Def<Term> {
             Ctor(f) => self.to_lam_term(f),
             Method(f) => self.to_lam_term(f),
             VptrType(t) => self.to_lam_term(t),
-            VptrCtor => Box::new(VtblRef(v)),
+            VptrCtor => Box::new(Vp(v)),
             VtblType(t) => self.to_lam_term(t),
-            VtblLookup => self.to_lam_term(&self.to_ref_term(v)),
+            VtblLookup => self.to_ref_term(v),
 
             Interface { .. } => {
                 let r = Box::new(Term::Ref(self.tele[0].var.clone()));

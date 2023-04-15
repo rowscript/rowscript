@@ -267,7 +267,7 @@ impl Display for Expr {
                         .join("\n")
                 ),
                 Lookup(_, o, n, a) => format!("{o}.{n}{a}"),
-                Vptr(_, r) => r.to_string(),
+                Vptr(_, r) => format!("vptr({r})"),
                 Constraint(_, r) => r.to_string(),
                 Find(_, i, f) => format!("{i}.{f}"),
                 ImplementsOf(_, a) => a.to_string(),

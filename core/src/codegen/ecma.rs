@@ -485,7 +485,7 @@ impl Ecma {
                     type_args: None,
                 }))
             }
-            VtblRef(r) => Box::new(Expr::Lit(Lit::Str(JsStr {
+            Vp(r) => Box::new(Expr::Lit(Lit::Str(JsStr {
                 span: loc.into(),
                 value: r.as_str().into(),
                 raw: None,

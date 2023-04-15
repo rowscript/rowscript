@@ -268,7 +268,7 @@ impl<'a> Normalizer<'a> {
             RowSat => Box::new(RowSat),
             RowRefl => Box::new(RowRefl),
             Vptr(r) => Box::new(Vptr(r)),
-            VtblRef(r) => Box::new(VtblRef(r)),
+            Vp(r) => Box::new(Vp(r)),
             ImplementsSat => Box::new(ImplementsSat),
         })
     }

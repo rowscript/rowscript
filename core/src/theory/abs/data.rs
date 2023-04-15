@@ -102,7 +102,7 @@ pub enum Term {
     Switch(Box<Self>, CaseMap),
 
     Vptr(Var),
-    VtblRef(Var),
+    Vp(Var),
 
     Find(Box<Self>, Var, Var),
     ImplementsOf(Box<Self>, Var),
@@ -198,8 +198,8 @@ impl Display for Term {
                             .join("\n")
                     )
                 }
-                Vptr(r) => r.to_string(),
-                VtblRef(r) => r.to_string(),
+                Vptr(r) => format!("vptr({r})"),
+                Vp(r) => r.to_string(),
                 Find(ty, i, f) => format!("{i}.{f}<{ty}>"),
                 ImplementsOf(t, i) => format!("{t} implementsOf {i}"),
                 ImplementsSat => "implementsSat".to_string(),
