@@ -103,7 +103,7 @@ pub enum Term {
 
     Vptr(Var, Vec<Self>),
     Vp(String, Vec<Self>),
-    Lookup(String, Vec<Self>),
+    Lookup(Box<Self>),
 
     Find(Box<Self>, Var, Var),
     ImplementsOf(Box<Self>, Var),
@@ -213,13 +213,7 @@ impl Display for Term {
                         .collect::<Vec<_>>()
                         .join(", ")
                 ),
-                Lookup(r, args) => format!(
-                    "lookup@{r}({})",
-                    args.iter()
-                        .map(|a| a.to_string())
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
+                Lookup(a) => format!("lookup({a})",),
                 Find(ty, i, f) => format!("{i}.{f}<{ty}>"),
                 ImplementsOf(t, i) => format!("{t} implementsOf {i}"),
                 ImplementsSat => "implementsSat".to_string(),

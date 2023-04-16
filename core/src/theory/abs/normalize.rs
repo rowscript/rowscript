@@ -244,13 +244,7 @@ impl<'a> Normalizer<'a> {
                 }
                 Box::new(Vp(r, types))
             }
-            Lookup(r, args) => {
-                let mut tms = Vec::default();
-                for arg in args {
-                    tms.push(*self.term(Box::new(arg))?)
-                }
-                Box::new(Lookup(r, tms))
-            }
+            Lookup(a) => Box::new(Lookup(self.term(a)?)),
             ImplementsOf(a, i) => Box::new(ImplementsOf(
                 match *self.term(a)? {
                     Ref(r) => Box::new(Ref(r)),

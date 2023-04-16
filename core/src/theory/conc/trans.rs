@@ -191,7 +191,6 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     let mut pairs = c.into_inner();
 
     let name = Var::from(pairs.next().unwrap());
-    let name_str = name.to_string();
     let vptr_name = name.vptr_type();
     let vptr_ctor_name = name.vptr_ctor();
     let ctor_name = name.ctor();
@@ -260,7 +259,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
             &tele,
             Unresolved(loc, vptr_name.clone()),
         )),
-        body: VptrCtor(name_str.clone()),
+        body: VptrCtor(name.to_string()),
     };
 
     let mut ctor_untupled = UntupledParams::new(loc);
@@ -336,7 +335,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         name: vtbl_lookup_name,
         tele: lookup_tele,
         ret: Box::new(wrap_implicit_apps(&tele, Unresolved(loc, vtbl_name))),
-        body: VtblLookup(name_str),
+        body: VtblLookup,
     };
 
     let mut defs = vec![

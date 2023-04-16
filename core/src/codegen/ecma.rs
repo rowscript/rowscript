@@ -20,7 +20,7 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::ParamInfo::Explicit;
-use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNTUPLED_RHS, VPTR, VTBL_LOOKUP};
+use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNTUPLED_RHS, VPTR};
 use crate::Error;
 use crate::Error::{NonErasable, UnsolvedMeta};
 
@@ -476,18 +476,18 @@ impl Ecma {
                     type_args: None,
                 }))
             }
-            // TODO: Type information.
+            // TODO: Name mangling.
             Vp(r, _) => Box::new(Expr::Lit(Lit::Str(JsStr {
                 span: loc.into(),
                 value: r.as_str().into(),
                 raw: None,
             }))),
-            Lookup(_, args) => Box::new(Expr::Member(MemberExpr {
+            Lookup(a) => Box::new(Expr::Member(MemberExpr {
                 span: loc.into(),
                 obj: Box::new(Self::global_vtbl()),
                 prop: MemberProp::Computed(ComputedPropName {
                     span: loc.into(),
-                    expr: Self::expr(sigma, loc, &Box::new(args.last().unwrap().clone()))?,
+                    expr: Self::expr(sigma, loc, a)?,
                 }),
             })),
             Find(_, _, f) => return Err(NonErasable(Box::new(Ref(f.clone())), loc)),

@@ -95,7 +95,7 @@ impl Elaborator {
             VptrType(t) => VptrType(self.check(t, &ret)?),
             VptrCtor(t) => VptrCtor(t),
             VtblType(t) => VtblType(self.check(t, &ret)?),
-            VtblLookup(t) => VtblLookup(t),
+            VtblLookup => VtblLookup,
 
             Interface { fns, ims } => Interface { fns, ims },
             Implements { i, fns } => {

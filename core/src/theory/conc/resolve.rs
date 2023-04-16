@@ -70,7 +70,7 @@ impl Resolver {
             VptrType(t) => VptrType(self.expr(t)?),
             VptrCtor(t) => VptrCtor(t),
             VtblType(t) => VtblType(self.expr(t)?),
-            VtblLookup(t) => VtblLookup(t),
+            VtblLookup => VtblLookup,
 
             Interface { fns, ims } => Interface { fns, ims },
             Implements { i: (i, im), fns } => {

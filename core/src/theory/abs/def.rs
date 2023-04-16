@@ -54,10 +54,9 @@ impl Def<Term> {
                 self.tele.iter().map(|p| Term::Ref(p.var.clone())).collect(),
             ))),
             VtblType(t) => self.to_lam_term(t),
-            VtblLookup(t) => self.to_lam_term(&Box::new(Term::Lookup(
-                t.clone(),
-                self.tele.iter().map(|p| Term::Ref(p.var.clone())).collect(),
-            ))),
+            VtblLookup => self.to_lam_term(&Box::new(Term::Lookup(Box::new(Term::Ref(
+                self.tele.last().unwrap().var.clone(),
+            ))))),
 
             Interface { .. } => {
                 let r = Box::new(Term::Ref(self.tele[0].var.clone()));
@@ -179,8 +178,9 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
-                VtblLookup(t) => format!(
-                    "vtbl {t} {}: {};",
+                VtblLookup => format!(
+                    "vtbl {} {}: {};",
+                    self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
@@ -259,7 +259,7 @@ pub enum Body<T: Syntax> {
     VptrType(Box<T>),
     VptrCtor(String),
     VtblType(Box<T>),
-    VtblLookup(String),
+    VtblLookup,
 
     Interface {
         fns: Vec<Var>,
