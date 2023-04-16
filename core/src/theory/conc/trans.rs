@@ -657,6 +657,23 @@ fn expr(e: Pair<Rule>) -> Expr {
                     App(loc, Box::new(a), UnnamedExplicit, Box::new(x))
                 })
         }
+        Rule::rev_app => {
+            let mut pairs = p.into_inner();
+            let arg = pairs.next().unwrap();
+            pairs
+                .fold(
+                    (
+                        Loc::from(arg.as_span()),
+                        match arg.as_rule() {
+                            Rule::expr => expr(arg),
+                            Rule::idref => unresolved(arg),
+                            _ => unreachable!(),
+                        },
+                    ),
+                    |(loc, a), p| (Loc::from(p.as_span()), app(p, Some((loc, a)))),
+                )
+                .1
+        }
         Rule::new_expr => {
             let mut pairs = p.into_inner();
             let cls = match unresolved(pairs.next().unwrap()) {
@@ -735,7 +752,7 @@ fn expr(e: Pair<Rule>) -> Expr {
             }
             TupledLam(loc, vars, Box::new(body.unwrap()))
         }
-        Rule::app => app(p),
+        Rule::app => app(p, None),
         Rule::tt => TT(loc),
         Rule::idref => unresolved(p),
         Rule::paren_expr => expr(p.into_inner().next().unwrap()),
@@ -768,7 +785,7 @@ fn branch(b: Pair<Rule>) -> Expr {
     }
 }
 
-fn app(a: Pair<Rule>) -> Expr {
+fn app(a: Pair<Rule>, mut rev_operand: Option<(Loc, Expr)>) -> Expr {
     use Expr::*;
 
     let mut pairs = a.into_inner();
@@ -785,7 +802,14 @@ fn app(a: Pair<Rule>) -> Expr {
             let (i, e) = match arg.as_rule() {
                 Rule::row_arg => row_arg(arg),
                 Rule::type_arg => type_arg(arg),
-                Rule::args => (UnnamedExplicit, tupled_args(arg)),
+                Rule::args => {
+                    let mut args = tupled_args(arg);
+                    if let Some((loc, a)) = rev_operand.clone() {
+                        args = Tuple(loc, Box::new(a), Box::new(args));
+                    }
+                    rev_operand = None; // only guarantee first reverse application
+                    (UnnamedExplicit, args)
+                }
                 _ => unreachable!(),
             };
             (loc, i, e)
@@ -884,7 +908,7 @@ fn object_literal(l: Pair<Rule>) -> Expr {
 fn object_operand(o: Pair<Rule>) -> Expr {
     let p = o.into_inner().next().unwrap();
     match p.as_rule() {
-        Rule::app => app(p),
+        Rule::app => app(p, None),
         Rule::object_literal => object_literal(p),
         Rule::idref => unresolved(p),
         Rule::paren_expr => expr(p.into_inner().next().unwrap()),
@@ -906,7 +930,7 @@ fn enum_variant(v: Pair<Rule>) -> Expr {
 fn enum_operand(o: Pair<Rule>) -> Expr {
     let p = o.into_inner().next().unwrap();
     match p.as_rule() {
-        Rule::app => app(p),
+        Rule::app => app(p, None),
         Rule::enum_variant => enum_variant(p),
         Rule::idref => unresolved(p),
         Rule::paren_expr => expr(p.into_inner().next().unwrap()),

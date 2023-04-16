@@ -41,6 +41,7 @@ mod ok_oop;
 mod ok_oop_generics;
 mod ok_postulate_fn;
 mod ok_postulate_type;
+mod ok_rev_app;
 mod ok_typeclassopedia;
 mod ok_typeclassopedia_stuck;
 mod ok_unit;

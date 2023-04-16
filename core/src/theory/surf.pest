@@ -123,6 +123,7 @@ expr =
   | boolean_if
   | new_expr
   | method_app
+  | rev_app
   | object_literal
   | object_concat
   | object_access
@@ -153,6 +154,8 @@ branch_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" ~ branch
 branch_unit_let = { expr ~ ";" ~ branch }
 new_expr = { "new" ~ class_id ~ ("<" ~ type_args ~ ">")? ~ args }
 method_app = { ("(" ~ expr ~ ")" | idref) ~ "." ~ prop_id ~ args+ }
+rev_app = { ("(" ~ expr ~ ")" | idref) ~ rev_app_callee+ }
+rev_app_callee = { "|" ~ ("(" ~ expr ~ ")" | idref) ~ implicit_args? ~ args+ }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
 lambda_params = _{ "()" | param_id | "(" ~ param_id ~ ("," ~ param_id)+ ~ ")" }
 lambda_body = { expr | fn_body_block }
