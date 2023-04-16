@@ -15,7 +15,7 @@ use swc_ecma_ast::{
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
 
-use crate::codegen::Target;
+use crate::codegen::{mangle, Target};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
@@ -115,14 +115,6 @@ impl Ecma {
             type_params: None,
             return_type: None,
         }))
-    }
-
-    fn func_decl(sigma: &Sigma, def: &Def<Term>, body: &Box<Term>) -> Result<ModuleItem, Error> {
-        Ok(ModuleItem::Stmt(Stmt::Decl(Decl::Fn(FnDecl {
-            ident: Self::ident(def.loc, &def.name),
-            declare: false,
-            function: Self::func(sigma, def, body)?,
-        }))))
     }
 
     fn func_expr(sigma: &Sigma, def: &Def<Term>, body: &Box<Term>) -> Result<Expr, Error> {
@@ -476,12 +468,17 @@ impl Ecma {
                     type_args: None,
                 }))
             }
-            // TODO: Name mangling.
-            Vp(r, _) => Box::new(Expr::Lit(Lit::Str(JsStr {
-                span: loc.into(),
-                value: r.as_str().into(),
-                raw: None,
-            }))),
+            Vp(r, ts) => {
+                let mut ms = vec![r.clone()];
+                for t in ts {
+                    ms.push(mangle(loc, t)?)
+                }
+                Box::new(Expr::Lit(Lit::Str(JsStr {
+                    span: loc.into(),
+                    value: ms.join("").as_str().into(),
+                    raw: None,
+                })))
+            }
             Lookup(a) => Box::new(Expr::Member(MemberExpr {
                 span: loc.into(),
                 obj: Box::new(Self::global_vtbl()),
@@ -500,18 +497,28 @@ impl Ecma {
         use Body::*;
         let mut ret = Vec::default();
         for def in defs {
-            ret.push(match &def.body {
-                Fn(f) => match Self::func_decl(sigma, &def, f) {
+            ret.push(
+                match match &def.body {
+                    Fn(f) => Self::func_decl(sigma, &def, f),
+                    Class { ctor, methods, .. } => self.class_decl(sigma, &def.name, ctor, methods),
+                    Undefined => unreachable!(),
+                    _ => continue,
+                } {
                     Ok(d) => d,
                     Err(NonErasable(_, _)) => continue,
                     Err(e) => return Err(e),
                 },
-                Class { ctor, methods, .. } => self.class_decl(sigma, &def.name, ctor, methods)?,
-                Undefined => unreachable!(),
-                _ => continue,
-            })
+            );
         }
         Ok(ret)
+    }
+
+    fn func_decl(sigma: &Sigma, def: &Def<Term>, body: &Box<Term>) -> Result<ModuleItem, Error> {
+        Ok(ModuleItem::Stmt(Stmt::Decl(Decl::Fn(FnDecl {
+            ident: Self::ident(def.loc, &def.name),
+            declare: false,
+            function: Self::func(sigma, def, body)?,
+        }))))
     }
 
     fn class_decl(

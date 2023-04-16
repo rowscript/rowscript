@@ -1,5 +1,7 @@
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Def, Sigma};
+use crate::theory::Loc;
+use crate::Error::NonErasable;
 use crate::{print_err, Error};
 use std::fs::write;
 use std::path::PathBuf;
@@ -49,4 +51,31 @@ impl Codegen {
         }
         Ok(())
     }
+}
+
+fn mangle(loc: Loc, tm: &Term) -> Result<String, Error> {
+    use Term::*;
+    Ok(match tm {
+        Ref(_) => return Err(NonErasable(Box::new(tm.clone()), loc)),
+
+        Pi(p, b) => format!("F{}{}", mangle(loc, &*p.typ)?, mangle(loc, &**b)?),
+        Unit => "U".to_string(),
+        Boolean => "T".to_string(),
+        String => "S".to_string(),
+        Number => "N".to_string(),
+        BigInt => "B".to_string(),
+        Fields(fields) => {
+            let mut vals = fields.iter().collect::<Vec<_>>();
+            vals.sort_by_key(|p| p.0);
+            let mut ms = Vec::default();
+            for (_, tm) in vals {
+                ms.push(mangle(loc, tm)?)
+            }
+            ms.join("")
+        }
+        Object(f) => format!("{{{}", mangle(loc, &**f)?),
+        Enum(f) => format!("[{}", mangle(loc, &**f)?),
+
+        _ => unreachable!(),
+    })
 }
