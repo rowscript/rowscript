@@ -7,7 +7,7 @@ use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
     ArrowExpr, AssignExpr, AssignOp, BigInt as JsBigInt, BindingIdent, BlockStmt, BlockStmtOrExpr,
     Bool, CallExpr, Callee, ComputedPropName, CondExpr, Decl, Expr, ExprOrSpread, ExprStmt, FnDecl,
-    FnExpr, Function, Ident, KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleItem,
+    Function, Ident, KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleItem,
     Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, PatOrExpr, Prop, PropName,
     PropOrSpread, ReturnStmt, SpreadElement, Stmt, Str as JsStr, VarDecl, VarDeclKind,
     VarDeclarator,
@@ -15,7 +15,7 @@ use swc_ecma_ast::{
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
 
-use crate::codegen::{mangle, Target};
+use crate::codegen::{mangle_hkt, Target};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
@@ -38,7 +38,7 @@ const JS_ESCAPED_THIS: &str = "_this";
 const JS_ENUM_TAG: &str = "__enumT";
 const JS_ENUM_VAL: &str = "__enumV";
 
-type Vtbl = HashMap<String, Vec<(String, Def<Term>)>>;
+type Vtbl = HashMap<String, Vec<(String, Var)>>;
 
 #[derive(Default)]
 pub struct Ecma {
@@ -93,34 +93,38 @@ impl Ecma {
         })
     }
 
-    fn access(sigma: &Sigma, loc: Loc, a: &Box<Term>, n: &String) -> Result<Box<Expr>, Error> {
+    fn access(
+        &mut self,
+        sigma: &Sigma,
+        loc: Loc,
+        a: &Box<Term>,
+        n: &String,
+    ) -> Result<Box<Expr>, Error> {
         Ok(Box::new(Expr::Member(MemberExpr {
             span: loc.into(),
             obj: Box::new(Expr::Paren(ParenExpr {
                 span: loc.into(),
-                expr: Self::expr(sigma, loc, a)?,
+                expr: self.expr(sigma, loc, a)?,
             })),
             prop: MemberProp::Ident(Self::str_ident(loc, n.as_str())),
         })))
     }
 
-    fn func(sigma: &Sigma, def: &Def<Term>, body: &Box<Term>) -> Result<Box<Function>, Error> {
+    fn func(
+        &mut self,
+        sigma: &Sigma,
+        def: &Def<Term>,
+        body: &Box<Term>,
+    ) -> Result<Box<Function>, Error> {
         Ok(Box::new(Function {
             params: Self::type_erased_params(def.loc, &def.tele),
             decorators: Default::default(),
             span: def.loc.into(),
-            body: Some(Self::block(sigma, def.loc, body)?),
+            body: Some(self.block(sigma, def.loc, body)?),
             is_generator: false,
             is_async: false,
             type_params: None,
             return_type: None,
-        }))
-    }
-
-    fn func_expr(sigma: &Sigma, def: &Def<Term>, body: &Box<Term>) -> Result<Expr, Error> {
-        Ok(Expr::Fn(FnExpr {
-            ident: None,
-            function: Self::func(sigma, def, body)?,
         }))
     }
 
@@ -160,6 +164,7 @@ impl Ecma {
     }
 
     fn untuple_args(
+        &mut self,
         sigma: &Sigma,
         loc: Loc,
         mut tm: &Box<Term>,
@@ -171,7 +176,7 @@ impl Ecma {
                 Tuple(a, b) => {
                     ret.push(ExprOrSpread {
                         spread: None,
-                        expr: Self::expr(sigma, loc, a)?,
+                        expr: self.expr(sigma, loc, a)?,
                     });
                     tm = b
                 }
@@ -183,6 +188,7 @@ impl Ecma {
     }
 
     fn lambda_encoded_let(
+        &mut self,
         sigma: &Sigma,
         loc: Loc,
         v: Option<&Var>,
@@ -196,7 +202,7 @@ impl Ecma {
                 expr: Box::new(Expr::Arrow(ArrowExpr {
                     span: loc.into(),
                     params: v.map_or_else(|| Default::default(), |v| vec![Self::ident_pat(loc, v)]),
-                    body: Box::new(BlockStmtOrExpr::Expr(Self::expr(sigma, loc, b)?)),
+                    body: Box::new(BlockStmtOrExpr::Expr(self.expr(sigma, loc, b)?)),
                     is_async: false,
                     is_generator: false,
                     type_params: None,
@@ -205,13 +211,19 @@ impl Ecma {
             }))),
             args: vec![ExprOrSpread {
                 spread: None,
-                expr: Self::expr(sigma, loc, a)?,
+                expr: self.expr(sigma, loc, a)?,
             }],
             type_args: None,
         })))
     }
 
-    fn const_decl_stmt(sigma: &Sigma, loc: Loc, v: &Var, tm: &Box<Term>) -> Result<Stmt, Error> {
+    fn const_decl_stmt(
+        &mut self,
+        sigma: &Sigma,
+        loc: Loc,
+        v: &Var,
+        tm: &Box<Term>,
+    ) -> Result<Stmt, Error> {
         Ok(Stmt::Decl(Decl::Var(Box::new(VarDecl {
             span: loc.into(),
             kind: VarDeclKind::Const,
@@ -219,13 +231,13 @@ impl Ecma {
             decls: vec![VarDeclarator {
                 span: loc.into(),
                 name: Self::ident_pat(loc, v),
-                init: Some(Self::expr(sigma, loc, tm)?),
+                init: Some(self.expr(sigma, loc, tm)?),
                 definite: false,
             }],
         }))))
     }
 
-    fn block(sigma: &Sigma, loc: Loc, body: &Box<Term>) -> Result<BlockStmt, Error> {
+    fn block(&mut self, sigma: &Sigma, loc: Loc, body: &Box<Term>) -> Result<BlockStmt, Error> {
         fn strip_untupled_lets(mut tm: &Box<Term>) -> Box<Term> {
             use Term::*;
             loop {
@@ -245,18 +257,18 @@ impl Ecma {
         loop {
             match &**tm {
                 Let(p, a, b) => {
-                    stmts.push(Self::const_decl_stmt(sigma, loc, &p.var, a)?);
+                    stmts.push(self.const_decl_stmt(sigma, loc, &p.var, a)?);
                     tm = b
                 }
                 TupleLet(_, _, _, _) => unreachable!(),
                 UnitLet(a, b) => {
-                    stmts.push(Self::const_decl_stmt(sigma, loc, &Var::unbound(), a)?);
+                    stmts.push(self.const_decl_stmt(sigma, loc, &Var::unbound(), a)?);
                     tm = b
                 }
                 _ => {
                     stmts.push(Stmt::Return(ReturnStmt {
                         span: loc.into(),
-                        arg: Some(Self::expr(sigma, loc, tm)?),
+                        arg: Some(self.expr(sigma, loc, tm)?),
                     }));
                     break;
                 }
@@ -268,7 +280,7 @@ impl Ecma {
         })
     }
 
-    fn expr(sigma: &Sigma, loc: Loc, tm: &Box<Term>) -> Result<Box<Expr>, Error> {
+    fn expr(&mut self, sigma: &Sigma, loc: Loc, tm: &Box<Term>) -> Result<Box<Expr>, Error> {
         use Body::*;
         use Term::*;
         Ok(match &**tm {
@@ -285,31 +297,31 @@ impl Ecma {
                 _ => unreachable!(),
             },
 
-            Let(p, a, b) => Self::lambda_encoded_let(sigma, loc, Some(&p.var), a, b)?,
-            UnitLet(a, b) => Self::lambda_encoded_let(sigma, loc, None, a, b)?,
+            Let(p, a, b) => self.lambda_encoded_let(sigma, loc, Some(&p.var), a, b)?,
+            UnitLet(a, b) => self.lambda_encoded_let(sigma, loc, None, a, b)?,
 
             Ref(r) | Undef(r) => Box::new(Expr::Ident(Self::ident(loc, r))),
             Lam(p, b) => match p.info {
                 Explicit => Box::new(Expr::Arrow(ArrowExpr {
                     span: loc.into(),
                     params: Self::type_erased_param_pat(loc, p),
-                    body: Box::new(BlockStmtOrExpr::BlockStmt(Self::block(sigma, loc, b)?)),
+                    body: Box::new(BlockStmtOrExpr::BlockStmt(self.block(sigma, loc, b)?)),
                     is_async: false,
                     is_generator: false,
                     type_params: None,
                     return_type: None,
                 })),
-                _ => Self::expr(sigma, loc, b)?,
+                _ => self.expr(sigma, loc, b)?,
             },
 
             App(f, i, x) => match i {
                 UnnamedExplicit => Box::new(Expr::Call(CallExpr {
                     span: loc.into(),
-                    callee: Callee::Expr(Self::expr(sigma, loc, f)?),
-                    args: Self::untuple_args(sigma, loc, x)?,
+                    callee: Callee::Expr(self.expr(sigma, loc, f)?),
+                    args: self.untuple_args(sigma, loc, x)?,
                     type_args: None,
                 })),
-                _ => Self::expr(sigma, loc, f)?,
+                _ => self.expr(sigma, loc, f)?,
             },
             TT => Box::new(Expr::Ident(Self::undefined())),
             False => Box::new(Expr::Lit(Lit::Bool(Bool {
@@ -322,9 +334,9 @@ impl Ecma {
             }))),
             If(p, t, e) => Box::new(Expr::Cond(CondExpr {
                 span: loc.into(),
-                test: Self::expr(sigma, loc, p)?,
-                cons: Self::expr(sigma, loc, t)?,
-                alt: Self::expr(sigma, loc, e)?,
+                test: self.expr(sigma, loc, p)?,
+                cons: self.expr(sigma, loc, t)?,
+                alt: self.expr(sigma, loc, e)?,
             })),
             Str(s) => Box::new(Expr::Lit(Lit::Str(JsStr {
                 span: loc.into(),
@@ -347,7 +359,7 @@ impl Ecma {
                     for (name, tm) in fields {
                         props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                             key: PropName::Ident(Self::str_ident(loc, name.as_str())),
-                            value: Self::expr(sigma, loc, &Box::new(tm.clone()))?,
+                            value: self.expr(sigma, loc, &Box::new(tm.clone()))?,
                         }))));
                     }
                     Box::new(Expr::Object(ObjectLit {
@@ -362,22 +374,22 @@ impl Ecma {
                 props: vec![
                     PropOrSpread::Spread(SpreadElement {
                         dot3_token: loc.into(),
-                        expr: Self::expr(sigma, loc, a)?,
+                        expr: self.expr(sigma, loc, a)?,
                     }),
                     PropOrSpread::Spread(SpreadElement {
                         dot3_token: loc.into(),
-                        expr: Self::expr(sigma, loc, b)?,
+                        expr: self.expr(sigma, loc, b)?,
                     }),
                 ],
             })),
-            Access(a, n) => Self::access(sigma, loc, a, n)?,
+            Access(a, n) => self.access(sigma, loc, a, n)?,
             Downcast(a, f) => match &**f {
                 Fields(fields) => {
                     let mut props = Vec::default();
                     for (name, _) in fields {
                         props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                             key: PropName::Ident(Self::str_ident(loc, name)),
-                            value: Self::access(sigma, loc, a, name)?,
+                            value: self.access(sigma, loc, a, name)?,
                         }))))
                     }
                     Box::new(Expr::Object(ObjectLit {
@@ -403,14 +415,14 @@ impl Ecma {
                             }))),
                             PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                                 key: PropName::Ident(Self::str_ident(loc, JS_ENUM_VAL)),
-                                value: Self::expr(sigma, loc, &Box::new(tm.clone()))?,
+                                value: self.expr(sigma, loc, &Box::new(tm.clone()))?,
                             }))),
                         ],
                     }))
                 }
                 _ => unreachable!(),
             },
-            Upcast(a, _) => Self::expr(sigma, loc, a)?,
+            Upcast(a, _) => self.expr(sigma, loc, a)?,
             Switch(a, cs) => {
                 // ({Some: a => a + 1, None: () => undefined}[a.__rowsT])(a.__rowsV)
                 let mut props = Vec::default();
@@ -420,7 +432,7 @@ impl Ecma {
                         value: Box::new(Expr::Arrow(ArrowExpr {
                             span: loc.into(),
                             params: vec![Self::ident_pat(loc, v)],
-                            body: Box::new(BlockStmtOrExpr::BlockStmt(Self::block(
+                            body: Box::new(BlockStmtOrExpr::BlockStmt(self.block(
                                 sigma,
                                 loc,
                                 &Box::new(tm.clone()),
@@ -436,7 +448,7 @@ impl Ecma {
                     span: loc.into(),
                     props,
                 }));
-                let obj = Self::expr(sigma, loc, a)?;
+                let obj = self.expr(sigma, loc, a)?;
                 let tag = Box::new(Expr::Member(MemberExpr {
                     span: loc.into(),
                     obj: obj.clone(),
@@ -468,108 +480,126 @@ impl Ecma {
                     type_args: None,
                 }))
             }
-            Vp(r, ts) => {
-                let mut ms = vec![r.clone()];
-                for t in ts {
-                    ms.push(mangle(loc, t)?)
-                }
-                Box::new(Expr::Lit(Lit::Str(JsStr {
-                    span: loc.into(),
-                    value: ms.join("").as_str().into(),
-                    raw: None,
-                })))
-            }
-            Lookup(a) => Box::new(Expr::Member(MemberExpr {
+            Vp(r, ts) => Box::new(Expr::Lit(Lit::Str(JsStr {
                 span: loc.into(),
-                obj: Box::new(Self::global_vtbl()),
-                prop: MemberProp::Computed(ComputedPropName {
+                value: mangle_hkt(loc, r, ts)?.as_str().into(),
+                raw: None,
+            }))),
+            Lookup(a) => {
+                if let Vp(r, ts) = &**a {
+                    let meths_mapping = self.vtbl.get(r).unwrap();
+                    self.vtbl
+                        .insert(mangle_hkt(loc, r, ts)?, meths_mapping.clone());
+                }
+
+                Box::new(Expr::Member(MemberExpr {
                     span: loc.into(),
-                    expr: Self::expr(sigma, loc, a)?,
-                }),
-            })),
+                    obj: Box::new(Self::global_vtbl()),
+                    prop: MemberProp::Computed(ComputedPropName {
+                        span: loc.into(),
+                        expr: self.expr(sigma, loc, a)?,
+                    }),
+                }))
+            }
             Find(_, _, f) => return Err(NonErasable(Box::new(Ref(f.clone())), loc)),
 
             _ => unreachable!(),
         })
     }
 
-    fn decls(&mut self, sigma: &Sigma, defs: Vec<Def<Term>>) -> Result<Vec<ModuleItem>, Error> {
+    fn decls(
+        &mut self,
+        items: &mut Vec<ModuleItem>,
+        sigma: &Sigma,
+        defs: Vec<Def<Term>>,
+    ) -> Result<(), Error> {
         use Body::*;
-        let mut ret = Vec::default();
         for def in defs {
-            ret.push(
-                match match &def.body {
-                    Fn(f) => Self::func_decl(sigma, &def, f),
-                    Class { ctor, methods, .. } => self.class_decl(sigma, &def.name, ctor, methods),
-                    Undefined => unreachable!(),
-                    _ => continue,
-                } {
-                    Ok(d) => d,
-                    Err(NonErasable(_, _)) => continue,
-                    Err(e) => return Err(e),
-                },
-            );
+            match match &def.body {
+                Fn(f) => self.func_decl(items, sigma, &def, f),
+                Class { ctor, methods, .. } => {
+                    self.class_decls(items, sigma, &def.name, ctor, methods)
+                }
+                Undefined => unreachable!(),
+                _ => continue,
+            } {
+                Ok(d) => d,
+                Err(NonErasable(_, _)) => continue,
+                Err(e) => return Err(e),
+            };
         }
-        Ok(ret)
+        Ok(())
     }
 
-    fn func_decl(sigma: &Sigma, def: &Def<Term>, body: &Box<Term>) -> Result<ModuleItem, Error> {
-        Ok(ModuleItem::Stmt(Stmt::Decl(Decl::Fn(FnDecl {
+    fn func_decl(
+        &mut self,
+        items: &mut Vec<ModuleItem>,
+        sigma: &Sigma,
+        def: &Def<Term>,
+        body: &Box<Term>,
+    ) -> Result<(), Error> {
+        items.push(ModuleItem::Stmt(Stmt::Decl(Decl::Fn(FnDecl {
             ident: Self::ident(def.loc, &def.name),
             declare: false,
-            function: Self::func(sigma, def, body)?,
-        }))))
+            function: self.func(sigma, def, body)?,
+        }))));
+        Ok(())
     }
 
-    fn class_decl(
+    fn class_decls(
         &mut self,
+        items: &mut Vec<ModuleItem>,
         sigma: &Sigma,
         name: &Var,
         ctor: &Var,
         meths: &Vec<(String, Var)>,
-    ) -> Result<ModuleItem, Error> {
+    ) -> Result<(), Error> {
         use Body::*;
 
-        self.vtbl.insert(
-            name.to_string(),
-            meths
-                .iter()
-                .map(|(m, f)| (m.clone(), sigma.get(f).unwrap().clone()))
-                .collect(),
-        );
+        for (_, m) in meths {
+            let meth_def = sigma.get(m).unwrap();
+            self.func_decl(
+                items,
+                sigma,
+                meth_def,
+                match &meth_def.body {
+                    Method(f) => f,
+                    _ => unreachable!(),
+                },
+            )?;
+        }
+        self.vtbl.insert(name.to_string(), meths.clone());
 
         let ctor_def = sigma.get(ctor).unwrap();
-        Self::func_decl(
+        self.func_decl(
+            items,
             sigma,
             ctor_def,
             match &ctor_def.body {
                 Ctor(f) => f,
                 _ => unreachable!(),
             },
-        )
+        )?;
+
+        Ok(())
     }
 
-    fn vtbl_decl(&self, sigma: &Sigma) -> Result<ModuleItem, Error> {
-        use Body::*;
-
+    fn vtbl_decl(&self, items: &mut Vec<ModuleItem>) -> Result<(), Error> {
         let mut props = Vec::default();
         for (cls, meths) in &self.vtbl {
             let mut meth_props = Vec::default();
             for (name, m) in meths {
                 meth_props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                    key: PropName::Ident(Self::str_ident(m.loc, name.as_str())),
-                    value: Box::new(Self::func_expr(
-                        sigma,
-                        &m,
-                        match &m.body {
-                            Method(f) => f,
-                            _ => unreachable!(),
-                        },
-                    )?),
+                    key: PropName::Ident(Self::special_ident(name.as_str())),
+                    value: Box::new(Expr::Ident(Self::special_ident(m.as_str()))),
                 }))))
             }
             props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                key: PropName::Ident(Self::special_ident(cls.as_str())),
+                key: PropName::Str(JsStr {
+                    span: DUMMY_SP,
+                    value: cls.as_str().into(),
+                    raw: None,
+                }),
                 value: Box::new(Expr::Object(ObjectLit {
                     span: DUMMY_SP,
                     props: meth_props,
@@ -577,7 +607,7 @@ impl Ecma {
             }))))
         }
 
-        Ok(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+        items.push(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
             span: DUMMY_SP,
             expr: Box::new(Expr::Assign(AssignExpr {
                 span: Default::default(),
@@ -588,7 +618,9 @@ impl Ecma {
                     props,
                 })),
             })),
-        })))
+        })));
+
+        Ok(())
     }
 }
 
@@ -603,8 +635,9 @@ impl Target for Ecma {
         sigma: &Sigma,
         defs: Vec<Def<Term>>,
     ) -> Result<(), Error> {
-        let mut body = self.decls(sigma, defs)?;
-        body.push(self.vtbl_decl(sigma)?);
+        let mut body = Vec::default();
+        self.decls(&mut body, sigma, defs)?;
+        self.vtbl_decl(&mut body)?;
 
         let m = Module {
             span: DUMMY_SP,

@@ -58,7 +58,7 @@ fn mangle(loc: Loc, tm: &Term) -> Result<String, Error> {
     Ok(match tm {
         Ref(_) => return Err(NonErasable(Box::new(tm.clone()), loc)),
 
-        Pi(p, b) => format!("F{}{}", mangle(loc, &*p.typ)?, mangle(loc, &**b)?),
+        Pi(p, b) => format!("({}{})", mangle(loc, &*p.typ)?, mangle(loc, &**b)?),
         Unit => "U".to_string(),
         Boolean => "T".to_string(),
         String => "S".to_string(),
@@ -68,14 +68,22 @@ fn mangle(loc: Loc, tm: &Term) -> Result<String, Error> {
             let mut vals = fields.iter().collect::<Vec<_>>();
             vals.sort_by_key(|p| p.0);
             let mut ms = Vec::default();
-            for (_, tm) in vals {
-                ms.push(mangle(loc, tm)?)
+            for (name, tm) in vals {
+                ms.push(format!("{name}{}", mangle(loc, tm)?))
             }
             ms.join("")
         }
-        Object(f) => format!("{{{}", mangle(loc, &**f)?),
-        Enum(f) => format!("[{}", mangle(loc, &**f)?),
+        Object(f) => format!("{{{}}}", mangle(loc, &**f)?),
+        Enum(f) => format!("[{}]", mangle(loc, &**f)?),
 
         _ => unreachable!(),
     })
+}
+
+fn mangle_hkt(loc: Loc, n: &String, ts: &Vec<Term>) -> Result<String, Error> {
+    let mut ms = vec![n.clone()];
+    for t in ts {
+        ms.push(mangle(loc, t)?)
+    }
+    Ok(ms.join(""))
 }
