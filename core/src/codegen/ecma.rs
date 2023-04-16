@@ -20,7 +20,7 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::ParamInfo::Explicit;
-use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNTUPLED_RHS, VPTR};
+use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNTUPLED_RHS};
 use crate::Error;
 use crate::Error::{NonErasable, UnsolvedMeta};
 
@@ -37,6 +37,7 @@ impl Into<Span> for Loc {
 const JS_ESCAPED_THIS: &str = "_this";
 const JS_ENUM_TAG: &str = "__enumT";
 const JS_ENUM_VAL: &str = "__enumV";
+const JS_VTBL: &str = "__vtbl";
 
 type Vtbl = HashMap<String, Vec<(String, Var)>>;
 
@@ -89,7 +90,7 @@ impl Ecma {
         Expr::Member(MemberExpr {
             span: DUMMY_SP,
             obj: Box::new(Expr::Ident(Self::global_this())),
-            prop: MemberProp::Ident(Self::special_ident(VPTR)),
+            prop: MemberProp::Ident(Self::special_ident(JS_VTBL)),
         })
     }
 
