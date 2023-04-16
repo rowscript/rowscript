@@ -125,6 +125,7 @@ fn print_err<F: AsRef<str>, S: AsRef<str>>(e: Error, file: F, source: S) -> Erro
         UnsolvedMeta(_, loc) => simple_message(&e, loc, CODEGEN_FAILED),
         NonErasable(_, loc) => simple_message(&e, loc, CODEGEN_FAILED),
 
+        #[cfg(test)]
         CodegenTest => (Range::default(), CODEGEN_FAILED, None),
     };
     let mut b = Report::build(ReportKind::Error, file.as_ref(), range.start)
