@@ -13,7 +13,7 @@ pub type Gamma = HashMap<Var, Box<Term>>;
 pub type Rho = HashMap<Var, Box<Term>>;
 
 pub fn gamma_to_tele(g: &Gamma) -> Tele<Term> {
-    g.into_iter()
+    g.iter()
         .map(|(v, typ)| Param {
             var: v.clone(),
             info: Explicit,

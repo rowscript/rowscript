@@ -48,7 +48,7 @@ impl<'a> Normalizer<'a> {
                             }
                             self.term(ret)?
                         }
-                        None => Box::new(Self::auto_implicit(&*def.ret).map_or(
+                        None => Box::new(Self::auto_implicit(&def.ret).map_or(
                             MetaRef(k.clone(), x.clone(), sp),
                             |tm| {
                                 def.body = Meta(k, Some(tm.clone()));
@@ -141,10 +141,10 @@ impl<'a> Normalizer<'a> {
                 let a = self.term(a)?;
                 let b = self.term(b)?;
                 if let (Fields(_), Fields(_)) = (&*a, &*b) {
-                    let mut u = Unifier::new(&mut self.sigma, self.loc);
+                    let mut u = Unifier::new(self.sigma, self.loc);
                     match d {
-                        Dir::Le => u.unify_fields_ord(&*a, &*b)?,
-                        Dir::Ge => u.unify_fields_ord(&*b, &*a)?,
+                        Dir::Le => u.unify_fields_ord(&a, &b)?,
+                        Dir::Ge => u.unify_fields_ord(&b, &a)?,
                     };
                 }
                 Box::new(RowOrd(a, d, b))
@@ -153,7 +153,7 @@ impl<'a> Normalizer<'a> {
                 let a = self.term(a)?;
                 let b = self.term(b)?;
                 if let (Fields(_), Fields(_)) = (&*a, &*b) {
-                    Unifier::new(&mut self.sigma, self.loc).unify_fields_eq(&*a, &*b)?;
+                    Unifier::new(self.sigma, self.loc).unify_fields_eq(&a, &b)?;
                 }
                 Box::new(RowEq(a, b))
             }
@@ -205,7 +205,7 @@ impl<'a> Normalizer<'a> {
                 match (&*a, &*f) {
                     (Variant(o), Fields(y)) => match &**o {
                         Fields(x) => {
-                            let name = x.iter().nth(0).unwrap().0;
+                            let name = x.iter().next().unwrap().0;
                             if !y.contains_key(name) {
                                 return Err(UnresolvedField(name.clone(), f, self.loc));
                             }
@@ -302,7 +302,7 @@ impl<'a> Normalizer<'a> {
         ai: ArgInfo,
         args: &[Box<Term>],
     ) -> Result<Box<Term>, Error> {
-        let mut ret = f.clone();
+        let mut ret = f;
         for x in args {
             match *ret {
                 Lam(p, b) => {
@@ -352,7 +352,7 @@ impl<'a> Normalizer<'a> {
                 Implements { i: (_, im), .. } => self.sigma.get(im).unwrap().to_term(im.clone()),
                 _ => unreachable!(),
             };
-            match Unifier::new(&mut self.sigma, self.loc).unify(&y, &x) {
+            match Unifier::new(self.sigma, self.loc).unify(&y, x) {
                 Ok(_) => return Ok(()),
                 Err(_) => continue,
             }
@@ -373,13 +373,16 @@ impl<'a> Normalizer<'a> {
                 Implements {
                     i: (_, im_ty), fns, ..
                 } => (
-                    self.sigma.get(&im_ty).unwrap().to_term(im_ty.clone()),
+                    self.sigma.get(im_ty).unwrap().to_term(im_ty.clone()),
                     fns.get(&f).unwrap().clone(),
                 ),
                 _ => unreachable!(),
             };
 
-            if let Err(_) = Unifier::new(&mut self.sigma, self.loc).unify(&ty, &im_ty) {
+            if Unifier::new(self.sigma, self.loc)
+                .unify(&ty, &im_ty)
+                .is_err()
+            {
                 continue;
             }
 

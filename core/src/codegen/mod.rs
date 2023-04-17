@@ -1,6 +1,6 @@
 use std::ffi::OsStr;
 use std::fs::{copy, create_dir_all, write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Def, Sigma};
@@ -44,9 +44,9 @@ impl Codegen {
         }
     }
 
-    pub fn try_push_import(&mut self, ext: &OsStr, path: &PathBuf) {
+    pub fn try_push_import(&mut self, ext: &OsStr, path: &Path) {
         if self.target.should_import(ext) {
-            self.imports.push(path.clone())
+            self.imports.push(path.to_path_buf())
         }
     }
 
@@ -90,7 +90,7 @@ fn mangle(loc: Loc, tm: &Term) -> Result<String, Error> {
     Ok(match tm {
         Ref(_) => return Err(NonErasable(Box::new(tm.clone()), loc)),
 
-        Pi(p, b) => format!("({}{})", mangle(loc, &*p.typ)?, mangle(loc, &**b)?),
+        Pi(p, b) => format!("({}{})", mangle(loc, &p.typ)?, mangle(loc, b)?),
         Unit => "U".to_string(),
         Boolean => "T".to_string(),
         String => "S".to_string(),
@@ -105,15 +105,15 @@ fn mangle(loc: Loc, tm: &Term) -> Result<String, Error> {
             }
             ms.join("")
         }
-        Object(f) => format!("{{{}}}", mangle(loc, &**f)?),
-        Enum(f) => format!("[{}]", mangle(loc, &**f)?),
+        Object(f) => format!("{{{}}}", mangle(loc, f)?),
+        Enum(f) => format!("[{}]", mangle(loc, f)?),
 
         _ => unreachable!(),
     })
 }
 
-fn mangle_hkt(loc: Loc, n: &String, ts: &Vec<Term>) -> Result<String, Error> {
-    let mut ms = vec![n.clone()];
+fn mangle_hkt(loc: Loc, n: &str, ts: &Vec<Term>) -> Result<String, Error> {
+    let mut ms = vec![n.to_string()];
     for t in ts {
         ms.push(mangle(loc, t)?)
     }

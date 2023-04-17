@@ -202,7 +202,7 @@ impl Resolver {
                 let mut names = RawNameSet::default();
                 let mut resolved = Vec::default();
                 for (f, typ) in fields {
-                    names.raw(loc, &f)?;
+                    names.raw(loc, f.clone())?;
                     resolved.push((f, *self.expr(Box::new(typ))?));
                 }
                 Fields(loc, resolved)
@@ -221,7 +221,7 @@ impl Resolver {
                 let mut names = RawNameSet::default();
                 let mut new = Vec::default();
                 for (n, v, e) in cs {
-                    names.raw(loc, &n)?;
+                    names.raw(loc, n.clone())?;
                     let e = *self.bodied(&[&v], Box::new(e))?;
                     new.push((n, v, e));
                 }

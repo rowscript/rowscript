@@ -7,62 +7,60 @@ use crate::theory::{Param, Var};
 pub struct Renamer(HashMap<Var, Var>);
 
 impl Renamer {
-    pub fn term(&mut self, tm: Box<Term>) -> Box<Term> {
+    pub fn term(&mut self, tm: Term) -> Box<Term> {
         use Term::*;
-        Box::new(match *tm {
+        Box::new(match tm {
             Ref(x) => self.0.get(&x).map_or(Ref(x), |y| Ref(y.clone())),
             MetaRef(k, r, sp) => MetaRef(
                 k,
                 r,
-                sp.into_iter()
-                    .map(|(i, tm)| (i, *self.term(Box::new(tm))))
-                    .collect(),
+                sp.into_iter().map(|(i, tm)| (i, *self.term(tm))).collect(),
             ),
             Let(p, a, b) => {
-                let a = self.term(a); // not guarded by `p`, rename it first
-                Let(self.param(p), a, self.term(b))
+                let a = self.term(*a); // not guarded by `p`, rename it first
+                Let(self.param(p), a, self.term(*b))
             }
-            Pi(p, c) => Pi(self.param(p), self.term(c)),
-            Lam(p, b) => Lam(self.param(p), self.term(b)),
-            App(f, i, x) => App(self.term(f), i, self.term(x)),
-            Sigma(p, c) => Sigma(self.param(p), self.term(c)),
-            Tuple(a, b) => Tuple(self.term(a), self.term(b)),
+            Pi(p, c) => Pi(self.param(p), self.term(*c)),
+            Lam(p, b) => Lam(self.param(p), self.term(*b)),
+            App(f, i, x) => App(self.term(*f), i, self.term(*x)),
+            Sigma(p, c) => Sigma(self.param(p), self.term(*c)),
+            Tuple(a, b) => Tuple(self.term(*a), self.term(*b)),
             TupleLet(x, y, a, b) => {
-                TupleLet(self.param(x), self.param(y), self.term(a), self.term(b))
+                TupleLet(self.param(x), self.param(y), self.term(*a), self.term(*b))
             }
-            UnitLet(a, b) => UnitLet(self.term(a), self.term(b)),
-            If(p, t, e) => If(self.term(p), self.term(t), self.term(e)),
+            UnitLet(a, b) => UnitLet(self.term(*a), self.term(*b)),
+            If(p, t, e) => If(self.term(*p), self.term(*t), self.term(*e)),
             Fields(fields) => {
                 let mut m = FieldMap::default();
                 for (f, tm) in fields {
-                    m.insert(f, *self.term(Box::new(tm)));
+                    m.insert(f, *self.term(tm));
                 }
                 Fields(m)
             }
-            Combine(a, b) => Combine(self.term(a), self.term(b)),
-            RowOrd(a, d, b) => RowOrd(self.term(a), d, self.term(b)),
-            RowEq(a, b) => RowEq(self.term(a), self.term(b)),
-            Object(f) => Object(self.term(f)),
-            Obj(f) => Obj(self.term(f)),
-            Concat(a, b) => Concat(self.term(a), self.term(b)),
-            Access(a, n) => Access(self.term(a), n),
-            Downcast(a, f) => Downcast(self.term(a), self.term(f)),
-            Enum(f) => Enum(self.term(f)),
-            Variant(f) => Variant(self.term(f)),
-            Upcast(a, f) => Upcast(self.term(a), self.term(f)),
+            Combine(a, b) => Combine(self.term(*a), self.term(*b)),
+            RowOrd(a, d, b) => RowOrd(self.term(*a), d, self.term(*b)),
+            RowEq(a, b) => RowEq(self.term(*a), self.term(*b)),
+            Object(f) => Object(self.term(*f)),
+            Obj(f) => Obj(self.term(*f)),
+            Concat(a, b) => Concat(self.term(*a), self.term(*b)),
+            Access(a, n) => Access(self.term(*a), n),
+            Downcast(a, f) => Downcast(self.term(*a), self.term(*f)),
+            Enum(f) => Enum(self.term(*f)),
+            Variant(f) => Variant(self.term(*f)),
+            Upcast(a, f) => Upcast(self.term(*a), self.term(*f)),
             Switch(a, cs) => {
-                let a = self.term(a);
+                let a = self.term(*a);
                 let mut m = CaseMap::default();
                 for (n, (v, tm)) in cs {
-                    m.insert(n, (v, *self.term(Box::new(tm))));
+                    m.insert(n, (v, *self.term(tm)));
                 }
                 Switch(a, m)
             }
-            Vptr(r, ts) => Vptr(r, ts.into_iter().map(|t| *self.term(Box::new(t))).collect()),
-            Vp(r, ts) => Vp(r, ts.into_iter().map(|t| *self.term(Box::new(t))).collect()),
-            Lookup(a) => Lookup(self.term(a)),
-            Find(ty, i, f) => Find(self.term(ty), i, f),
-            ImplementsOf(a, i) => ImplementsOf(self.term(a), i),
+            Vptr(r, ts) => Vptr(r, ts.into_iter().map(|t| *self.term(t)).collect()),
+            Vp(r, ts) => Vp(r, ts.into_iter().map(|t| *self.term(t)).collect()),
+            Lookup(a) => Lookup(self.term(*a)),
+            Find(ty, i, f) => Find(self.term(*ty), i, f),
+            ImplementsOf(a, i) => ImplementsOf(self.term(*a), i),
 
             Extern(r) => Extern(r),
             Undef(r) => Undef(r),
@@ -91,11 +89,11 @@ impl Renamer {
         Param {
             var,
             info: p.info,
-            typ: self.term(p.typ),
+            typ: self.term(*p.typ),
         }
     }
 }
 
 pub fn rename(tm: Box<Term>) -> Box<Term> {
-    Renamer::default().term(tm)
+    Renamer::default().term(*tm)
 }

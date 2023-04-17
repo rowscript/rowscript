@@ -121,7 +121,7 @@ impl Term {
     }
 
     pub fn tele_to_spine(tele: &Tele<Term>) -> Spine {
-        tele.into_iter()
+        tele.iter()
             .map(|p| (p.info, Self::Ref(p.var.clone())))
             .collect()
     }
@@ -139,10 +139,10 @@ impl Display for Term {
                 MetaRef(k, r, sp) => {
                     let mut s = vec![format!("{k}{r}")];
                     s.extend(
-                        sp.into_iter()
+                        sp.iter()
                             .map(|(i, tm)| match i {
                                 ParamInfo::Explicit => tm.to_string(),
-                                ParamInfo::Implicit => format!("{{{}}}", tm.to_string()),
+                                ParamInfo::Implicit => format!("{{{tm}}}"),
                             })
                             .collect::<Vec<_>>(),
                     );
@@ -174,7 +174,7 @@ impl Display for Term {
                 Fields(fields) => format!(
                     "({})",
                     fields
-                        .into_iter()
+                        .iter()
                         .map(|(f, typ)| format!("{f}: {typ}"))
                         .collect::<Vec<_>>()
                         .join(", ")

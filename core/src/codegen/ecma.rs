@@ -26,11 +26,11 @@ use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNTUPLED_RHS};
 use crate::Error;
 use crate::Error::{NonErasable, UnsolvedMeta};
 
-impl Into<Span> for Loc {
-    fn into(self) -> Span {
-        Span {
-            lo: BytePos(self.start as u32),
-            hi: BytePos(self.end as u32),
+impl From<Loc> for Span {
+    fn from(loc: Loc) -> Self {
+        Self {
+            lo: BytePos(loc.start as u32),
+            hi: BytePos(loc.end as u32),
             ctxt: Default::default(),
         }
     }
@@ -106,7 +106,7 @@ impl Ecma {
         sigma: &Sigma,
         loc: Loc,
         a: &Box<Term>,
-        n: &String,
+        n: &str,
     ) -> Result<Box<Expr>, Error> {
         Ok(Box::new(Expr::Member(MemberExpr {
             span: loc.into(),
@@ -114,7 +114,7 @@ impl Ecma {
                 span: loc.into(),
                 expr: self.expr(sigma, loc, a)?,
             })),
-            prop: MemberProp::Ident(Self::str_ident(loc, n.as_str())),
+            prop: MemberProp::Ident(Self::str_ident(loc, n)),
         })))
     }
 
@@ -209,7 +209,7 @@ impl Ecma {
                 span: loc.into(),
                 expr: Box::new(Expr::Arrow(ArrowExpr {
                     span: loc.into(),
-                    params: v.map_or_else(|| Default::default(), |v| vec![Self::ident_pat(loc, v)]),
+                    params: v.map_or_else(Default::default, |v| vec![Self::ident_pat(loc, v)]),
                     body: Box::new(BlockStmtOrExpr::Expr(self.expr(sigma, loc, b)?)),
                     is_async: false,
                     is_generator: false,
@@ -358,7 +358,7 @@ impl Ecma {
             }))),
             Num(_, v) => Box::new(Expr::Lit(Lit::Num(JsNumber {
                 span: loc.into(),
-                value: v.clone(),
+                value: *v,
                 raw: None,
             }))),
             Big(v) => Box::new(Expr::Lit(Lit::BigInt(JsBigInt {
@@ -414,7 +414,7 @@ impl Ecma {
             },
             Variant(f) => match &**f {
                 Fields(fields) => {
-                    let (name, tm) = fields.iter().nth(0).unwrap();
+                    let (name, tm) = fields.iter().next().unwrap();
                     Box::new(Expr::Object(ObjectLit {
                         span: loc.into(),
                         props: vec![

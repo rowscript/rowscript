@@ -525,7 +525,7 @@ impl Elaborator {
                         let tele = vec![Param {
                             var: Var::unbound(),
                             info: Implicit,
-                            typ: Box::new(Term::RowOrd(from.clone(), Le, to.clone())),
+                            typ: Box::new(Term::RowOrd(from, Le, to.clone())),
                         }];
                         (
                             rename(Term::lam(
@@ -566,7 +566,7 @@ impl Elaborator {
                     Term::Enum(y) => match *y {
                         Term::Fields(f) => {
                             if f.len() != cs.len() {
-                                return Err(NonExhaustive(Box::new(Term::Fields(f.clone())), loc));
+                                return Err(NonExhaustive(Box::new(Term::Fields(f)), loc));
                             }
                             let mut m = CaseMap::default();
                             for (n, v, e) in cs {

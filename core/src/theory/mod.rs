@@ -45,11 +45,11 @@ pub struct RawNameSet(HashSet<String>);
 
 impl RawNameSet {
     pub fn var(&mut self, loc: Loc, v: &Var) -> Result<(), Error> {
-        self.raw(loc, &v.to_string())
+        self.raw(loc, v.to_string())
     }
 
-    pub fn raw(&mut self, loc: Loc, f: &String) -> Result<(), Error> {
-        if !self.0.insert(f.clone()) {
+    pub fn raw(&mut self, loc: Loc, f: String) -> Result<(), Error> {
+        if !self.0.insert(f) {
             return Err(Error::DuplicateName(loc));
         }
         Ok(())
@@ -135,10 +135,6 @@ impl Var {
     pub fn as_str(&self) -> &str {
         self.name.as_str()
     }
-
-    pub fn to_string(&self) -> String {
-        self.as_str().to_string()
-    }
 }
 
 impl Debug for Var {
@@ -189,11 +185,11 @@ pub enum ParamInfo {
     Implicit,
 }
 
-impl Into<ArgInfo> for ParamInfo {
-    fn into(self) -> ArgInfo {
+impl From<ParamInfo> for ArgInfo {
+    fn from(info: ParamInfo) -> Self {
         use ArgInfo::*;
         use ParamInfo::*;
-        match self {
+        match info {
             Explicit => UnnamedExplicit,
             Implicit => UnnamedImplicit,
         }

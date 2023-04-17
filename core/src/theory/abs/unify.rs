@@ -133,7 +133,7 @@ impl<'a> Unifier<'a> {
 
         let tele = d.tele.clone();
         let ret = d.ret.clone();
-        match &*tm {
+        match tm {
             Ref(r) => match tele.into_iter().find(|p| &p.var == r) {
                 Some(p) => self.unify(&ret, &p.typ),
                 None => unreachable!(),

@@ -29,11 +29,11 @@ enum TargetID {
     Ecma,
 }
 
-impl Into<Box<dyn Target>> for TargetID {
-    fn into(self) -> Box<dyn Target> {
-        match self {
-            TargetID::Noop => Box::new(noop::Noop::default()),
-            TargetID::Ecma => Box::new(ecma::Ecma::default()),
+impl From<TargetID> for Box<dyn Target> {
+    fn from(val: TargetID) -> Self {
+        match val {
+            TargetID::Noop => Box::<noop::Noop>::default(),
+            TargetID::Ecma => Box::<ecma::Ecma>::default(),
         }
     }
 }
