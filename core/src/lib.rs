@@ -27,7 +27,7 @@ pub enum Error {
     #[error("IO error")]
     IO(#[from] io::Error),
     #[error("parse error")]
-    Parsing(#[from] pest::error::Error<Rule>),
+    Parsing(#[from] Box<pest::error::Error<Rule>>),
 
     #[error("unresolved variable")]
     UnresolvedVar(Loc),
@@ -184,7 +184,7 @@ impl Driver {
                         let src = read_to_string(&file)?;
                         let path = file.to_str().unwrap().to_string();
                         let defs = RowsParser::parse(Rule::file, src.as_str())
-                            .map_err(Error::from)
+                            .map_err(|e| Error::from(Box::new(e)))
                             .map(trans::file)
                             .and_then(|d| Resolver::default().defs(d))
                             .and_then(|d| self.elab.defs(d))

@@ -94,6 +94,6 @@ impl Renamer {
     }
 }
 
-pub fn rename(tm: Box<Term>) -> Box<Term> {
-    Renamer::default().term(*tm)
+pub fn rename(tm: Term) -> Box<Term> {
+    Renamer::default().term(tm)
 }
