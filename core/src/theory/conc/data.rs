@@ -151,7 +151,7 @@ impl Expr {
         let mut untupled_vars = Vec::default();
         for x in vars.iter().rev() {
             untupled_vars.push(match x {
-                Unresolved(l, r) => Unresolved(l.clone(), r.untupled_rhs()),
+                Unresolved(l, r) => Unresolved(*l, r.untupled_rhs()),
                 _ => unreachable!(),
             });
         }
