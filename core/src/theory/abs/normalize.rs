@@ -31,7 +31,7 @@ impl<'a> Normalizer<'a> {
         Ok(match *tm {
             Ref(x) => {
                 if let Some(y) = self.rho.get(&x) {
-                    self.term(rename(y.clone()))?
+                    self.term(rename(*y.clone()))?
                 } else {
                     Box::new(Ref(x))
                 }
@@ -42,7 +42,7 @@ impl<'a> Normalizer<'a> {
                 let ret = match &def.body {
                     Meta(_, s) => match s {
                         Some(solved) => {
-                            let mut ret = rename(Term::lam(&def.tele, Box::new(solved.clone())));
+                            let mut ret = rename(Term::lam(&def.tele, solved.clone()));
                             for (_, x) in sp {
                                 ret = Box::new(App(ret, UnnamedExplicit, Box::new(x)))
                             }

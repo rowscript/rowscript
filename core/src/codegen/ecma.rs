@@ -139,14 +139,9 @@ impl Ecma {
     fn type_erased_param_pat(loc: Loc, p: &Param<Term>) -> Vec<Pat> {
         let mut pats = Vec::default();
         let mut tm = &p.typ;
-        loop {
-            match &**tm {
-                Term::Sigma(p, b) => {
-                    pats.push(Self::ident_pat(loc, &p.var));
-                    tm = b;
-                }
-                _ => break,
-            }
+        while let Term::Sigma(ref p, ref b) = **tm {
+            pats.push(Self::ident_pat(loc, &p.var));
+            tm = b;
         }
         pats
     }
