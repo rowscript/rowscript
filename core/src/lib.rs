@@ -1,3 +1,4 @@
+use std::convert::identity;
 use std::fs::read_to_string;
 use std::io;
 use std::ops::Range;
@@ -148,6 +149,9 @@ fn print_err<F: AsRef<str>, S: AsRef<str>>(e: Error, file: F, source: S) -> Erro
 #[grammar = "theory/surf.pest"]
 struct RowsParser;
 
+pub const OUTDIR: &str = "dist";
+pub const FILE_EXT_ROWS: &str = "rows";
+
 pub struct Driver {
     path: PathBuf,
     elab: Elaborator,
@@ -155,8 +159,8 @@ pub struct Driver {
 }
 
 impl Driver {
-    pub fn new(path: PathBuf, target: Box<dyn Target>) -> Self {
-        let codegen = Codegen::new(target, &path);
+    pub fn new(path: PathBuf, outdir: Option<PathBuf>, target: Box<dyn Target>) -> Self {
+        let codegen = Codegen::new(target, outdir.map_or(path.join(OUTDIR), identity));
         Self {
             path,
             elab: Default::default(),
@@ -175,17 +179,21 @@ impl Driver {
             let file = entry.path();
             match file.extension() {
                 None => continue,
-                Some(e) if e != "rows" => continue,
-                _ => {
-                    let src = read_to_string(&file)?;
-                    let path = file.to_str().unwrap().to_string();
-                    let defs = RowsParser::parse(Rule::file, src.as_str())
-                        .map_err(Error::from)
-                        .map(trans::file)
-                        .and_then(|d| Resolver::default().defs(d))
-                        .and_then(|d| self.elab.defs(d))
-                        .map_err(|e| print_err(e, &path, &src))?;
-                    files.push((path, src, defs));
+                Some(e) => {
+                    if e == FILE_EXT_ROWS {
+                        let src = read_to_string(&file)?;
+                        let path = file.to_str().unwrap().to_string();
+                        let defs = RowsParser::parse(Rule::file, src.as_str())
+                            .map_err(Error::from)
+                            .map(trans::file)
+                            .and_then(|d| Resolver::default().defs(d))
+                            .and_then(|d| self.elab.defs(d))
+                            .map_err(|e| print_err(e, &path, &src))?;
+                        files.push((path, src, defs));
+                        continue;
+                    }
+
+                    self.codegen.try_push_import(e, &file)
                 }
             }
         }

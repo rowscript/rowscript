@@ -42,7 +42,7 @@ impl Def<Term> {
         use Body::*;
         match &self.body {
             Fn(f) => self.to_lam_term(f),
-            Postulate => self.to_ref_term(v),
+            Postulate => Box::new(Term::Extern(v)),
             Alias(t) => self.to_lam_term(t),
 
             Class { object, .. } => self.to_lam_term(object),
@@ -87,10 +87,6 @@ impl Def<Term> {
 
     fn to_lam_term(&self, f: &Box<Term>) -> Box<Term> {
         rename(Term::lam(&self.tele, f.clone()))
-    }
-
-    fn to_ref_term(&self, v: Var) -> Box<Term> {
-        Box::new(Term::Ref(v))
     }
 
     pub fn to_type(&self) -> Box<Term> {

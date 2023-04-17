@@ -64,7 +64,8 @@ impl Renamer {
             Find(ty, i, f) => Find(self.term(ty), i, f),
             ImplementsOf(a, i) => ImplementsOf(self.term(a), i),
 
-            Undef(x) => Undef(x),
+            Extern(r) => Extern(r),
+            Undef(r) => Undef(r),
             Univ => Univ,
             Unit => Unit,
             TT => TT,

@@ -94,8 +94,7 @@ impl Expr {
 
     pub fn loc(&self) -> Loc {
         use Expr::*;
-
-        match self {
+        *match self {
             Unresolved(loc, _) => loc,
             Resolved(loc, _) => loc,
             Hole(loc) => loc,
@@ -144,7 +143,6 @@ impl Expr {
             Find(loc, _, _) => loc,
             ImplementsOf(loc, _) => loc,
         }
-        .clone()
     }
 
     pub fn wrap_tuple_lets(loc: Loc, x: &Var, vars: Vec<Self>, b: Box<Self>) -> Box<Self> {

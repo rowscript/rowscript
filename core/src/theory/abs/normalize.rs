@@ -267,6 +267,7 @@ impl<'a> Normalizer<'a> {
                 f,
             )),
 
+            Extern(r) => Box::new(Extern(r)),
             Univ => Box::new(Univ),
             Unit => Box::new(Unit),
             TT => Box::new(TT),

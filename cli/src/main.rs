@@ -11,6 +11,8 @@ use rowscript_core::Driver;
 struct Args {
     #[arg(index = 1, default_value = ".")]
     path: PathBuf,
+    #[arg(short, long)]
+    out: Option<PathBuf>,
     #[arg(short, long, value_enum, default_value_t = DEFAULT_TARGET_ID)]
     target: TargetID,
 }
@@ -38,7 +40,7 @@ impl Into<Box<dyn Target>> for TargetID {
 
 fn main() -> ExitCode {
     let args = Args::parse();
-    Driver::new(args.path, args.target.into())
+    Driver::new(args.path, args.out, args.target.into())
         .run()
         .map_or(ExitCode::FAILURE, |_| ExitCode::SUCCESS)
 }

@@ -1,10 +1,12 @@
+use std::ffi::OsStr;
+use std::fs::{copy, create_dir_all, write};
+use std::path::PathBuf;
+
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Def, Sigma};
 use crate::theory::Loc;
 use crate::Error::NonErasable;
 use crate::{print_err, Error};
-use std::fs::write;
-use std::path::PathBuf;
 
 #[cfg(feature = "codegen-ecma")]
 pub mod ecma;
@@ -12,27 +14,39 @@ pub mod noop;
 
 pub trait Target {
     fn filename(&self) -> &'static str;
-    fn decls(
+    fn should_import(&self, ext: &OsStr) -> bool;
+    fn module(
         &mut self,
         buf: &mut Vec<u8>,
         sigma: &Sigma,
         defs: Vec<Def<Term>>,
+        imports: Vec<(&OsStr, PathBuf)>,
     ) -> Result<(), Error>;
 }
 
 pub struct Codegen {
     target: Box<dyn Target>,
     buf: Vec<u8>,
+    imports: Vec<PathBuf>,
+    outdir: PathBuf,
     pub outfile: PathBuf,
 }
 
 impl Codegen {
-    pub fn new(target: Box<dyn Target>, outdir: &PathBuf) -> Self {
+    pub fn new(target: Box<dyn Target>, outdir: PathBuf) -> Self {
         let outfile = outdir.join(target.filename());
         Self {
             target,
             buf: Default::default(),
+            imports: Default::default(),
+            outdir,
             outfile,
+        }
+    }
+
+    pub fn try_push_import(&mut self, ext: &OsStr, path: &PathBuf) {
+        if self.target.should_import(ext) {
+            self.imports.push(path.clone())
         }
     }
 
@@ -43,11 +57,29 @@ impl Codegen {
     ) -> Result<(), Error> {
         for (path, src, defs) in files {
             self.target
-                .decls(&mut self.buf, sigma, defs)
+                .module(
+                    &mut self.buf,
+                    sigma,
+                    defs,
+                    self.imports
+                        .iter()
+                        .map(|p| {
+                            (
+                                p.file_stem().unwrap(),
+                                [OsStr::new("."), p.file_name().unwrap()].iter().collect(),
+                            )
+                        })
+                        .collect(),
+                )
                 .map_err(|e| print_err(e, &path, &src))?;
         }
         if !self.buf.is_empty() {
-            write(&self.outfile, &self.buf)?
+            create_dir_all(&self.outdir)?;
+            write(&self.outfile, &self.buf)?;
+            for file in &self.imports {
+                let to = self.outdir.join(file.file_name().unwrap());
+                copy(file, to)?;
+            }
         }
         Ok(())
     }

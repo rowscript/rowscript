@@ -62,7 +62,7 @@ fn run_helper(mod_path: &str) -> Result<(), Error> {
         .join("src")
         .join("tests")
         .join(mod_path.to_string().split("::").last().unwrap());
-    let mut driver = Driver::new(pkg, target);
+    let mut driver = Driver::new(pkg, None, target);
     driver.run()?;
     parse_outfile(&driver)
 }

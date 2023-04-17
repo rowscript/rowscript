@@ -95,6 +95,7 @@ impl<'a> Unifier<'a> {
             (Variant(a), Variant(b)) => self.unify(a, b),
 
             (Ref(a), Ref(b)) if a == b => Ok(()),
+            (Extern(a), Extern(b)) if a == b => Ok(()),
             (Str(a), Str(b)) if a == b => Ok(()),
             (Num(_, a), Num(_, b)) if a == b => Ok(()),
             (Big(a), Big(b)) if a == b => Ok(()),

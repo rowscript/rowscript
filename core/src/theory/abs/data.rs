@@ -47,6 +47,7 @@ impl Display for MetaKind {
 #[derive(Debug, Clone)]
 pub enum Term {
     Ref(Var),
+    Extern(Var),
     MetaRef(MetaKind, Var, Spine),
     Undef(Var),
 
@@ -134,6 +135,7 @@ impl Display for Term {
         f.write_str(
             match self {
                 Ref(r) => r.to_string(),
+                Extern(r) => r.to_string(),
                 MetaRef(k, r, sp) => {
                     let mut s = vec![format!("{k}{r}")];
                     s.extend(

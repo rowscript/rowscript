@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::ffi::OsStr;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
 
@@ -7,10 +9,10 @@ use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
     ArrowExpr, AssignExpr, AssignOp, BigInt as JsBigInt, BindingIdent, BlockStmt, BlockStmtOrExpr,
     Bool, CallExpr, Callee, ComputedPropName, CondExpr, Decl, Expr, ExprOrSpread, ExprStmt, FnDecl,
-    Function, Ident, KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleItem,
-    Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, PatOrExpr, Prop, PropName,
-    PropOrSpread, ReturnStmt, SpreadElement, Stmt, Str as JsStr, VarDecl, VarDeclKind,
-    VarDeclarator,
+    Function, Ident, ImportDecl, ImportSpecifier, ImportStarAsSpecifier, KeyValueProp, Lit,
+    MemberExpr, MemberProp, Module, ModuleDecl, ModuleItem, Number as JsNumber, ObjectLit,
+    Param as JsParam, ParenExpr, Pat, PatOrExpr, Prop, PropName, PropOrSpread, ReturnStmt,
+    SpreadElement, Stmt, Str as JsStr, VarDecl, VarDeclKind, VarDeclarator,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -34,6 +36,7 @@ impl Into<Span> for Loc {
     }
 }
 
+const JS_LIB: &str = "__lib";
 const JS_ESCAPED_THIS: &str = "_this";
 const JS_ENUM_TAG: &str = "__enumT";
 const JS_ENUM_VAL: &str = "__enumV";
@@ -80,6 +83,10 @@ impl Ecma {
 
     fn undefined() -> Ident {
         Self::special_ident("undefined")
+    }
+
+    fn lib() -> Ident {
+        Self::special_ident(JS_LIB)
     }
 
     fn global_this() -> Ident {
@@ -302,6 +309,11 @@ impl Ecma {
             UnitLet(a, b) => self.lambda_encoded_let(sigma, loc, None, a, b)?,
 
             Ref(r) | Undef(r) => Box::new(Expr::Ident(Self::ident(loc, r))),
+            Extern(r) => Box::new(Expr::Member(MemberExpr {
+                span: loc.into(),
+                obj: Box::new(Expr::Ident(Self::lib())),
+                prop: MemberProp::Ident(Self::ident(loc, r)),
+            })),
             Lam(p, b) => match p.info {
                 Explicit => Box::new(Expr::Arrow(ArrowExpr {
                     span: loc.into(),
@@ -508,6 +520,63 @@ impl Ecma {
         })
     }
 
+    fn imports(
+        &mut self,
+        items: &mut Vec<ModuleItem>,
+        imports: Vec<(&OsStr, PathBuf)>,
+    ) -> Result<(), Error> {
+        let mut props = Vec::default();
+        for (m, src) in imports {
+            let ns = m.to_string_lossy();
+            items.push(ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
+                span: DUMMY_SP,
+                specifiers: vec![ImportSpecifier::Namespace(ImportStarAsSpecifier {
+                    span: DUMMY_SP,
+                    local: Ident {
+                        span: DUMMY_SP,
+                        sym: ns.clone().into(),
+                        optional: false,
+                    },
+                })],
+                src: Box::new(JsStr {
+                    span: DUMMY_SP,
+                    value: src.to_string_lossy().into(),
+                    raw: None,
+                }),
+                type_only: false,
+                asserts: None,
+            })));
+            props.push(PropOrSpread::Spread(SpreadElement {
+                dot3_token: DUMMY_SP,
+                expr: Box::new(Expr::Ident(Ident {
+                    span: DUMMY_SP,
+                    sym: ns.into(),
+                    optional: false,
+                })),
+            }));
+        }
+        if !props.is_empty() {
+            items.push(ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(VarDecl {
+                span: DUMMY_SP,
+                kind: VarDeclKind::Const,
+                declare: false,
+                decls: vec![VarDeclarator {
+                    span: DUMMY_SP,
+                    name: Pat::Ident(BindingIdent {
+                        id: Self::lib(),
+                        type_ann: None,
+                    }),
+                    init: Some(Box::new(Expr::Object(ObjectLit {
+                        span: DUMMY_SP,
+                        props,
+                    }))),
+                    definite: false,
+                }],
+            })))))
+        }
+        Ok(())
+    }
+
     fn decls(
         &mut self,
         items: &mut Vec<ModuleItem>,
@@ -627,16 +696,23 @@ impl Ecma {
 
 impl Target for Ecma {
     fn filename(&self) -> &'static str {
-        "index.js"
+        "index.mjs"
     }
 
-    fn decls(
+    fn should_import(&self, ext: &OsStr) -> bool {
+        ext == "js" || ext == "mjs"
+    }
+
+    fn module(
         &mut self,
         buf: &mut Vec<u8>,
         sigma: &Sigma,
         defs: Vec<Def<Term>>,
+        imports: Vec<(&OsStr, PathBuf)>,
     ) -> Result<(), Error> {
         let mut body = Vec::default();
+
+        self.imports(&mut body, imports)?;
         self.decls(&mut body, sigma, defs)?;
         self.vtbl_decl(&mut body)?;
 
