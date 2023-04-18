@@ -176,11 +176,16 @@ impl Expr {
         wrapped
     }
 
-    pub fn holed_app(f: Box<Self>) -> Box<Self> {
+    pub fn holed_app(f: Self) -> Self {
         use ArgInfo::*;
         use Expr::*;
         let loc = f.loc();
-        Box::new(App(loc, f, UnnamedImplicit, Box::new(InsertedHole(loc))))
+        App(
+            loc,
+            Box::from(f),
+            UnnamedImplicit,
+            Box::new(InsertedHole(loc)),
+        )
     }
 }
 
