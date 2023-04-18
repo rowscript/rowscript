@@ -6,20 +6,20 @@ on:
     branches: [ "main" ]
 env:
   CARGO_TERM_COLOR: always
-  RUST_MIN_STACK: 8388608
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Install Miri
-      run: |
-        rustup toolchain install nightly --component miri rustfmt clippy
-        rustup override set nightly
-        cargo miri setup
-    - name: Run rustfmt
-      run: cargo fmt --all -- --check
-    - name: Run clippy
-      run: cargo clippy --all
-    - name: Test with Miri
-      run: cargo miri test --release
+      - uses: actions/checkout@v3
+      - name: Install Miri
+        run: |
+          rustup toolchain install nightly --component miri rustfmt clippy
+          rustup override set nightly
+          cargo miri setup
+      - name: Run rustfmt
+        run: cargo fmt --all -- --check
+      - name: Run clippy
+        run: cargo clippy --all
+        # FIXME: All tests are based on filesystem for now, Miri is not usable here.
+#      - name: Test with Miri
+#        run: cargo miri test --release
