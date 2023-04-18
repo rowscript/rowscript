@@ -135,7 +135,7 @@ impl Elaborator {
         let im_tm = im_def.to_term(im.clone());
         match im_def.body {
             Alias(_) => {}
-            _ => return Err(ExpectedAlias(Box::new(Term::Ref(im.clone())), im_def_loc)),
+            _ => return Err(ExpectedAlias(Term::Ref(im.clone()), im_def_loc)),
         }
 
         let i_def = self.sigma.get_mut(i).unwrap();
@@ -147,10 +147,10 @@ impl Elaborator {
                     if im_fns.contains_key(f) {
                         continue;
                     }
-                    return Err(NonExhaustive(Box::new(Term::Ref(im.clone())), i_def_loc));
+                    return Err(NonExhaustive(Term::Ref(im.clone()), i_def_loc));
                 }
             }
-            _ => return Err(ExpectedInterface(Box::new(Term::Ref(i.clone())), i_def_loc)),
+            _ => return Err(ExpectedInterface(Term::Ref(i.clone()), i_def_loc)),
         };
 
         for (i_fn, im_fn) in im_fns {
@@ -208,7 +208,7 @@ impl Elaborator {
                         let checked_body = self.guarded_check(&[&param], body, &body_type)?;
                         Box::new(Term::Lam(param.clone(), checked_body))
                     }
-                    _ => return Err(ExpectedPi(pi, loc)),
+                    _ => return Err(ExpectedPi(*pi, loc)),
                 }
             }
             Tuple(loc, a, b) => {
@@ -221,7 +221,7 @@ impl Elaborator {
                         let b = self.check(b, &body_type)?;
                         Box::new(Term::Tuple(a, b))
                     }
-                    _ => return Err(ExpectedSigma(sig, loc)),
+                    _ => return Err(ExpectedSigma(*sig, loc)),
                 }
             }
             TupleLet(_, x, y, a, b) => {
@@ -243,7 +243,7 @@ impl Elaborator {
                         let b = self.guarded_check(&[&x, &y], b, ty)?;
                         Box::new(Term::TupleLet(x, y, a, b))
                     }
-                    _ => return Err(ExpectedSigma(sig, a_loc)),
+                    _ => return Err(ExpectedSigma(*sig, a_loc)),
                 }
             }
             UnitLet(_, a, b) => Box::new(Term::UnitLet(
@@ -348,7 +348,7 @@ impl Elaborator {
                         )?;
                         (applied, applied_ty)
                     }
-                    ty => return Err(ExpectedPi(Box::new(ty), f_loc)),
+                    ty => return Err(ExpectedPi(*Box::new(ty), f_loc)),
                 }
             }
             Sigma(_, p, b) => {
@@ -445,8 +445,8 @@ impl Elaborator {
                     (Term::Object(rx), Term::Object(ry)) => {
                         Box::new(Term::Object(Box::new(Term::Combine(rx, ry))))
                     }
-                    (Term::Object(_), y_ty) => return Err(ExpectedObject(Box::new(y_ty), y_loc)),
-                    (x_ty, _) => return Err(ExpectedObject(Box::new(x_ty), x_loc)),
+                    (Term::Object(_), y_ty) => return Err(ExpectedObject(*Box::new(y_ty), y_loc)),
+                    (x_ty, _) => return Err(ExpectedObject(*Box::new(x_ty), x_loc)),
                 };
                 (Box::new(Term::Concat(x, y)), ty)
             }
@@ -506,8 +506,8 @@ impl Elaborator {
                             Box::new(rename(Term::pi(&tele, Term::Object(to.clone())))),
                         )
                     }
-                    (Term::Object(_), _) => return Err(ExpectedObject(b_ty, loc)),
-                    _ => return Err(ExpectedObject(a_ty, loc)),
+                    (Term::Object(_), _) => return Err(ExpectedObject(*b_ty, loc)),
+                    _ => return Err(ExpectedObject(*a_ty, loc)),
                 }
             }
             Enum(_, r) => {
@@ -535,7 +535,7 @@ impl Elaborator {
                             Box::new(rename(Term::pi(&tele, Term::Enum(to.clone())))),
                         )
                     }
-                    _ => return Err(ExpectedEnum(b_ty, loc)),
+                    _ => return Err(ExpectedEnum(*b_ty, loc)),
                 }
             }
             Upcast(loc, a) => {
@@ -553,8 +553,8 @@ impl Elaborator {
                             Box::new(rename(Term::pi(&tele, Term::Enum(to.clone())))),
                         )
                     }
-                    (Term::Enum(_), _) => return Err(ExpectedEnum(b_ty, loc)),
-                    _ => return Err(ExpectedEnum(a_ty, loc)),
+                    (Term::Enum(_), _) => return Err(ExpectedEnum(*b_ty, loc)),
+                    _ => return Err(ExpectedEnum(*a_ty, loc)),
                 }
             }
             Switch(loc, a, cs) => {
@@ -566,13 +566,13 @@ impl Elaborator {
                     Term::Enum(y) => match *y {
                         Term::Fields(f) => {
                             if f.len() != cs.len() {
-                                return Err(NonExhaustive(Box::new(Term::Fields(f)), loc));
+                                return Err(NonExhaustive(*Box::new(Term::Fields(f)), loc));
                             }
                             let mut m = CaseMap::default();
                             for (n, v, e) in cs {
                                 let ty = f.get(&n).ok_or(UnresolvedField(
                                     n.clone(),
-                                    Box::new(Term::Fields(f.clone())),
+                                    *Box::new(Term::Fields(f.clone())),
                                     loc,
                                 ))?;
                                 let p = Param {
@@ -585,9 +585,9 @@ impl Elaborator {
                             }
                             (Box::new(Term::Switch(a, m)), ret_ty.clone())
                         }
-                        y => return Err(FieldsUnknown(Box::new(y), loc)),
+                        y => return Err(FieldsUnknown(*Box::new(y), loc)),
                     },
-                    en => return Err(ExpectedEnum(Box::new(en), a_loc)),
+                    en => return Err(ExpectedEnum(*Box::new(en), a_loc)),
                 }
             }
             Lookup(loc, o, n, arg) => {
@@ -624,14 +624,14 @@ impl Elaborator {
                             },
                             None => {
                                 return Err(ExpectedClass(
-                                    Box::new(Term::Object(Box::new(Term::Fields(f)))),
+                                    *Box::new(Term::Object(Box::new(Term::Fields(f)))),
                                     o_loc,
                                 ));
                             }
                         },
-                        tm => return Err(FieldsUnknown(Box::new(tm), o_loc)),
+                        tm => return Err(FieldsUnknown(*Box::new(tm), o_loc)),
                     },
-                    tm => return Err(ExpectedClass(Box::new(tm), o_loc)),
+                    tm => return Err(ExpectedClass(*Box::new(tm), o_loc)),
                 }
             }
             Vptr(_, r, ts) => {
@@ -649,7 +649,7 @@ impl Elaborator {
                 let (tm, ty) = self.infer(a, hint)?;
                 match *tm {
                     Term::ImplementsOf(a, i) => (Box::new(Term::ImplementsOf(a, i)), ty),
-                    tm => return Err(ExpectedImplementsOf(Box::new(tm), loc)),
+                    tm => return Err(ExpectedImplementsOf(*Box::new(tm), loc)),
                 }
             }
 

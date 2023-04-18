@@ -279,10 +279,7 @@ impl Ecma {
             MetaRef(k, r, sp) => match &sigma.get(r).unwrap().body {
                 Meta(_, tm) => match tm {
                     None => {
-                        return Err(UnsolvedMeta(
-                            Box::new(MetaRef(k.clone(), r.clone(), sp.clone())),
-                            loc,
-                        ))
+                        return Err(UnsolvedMeta(MetaRef(k.clone(), r.clone(), sp.clone()), loc))
                     }
                     Some(_) => unreachable!(),
                 },
@@ -497,7 +494,7 @@ impl Ecma {
                     }),
                 })
             }
-            Find(_, _, f) => return Err(NonErasable(Box::new(Ref(f.clone())), loc)),
+            Find(_, _, f) => return Err(NonErasable(Ref(f.clone()), loc)),
 
             _ => unreachable!(),
         })

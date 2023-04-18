@@ -207,7 +207,7 @@ impl<'a> Normalizer<'a> {
                         Fields(x) => {
                             let name = x.iter().next().unwrap().0;
                             if !y.contains_key(name) {
-                                return Err(UnresolvedField(name.clone(), f, self.loc));
+                                return Err(UnresolvedField(name.clone(), *f, self.loc));
                             }
                             a
                         }
@@ -357,7 +357,7 @@ impl<'a> Normalizer<'a> {
                 Err(_) => continue,
             }
         }
-        Err(UnresolvedImplementation(x.clone(), self.loc))
+        Err(UnresolvedImplementation(*x.clone(), self.loc))
     }
 
     fn find_implementation(&mut self, ty: Box<Term>, i: Var, f: Var) -> Result<Box<Term>, Error> {
@@ -389,6 +389,6 @@ impl<'a> Normalizer<'a> {
             return Ok(self.sigma.get(&im_fn).unwrap().to_term(im_fn));
         }
 
-        Err(UnresolvedImplementation(ty, self.loc))
+        Err(UnresolvedImplementation(*ty, self.loc))
     }
 }

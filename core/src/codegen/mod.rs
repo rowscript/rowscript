@@ -88,7 +88,7 @@ impl Codegen {
 fn mangle(loc: Loc, tm: &Term) -> Result<String, Error> {
     use Term::*;
     Ok(match tm {
-        Ref(_) => return Err(NonErasable(Box::new(tm.clone()), loc)),
+        Ref(_) => return Err(NonErasable(tm.clone(), loc)),
 
         Pi(p, b) => format!("({}{})", mangle(loc, &p.typ)?, mangle(loc, b)?),
         Unit => "U".to_string(),
