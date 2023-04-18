@@ -101,30 +101,19 @@ impl Ecma {
         })
     }
 
-    fn access(
-        &mut self,
-        sigma: &Sigma,
-        loc: Loc,
-        a: &Box<Term>,
-        n: &str,
-    ) -> Result<Box<Expr>, Error> {
-        Ok(Box::new(Expr::Member(MemberExpr {
+    fn access(&mut self, sigma: &Sigma, loc: Loc, a: &Term, n: &str) -> Result<Expr, Error> {
+        Ok(Expr::Member(MemberExpr {
             span: loc.into(),
             obj: Box::new(Expr::Paren(ParenExpr {
                 span: loc.into(),
-                expr: self.expr(sigma, loc, a)?,
+                expr: Box::from(self.expr(sigma, loc, a)?),
             })),
             prop: MemberProp::Ident(Self::str_ident(loc, n)),
-        })))
+        }))
     }
 
-    fn func(
-        &mut self,
-        sigma: &Sigma,
-        def: &Def<Term>,
-        body: &Box<Term>,
-    ) -> Result<Box<Function>, Error> {
-        Ok(Box::new(Function {
+    fn func(&mut self, sigma: &Sigma, def: &Def<Term>, body: &Term) -> Result<Function, Error> {
+        Ok(Function {
             params: Self::type_erased_params(def.loc, &def.tele),
             decorators: Default::default(),
             span: def.loc.into(),
@@ -133,7 +122,7 @@ impl Ecma {
             is_async: false,
             type_params: None,
             return_type: None,
-        }))
+        })
     }
 
     fn type_erased_param_pat(loc: Loc, p: &Param<Term>) -> Vec<Pat> {
@@ -170,16 +159,16 @@ impl Ecma {
         &mut self,
         sigma: &Sigma,
         loc: Loc,
-        mut tm: &Box<Term>,
+        mut tm: &Term,
     ) -> Result<Vec<ExprOrSpread>, Error> {
         use Term::*;
         let mut ret = Vec::default();
         loop {
-            match &**tm {
+            match tm {
                 Tuple(a, b) => {
                     ret.push(ExprOrSpread {
                         spread: None,
-                        expr: self.expr(sigma, loc, a)?,
+                        expr: Box::from(self.expr(sigma, loc, a)?),
                     });
                     tm = b
                 }
@@ -195,17 +184,17 @@ impl Ecma {
         sigma: &Sigma,
         loc: Loc,
         v: Option<&Var>,
-        a: &Box<Term>,
-        b: &Box<Term>,
-    ) -> Result<Box<Expr>, Error> {
-        Ok(Box::new(Expr::Call(CallExpr {
+        a: &Term,
+        b: &Term,
+    ) -> Result<Expr, Error> {
+        Ok(Expr::Call(CallExpr {
             span: loc.into(),
             callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
                 span: loc.into(),
                 expr: Box::new(Expr::Arrow(ArrowExpr {
                     span: loc.into(),
                     params: v.map_or_else(Default::default, |v| vec![Self::ident_pat(loc, v)]),
-                    body: Box::new(BlockStmtOrExpr::Expr(self.expr(sigma, loc, b)?)),
+                    body: Box::new(BlockStmtOrExpr::Expr(Box::from(self.expr(sigma, loc, b)?))),
                     is_async: false,
                     is_generator: false,
                     type_params: None,
@@ -214,10 +203,10 @@ impl Ecma {
             }))),
             args: vec![ExprOrSpread {
                 spread: None,
-                expr: self.expr(sigma, loc, a)?,
+                expr: Box::from(self.expr(sigma, loc, a)?),
             }],
             type_args: None,
-        })))
+        }))
     }
 
     fn const_decl_stmt(
@@ -225,7 +214,7 @@ impl Ecma {
         sigma: &Sigma,
         loc: Loc,
         v: &Var,
-        tm: &Box<Term>,
+        tm: &Term,
     ) -> Result<Stmt, Error> {
         Ok(Stmt::Decl(Decl::Var(Box::new(VarDecl {
             span: loc.into(),
@@ -234,17 +223,17 @@ impl Ecma {
             decls: vec![VarDeclarator {
                 span: loc.into(),
                 name: Self::ident_pat(loc, v),
-                init: Some(self.expr(sigma, loc, tm)?),
+                init: Some(Box::from(self.expr(sigma, loc, tm)?)),
                 definite: false,
             }],
         }))))
     }
 
-    fn block(&mut self, sigma: &Sigma, loc: Loc, body: &Box<Term>) -> Result<BlockStmt, Error> {
-        fn strip_untupled_lets(mut tm: &Box<Term>) -> Box<Term> {
+    fn block(&mut self, sigma: &Sigma, loc: Loc, body: &Term) -> Result<BlockStmt, Error> {
+        fn strip_untupled_lets(mut tm: &Term) -> Term {
             use Term::*;
             loop {
-                match &**tm {
+                match tm {
                     TupleLet(_, q, _, b) if q.var.as_str().starts_with(UNTUPLED_RHS) => tm = b,
                     _ => break,
                 }
@@ -258,7 +247,7 @@ impl Ecma {
         let mut stmts = Vec::default();
 
         loop {
-            match &**tm {
+            match tm {
                 Let(p, a, b) => {
                     stmts.push(self.const_decl_stmt(sigma, loc, &p.var, a)?);
                     tm = b
@@ -271,7 +260,7 @@ impl Ecma {
                 _ => {
                     stmts.push(Stmt::Return(ReturnStmt {
                         span: loc.into(),
-                        arg: Some(self.expr(sigma, loc, tm)?),
+                        arg: Some(Box::from(self.expr(sigma, loc, tm)?)),
                     }));
                     break;
                 }
@@ -283,10 +272,10 @@ impl Ecma {
         })
     }
 
-    fn expr(&mut self, sigma: &Sigma, loc: Loc, tm: &Box<Term>) -> Result<Box<Expr>, Error> {
+    fn expr(&mut self, sigma: &Sigma, loc: Loc, tm: &Term) -> Result<Expr, Error> {
         use Body::*;
         use Term::*;
-        Ok(match &**tm {
+        Ok(match tm {
             MetaRef(k, r, sp) => match &sigma.get(r).unwrap().body {
                 Meta(_, tm) => match tm {
                     None => {
@@ -303,14 +292,14 @@ impl Ecma {
             Let(p, a, b) => self.lambda_encoded_let(sigma, loc, Some(&p.var), a, b)?,
             UnitLet(a, b) => self.lambda_encoded_let(sigma, loc, None, a, b)?,
 
-            Ref(r) | Undef(r) => Box::new(Expr::Ident(Self::ident(loc, r))),
-            Extern(r) => Box::new(Expr::Member(MemberExpr {
+            Ref(r) | Undef(r) => Expr::Ident(Self::ident(loc, r)),
+            Extern(r) => Expr::Member(MemberExpr {
                 span: loc.into(),
                 obj: Box::new(Expr::Ident(Self::lib())),
                 prop: MemberProp::Ident(Self::ident(loc, r)),
-            })),
+            }),
             Lam(p, b) => match p.info {
-                Explicit => Box::new(Expr::Arrow(ArrowExpr {
+                Explicit => Expr::Arrow(ArrowExpr {
                     span: loc.into(),
                     params: Self::type_erased_param_pat(loc, p),
                     body: Box::new(BlockStmtOrExpr::BlockStmt(self.block(sigma, loc, b)?)),
@@ -318,99 +307,99 @@ impl Ecma {
                     is_generator: false,
                     type_params: None,
                     return_type: None,
-                })),
+                }),
                 _ => self.expr(sigma, loc, b)?,
             },
 
             App(f, i, x) => match i {
-                UnnamedExplicit => Box::new(Expr::Call(CallExpr {
+                UnnamedExplicit => Expr::Call(CallExpr {
                     span: loc.into(),
-                    callee: Callee::Expr(self.expr(sigma, loc, f)?),
+                    callee: Callee::Expr(Box::from(self.expr(sigma, loc, f)?)),
                     args: self.untuple_args(sigma, loc, x)?,
                     type_args: None,
-                })),
+                }),
                 _ => self.expr(sigma, loc, f)?,
             },
-            TT => Box::new(Expr::Ident(Self::undefined())),
-            False => Box::new(Expr::Lit(Lit::Bool(Bool {
+            TT => Expr::Ident(Self::undefined()),
+            False => Expr::Lit(Lit::Bool(Bool {
                 span: loc.into(),
                 value: false,
-            }))),
-            True => Box::new(Expr::Lit(Lit::Bool(Bool {
+            })),
+            True => Expr::Lit(Lit::Bool(Bool {
                 span: loc.into(),
                 value: true,
-            }))),
-            If(p, t, e) => Box::new(Expr::Cond(CondExpr {
-                span: loc.into(),
-                test: self.expr(sigma, loc, p)?,
-                cons: self.expr(sigma, loc, t)?,
-                alt: self.expr(sigma, loc, e)?,
             })),
-            Str(s) => Box::new(Expr::Lit(Lit::Str(JsStr {
+            If(p, t, e) => Expr::Cond(CondExpr {
+                span: loc.into(),
+                test: Box::from(self.expr(sigma, loc, p)?),
+                cons: Box::from(self.expr(sigma, loc, t)?),
+                alt: Box::from(self.expr(sigma, loc, e)?),
+            }),
+            Str(s) => Expr::Lit(Lit::Str(JsStr {
                 span: loc.into(),
                 value: s.as_str().into(),
                 raw: None,
-            }))),
-            Num(_, v) => Box::new(Expr::Lit(Lit::Num(JsNumber {
+            })),
+            Num(_, v) => Expr::Lit(Lit::Num(JsNumber {
                 span: loc.into(),
                 value: *v,
                 raw: None,
-            }))),
-            Big(v) => Box::new(Expr::Lit(Lit::BigInt(JsBigInt {
+            })),
+            Big(v) => Expr::Lit(Lit::BigInt(JsBigInt {
                 span: loc.into(),
                 value: Box::new(BigIntValue::from_str(v).unwrap()),
                 raw: None,
-            }))),
+            })),
             Obj(f) => match &**f {
                 Fields(fields) => {
                     let mut props = Vec::default();
                     for (name, tm) in fields {
                         props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                             key: PropName::Ident(Self::str_ident(loc, name.as_str())),
-                            value: self.expr(sigma, loc, &Box::new(tm.clone()))?,
+                            value: Box::from(self.expr(sigma, loc, &Box::new(tm.clone()))?),
                         }))));
                     }
-                    Box::new(Expr::Object(ObjectLit {
+                    Expr::Object(ObjectLit {
                         span: loc.into(),
                         props,
-                    }))
+                    })
                 }
                 _ => unreachable!(),
             },
-            Concat(a, b) => Box::new(Expr::Object(ObjectLit {
+            Concat(a, b) => Expr::Object(ObjectLit {
                 span: loc.into(),
                 props: vec![
                     PropOrSpread::Spread(SpreadElement {
                         dot3_token: loc.into(),
-                        expr: self.expr(sigma, loc, a)?,
+                        expr: Box::from(self.expr(sigma, loc, a)?),
                     }),
                     PropOrSpread::Spread(SpreadElement {
                         dot3_token: loc.into(),
-                        expr: self.expr(sigma, loc, b)?,
+                        expr: Box::from(self.expr(sigma, loc, b)?),
                     }),
                 ],
-            })),
+            }),
             Access(a, n) => self.access(sigma, loc, a, n)?,
             Downcast(a, f) => match &**f {
                 Fields(fields) => {
                     let mut props = Vec::default();
-                    for (name, _) in fields {
+                    for name in fields.keys() {
                         props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                             key: PropName::Ident(Self::str_ident(loc, name)),
-                            value: self.access(sigma, loc, a, name)?,
+                            value: Box::from(self.access(sigma, loc, a, name)?),
                         }))))
                     }
-                    Box::new(Expr::Object(ObjectLit {
+                    Expr::Object(ObjectLit {
                         span: loc.into(),
                         props,
-                    }))
+                    })
                 }
                 _ => unreachable!(),
             },
             Variant(f) => match &**f {
                 Fields(fields) => {
                     let (name, tm) = fields.iter().next().unwrap();
-                    Box::new(Expr::Object(ObjectLit {
+                    Expr::Object(ObjectLit {
                         span: loc.into(),
                         props: vec![
                             PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
@@ -423,10 +412,10 @@ impl Ecma {
                             }))),
                             PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                                 key: PropName::Ident(Self::str_ident(loc, JS_ENUM_VAL)),
-                                value: self.expr(sigma, loc, &Box::new(tm.clone()))?,
+                                value: Box::from(self.expr(sigma, loc, &Box::new(tm.clone()))?),
                             }))),
                         ],
-                    }))
+                    })
                 }
                 _ => unreachable!(),
             },
@@ -456,7 +445,7 @@ impl Ecma {
                     span: loc.into(),
                     props,
                 }));
-                let obj = self.expr(sigma, loc, a)?;
+                let obj = Box::from(self.expr(sigma, loc, a)?);
                 let tag = Box::new(Expr::Member(MemberExpr {
                     span: loc.into(),
                     obj: obj.clone(),
@@ -475,7 +464,7 @@ impl Ecma {
                         expr: tag,
                     }),
                 }));
-                Box::new(Expr::Call(CallExpr {
+                Expr::Call(CallExpr {
                     span: loc.into(),
                     callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
                         span: loc.into(),
@@ -486,28 +475,27 @@ impl Ecma {
                         expr: arg,
                     }],
                     type_args: None,
-                }))
+                })
             }
-            Vp(r, ts) => Box::new(Expr::Lit(Lit::Str(JsStr {
+            Vp(r, ts) => Expr::Lit(Lit::Str(JsStr {
                 span: loc.into(),
                 value: mangle_hkt(loc, r, ts)?.as_str().into(),
                 raw: None,
-            }))),
+            })),
             Lookup(a) => {
                 if let Vp(r, ts) = &**a {
                     let meths_mapping = self.vtbl.get(r).unwrap();
                     self.vtbl
                         .insert(mangle_hkt(loc, r, ts)?, meths_mapping.clone());
                 }
-
-                Box::new(Expr::Member(MemberExpr {
+                Expr::Member(MemberExpr {
                     span: loc.into(),
                     obj: Box::new(Self::global_vtbl()),
                     prop: MemberProp::Computed(ComputedPropName {
                         span: loc.into(),
-                        expr: self.expr(sigma, loc, a)?,
+                        expr: Box::from(self.expr(sigma, loc, a)?),
                     }),
-                }))
+                })
             }
             Find(_, _, f) => return Err(NonErasable(Box::new(Ref(f.clone())), loc)),
 
@@ -601,12 +589,12 @@ impl Ecma {
         items: &mut Vec<ModuleItem>,
         sigma: &Sigma,
         def: &Def<Term>,
-        body: &Box<Term>,
+        body: &Term,
     ) -> Result<(), Error> {
         items.push(ModuleItem::Stmt(Stmt::Decl(Decl::Fn(FnDecl {
             ident: Self::ident(def.loc, &def.name),
             declare: false,
-            function: self.func(sigma, def, body)?,
+            function: Box::from(self.func(sigma, def, body)?),
         }))));
         Ok(())
     }
