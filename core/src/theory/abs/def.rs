@@ -32,65 +32,65 @@ pub struct Def<T: Syntax> {
 }
 
 impl Def<Expr> {
-    pub fn to_type(&self) -> Box<Expr> {
-        Expr::pi(&self.tele, self.ret.clone())
+    pub fn to_type(&self) -> Expr {
+        Expr::pi(&self.tele, *self.ret.clone())
     }
 }
 
 impl Def<Term> {
-    pub fn to_term(&self, v: Var) -> Box<Term> {
+    pub fn to_term(&self, v: Var) -> Term {
         use Body::*;
         match &self.body {
-            Fn(f) => self.to_lam_term(f),
-            Postulate => Box::new(Term::Extern(v)),
-            Alias(t) => self.to_lam_term(t),
+            Fn(f) => self.to_lam_term(f.clone()),
+            Postulate => Term::Extern(v),
+            Alias(t) => self.to_lam_term(t.clone()),
 
-            Class { object, .. } => self.to_lam_term(object),
-            Ctor(f) => self.to_lam_term(f),
-            Method(f) => self.to_lam_term(f),
-            VptrType(t) => self.to_lam_term(t),
-            VptrCtor(t) => self.to_lam_term(&Box::new(Vp(
+            Class { object, .. } => self.to_lam_term(object.clone()),
+            Ctor(f) => self.to_lam_term(f.clone()),
+            Method(f) => self.to_lam_term(f.clone()),
+            VptrType(t) => self.to_lam_term(t.clone()),
+            VptrCtor(t) => self.to_lam_term(Vp(
                 t.clone(),
                 self.tele.iter().map(|p| Term::Ref(p.var.clone())).collect(),
-            ))),
-            VtblType(t) => self.to_lam_term(t),
-            VtblLookup => self.to_lam_term(&Box::new(Term::Lookup(Box::new(Term::Ref(
+            )),
+            VtblType(t) => self.to_lam_term(t.clone()),
+            VtblLookup => self.to_lam_term(Term::Lookup(Box::new(Term::Ref(
                 self.tele.last().unwrap().var.clone(),
-            ))))),
+            )))),
 
             Interface { .. } => {
-                let r = Box::new(Term::Ref(self.tele[0].var.clone()));
-                self.to_lam_term(&Box::new(Term::ImplementsOf(r, v)))
+                let r = Term::Ref(self.tele[0].var.clone());
+                self.to_lam_term(Term::ImplementsOf(Box::new(r), v))
             }
             Implements { .. } => unreachable!(),
-            ImplementsFn(f) => self.to_lam_term(f),
+            ImplementsFn(f) => self.to_lam_term(f.clone()),
             Findable(i) => {
-                let r = Box::new(Term::Ref(self.tele[0].var.clone()));
-                let mut f = Box::new(Term::Find(r, i.clone(), v));
+                let r = Term::Ref(self.tele[0].var.clone());
+                let mut f = Term::Find(Box::new(r), i.clone(), v);
                 for p in self.tele.iter().skip(1) {
-                    f = Box::new(Term::App(
-                        f,
+                    f = Term::App(
+                        Box::new(f),
                         p.info.into(),
                         Box::new(Term::Ref(p.var.clone())),
-                    ));
+                    );
                 }
-                self.to_lam_term(&f)
+                self.to_lam_term(f)
             }
 
-            Undefined => Box::new(Term::Undef(v)),
+            Undefined => Term::Undef(v),
             Meta(_, s) => match s {
                 None => unreachable!(),
-                Some(f) => self.to_lam_term(&Box::new(f.clone())),
+                Some(f) => self.to_lam_term(f.clone()),
             },
         }
     }
 
-    fn to_lam_term(&self, f: &Term) -> Box<Term> {
-        Box::new(rename(Term::lam(&self.tele, f.clone())))
+    fn to_lam_term(&self, f: Term) -> Term {
+        rename(Term::lam(&self.tele, f))
     }
 
-    pub fn to_type(&self) -> Box<Term> {
-        Box::new(rename(Term::pi(&self.tele, *self.ret.clone())))
+    pub fn to_type(&self) -> Term {
+        rename(Term::pi(&self.tele, *self.ret.clone()))
     }
 }
 

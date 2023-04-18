@@ -78,10 +78,10 @@ pub enum Expr {
 }
 
 impl Expr {
-    pub fn pi(tele: &Tele<Expr>, e: Box<Expr>) -> Box<Expr> {
+    pub fn pi(tele: &Tele<Expr>, e: Expr) -> Expr {
         use Expr::*;
         tele.iter()
-            .rfold(e, |b, p| Box::new(Pi(b.loc(), p.clone(), b)))
+            .rfold(e, |b, p| Pi(b.loc(), p.clone(), Box::new(b)))
     }
 
     pub fn resolved(self) -> Var {
