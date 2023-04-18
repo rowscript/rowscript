@@ -193,7 +193,7 @@ impl Elaborator {
                 Box::new(Term::Let(param, tm, body))
             }
             Lam(loc, var, body) => {
-                let pi = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
+                let pi = Box::new(Normalizer::new(&mut self.sigma, loc).term(*ty.clone())?);
                 match &*pi {
                     Term::Pi(ty_param, ty_body) => {
                         let param = Param {
@@ -212,7 +212,7 @@ impl Elaborator {
                 }
             }
             Tuple(loc, a, b) => {
-                let sig = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
+                let sig = Box::new(Normalizer::new(&mut self.sigma, loc).term(*ty.clone())?);
                 match &*sig {
                     Term::Sigma(ty_param, ty_body) => {
                         let a = self.check(a, &ty_param.typ)?;
@@ -227,7 +227,7 @@ impl Elaborator {
             TupleLet(_, x, y, a, b) => {
                 let a_loc = a.loc();
                 let (a, a_ty) = self.infer(a, Some(ty))?;
-                let sig = Normalizer::new(&mut self.sigma, a_loc).term(a_ty)?;
+                let sig = Box::new(Normalizer::new(&mut self.sigma, a_loc).term(*a_ty)?);
                 match &*sig {
                     Term::Sigma(ty_param, ty_body) => {
                         let x = Param {
@@ -260,8 +260,9 @@ impl Elaborator {
                 let f_e = e.clone();
 
                 let (mut inferred_tm, inferred_ty) = self.infer(e, Some(ty))?;
-                let mut inferred = Normalizer::new(&mut self.sigma, loc).term(inferred_ty)?;
-                let expected = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
+                let mut inferred =
+                    Box::new(Normalizer::new(&mut self.sigma, loc).term(*inferred_ty)?);
+                let expected = Box::new(Normalizer::new(&mut self.sigma, loc).term(*ty.clone())?);
 
                 if Self::is_hole_insertable(&expected) {
                     if let Some(f_e) = Self::app_insert_holes(f_e, UnnamedExplicit, &inferred)? {
@@ -492,7 +493,8 @@ impl Elaborator {
                 )
             }
             Downcast(loc, a) => {
-                let b_ty = Normalizer::new(&mut self.sigma, loc).term(hint.unwrap().clone())?;
+                let b_ty =
+                    Box::new(Normalizer::new(&mut self.sigma, loc).term(*hint.unwrap().clone())?);
                 let (a, a_ty) = self.infer(a, hint)?;
                 match (&*a_ty, &*b_ty) {
                     (Term::Object(from), Term::Object(to)) => {
@@ -515,7 +517,8 @@ impl Elaborator {
                 (Box::new(Term::Enum(r)), Box::new(Term::Univ))
             }
             Variant(loc, n, a) => {
-                let b_ty = Normalizer::new(&mut self.sigma, loc).term(hint.unwrap().clone())?;
+                let b_ty =
+                    Box::new(Normalizer::new(&mut self.sigma, loc).term(*hint.unwrap().clone())?);
                 let (a, a_ty) = self.infer(a, hint)?;
                 match &*b_ty {
                     Term::Enum(to) => {
@@ -539,7 +542,8 @@ impl Elaborator {
                 }
             }
             Upcast(loc, a) => {
-                let b_ty = Normalizer::new(&mut self.sigma, loc).term(hint.unwrap().clone())?;
+                let b_ty =
+                    Box::new(Normalizer::new(&mut self.sigma, loc).term(*hint.unwrap().clone())?);
                 let (a, a_ty) = self.infer(a, hint)?;
                 match (&*a_ty, &*b_ty) {
                     (Term::Enum(from), Term::Enum(to)) => {
@@ -561,7 +565,7 @@ impl Elaborator {
                 let ret_ty = hint.unwrap();
                 let a_loc = a.loc();
                 let (a, a_ty) = self.infer(a, hint)?;
-                let en = Normalizer::new(&mut self.sigma, loc).term(a_ty)?;
+                let en = Box::new(Normalizer::new(&mut self.sigma, loc).term(*a_ty)?);
                 match *en {
                     Term::Enum(y) => match *y {
                         Term::Fields(f) => {
