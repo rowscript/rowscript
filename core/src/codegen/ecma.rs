@@ -106,7 +106,7 @@ impl Ecma {
             span: loc.into(),
             obj: Box::new(Expr::Paren(ParenExpr {
                 span: loc.into(),
-                expr: Box::from(self.expr(sigma, loc, a)?),
+                expr: Box::new(self.expr(sigma, loc, a)?),
             })),
             prop: MemberProp::Ident(Self::str_ident(loc, n)),
         }))
@@ -168,7 +168,7 @@ impl Ecma {
                 Tuple(a, b) => {
                     ret.push(ExprOrSpread {
                         spread: None,
-                        expr: Box::from(self.expr(sigma, loc, a)?),
+                        expr: Box::new(self.expr(sigma, loc, a)?),
                     });
                     tm = b
                 }
@@ -194,7 +194,7 @@ impl Ecma {
                 expr: Box::new(Expr::Arrow(ArrowExpr {
                     span: loc.into(),
                     params: v.map_or_else(Default::default, |v| vec![Self::ident_pat(loc, v)]),
-                    body: Box::new(BlockStmtOrExpr::Expr(Box::from(self.expr(sigma, loc, b)?))),
+                    body: Box::new(BlockStmtOrExpr::Expr(Box::new(self.expr(sigma, loc, b)?))),
                     is_async: false,
                     is_generator: false,
                     type_params: None,
@@ -203,7 +203,7 @@ impl Ecma {
             }))),
             args: vec![ExprOrSpread {
                 spread: None,
-                expr: Box::from(self.expr(sigma, loc, a)?),
+                expr: Box::new(self.expr(sigma, loc, a)?),
             }],
             type_args: None,
         }))
@@ -223,7 +223,7 @@ impl Ecma {
             decls: vec![VarDeclarator {
                 span: loc.into(),
                 name: Self::ident_pat(loc, v),
-                init: Some(Box::from(self.expr(sigma, loc, tm)?)),
+                init: Some(Box::new(self.expr(sigma, loc, tm)?)),
                 definite: false,
             }],
         }))))
@@ -260,7 +260,7 @@ impl Ecma {
                 _ => {
                     stmts.push(Stmt::Return(ReturnStmt {
                         span: loc.into(),
-                        arg: Some(Box::from(self.expr(sigma, loc, tm)?)),
+                        arg: Some(Box::new(self.expr(sigma, loc, tm)?)),
                     }));
                     break;
                 }
@@ -314,7 +314,7 @@ impl Ecma {
             App(f, i, x) => match i {
                 UnnamedExplicit => Expr::Call(CallExpr {
                     span: loc.into(),
-                    callee: Callee::Expr(Box::from(self.expr(sigma, loc, f)?)),
+                    callee: Callee::Expr(Box::new(self.expr(sigma, loc, f)?)),
                     args: self.untuple_args(sigma, loc, x)?,
                     type_args: None,
                 }),
@@ -331,9 +331,9 @@ impl Ecma {
             })),
             If(p, t, e) => Expr::Cond(CondExpr {
                 span: loc.into(),
-                test: Box::from(self.expr(sigma, loc, p)?),
-                cons: Box::from(self.expr(sigma, loc, t)?),
-                alt: Box::from(self.expr(sigma, loc, e)?),
+                test: Box::new(self.expr(sigma, loc, p)?),
+                cons: Box::new(self.expr(sigma, loc, t)?),
+                alt: Box::new(self.expr(sigma, loc, e)?),
             }),
             Str(s) => Expr::Lit(Lit::Str(JsStr {
                 span: loc.into(),
@@ -356,7 +356,7 @@ impl Ecma {
                     for (name, tm) in fields {
                         props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                             key: PropName::Ident(Self::str_ident(loc, name.as_str())),
-                            value: Box::from(self.expr(sigma, loc, &Box::new(tm.clone()))?),
+                            value: Box::new(self.expr(sigma, loc, &Box::new(tm.clone()))?),
                         }))));
                     }
                     Expr::Object(ObjectLit {
@@ -371,11 +371,11 @@ impl Ecma {
                 props: vec![
                     PropOrSpread::Spread(SpreadElement {
                         dot3_token: loc.into(),
-                        expr: Box::from(self.expr(sigma, loc, a)?),
+                        expr: Box::new(self.expr(sigma, loc, a)?),
                     }),
                     PropOrSpread::Spread(SpreadElement {
                         dot3_token: loc.into(),
-                        expr: Box::from(self.expr(sigma, loc, b)?),
+                        expr: Box::new(self.expr(sigma, loc, b)?),
                     }),
                 ],
             }),
@@ -386,7 +386,7 @@ impl Ecma {
                     for name in fields.keys() {
                         props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                             key: PropName::Ident(Self::str_ident(loc, name)),
-                            value: Box::from(self.access(sigma, loc, a, name)?),
+                            value: Box::new(self.access(sigma, loc, a, name)?),
                         }))))
                     }
                     Expr::Object(ObjectLit {
@@ -412,7 +412,7 @@ impl Ecma {
                             }))),
                             PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                                 key: PropName::Ident(Self::str_ident(loc, JS_ENUM_VAL)),
-                                value: Box::from(self.expr(sigma, loc, &Box::new(tm.clone()))?),
+                                value: Box::new(self.expr(sigma, loc, &Box::new(tm.clone()))?),
                             }))),
                         ],
                     })
@@ -445,7 +445,7 @@ impl Ecma {
                     span: loc.into(),
                     props,
                 }));
-                let obj = Box::from(self.expr(sigma, loc, a)?);
+                let obj = Box::new(self.expr(sigma, loc, a)?);
                 let tag = Box::new(Expr::Member(MemberExpr {
                     span: loc.into(),
                     obj: obj.clone(),
@@ -493,7 +493,7 @@ impl Ecma {
                     obj: Box::new(Self::global_vtbl()),
                     prop: MemberProp::Computed(ComputedPropName {
                         span: loc.into(),
-                        expr: Box::from(self.expr(sigma, loc, a)?),
+                        expr: Box::new(self.expr(sigma, loc, a)?),
                     }),
                 })
             }
@@ -594,7 +594,7 @@ impl Ecma {
         items.push(ModuleItem::Stmt(Stmt::Decl(Decl::Fn(FnDecl {
             ident: Self::ident(def.loc, &def.name),
             declare: false,
-            function: Box::from(self.func(sigma, def, body)?),
+            function: Box::new(self.func(sigma, def, body)?),
         }))));
         Ok(())
     }

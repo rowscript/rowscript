@@ -484,8 +484,11 @@ impl Elaborator {
                     },
                 ];
                 (
-                    rename(Term::lam(&tele, Term::Access(Box::new(Term::Ref(o)), n))),
-                    rename(Term::pi(&tele, Term::Ref(t))),
+                    Box::new(rename(Term::lam(
+                        &tele,
+                        Term::Access(Box::new(Term::Ref(o)), n),
+                    ))),
+                    Box::new(rename(Term::pi(&tele, Term::Ref(t)))),
                 )
             }
             Downcast(loc, a) => {
@@ -499,8 +502,8 @@ impl Elaborator {
                             typ: Box::new(Term::RowOrd(to.clone(), Le, from.clone())),
                         }];
                         (
-                            rename(Term::lam(&tele, Term::Downcast(a, to.clone()))),
-                            rename(Term::pi(&tele, Term::Object(to.clone()))),
+                            Box::new(rename(Term::lam(&tele, Term::Downcast(a, to.clone())))),
+                            Box::new(rename(Term::pi(&tele, Term::Object(to.clone())))),
                         )
                     }
                     (Term::Object(_), _) => return Err(ExpectedObject(b_ty, loc)),
@@ -525,11 +528,11 @@ impl Elaborator {
                             typ: Box::new(Term::RowOrd(from, Le, to.clone())),
                         }];
                         (
-                            rename(Term::lam(
+                            Box::new(rename(Term::lam(
                                 &tele,
                                 Term::Variant(Box::new(Term::Fields(tm_fields))),
-                            )),
-                            rename(Term::pi(&tele, Term::Enum(to.clone()))),
+                            ))),
+                            Box::new(rename(Term::pi(&tele, Term::Enum(to.clone())))),
                         )
                     }
                     _ => return Err(ExpectedEnum(b_ty, loc)),
@@ -546,8 +549,8 @@ impl Elaborator {
                             typ: Box::new(Term::RowOrd(from.clone(), Le, to.clone())),
                         }];
                         (
-                            rename(Term::lam(&tele, Term::Upcast(a, to.clone()))),
-                            rename(Term::pi(&tele, Term::Enum(to.clone()))),
+                            Box::new(rename(Term::lam(&tele, Term::Upcast(a, to.clone())))),
+                            Box::new(rename(Term::pi(&tele, Term::Enum(to.clone())))),
                         )
                     }
                     (Term::Enum(_), _) => return Err(ExpectedEnum(b_ty, loc)),
