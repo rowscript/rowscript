@@ -44,10 +44,10 @@ impl Elaborator {
             let checked_var = p.var.clone();
             let var = p.var.clone();
 
-            let gamma_typ = self.check(p.typ, &Box::new(Term::Univ))?;
-            let typ = gamma_typ.clone();
+            let gamma_typ = self.check(*p.typ, &Term::Univ)?;
+            let typ = Box::new(gamma_typ.clone());
 
-            self.gamma.insert(gamma_var, gamma_typ);
+            self.gamma.insert(gamma_var, Box::new(gamma_typ));
             checked.push(checked_var);
             tele.push(Param {
                 var,
@@ -56,22 +56,22 @@ impl Elaborator {
             })
         }
 
-        let ret = self.check(d.ret, &Box::new(Term::Univ))?;
+        let ret = self.check(*d.ret, &Term::Univ)?;
         self.sigma.insert(
             d.name.clone(),
             Def {
                 loc: d.loc,
                 name: d.name.clone(),
                 tele,
-                ret: ret.clone(),
+                ret: Box::new(ret.clone()),
                 body: Undefined,
             },
         );
 
         let body = match d.body {
-            Fn(f) => Fn(*self.check(Box::from(f), &ret)?),
+            Fn(f) => Fn(self.check(f, &ret)?),
             Postulate => Postulate,
-            Alias(t) => Alias(*self.check(Box::from(t), &ret)?),
+            Alias(t) => Alias(self.check(t, &ret)?),
 
             Class {
                 object,
@@ -82,7 +82,7 @@ impl Elaborator {
                 vtbl,
                 vtbl_lookup,
             } => Class {
-                object: *self.check(Box::from(object), &ret)?,
+                object: self.check(object, &ret)?,
                 methods,
                 ctor,
                 vptr,
@@ -90,11 +90,11 @@ impl Elaborator {
                 vtbl,
                 vtbl_lookup,
             },
-            Ctor(f) => Ctor(*self.check(Box::from(f), &ret)?),
-            Method(f) => Method(*self.check(Box::from(f), &ret)?),
-            VptrType(t) => VptrType(*self.check(Box::from(t), &ret)?),
+            Ctor(f) => Ctor(self.check(f, &ret)?),
+            Method(f) => Method(self.check(f, &ret)?),
+            VptrType(t) => VptrType(self.check(t, &ret)?),
             VptrCtor(t) => VptrCtor(t),
-            VtblType(t) => VtblType(*self.check(Box::from(t), &ret)?),
+            VtblType(t) => VtblType(self.check(t, &ret)?),
             VtblLookup => VtblLookup,
 
             Interface { fns, ims } => Interface { fns, ims },
@@ -102,7 +102,7 @@ impl Elaborator {
                 self.push_implements(&d.name, &i, &fns)?;
                 Implements { i, fns }
             }
-            ImplementsFn(f) => ImplementsFn(*self.check(Box::from(f), &ret)?),
+            ImplementsFn(f) => ImplementsFn(self.check(f, &ret)?),
             Findable(i) => Findable(i),
 
             Undefined => unreachable!(),
@@ -165,7 +165,7 @@ impl Elaborator {
             };
             let i_fn_ty_applied = Normalizer::new(&mut self.sigma, i_loc)
                 .with(&[(&i_fn_ty_p.var, &im_tm)], *i_fn_ty_b)?;
-            let (_, im_fn_ty) = self.infer(Box::new(Resolved(im_loc, im_fn.clone())), None)?;
+            let (_, im_fn_ty) = self.infer(Resolved(im_loc, im_fn.clone()), None)?;
 
             Unifier::new(&mut self.sigma, im_loc).unify(&i_fn_ty_applied, &im_fn_ty)?;
         }
@@ -173,28 +173,27 @@ impl Elaborator {
         Ok(())
     }
 
-    fn check(&mut self, e: Box<Expr>, ty: &Box<Term>) -> Result<Box<Term>, Error> {
+    fn check(&mut self, e: Expr, ty: &Term) -> Result<Term, Error> {
         use Expr::*;
-
-        Ok(match *e {
+        Ok(match e {
             Let(_, var, maybe_typ, a, b) => {
                 let (tm, typ) = if let Some(t) = maybe_typ {
-                    let checked_ty = self.check(t, &Box::new(Term::Univ))?;
-                    (self.check(a, &checked_ty)?, checked_ty)
+                    let checked_ty = self.check(*t, &Term::Univ)?;
+                    (self.check(*a, &checked_ty)?, checked_ty)
                 } else {
-                    self.infer(a, Some(ty))?
+                    self.infer(*a, Some(ty))?
                 };
                 let param = Param {
                     var,
                     info: Explicit,
-                    typ,
+                    typ: Box::new(typ),
                 };
                 let body = self.guarded_check(&[&param], *b, ty)?;
-                Box::new(Term::Let(param, tm, Box::from(body)))
+                Term::Let(param, Box::new(tm), Box::new(body))
             }
             Lam(loc, var, body) => {
-                let pi = Box::new(Normalizer::new(&mut self.sigma, loc).term(*ty.clone())?);
-                match &*pi {
+                let pi = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
+                match pi {
                     Term::Pi(ty_param, ty_body) => {
                         let param = Param {
                             var: var.clone(),
@@ -202,70 +201,68 @@ impl Elaborator {
                             typ: ty_param.typ.clone(),
                         };
                         let body_type = Normalizer::new(&mut self.sigma, loc)
-                            .with(&[(&ty_param.var, &Term::Ref(var))], *ty_body.clone())?;
-                        let checked_body =
-                            self.guarded_check(&[&param], *body, &Box::new(body_type))?;
-                        Box::new(Term::Lam(param.clone(), Box::from(checked_body)))
+                            .with(&[(&ty_param.var, &Term::Ref(var))], *ty_body)?;
+                        let checked_body = self.guarded_check(&[&param], *body, &body_type)?;
+                        Term::Lam(param.clone(), Box::new(checked_body))
                     }
-                    _ => return Err(ExpectedPi(*pi, loc)),
+                    ty => return Err(ExpectedPi(ty, loc)),
                 }
             }
             Tuple(loc, a, b) => {
-                let sig = Box::new(Normalizer::new(&mut self.sigma, loc).term(*ty.clone())?);
-                match &*sig {
+                let sig = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
+                match sig {
                     Term::Sigma(ty_param, ty_body) => {
-                        let a = *self.check(a, &ty_param.typ)?;
+                        let a = self.check(*a, &ty_param.typ)?;
                         let body_type = Normalizer::new(&mut self.sigma, loc)
-                            .with(&[(&ty_param.var, &a)], *ty_body.clone())?;
-                        let b = *self.check(b, &Box::new(body_type))?;
-                        Box::new(Term::Tuple(Box::from(a), Box::from(b)))
+                            .with(&[(&ty_param.var, &a)], *ty_body)?;
+                        let b = self.check(*b, &body_type)?;
+                        Term::Tuple(Box::new(a), Box::new(b))
                     }
-                    _ => return Err(ExpectedSigma(*sig, loc)),
+                    ty => return Err(ExpectedSigma(ty, loc)),
                 }
             }
             TupleLet(_, x, y, a, b) => {
                 let a_loc = a.loc();
-                let (a, a_ty) = self.infer(a, Some(ty))?;
-                let sig = Box::new(Normalizer::new(&mut self.sigma, a_loc).term(*a_ty)?);
-                match &*sig {
-                    Term::Sigma(ty_param, ty_body) => {
+                let (a, a_ty) = self.infer(*a, Some(ty))?;
+                let sig = Normalizer::new(&mut self.sigma, a_loc).term(a_ty)?;
+                match sig {
+                    Term::Sigma(ty_param, typ) => {
                         let x = Param {
                             var: x,
                             info: Explicit,
-                            typ: ty_param.typ.clone(),
+                            typ: ty_param.typ,
                         };
                         let y = Param {
                             var: y,
                             info: Explicit,
-                            typ: ty_body.clone(),
+                            typ,
                         };
                         let b = self.guarded_check(&[&x, &y], *b, ty)?;
-                        Box::new(Term::TupleLet(x, y, a, Box::from(b)))
+                        Term::TupleLet(x, y, Box::new(a), Box::new(b))
                     }
-                    _ => return Err(ExpectedSigma(*sig, a_loc)),
+                    ty => return Err(ExpectedSigma(ty, a_loc)),
                 }
             }
-            UnitLet(_, a, b) => Box::new(Term::UnitLet(
-                self.check(a, &Box::new(Term::Unit))?,
-                self.check(b, ty)?,
-            )),
-            If(_, p, t, e) => Box::new(Term::If(
-                self.check(p, &Box::new(Term::Boolean))?,
-                self.check(t, ty)?,
-                self.check(e, ty)?,
-            )),
+            UnitLet(_, a, b) => Term::UnitLet(
+                Box::new(self.check(*a, &Term::Unit)?),
+                Box::new(self.check(*b, ty)?),
+            ),
+            If(_, p, t, e) => Term::If(
+                Box::new(self.check(*p, &Term::Boolean)?),
+                Box::new(self.check(*t, ty)?),
+                Box::new(self.check(*e, ty)?),
+            ),
             _ => {
                 let loc = e.loc();
                 let f_e = e.clone();
 
                 let (mut inferred_tm, inferred_ty) = self.infer(e, Some(ty))?;
-                let mut inferred =
-                    Box::new(Normalizer::new(&mut self.sigma, loc).term(*inferred_ty)?);
-                let expected = Box::new(Normalizer::new(&mut self.sigma, loc).term(*ty.clone())?);
+                let mut inferred = Normalizer::new(&mut self.sigma, loc).term(inferred_ty)?;
+                let expected = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
 
                 if Self::is_hole_insertable(&expected) {
-                    if let Some(f_e) = Self::app_insert_holes(*f_e, UnnamedExplicit, &inferred)? {
-                        let (new_tm, new_ty) = self.infer(Box::from(f_e), Some(ty))?;
+                    if let Some(f_e) = Self::app_insert_holes(f_e, UnnamedExplicit, &inferred)? {
+                        let (new_tm, new_ty) = self.infer(f_e, Some(ty))?;
                         inferred_tm = new_tm;
                         inferred = new_ty;
                     }
@@ -278,57 +275,53 @@ impl Elaborator {
         })
     }
 
-    fn infer(
-        &mut self,
-        e: Box<Expr>,
-        hint: Option<&Box<Term>>,
-    ) -> Result<(Box<Term>, Box<Term>), Error> {
+    fn infer(&mut self, e: Expr, hint: Option<&Term>) -> Result<(Term, Term), Error> {
         use Expr::*;
         use MetaKind::*;
 
-        Ok(match *e {
+        Ok(match e {
             Resolved(_, v) => match self.gamma.get(&v) {
-                Some(ty) => (Box::new(Term::Ref(v)), ty.clone()),
+                Some(ty) => (Term::Ref(v), *ty.clone()),
                 None => {
                     let d = self.sigma.get(&v).unwrap();
-                    (d.to_term(v), d.to_type())
+                    (*d.to_term(v), *d.to_type())
                 }
             },
             Hole(loc) => self.insert_meta(loc, UserMeta),
             InsertedHole(loc) => self.insert_meta(loc, InsertedMeta),
             Pi(_, p, b) => {
-                let (param_ty, _) = self.infer(p.typ, hint)?;
+                let (param_ty, _) = self.infer(*p.typ, hint)?;
                 let param = Param {
                     var: p.var,
                     info: p.info,
-                    typ: param_ty,
+                    typ: Box::new(param_ty),
                 };
-                let (b, b_ty) = self.guarded_infer(&[&param], b, hint)?;
-                (Box::new(Term::Pi(param, Box::from(b))), Box::from(b_ty))
+                let (b, b_ty) = self.guarded_infer(&[&param], *b, hint)?;
+                (Term::Pi(param, Box::new(b)), b_ty)
             }
             AnnoLam(_, p, b) => {
-                let (p_ty, _) = self.infer(p.typ, hint)?;
+                let (p_ty, _) = self.infer(*p.typ, hint)?;
                 let param = Param {
                     var: p.var,
                     info: p.info,
-                    typ: p_ty,
+                    typ: Box::new(p_ty),
                 };
-                let (b, b_ty) = self.guarded_infer(&[&param], b, hint)?;
+                let (b, b_ty) = self.guarded_infer(&[&param], *b, hint)?;
                 (
-                    Box::new(Term::Lam(param.clone(), Box::from(b))),
-                    Box::new(Term::Pi(param, Box::from(b_ty))),
+                    Term::Lam(param.clone(), Box::new(b)),
+                    Term::Pi(param, Box::new(b_ty)),
                 )
             }
             App(_, f, ai, x) => {
                 let f_loc = f.loc();
                 let f_e = f.clone();
-                let (f, f_ty) = self.infer(f, hint)?;
+                let (f, f_ty) = self.infer(*f, hint)?;
 
                 if let Some(f_e) = Self::app_insert_holes(*f_e, ai.clone(), &f_ty)? {
-                    return self.infer(Box::new(App(f_loc, Box::from(f_e), ai, x)), hint);
+                    return self.infer(App(f_loc, Box::new(f_e), ai, x), hint);
                 }
 
-                match *f_ty {
+                match f_ty {
                     Term::Pi(p, b) => {
                         let x = self.guarded_check(
                             &[&Param {
@@ -342,99 +335,95 @@ impl Elaborator {
                         let applied_ty =
                             Normalizer::new(&mut self.sigma, f_loc).with(&[(&p.var, &x)], *b)?;
                         let applied = Normalizer::new(&mut self.sigma, f_loc).apply(
-                            *f,
+                            f,
                             p.info.into(),
                             &[x],
                         )?;
-                        (Box::from(applied), Box::from(applied_ty))
+                        (applied, applied_ty)
                     }
-                    ty => return Err(ExpectedPi(*Box::new(ty), f_loc)),
+                    ty => return Err(ExpectedPi(ty, f_loc)),
                 }
             }
             Sigma(_, p, b) => {
-                let (param_ty, _) = self.infer(p.typ, hint)?;
+                let (param_ty, _) = self.infer(*p.typ, hint)?;
                 let param = Param {
                     var: p.var,
                     info: p.info,
-                    typ: param_ty,
+                    typ: Box::new(param_ty),
                 };
-                let (b, b_ty) = self.guarded_infer(&[&param], b, hint)?;
-                (Box::new(Term::Sigma(param, Box::from(b))), Box::from(b_ty))
+                let (b, b_ty) = self.guarded_infer(&[&param], *b, hint)?;
+                (Term::Sigma(param, Box::new(b)), b_ty)
             }
             Tuple(_, a, b) => {
-                let (a, a_ty) = self.infer(a, hint)?;
-                let (b, b_ty) = self.infer(b, hint)?;
+                let (a, a_ty) = self.infer(*a, hint)?;
+                let (b, b_ty) = self.infer(*b, hint)?;
                 (
-                    Box::new(Term::Tuple(a, b)),
-                    Box::new(Term::Sigma(
+                    Term::Tuple(Box::new(a), Box::new(b)),
+                    Term::Sigma(
                         Param {
                             var: Var::unbound(),
                             info: Explicit,
-                            typ: a_ty,
+                            typ: Box::new(a_ty),
                         },
-                        b_ty,
-                    )),
+                        Box::new(b_ty),
+                    ),
                 )
             }
             AnnoTupleLet(_, p, q, a, b) => {
-                let p_ty = self.check(p.typ, &Box::new(Term::Univ))?;
+                let p_ty = self.check(*p.typ, &Term::Univ)?;
                 let p = Param {
                     var: p.var,
                     info: p.info,
-                    typ: p_ty,
+                    typ: Box::new(p_ty),
                 };
-                let q_ty = self.guarded_check(&[&p], *q.typ, &Box::new(Term::Univ))?;
+                let q_ty = self.guarded_check(&[&p], *q.typ, &Term::Univ)?;
                 let q = Param {
                     var: q.var,
                     info: q.info,
-                    typ: Box::from(q_ty),
+                    typ: Box::new(q_ty),
                 };
-                let (b, b_ty) = self.guarded_infer(&[&p, &q], b, hint)?;
-                let a = self.check(a, &Box::new(Term::Sigma(p.clone(), q.typ.clone())))?;
-                (
-                    Box::new(Term::TupleLet(p, q, a, Box::from(b))),
-                    Box::from(b_ty),
-                )
+                let (b, b_ty) = self.guarded_infer(&[&p, &q], *b, hint)?;
+                let a = self.check(*a, &Term::Sigma(p.clone(), q.typ.clone()))?;
+                (Term::TupleLet(p, q, Box::new(a), Box::new(b)), b_ty)
             }
             Fields(_, fields) => {
                 let mut inferred = FieldMap::default();
                 for (f, e) in fields {
-                    let (tm, _) = self.infer(Box::new(e), hint)?;
-                    inferred.insert(f, *tm);
+                    inferred.insert(f, self.infer(e, hint)?.0);
                 }
-                (Box::new(Term::Fields(inferred)), Box::new(Term::Row))
+                (Term::Fields(inferred), Term::Row)
             }
             Combine(_, a, b) => {
-                let a = self.check(a, &Box::new(Term::Row))?;
-                let b = self.check(b, &Box::new(Term::Row))?;
-                (Box::new(Term::Combine(a, b)), Box::new(Term::Row))
+                let a = self.check(*a, &Term::Row)?;
+                let b = self.check(*b, &Term::Row)?;
+                (Term::Combine(Box::new(a), Box::new(b)), Term::Row)
             }
             RowOrd(_, a, d, b) => {
-                let a = self.check(a, &Box::new(Term::Row))?;
-                let b = self.check(b, &Box::new(Term::Row))?;
-                (Box::new(Term::RowOrd(a, d, b)), Box::new(Term::Univ))
+                let a = self.check(*a, &Term::Row)?;
+                let b = self.check(*b, &Term::Row)?;
+                (Term::RowOrd(Box::new(a), d, Box::new(b)), Term::Univ)
             }
             RowEq(_, a, b) => {
-                let a = self.check(a, &Box::new(Term::Row))?;
-                let b = self.check(b, &Box::new(Term::Row))?;
-                (Box::new(Term::RowEq(a, b)), Box::new(Term::Univ))
+                let a = self.check(*a, &Term::Row)?;
+                let b = self.check(*b, &Term::Row)?;
+                (Term::RowEq(Box::new(a), Box::new(b)), Term::Univ)
             }
             Object(_, r) => {
-                let r = self.check(r, &Box::new(Term::Row))?;
-                (Box::new(Term::Object(r)), Box::new(Term::Univ))
+                let r = self.check(*r, &Term::Row)?;
+                (Term::Object(Box::new(r)), Term::Univ)
             }
             Obj(_, r) => match *r {
                 Fields(_, fields) => {
                     let mut tm_fields = FieldMap::default();
                     let mut ty_fields = FieldMap::default();
                     for (n, e) in fields {
-                        let (tm, ty) = self.infer(Box::new(e), hint)?;
-                        tm_fields.insert(n.clone(), *tm);
-                        ty_fields.insert(n, *ty);
+                        let (tm, ty) = self.infer(e, hint)?;
+                        tm_fields.insert(n.clone(), tm);
+                        ty_fields.insert(n, ty);
                     }
                     (
-                        Box::new(Term::Obj(Box::new(Term::Fields(tm_fields)))),
-                        Box::new(Term::Object(Box::new(Term::Fields(ty_fields)))),
+                        Term::Obj(Box::new(Term::Fields(tm_fields))),
+                        Term::Object(Box::new(Term::Fields(ty_fields))),
                     )
                 }
                 _ => unreachable!(),
@@ -442,16 +431,16 @@ impl Elaborator {
             Concat(_, a, b) => {
                 let x_loc = a.loc();
                 let y_loc = b.loc();
-                let (x, x_ty) = self.infer(a, hint)?;
-                let (y, y_ty) = self.infer(b, hint)?;
-                let ty = match (*x_ty, *y_ty) {
+                let (x, x_ty) = self.infer(*a, hint)?;
+                let (y, y_ty) = self.infer(*b, hint)?;
+                let ty = match (x_ty, y_ty) {
                     (Term::Object(rx), Term::Object(ry)) => {
                         Box::new(Term::Object(Box::new(Term::Combine(rx, ry))))
                     }
-                    (Term::Object(_), y_ty) => return Err(ExpectedObject(*Box::new(y_ty), y_loc)),
-                    (x_ty, _) => return Err(ExpectedObject(*Box::new(x_ty), x_loc)),
+                    (Term::Object(_), y_ty) => return Err(ExpectedObject(y_ty, y_loc)),
+                    (x_ty, _) => return Err(ExpectedObject(x_ty, x_loc)),
                 };
-                (Box::new(Term::Concat(x, y)), ty)
+                (Term::Concat(Box::new(x), Box::new(y)), *ty)
             }
             Access(_, n) => {
                 let t = Var::new("T");
@@ -487,45 +476,41 @@ impl Elaborator {
                     },
                 ];
                 (
-                    Box::new(rename(Term::lam(
-                        &tele,
-                        Term::Access(Box::new(Term::Ref(o)), n),
-                    ))),
-                    Box::new(rename(Term::pi(&tele, Term::Ref(t)))),
+                    rename(Term::lam(&tele, Term::Access(Box::new(Term::Ref(o)), n))),
+                    rename(Term::pi(&tele, Term::Ref(t))),
                 )
             }
             Downcast(loc, a) => {
-                let b_ty =
-                    Box::new(Normalizer::new(&mut self.sigma, loc).term(*hint.unwrap().clone())?);
-                let (a, a_ty) = self.infer(a, hint)?;
-                match (&*a_ty, &*b_ty) {
+                let b_ty = Normalizer::new(&mut self.sigma, loc).term(hint.unwrap().clone())?;
+                let (a, a_ty) = self.infer(*a, hint)?;
+                match (a_ty, b_ty) {
                     (Term::Object(from), Term::Object(to)) => {
                         let tele = vec![Param {
                             var: Var::unbound(),
                             info: Implicit,
-                            typ: Box::new(Term::RowOrd(to.clone(), Le, from.clone())),
+                            typ: Box::new(Term::RowOrd(to.clone(), Le, from)),
                         }];
                         (
-                            Box::new(rename(Term::lam(&tele, Term::Downcast(a, to.clone())))),
-                            Box::new(rename(Term::pi(&tele, Term::Object(to.clone())))),
+                            rename(Term::lam(&tele, Term::Downcast(Box::new(a), to.clone()))),
+                            rename(Term::pi(&tele, Term::Object(to))),
                         )
                     }
-                    (Term::Object(_), _) => return Err(ExpectedObject(*b_ty, loc)),
-                    _ => return Err(ExpectedObject(*a_ty, loc)),
+                    (Term::Object(_), ty) => return Err(ExpectedObject(ty, loc)),
+                    (ty, _) => return Err(ExpectedObject(ty, loc)),
                 }
             }
             Enum(_, r) => {
-                let r = self.check(r, &Box::new(Term::Row))?;
-                (Box::new(Term::Enum(r)), Box::new(Term::Univ))
+                let r = self.check(*r, &Term::Row)?;
+                (Term::Enum(Box::new(r)), Term::Univ)
             }
             Variant(loc, n, a) => {
                 let b_ty =
-                    Box::new(Normalizer::new(&mut self.sigma, loc).term(*hint.unwrap().clone())?);
-                let (a, a_ty) = self.infer(a, hint)?;
+                    Box::new(Normalizer::new(&mut self.sigma, loc).term(hint.unwrap().clone())?);
+                let (a, a_ty) = self.infer(*a, hint)?;
                 match &*b_ty {
                     Term::Enum(to) => {
-                        let ty_fields = FieldMap::from([(n.clone(), *a_ty)]);
-                        let tm_fields = FieldMap::from([(n, *a)]);
+                        let ty_fields = FieldMap::from([(n.clone(), a_ty)]);
+                        let tm_fields = FieldMap::from([(n, a)]);
                         let from = Box::new(Term::Fields(ty_fields));
                         let tele = vec![Param {
                             var: Var::unbound(),
@@ -533,52 +518,51 @@ impl Elaborator {
                             typ: Box::new(Term::RowOrd(from, Le, to.clone())),
                         }];
                         (
-                            Box::new(rename(Term::lam(
+                            rename(Term::lam(
                                 &tele,
                                 Term::Variant(Box::new(Term::Fields(tm_fields))),
-                            ))),
-                            Box::new(rename(Term::pi(&tele, Term::Enum(to.clone())))),
+                            )),
+                            rename(Term::pi(&tele, Term::Enum(to.clone()))),
                         )
                     }
                     _ => return Err(ExpectedEnum(*b_ty, loc)),
                 }
             }
             Upcast(loc, a) => {
-                let b_ty =
-                    Box::new(Normalizer::new(&mut self.sigma, loc).term(*hint.unwrap().clone())?);
-                let (a, a_ty) = self.infer(a, hint)?;
-                match (&*a_ty, &*b_ty) {
+                let b_ty = Normalizer::new(&mut self.sigma, loc).term(hint.unwrap().clone())?;
+                let (a, a_ty) = self.infer(*a, hint)?;
+                match (a_ty, b_ty) {
                     (Term::Enum(from), Term::Enum(to)) => {
                         let tele = vec![Param {
                             var: Var::unbound(),
                             info: Implicit,
-                            typ: Box::new(Term::RowOrd(from.clone(), Le, to.clone())),
+                            typ: Box::new(Term::RowOrd(from, Le, to.clone())),
                         }];
                         (
-                            Box::new(rename(Term::lam(&tele, Term::Upcast(a, to.clone())))),
-                            Box::new(rename(Term::pi(&tele, Term::Enum(to.clone())))),
+                            rename(Term::lam(&tele, Term::Upcast(Box::new(a), to.clone()))),
+                            rename(Term::pi(&tele, Term::Enum(to))),
                         )
                     }
-                    (Term::Enum(_), _) => return Err(ExpectedEnum(*b_ty, loc)),
-                    _ => return Err(ExpectedEnum(*a_ty, loc)),
+                    (Term::Enum(_), ty) => return Err(ExpectedEnum(ty, loc)),
+                    (ty, _) => return Err(ExpectedEnum(ty, loc)),
                 }
             }
             Switch(loc, a, cs) => {
                 let ret_ty = hint.unwrap();
                 let a_loc = a.loc();
-                let (a, a_ty) = self.infer(a, hint)?;
-                let en = Box::new(Normalizer::new(&mut self.sigma, loc).term(*a_ty)?);
-                match *en {
+                let (a, a_ty) = self.infer(*a, hint)?;
+                let en = Normalizer::new(&mut self.sigma, loc).term(a_ty)?;
+                match en {
                     Term::Enum(y) => match *y {
                         Term::Fields(f) => {
                             if f.len() != cs.len() {
-                                return Err(NonExhaustive(*Box::new(Term::Fields(f)), loc));
+                                return Err(NonExhaustive(Term::Fields(f), loc));
                             }
                             let mut m = CaseMap::default();
                             for (n, v, e) in cs {
                                 let ty = f.get(&n).ok_or(UnresolvedField(
                                     n.clone(),
-                                    *Box::new(Term::Fields(f.clone())),
+                                    Term::Fields(f.clone()),
                                     loc,
                                 ))?;
                                 let p = Param {
@@ -586,19 +570,19 @@ impl Elaborator {
                                     info: Explicit,
                                     typ: Box::new(ty.clone()),
                                 };
-                                let tm = self.guarded_check(&[&p], *Box::new(e), ret_ty)?;
+                                let tm = self.guarded_check(&[&p], e, ret_ty)?;
                                 m.insert(n, (v, tm));
                             }
-                            (Box::new(Term::Switch(a, m)), ret_ty.clone())
+                            (Term::Switch(Box::new(a), m), ret_ty.clone())
                         }
-                        y => return Err(FieldsUnknown(*Box::new(y), loc)),
+                        y => return Err(FieldsUnknown(y, loc)),
                     },
-                    en => return Err(ExpectedEnum(*Box::new(en), a_loc)),
+                    en => return Err(ExpectedEnum(en, a_loc)),
                 }
             }
             Lookup(loc, o, n, arg) => {
                 let o_loc = o.loc();
-                match *self.infer(o.clone(), hint)?.1 {
+                match self.infer(*o.clone(), hint)?.1 {
                     Term::Object(f) => match *f {
                         Term::Fields(f) => match f.get(VPTR) {
                             Some(vp) => match vp {
@@ -624,57 +608,57 @@ impl Elaborator {
                                         UnnamedExplicit,
                                         Box::new(Tuple(arg.loc(), o, arg)),
                                     ));
-                                    self.infer(desugared, hint)?
+                                    self.infer(*desugared, hint)?
                                 }
                                 _ => unreachable!(),
                             },
                             None => {
                                 return Err(ExpectedClass(
-                                    *Box::new(Term::Object(Box::new(Term::Fields(f)))),
+                                    Term::Object(Box::new(Term::Fields(f))),
                                     o_loc,
                                 ));
                             }
                         },
-                        tm => return Err(FieldsUnknown(*Box::new(tm), o_loc)),
+                        tm => return Err(FieldsUnknown(tm, o_loc)),
                     },
-                    tm => return Err(ExpectedClass(*Box::new(tm), o_loc)),
+                    tm => return Err(ExpectedClass(tm, o_loc)),
                 }
             }
             Vptr(_, r, ts) => {
                 let mut types = Vec::default();
                 for t in ts {
-                    types.push(*self.infer(Box::new(t), hint)?.0);
+                    types.push(self.infer(t, hint)?.0);
                 }
-                (Box::new(Term::Vptr(r, types)), Box::new(Term::Univ))
+                (Term::Vptr(r, types), Term::Univ)
             }
             Find(_, _, f) => {
                 let ty = self.sigma.get(&f).unwrap().to_type();
-                (Box::new(Term::Ref(f)), ty)
+                (Term::Ref(f), *ty)
             }
             ImplementsOf(loc, a) => {
-                let (tm, ty) = self.infer(a, hint)?;
-                match *tm {
-                    Term::ImplementsOf(a, i) => (Box::new(Term::ImplementsOf(a, i)), ty),
-                    tm => return Err(ExpectedImplementsOf(*Box::new(tm), loc)),
+                let (tm, ty) = self.infer(*a, hint)?;
+                match tm {
+                    Term::ImplementsOf(a, i) => (Term::ImplementsOf(a, i), ty),
+                    tm => return Err(ExpectedImplementsOf(tm, loc)),
                 }
             }
 
-            Univ(_) => (Box::new(Term::Univ), Box::new(Term::Univ)),
-            Unit(_) => (Box::new(Term::Unit), Box::new(Term::Univ)),
-            TT(_) => (Box::new(Term::TT), Box::new(Term::Unit)),
-            Boolean(_) => (Box::new(Term::Boolean), Box::new(Term::Univ)),
-            False(_) => (Box::new(Term::False), Box::new(Term::Boolean)),
-            True(_) => (Box::new(Term::True), Box::new(Term::Boolean)),
-            String(_) => (Box::new(Term::String), Box::new(Term::Univ)),
-            Str(_, v) => (Box::new(Term::Str(v)), Box::new(Term::String)),
-            Number(_) => (Box::new(Term::Number), Box::new(Term::Univ)),
+            Univ(_) => (Term::Univ, Term::Univ),
+            Unit(_) => (Term::Unit, Term::Univ),
+            TT(_) => (Term::TT, Term::Unit),
+            Boolean(_) => (Term::Boolean, Term::Univ),
+            False(_) => (Term::False, Term::Boolean),
+            True(_) => (Term::True, Term::Boolean),
+            String(_) => (Term::String, Term::Univ),
+            Str(_, v) => (Term::Str(v), Term::String),
+            Number(_) => (Term::Number, Term::Univ),
             Num(_, r) => {
                 let v = r.parse().unwrap();
-                (Box::new(Term::Num(r, v)), Box::new(Term::Number))
+                (Term::Num(r, v), Term::Number)
             }
-            BigInt(_) => (Box::new(Term::BigInt), Box::new(Term::Univ)),
-            Big(_, v) => (Box::new(Term::Big(v)), Box::new(Term::BigInt)),
-            Row(_) => (Box::new(Term::Row), Box::new(Term::Univ)),
+            BigInt(_) => (Term::BigInt, Term::Univ),
+            Big(_, v) => (Term::Big(v), Term::BigInt),
+            Row(_) => (Term::Row, Term::Univ),
 
             _ => unreachable!(),
         })
@@ -684,19 +668,19 @@ impl Elaborator {
         for &p in ps {
             self.gamma.insert(p.var.clone(), p.typ.clone());
         }
-        let ret = self.check(Box::from(e), &Box::new(ty.clone()))?;
+        let ret = self.check(e, &ty.clone())?;
         for p in ps {
             self.gamma.remove(&p.var);
         }
-        Ok(*ret)
+        Ok(ret)
     }
 
     fn guarded_infer(
         &mut self,
         ps: &[&Param<Term>],
-        e: Box<Expr>,
-        hint: Option<&Box<Term>>,
-    ) -> Result<(Box<Term>, Box<Term>), Error> {
+        e: Expr,
+        hint: Option<&Term>,
+    ) -> Result<(Term, Term), Error> {
         for &p in ps {
             self.gamma.insert(p.var.clone(), p.typ.clone());
         }
@@ -707,7 +691,7 @@ impl Elaborator {
         Ok(ret)
     }
 
-    fn insert_meta(&mut self, loc: Loc, k: MetaKind) -> (Box<Term>, Box<Term>) {
+    fn insert_meta(&mut self, loc: Loc, k: MetaKind) -> (Term, Term) {
         use Body::*;
 
         let ty_meta_var = self.vg.fresh();
@@ -721,7 +705,7 @@ impl Elaborator {
                 body: Meta(k.clone(), None),
             },
         );
-        let ty = Box::new(Term::MetaRef(k.clone(), ty_meta_var, Default::default()));
+        let ty = Term::MetaRef(k.clone(), ty_meta_var, Default::default());
 
         let tm_meta_var = self.vg.fresh();
         let tele = gamma_to_tele(&self.gamma);
@@ -732,11 +716,11 @@ impl Elaborator {
                 loc,
                 name: tm_meta_var.clone(),
                 tele,
-                ret: ty.clone(),
+                ret: Box::from(ty.clone()),
                 body: Meta(k.clone(), None),
             },
         );
-        (Box::new(Term::MetaRef(k, tm_meta_var, spine)), ty)
+        (Term::MetaRef(k, tm_meta_var, spine), ty)
     }
 
     fn is_hole_insertable(expected: &Term) -> bool {

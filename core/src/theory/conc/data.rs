@@ -169,7 +169,7 @@ impl Expr {
                 lhs,
                 rhs.clone(),
                 Box::new(tm.clone()),
-                Box::from(wrapped),
+                Box::new(wrapped),
             );
         }
 
@@ -182,7 +182,7 @@ impl Expr {
         let loc = f.loc();
         App(
             loc,
-            Box::from(f),
+            Box::new(f),
             UnnamedImplicit,
             Box::new(InsertedHole(loc)),
         )
