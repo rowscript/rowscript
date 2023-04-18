@@ -66,7 +66,7 @@ impl<'a> Normalizer<'a> {
                 MetaRef(k, r, sp) => {
                     Let(p, Box::from(MetaRef(k, r, sp)), Box::from(self.term(*b)?))
                 }
-                a => *self.with(&[(&p.var, &Box::new(a))], b)?,
+                a => self.with(&[(&p.var, &a)], *b)?,
             },
             Pi(p, b) => Pi(self.param(p)?, Box::from(self.term(*b)?)),
             Lam(p, b) => Lam(self.param(p)?, Box::from(self.term(*b)?)),
@@ -100,15 +100,15 @@ impl<'a> Normalizer<'a> {
                 a => UnitLet(Box::from(a), Box::from(self.term(*b)?)),
             },
             If(p, t, e) => {
-                let p =self.term(*p)?;
+                let p = self.term(*p)?;
                 let t = self.term(*t)?;
-                let e=self.term(*e)?;
+                let e = self.term(*e)?;
                 match p {
                     True => t,
                     False => e,
                     p => If(Box::from(p), Box::from(t), Box::from(e)),
                 }
-            },
+            }
             Fields(fields) => {
                 let mut nf = FieldMap::default();
                 for (f, tm) in fields {
@@ -196,7 +196,7 @@ impl<'a> Normalizer<'a> {
                     Fields(f) => {
                         let (n, x) = f.into_iter().next().unwrap();
                         let (v, tm) = cs.get(&n).unwrap();
-                        *self.with(&[(v, &Box::new(x))], Box::new(tm.clone()))?
+                        self.with(&[(v, &x)], tm.clone())?
                     }
                     r => Switch(Box::new(Variant(Box::from(r))), self.case_map(cs)?),
                 },
@@ -243,28 +243,21 @@ impl<'a> Normalizer<'a> {
         })
     }
 
-    pub fn with(&mut self, rho: &[(&Var, &Box<Term>)], tm: Box<Term>) -> Result<Box<Term>, Error> {
-        for (x, v) in rho {
-            let x = *x;
-            let v = *v;
-            self.rho.insert(x.clone(), v.clone());
+    pub fn with(&mut self, rho: &[(&Var, &Term)], tm: Term) -> Result<Term, Error> {
+        for &(x, v) in rho {
+            self.rho.insert(x.clone(), Box::from(v.clone()));
         }
-        Ok(Box::new(self.term(*tm)?))
+        self.term(tm)
     }
 
-    pub fn apply(
-        &mut self,
-        f: Box<Term>,
-        ai: ArgInfo,
-        args: &[Box<Term>],
-    ) -> Result<Box<Term>, Error> {
+    pub fn apply(&mut self, f: Term, ai: ArgInfo, args: &[Term]) -> Result<Term, Error> {
         let mut ret = f;
         for x in args {
-            match *ret {
+            match ret {
                 Lam(p, b) => {
-                    ret = self.with(&[(&p.var, x)], b)?;
+                    ret = self.with(&[(&p.var, x)], *b)?;
                 }
-                _ => ret = Box::new(App(ret, ai.clone(), x.clone())),
+                _ => ret = App(Box::from(ret), ai.clone(), Box::from(x.clone())),
             }
         }
         Ok(ret)
@@ -296,7 +289,7 @@ impl<'a> Normalizer<'a> {
         }
     }
 
-    fn check_constraint(&mut self, x: &Box<Term>, i: &Var) -> Result<(), Error> {
+    fn check_constraint(&mut self, x: &Term, i: &Var) -> Result<(), Error> {
         use Body::*;
 
         let ims = match &self.sigma.get(i).unwrap().body {
@@ -313,7 +306,7 @@ impl<'a> Normalizer<'a> {
                 Err(_) => continue,
             }
         }
-        Err(UnresolvedImplementation(*x.clone(), self.loc))
+        Err(UnresolvedImplementation(x.clone(), self.loc))
     }
 
     fn find_implementation(&mut self, ty: Term, i: Var, f: Var) -> Result<Term, Error> {

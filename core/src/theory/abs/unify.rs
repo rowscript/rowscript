@@ -40,15 +40,15 @@ impl<'a> Unifier<'a> {
             }
             (Pi(p, a), Pi(q, b)) => {
                 self.unify(&p.typ, &q.typ)?;
-                let rho = &[(&q.var, &Box::new(Ref(p.var.clone())))];
-                let b = Normalizer::new(self.sigma, self.loc).with(rho, b.clone())?;
+                let rho = &[(&q.var, &Ref(p.var.clone()))];
+                let b = Normalizer::new(self.sigma, self.loc).with(rho, *b.clone())?;
                 self.unify(a, &b)
             }
             (Lam(p, a), Lam(_, _)) => {
                 let b = Normalizer::new(self.sigma, self.loc).apply(
-                    Box::new(rhs.clone()),
+                    rhs.clone(),
                     p.info.into(),
-                    &[Box::new(Ref(p.var.clone()))],
+                    &[Ref(p.var.clone())],
                 )?;
                 self.unify(a, &b)
             }
@@ -58,8 +58,8 @@ impl<'a> Unifier<'a> {
             }
             (Sigma(p, a), Sigma(q, b)) => {
                 self.unify(&p.typ, &q.typ)?;
-                let rho = &[(&q.var, &Box::new(Ref(p.var.clone())))];
-                let b = Normalizer::new(self.sigma, self.loc).with(rho, b.clone())?;
+                let rho = &[(&q.var, &Ref(p.var.clone()))];
+                let b = Normalizer::new(self.sigma, self.loc).with(rho, *b.clone())?;
                 self.unify(a, &b)
             }
             (Tuple(a, b), Tuple(x, y)) => {
@@ -67,11 +67,8 @@ impl<'a> Unifier<'a> {
                 self.unify(b, y)
             }
             (TupleLet(p, q, a, b), TupleLet(r, s, x, y)) => {
-                let rho = &[
-                    (&r.var, &Box::new(Ref(p.var.clone()))),
-                    (&s.var, &Box::new(Ref(q.var.clone()))),
-                ];
-                let y = Normalizer::new(self.sigma, self.loc).with(rho, y.clone())?;
+                let rho = &[(&r.var, &Ref(p.var.clone())), (&s.var, &Ref(q.var.clone()))];
+                let y = Normalizer::new(self.sigma, self.loc).with(rho, *y.clone())?;
                 self.unify(a, x)?;
                 self.unify(b, &y)
             }
