@@ -164,7 +164,7 @@ impl Elaborator {
                 _ => unreachable!(),
             };
             let i_fn_ty_applied = Normalizer::new(&mut self.sigma, i_loc)
-                .with(&[(&i_fn_ty_p.var, &im_tm)], i_fn_ty_b)?;
+                .with(&[(&i_fn_ty_p.var, &im_tm)], *i_fn_ty_b)?;
             let (_, im_fn_ty) = self.infer(Box::new(Resolved(im_loc, im_fn.clone())), None)?;
 
             Unifier::new(&mut self.sigma, im_loc).unify(&i_fn_ty_applied, &im_fn_ty)?;
@@ -201,11 +201,10 @@ impl Elaborator {
                             info: Explicit,
                             typ: ty_param.typ.clone(),
                         };
-                        let body_type = Normalizer::new(&mut self.sigma, loc).with(
-                            &[(&ty_param.var, &Box::new(Term::Ref(var)))],
-                            ty_body.clone(),
-                        )?;
-                        let checked_body = self.guarded_check(&[&param], body, &body_type)?;
+                        let body_type = Normalizer::new(&mut self.sigma, loc)
+                            .with(&[(&ty_param.var, &Term::Ref(var))], *ty_body.clone())?;
+                        let checked_body =
+                            self.guarded_check(&[&param], body, &Box::new(body_type))?;
                         Box::new(Term::Lam(param.clone(), checked_body))
                     }
                     _ => return Err(ExpectedPi(*pi, loc)),
@@ -215,11 +214,11 @@ impl Elaborator {
                 let sig = Box::new(Normalizer::new(&mut self.sigma, loc).term(*ty.clone())?);
                 match &*sig {
                     Term::Sigma(ty_param, ty_body) => {
-                        let a = self.check(a, &ty_param.typ)?;
+                        let a = *self.check(a, &ty_param.typ)?;
                         let body_type = Normalizer::new(&mut self.sigma, loc)
-                            .with(&[(&ty_param.var, &a)], ty_body.clone())?;
-                        let b = self.check(b, &body_type)?;
-                        Box::new(Term::Tuple(a, b))
+                            .with(&[(&ty_param.var, &a)], *ty_body.clone())?;
+                        let b = *self.check(b, &Box::new(body_type))?;
+                        Box::new(Term::Tuple(Box::from(a), Box::from(b)))
                     }
                     _ => return Err(ExpectedSigma(*sig, loc)),
                 }
@@ -341,13 +340,13 @@ impl Elaborator {
                             &p.typ,
                         )?;
                         let applied_ty =
-                            Normalizer::new(&mut self.sigma, f_loc).with(&[(&p.var, &x)], b)?;
+                            Normalizer::new(&mut self.sigma, f_loc).with(&[(&p.var, &x)], *b)?;
                         let applied = Normalizer::new(&mut self.sigma, f_loc).apply(
-                            f,
+                            *f,
                             p.info.into(),
-                            &[x],
+                            &[*x],
                         )?;
-                        (applied, applied_ty)
+                        (Box::from(applied), Box::from(applied_ty))
                     }
                     ty => return Err(ExpectedPi(*Box::new(ty), f_loc)),
                 }
