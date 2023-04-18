@@ -113,15 +113,11 @@ pub enum Term {
 
 impl Term {
     pub fn lam(tele: &Tele<Term>, tm: Term) -> Term {
-        *tele
-            .iter()
-            .rfold(Box::new(tm), |b, p| Box::new(Lam(p.clone(), b)))
+        tele.iter().rfold(tm, |b, p| Lam(p.clone(), Box::from(b)))
     }
 
     pub fn pi(tele: &Tele<Term>, tm: Term) -> Term {
-        *tele
-            .iter()
-            .rfold(Box::new(tm), |b, p| Box::new(Pi(p.clone(), b)))
+        tele.iter().rfold(tm, |b, p| Pi(p.clone(), Box::from(b)))
     }
 
     pub fn tele_to_spine(tele: &Tele<Term>) -> Spine {

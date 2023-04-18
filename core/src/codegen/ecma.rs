@@ -353,7 +353,7 @@ impl Ecma {
                     for (name, tm) in fields {
                         props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                             key: PropName::Ident(Self::str_ident(loc, name.as_str())),
-                            value: Box::new(self.expr(sigma, loc, &Box::new(tm.clone()))?),
+                            value: Box::new(self.expr(sigma, loc, &tm.clone())?),
                         }))));
                     }
                     Expr::Object(ObjectLit {
@@ -409,7 +409,7 @@ impl Ecma {
                             }))),
                             PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                                 key: PropName::Ident(Self::str_ident(loc, JS_ENUM_VAL)),
-                                value: Box::new(self.expr(sigma, loc, &Box::new(tm.clone()))?),
+                                value: Box::new(self.expr(sigma, loc, &tm.clone())?),
                             }))),
                         ],
                     })
@@ -429,7 +429,7 @@ impl Ecma {
                             body: Box::new(BlockStmtOrExpr::BlockStmt(self.block(
                                 sigma,
                                 loc,
-                                &Box::new(tm.clone()),
+                                &tm.clone(),
                             )?)),
                             is_async: false,
                             is_generator: false,

@@ -38,13 +38,13 @@ impl<'a> Normalizer<'a> {
             }
             MetaRef(k, x, sp) => {
                 let mut def = self.sigma.get(&x).unwrap().clone();
-                def.ret = Box::from(self.term(*def.ret)?);
+                def.ret = Box::new(self.term(*def.ret)?);
                 let ret = match &def.body {
                     Meta(_, s) => match s {
                         Some(solved) => {
                             let mut ret = rename(Term::lam(&def.tele, solved.clone()));
                             for (_, x) in sp {
-                                ret = App(Box::from(ret), UnnamedExplicit, Box::new(x))
+                                ret = App(Box::new(ret), UnnamedExplicit, Box::new(x))
                             }
                             self.term(ret)?
                         }
@@ -63,41 +63,39 @@ impl<'a> Normalizer<'a> {
             }
             Undef(x) => *self.sigma.get(&x).unwrap().to_term(x),
             Let(p, a, b) => match self.term(*a)? {
-                MetaRef(k, r, sp) => {
-                    Let(p, Box::from(MetaRef(k, r, sp)), Box::from(self.term(*b)?))
-                }
+                MetaRef(k, r, sp) => Let(p, Box::new(MetaRef(k, r, sp)), Box::new(self.term(*b)?)),
                 a => self.with(&[(&p.var, &a)], *b)?,
             },
-            Pi(p, b) => Pi(self.param(p)?, Box::from(self.term(*b)?)),
-            Lam(p, b) => Lam(self.param(p)?, Box::from(self.term(*b)?)),
+            Pi(p, b) => Pi(self.param(p)?, Box::new(self.term(*b)?)),
+            Lam(p, b) => Lam(self.param(p)?, Box::new(self.term(*b)?)),
             App(f, ai, x) => {
                 let f = self.term(*f)?;
                 let x = self.term(*x)?;
                 if let MetaRef(k, r, sp) = x {
-                    App(Box::from(f), ai, Box::from(MetaRef(k, r, sp)))
+                    App(Box::new(f), ai, Box::new(MetaRef(k, r, sp)))
                 } else if let Lam(p, b) = f {
-                    self.rho.insert(p.var, Box::from(x));
+                    self.rho.insert(p.var, Box::new(x));
                     self.term(*b)?
                 } else {
-                    App(Box::from(f), ai, Box::from(x))
+                    App(Box::new(f), ai, Box::new(x))
                 }
             }
-            Sigma(p, b) => Sigma(self.param(p)?, Box::from(self.term(*b)?)),
-            Tuple(a, b) => Tuple(Box::from(self.term(*a)?), Box::from(self.term(*b)?)),
+            Sigma(p, b) => Sigma(self.param(p)?, Box::new(self.term(*b)?)),
+            Tuple(a, b) => Tuple(Box::new(self.term(*a)?), Box::new(self.term(*b)?)),
             TupleLet(p, q, a, b) => match self.term(*a)? {
                 MetaRef(k, r, sp) => {
-                    TupleLet(p, q, Box::new(MetaRef(k, r, sp)), Box::from(self.term(*b)?))
+                    TupleLet(p, q, Box::new(MetaRef(k, r, sp)), Box::new(self.term(*b)?))
                 }
                 Tuple(x, y) => {
                     self.rho.insert(p.var, x);
                     self.rho.insert(q.var, y);
                     self.term(*b)?
                 }
-                a => TupleLet(p, q, Box::from(a), Box::from(self.term(*b)?)),
+                a => TupleLet(p, q, Box::new(a), Box::new(self.term(*b)?)),
             },
             UnitLet(a, b) => match self.term(*a)? {
                 TT => self.term(*b)?,
-                a => UnitLet(Box::from(a), Box::from(self.term(*b)?)),
+                a => UnitLet(Box::new(a), Box::new(self.term(*b)?)),
             },
             If(p, t, e) => {
                 let p = self.term(*p)?;
@@ -106,7 +104,7 @@ impl<'a> Normalizer<'a> {
                 match p {
                     True => t,
                     False => e,
-                    p => If(Box::from(p), Box::from(t), Box::from(e)),
+                    p => If(Box::new(p), Box::new(t), Box::new(e)),
                 }
             }
             Fields(fields) => {
@@ -121,7 +119,7 @@ impl<'a> Normalizer<'a> {
                     a.extend(b.into_iter());
                     Fields(a)
                 }
-                (a, b) => Combine(Box::from(a), Box::from(b)),
+                (a, b) => Combine(Box::new(a), Box::new(b)),
             },
             RowOrd(a, d, b) => {
                 let a = self.term(*a)?;
@@ -133,7 +131,7 @@ impl<'a> Normalizer<'a> {
                         Dir::Ge => u.unify_fields_ord(&b, &a)?,
                     };
                 }
-                RowOrd(Box::from(a), d, Box::from(b))
+                RowOrd(Box::new(a), d, Box::new(b))
             }
             RowEq(a, b) => {
                 let a = self.term(*a)?;
@@ -141,26 +139,26 @@ impl<'a> Normalizer<'a> {
                 if let (Fields(_), Fields(_)) = (&a, &b) {
                     Unifier::new(self.sigma, self.loc).unify_fields_eq(&a, &b)?;
                 }
-                RowEq(Box::from(a), Box::from(b))
+                RowEq(Box::new(a), Box::new(b))
             }
-            Object(r) => Object(Box::from(self.term(*r)?)),
-            Obj(a) => Obj(Box::from(self.term(*a)?)),
+            Object(r) => Object(Box::new(self.term(*r)?)),
+            Obj(a) => Obj(Box::new(self.term(*a)?)),
             Concat(a, b) => match (self.term(*a)?, self.term(*b)?) {
                 (Obj(x), Obj(y)) => match (*x, *y) {
                     (Fields(mut x), Fields(y)) => {
                         x.extend(y.into_iter());
                         Obj(Box::new(Fields(x)))
                     }
-                    (a, b) => Concat(Box::from(Obj(Box::from(a))), Box::from(Obj(Box::from(b)))),
+                    (a, b) => Concat(Box::new(Obj(Box::new(a))), Box::new(Obj(Box::new(b)))),
                 },
-                (a, b) => Concat(Box::from(a), Box::from(b)),
+                (a, b) => Concat(Box::new(a), Box::new(b)),
             },
             Access(a, n) => match self.term(*a)? {
                 Obj(x) => match *x {
                     Fields(fields) => fields.get(&n).unwrap().clone(),
-                    a => Access(Box::from(Obj(Box::from(a))), n),
+                    a => Access(Box::new(Obj(Box::new(a))), n),
                 },
-                a => Access(Box::from(a), n),
+                a => Access(Box::new(a), n),
             },
             Downcast(a, f) => match (self.term(*a)?, *f) {
                 (Obj(o), Fields(y)) => match (*o, y) {
@@ -172,12 +170,12 @@ impl<'a> Normalizer<'a> {
                             })
                             .collect(),
                     ))),
-                    (a, f) => Downcast(Box::from(Obj(Box::from(a))), Box::from(Fields(f))),
+                    (a, f) => Downcast(Box::new(Obj(Box::new(a))), Box::new(Fields(f))),
                 },
-                (a, f) => Downcast(Box::from(a), Box::from(f)),
+                (a, f) => Downcast(Box::new(a), Box::new(f)),
             },
-            Enum(r) => Enum(Box::from(self.term(*r)?)),
-            Variant(r) => Variant(Box::from(self.term(*r)?)),
+            Enum(r) => Enum(Box::new(self.term(*r)?)),
+            Variant(r) => Variant(Box::new(self.term(*r)?)),
             Upcast(a, f) => match (self.term(*a)?, *f) {
                 (Variant(o), Fields(y)) => match (*o, y) {
                     (Fields(x), y) => {
@@ -185,11 +183,11 @@ impl<'a> Normalizer<'a> {
                         if !y.contains_key(name) {
                             return Err(UnresolvedField(name.clone(), Fields(y), self.loc));
                         }
-                        Variant(Box::from(Fields(x)))
+                        Variant(Box::new(Fields(x)))
                     }
-                    (a, f) => Upcast(Box::from(Variant(Box::from(a))), Box::from(Fields(f))),
+                    (a, f) => Upcast(Box::new(Variant(Box::new(a))), Box::new(Fields(f))),
                 },
-                (a, f) => Upcast(Box::from(a), Box::from(f)),
+                (a, f) => Upcast(Box::new(a), Box::new(f)),
             },
             Switch(a, cs) => match self.term(*a)? {
                 Variant(r) => match *r {
@@ -198,7 +196,7 @@ impl<'a> Normalizer<'a> {
                         let (v, tm) = cs.get(&n).unwrap();
                         self.with(&[(v, &x)], tm.clone())?
                     }
-                    r => Switch(Box::new(Variant(Box::from(r))), self.case_map(cs)?),
+                    r => Switch(Box::new(Variant(Box::new(r))), self.case_map(cs)?),
                 },
                 a => Switch(Box::new(a), self.case_map(cs)?),
             },
@@ -216,7 +214,7 @@ impl<'a> Normalizer<'a> {
                 }
                 Vp(r, types)
             }
-            Lookup(a) => Lookup(Box::from(self.term(*a)?)),
+            Lookup(a) => Lookup(Box::new(self.term(*a)?)),
             ImplementsOf(a, i) => ImplementsOf(
                 match self.term(*a)? {
                     Ref(r) => Box::new(Ref(r)),
@@ -245,7 +243,7 @@ impl<'a> Normalizer<'a> {
 
     pub fn with(&mut self, rho: &[(&Var, &Term)], tm: Term) -> Result<Term, Error> {
         for &(x, v) in rho {
-            self.rho.insert(x.clone(), Box::from(v.clone()));
+            self.rho.insert(x.clone(), Box::new(v.clone()));
         }
         self.term(tm)
     }
@@ -257,7 +255,7 @@ impl<'a> Normalizer<'a> {
                 Lam(p, b) => {
                     ret = self.with(&[(&p.var, x)], *b)?;
                 }
-                _ => ret = App(Box::from(ret), ai.clone(), Box::from(x.clone())),
+                _ => ret = App(Box::new(ret), ai.clone(), Box::new(x.clone())),
             }
         }
         Ok(ret)
@@ -267,7 +265,7 @@ impl<'a> Normalizer<'a> {
         Ok(Param {
             var: p.var,
             info: p.info,
-            typ: Box::from(self.term(*p.typ)?),
+            typ: Box::new(self.term(*p.typ)?),
         })
     }
 
