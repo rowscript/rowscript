@@ -6,6 +6,7 @@ on:
     branches: [ "main" ]
 env:
   CARGO_TERM_COLOR: always
+  RUST_MIN_STACK: 8388608
 jobs:
   build:
     runs-on: ubuntu-latest
