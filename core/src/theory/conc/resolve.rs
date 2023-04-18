@@ -44,9 +44,9 @@ impl Resolver {
         d.tele = tele;
         d.ret = Box::new(self.expr(*d.ret)?);
         d.body = match d.body {
-            Fn(f) => Fn(Box::new(self.self_referencing_fn(&d.name, *f)?)),
+            Fn(f) => Fn(self.self_referencing_fn(&d.name, f)?),
             Postulate => Postulate,
-            Alias(t) => Alias(Box::new(self.expr(*t)?)),
+            Alias(t) => Alias(self.expr(t)?),
 
             Class {
                 object,
@@ -57,7 +57,7 @@ impl Resolver {
                 vtbl,
                 vtbl_lookup,
             } => Class {
-                object: Box::new(self.expr(*object)?),
+                object: self.expr(object)?,
                 methods,
                 ctor,
                 vptr,
@@ -65,11 +65,11 @@ impl Resolver {
                 vtbl,
                 vtbl_lookup,
             },
-            Ctor(f) => Ctor(Box::new(self.self_referencing_fn(&d.name, *f)?)),
-            Method(f) => Method(Box::new(self.expr(*f)?)), // FIXME: currently cannot be recursive
-            VptrType(t) => VptrType(Box::new(self.expr(*t)?)),
+            Ctor(f) => Ctor(self.self_referencing_fn(&d.name, f)?),
+            Method(f) => Method(self.expr(f)?), // FIXME: currently cannot be recursive
+            VptrType(t) => VptrType(self.expr(t)?),
             VptrCtor(t) => VptrCtor(t),
-            VtblType(t) => VtblType(Box::new(self.expr(*t)?)),
+            VtblType(t) => VtblType(self.expr(t)?),
             VtblLookup => VtblLookup,
 
             Interface { fns, ims } => Interface { fns, ims },
@@ -89,7 +89,7 @@ impl Resolver {
                     fns: resolved,
                 }
             }
-            ImplementsFn(f) => ImplementsFn(Box::new(self.expr(*f)?)), // FIXME: currently cannot be recursive
+            ImplementsFn(f) => ImplementsFn(self.expr(f)?), // FIXME: currently cannot be recursive
             Findable(i) => Findable(i),
 
             Undefined => unreachable!(),
@@ -170,7 +170,7 @@ impl Resolver {
             }
             TupledLam(loc, vars, b) => {
                 let x = Var::tupled();
-                let wrapped = Expr::wrap_tuple_lets(loc, &x, vars, b);
+                let wrapped = Box::new(Expr::wrap_tuple_lets(loc, &x, vars, *b));
                 let desugared = Lam(loc, x.clone(), wrapped);
                 self.bodied(&[&x], desugared)?
             }

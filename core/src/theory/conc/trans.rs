@@ -78,7 +78,7 @@ fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
         untupled_loc,
         &tupled_param.var,
         untupled_vars,
-        Box::new(body.unwrap()),
+        body.unwrap(),
     ));
     tele.push(tupled_param);
     tele.extend(preds);
@@ -165,7 +165,7 @@ fn type_alias(t: Pair<Rule>) -> Def<Expr> {
         name,
         tele,
         ret: Box::new(Univ(loc)),
-        body: Alias(Box::new(target.unwrap())),
+        body: Alias(target.unwrap()),
     }
 }
 
@@ -243,13 +243,13 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         name: vptr_name.clone(),
         tele: tele.clone(),
         ret: Box::new(Univ(loc)),
-        body: VptrType(Box::new(Vptr(
+        body: VptrType(Vptr(
             loc,
             vtbl_lookup_name.clone(),
             tele.iter()
                 .map(|p| Unresolved(loc, p.var.clone()))
                 .collect(),
-        ))),
+        )),
     };
     let vptr_ctor_def = Def {
         loc,
@@ -278,7 +278,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         Var::vptr().to_string(),
         wrap_implicit_apps(&tele, Unresolved(loc, name.vptr_ctor())),
     ));
-    let object = Box::new(Object(loc, Box::new(Fields(loc, ty_fields))));
+    let object = Object(loc, Box::new(Fields(loc, ty_fields)));
 
     let untupled_vars = ctor_untupled.unresolved();
     let untupled_loc = ctor_untupled.0;
@@ -287,7 +287,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         untupled_loc,
         &tupled_param.var,
         untupled_vars,
-        Box::new(Obj(loc, Box::new(Fields(loc, tm_fields)))),
+        Obj(loc, Box::new(Fields(loc, tm_fields))),
     ));
     let mut ctor_tele = tele.clone();
     ctor_tele.push(tupled_param);
@@ -322,7 +322,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         name: vtbl_name.clone(),
         tele: tele.clone(),
         ret: Box::new(Univ(loc)),
-        body: VtblType(Box::new(Object(loc, Box::new(Fields(loc, vtbl_fields))))),
+        body: VtblType(Object(loc, Box::new(Fields(loc, vtbl_fields)))),
     };
     let mut lookup_tele = tele.clone();
     lookup_tele.push(Param {
