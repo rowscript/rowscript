@@ -237,12 +237,12 @@ impl<T: Syntax> Display for Def<T> {
 
 #[derive(Clone, Debug)]
 pub enum Body<T: Syntax> {
-    Fn(Box<T>),
+    Fn(T),
     Postulate,
-    Alias(Box<T>),
+    Alias(T),
 
     Class {
-        object: Box<T>,
+        object: T,
         methods: Vec<(String, Var)>,
         ctor: Var,
         vptr: Var,
@@ -250,11 +250,11 @@ pub enum Body<T: Syntax> {
         vtbl: Var,
         vtbl_lookup: Var,
     },
-    Ctor(Box<T>),
-    Method(Box<T>),
-    VptrType(Box<T>),
+    Ctor(T),
+    Method(T),
+    VptrType(T),
     VptrCtor(String),
-    VtblType(Box<T>),
+    VtblType(T),
     VtblLookup,
 
     Interface {
@@ -265,7 +265,7 @@ pub enum Body<T: Syntax> {
         i: (Var, Var),
         fns: HashMap<Var, Var>,
     },
-    ImplementsFn(Box<T>),
+    ImplementsFn(T),
     Findable(Var),
 
     Undefined,

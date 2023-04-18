@@ -69,9 +69,9 @@ impl Elaborator {
         );
 
         let body = match d.body {
-            Fn(f) => Fn(self.check(f, &ret)?),
+            Fn(f) => Fn(*self.check(Box::from(f), &ret)?),
             Postulate => Postulate,
-            Alias(t) => Alias(self.check(t, &ret)?),
+            Alias(t) => Alias(*self.check(Box::from(t), &ret)?),
 
             Class {
                 object,
@@ -82,7 +82,7 @@ impl Elaborator {
                 vtbl,
                 vtbl_lookup,
             } => Class {
-                object: self.check(object, &ret)?,
+                object: *self.check(Box::from(object), &ret)?,
                 methods,
                 ctor,
                 vptr,
@@ -90,11 +90,11 @@ impl Elaborator {
                 vtbl,
                 vtbl_lookup,
             },
-            Ctor(f) => Ctor(self.check(f, &ret)?),
-            Method(f) => Method(self.check(f, &ret)?),
-            VptrType(t) => VptrType(self.check(t, &ret)?),
+            Ctor(f) => Ctor(*self.check(Box::from(f), &ret)?),
+            Method(f) => Method(*self.check(Box::from(f), &ret)?),
+            VptrType(t) => VptrType(*self.check(Box::from(t), &ret)?),
             VptrCtor(t) => VptrCtor(t),
-            VtblType(t) => VtblType(self.check(t, &ret)?),
+            VtblType(t) => VtblType(*self.check(Box::from(t), &ret)?),
             VtblLookup => VtblLookup,
 
             Interface { fns, ims } => Interface { fns, ims },
@@ -102,7 +102,7 @@ impl Elaborator {
                 self.push_implements(&d.name, &i, &fns)?;
                 Implements { i, fns }
             }
-            ImplementsFn(f) => ImplementsFn(self.check(f, &ret)?),
+            ImplementsFn(f) => ImplementsFn(*self.check(Box::from(f), &ret)?),
             Findable(i) => Findable(i),
 
             Undefined => unreachable!(),

@@ -145,7 +145,7 @@ impl Expr {
         }
     }
 
-    pub fn wrap_tuple_lets(loc: Loc, x: &Var, vars: Vec<Self>, b: Box<Self>) -> Box<Self> {
+    pub fn wrap_tuple_lets(loc: Loc, x: &Var, vars: Vec<Self>, b: Self) -> Self {
         use Expr::*;
 
         let mut untupled_vars = Vec::default();
@@ -164,13 +164,13 @@ impl Expr {
                 _ => unreachable!(),
             };
             let tm = untupled_vars.get(i + 1).unwrap();
-            wrapped = Box::new(TupleLet(
+            wrapped = TupleLet(
                 loc,
                 lhs,
                 rhs.clone(),
                 Box::new(tm.clone()),
-                wrapped,
-            ));
+                Box::from(wrapped),
+            );
         }
 
         wrapped
