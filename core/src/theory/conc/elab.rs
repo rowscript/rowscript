@@ -716,7 +716,7 @@ impl Elaborator {
                 loc,
                 name: tm_meta_var.clone(),
                 tele,
-                ret: Box::from(ty.clone()),
+                ret: Box::new(ty.clone()),
                 body: Meta(k.clone(), None),
             },
         );
