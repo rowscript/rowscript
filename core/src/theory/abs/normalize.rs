@@ -61,7 +61,7 @@ impl<'a> Normalizer<'a> {
                 self.sigma.insert(x, def);
                 ret
             }
-            Undef(x) => *self.sigma.get(&x).unwrap().to_term(x),
+            Undef(x) => self.sigma.get(&x).unwrap().to_term(x),
             Let(p, a, b) => match self.term(*a)? {
                 MetaRef(k, r, sp) => Let(p, Box::new(MetaRef(k, r, sp)), Box::new(self.term(*b)?)),
                 a => self.with(&[(&p.var, &a)], *b)?,
@@ -333,7 +333,7 @@ impl<'a> Normalizer<'a> {
                 continue;
             }
 
-            return Ok(*self.sigma.get(&im_fn).unwrap().to_term(im_fn));
+            return Ok(self.sigma.get(&im_fn).unwrap().to_term(im_fn));
         }
 
         Err(UnresolvedImplementation(ty, self.loc))

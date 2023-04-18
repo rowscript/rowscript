@@ -159,7 +159,7 @@ impl Elaborator {
             let i_loc = i_fn_def.loc;
             let im_loc = self.sigma.get(im_fn).unwrap().loc;
 
-            let (i_fn_ty_p, i_fn_ty_b) = match *i_fn_def.to_type() {
+            let (i_fn_ty_p, i_fn_ty_b) = match i_fn_def.to_type() {
                 Term::Pi(p, b) => (p, b),
                 _ => unreachable!(),
             };
@@ -284,7 +284,7 @@ impl Elaborator {
                 Some(ty) => (Term::Ref(v), *ty.clone()),
                 None => {
                     let d = self.sigma.get(&v).unwrap();
-                    (*d.to_term(v), *d.to_type())
+                    (d.to_term(v), d.to_type())
                 }
             },
             Hole(loc) => self.insert_meta(loc, UserMeta),
@@ -633,7 +633,7 @@ impl Elaborator {
             }
             Find(_, _, f) => {
                 let ty = self.sigma.get(&f).unwrap().to_type();
-                (Term::Ref(f), *ty)
+                (Term::Ref(f), ty)
             }
             ImplementsOf(loc, a) => {
                 let (tm, ty) = self.infer(*a, hint)?;

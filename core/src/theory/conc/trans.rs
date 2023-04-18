@@ -220,7 +220,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
             }
             Rule::class_method => {
                 let mut m = fn_def(p, Some((Unresolved(loc, name.clone()), tele.clone())));
-                vtbl_fields.push((m.name.to_string(), *m.to_type()));
+                vtbl_fields.push((m.name.to_string(), m.to_type()));
 
                 let meth_name = m.name.to_string();
                 let fn_name = name.method(m.name);
@@ -351,8 +351,8 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
 }
 
 fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
-    fn alias_type(loc: Loc, tele: &Tele<Expr>) -> Box<Expr> {
-        Expr::pi(tele, Box::new(Univ(loc)))
+    fn alias_type(loc: Loc, tele: &Tele<Expr>) -> Expr {
+        Expr::pi(tele, Univ(loc))
     }
 
     use Body::*;
@@ -381,7 +381,7 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
                 let mut tele = vec![Param {
                     var: alias.clone(),
                     info: Implicit,
-                    typ: alias_type(alias_loc, &im_tele),
+                    typ: Box::new(alias_type(alias_loc, &im_tele)),
                 }];
                 tele.extend(d.tele);
                 d.tele = tele;
@@ -400,7 +400,7 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
         tele: vec![Param {
             var: alias,
             info: Implicit,
-            typ: alias_type(alias_loc, &im_tele),
+            typ: Box::new(alias_type(alias_loc, &im_tele)),
         }],
         ret,
         body: Interface {
