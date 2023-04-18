@@ -17,11 +17,7 @@ impl<'a> Unifier<'a> {
     }
 
     fn unify_err(&self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
-        Err(NonUnifiable(
-            Box::new(lhs.clone()),
-            Box::new(rhs.clone()),
-            self.loc,
-        ))
+        Err(NonUnifiable(lhs.clone(), rhs.clone(), self.loc))
     }
 
     pub fn unify(&mut self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
@@ -152,11 +148,7 @@ impl<'a> Unifier<'a> {
                         self.unify(a, b)?;
                         continue;
                     }
-                    return Err(NonRowSat(
-                        Box::new(smaller.clone()),
-                        Box::new(bigger.clone()),
-                        self.loc,
-                    ));
+                    return Err(NonRowSat(smaller.clone(), bigger.clone(), self.loc));
                 }
                 Ok(())
             }

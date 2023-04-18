@@ -37,39 +37,39 @@ pub enum Error {
     #[error("unresolved implicit parameter \"{0}\"")]
     UnresolvedImplicitParam(String, Loc),
     #[error("expected function type, got \"{0}\"")]
-    ExpectedPi(Box<Term>, Loc),
+    ExpectedPi(Term, Loc),
     #[error("expected tuple type, got \"{0}\"")]
-    ExpectedSigma(Box<Term>, Loc),
+    ExpectedSigma(Term, Loc),
     #[error("expected object type, got \"{0}\"")]
-    ExpectedObject(Box<Term>, Loc),
+    ExpectedObject(Term, Loc),
     #[error("expected enum type, got \"{0}\"")]
-    ExpectedEnum(Box<Term>, Loc),
+    ExpectedEnum(Term, Loc),
     #[error("fields not known yet, got \"{0}\"")]
-    FieldsUnknown(Box<Term>, Loc),
+    FieldsUnknown(Term, Loc),
     #[error("expected class type, got \"{0}\"")]
-    ExpectedClass(Box<Term>, Loc),
+    ExpectedClass(Term, Loc),
     #[error("not exhaustive, got \"{0}\"")]
-    NonExhaustive(Box<Term>, Loc),
+    NonExhaustive(Term, Loc),
     #[error("unresolved field \"{0}\" in \"{1}\"")]
-    UnresolvedField(String, Box<Term>, Loc),
+    UnresolvedField(String, Term, Loc),
     #[error("expected interface type, got \"{0}\"")]
-    ExpectedInterface(Box<Term>, Loc),
+    ExpectedInterface(Term, Loc),
     #[error("expected type alias, got \"{0}\"")]
-    ExpectedAlias(Box<Term>, Loc),
+    ExpectedAlias(Term, Loc),
     #[error("unresolved implementation, got \"{0}\"")]
-    UnresolvedImplementation(Box<Term>, Loc),
+    UnresolvedImplementation(Term, Loc),
     #[error("expected constraint, got \"{0}\"")]
-    ExpectedImplementsOf(Box<Term>, Loc),
+    ExpectedImplementsOf(Term, Loc),
 
     #[error("expected \"{0}\", found \"{1}\"")]
-    NonUnifiable(Box<Term>, Box<Term>, Loc),
+    NonUnifiable(Term, Term, Loc),
     #[error("field(s) \"{0}\" not contained in \"{1}\"")]
-    NonRowSat(Box<Term>, Box<Term>, Loc),
+    NonRowSat(Term, Term, Loc),
 
     #[error("unsolved meta \"{0}\"")]
-    UnsolvedMeta(Box<Term>, Loc),
+    UnsolvedMeta(Term, Loc),
     #[error("not erasable term \"{0}\"")]
-    NonErasable(Box<Term>, Loc),
+    NonErasable(Term, Loc),
 
     #[cfg(test)]
     #[error("codegen error")]
