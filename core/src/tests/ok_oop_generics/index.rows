@@ -8,7 +8,7 @@ class Foo<T> {
 
     doStuff() {
         let n = this.data;
-        return
+        return this.sayHi()
     }
 }
 
