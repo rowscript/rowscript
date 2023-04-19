@@ -1,0 +1,7 @@
+from web import fetch;
+from @rows/react import Element;
+from .a import a;
+
+function f() {
+    return a()
+}

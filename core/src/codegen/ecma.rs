@@ -573,8 +573,7 @@ impl Ecma {
                 Undefined => unreachable!(),
                 _ => continue,
             } {
-                Ok(d) => d,
-                Err(NonErasable(_, _)) => continue,
+                Ok(_) | Err(NonErasable(_, _)) => continue,
                 Err(e) => return Err(e),
             };
         }

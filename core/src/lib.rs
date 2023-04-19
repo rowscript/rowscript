@@ -1,4 +1,3 @@
-use std::convert::identity;
 use std::fs::read_to_string;
 use std::io;
 use std::ops::Range;
@@ -127,7 +126,7 @@ fn print_err<F: AsRef<str>, S: AsRef<str>>(e: Error, file: F, source: S) -> Erro
         NonErasable(_, loc) => simple_message(&e, loc, CODEGEN_FAILED),
 
         #[cfg(test)]
-        CodegenTest => (Range::default(), CODEGEN_FAILED, None),
+        CodegenTest => (Default::default(), CODEGEN_FAILED, None),
     };
     let mut b = Report::build(ReportKind::Error, file.as_ref(), range.start)
         .with_message(title)
@@ -159,8 +158,8 @@ pub struct Driver {
 }
 
 impl Driver {
-    pub fn new(path: PathBuf, outdir: Option<PathBuf>, target: Box<dyn Target>) -> Self {
-        let codegen = Codegen::new(target, outdir.map_or(path.join(OUTDIR), identity));
+    pub fn new(path: PathBuf, target: Box<dyn Target>) -> Self {
+        let codegen = Codegen::new(target, path.join(OUTDIR));
         Self {
             path,
             elab: Default::default(),

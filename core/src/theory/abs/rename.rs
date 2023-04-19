@@ -69,24 +69,7 @@ impl Renamer {
             Find(ty, i, f) => Find(Box::new(self.term(*ty)), i, f),
             ImplementsOf(a, i) => ImplementsOf(Box::new(self.term(*a)), i),
 
-            Extern(r) => Extern(r),
-            Undef(r) => Undef(r),
-            Univ => Univ,
-            Unit => Unit,
-            TT => TT,
-            Boolean => Boolean,
-            False => False,
-            True => True,
-            String => String,
-            Str(v) => Str(v),
-            Number => Number,
-            Num(r, v) => Num(r, v),
-            BigInt => BigInt,
-            Big(v) => Big(v),
-            Row => Row,
-            RowSat => RowSat,
-            RowRefl => RowRefl,
-            ImplementsSat => ImplementsSat,
+            tm => tm,
         }
     }
 

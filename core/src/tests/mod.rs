@@ -35,6 +35,7 @@ mod ok_implicit_named;
 mod ok_implicit_unnamed;
 mod ok_interface;
 mod ok_interface_stuck;
+mod ok_modsys;
 mod ok_object;
 mod ok_object_rowpoly;
 mod ok_oop;
@@ -62,7 +63,7 @@ fn run_helper(mod_path: &str) -> Result<(), Error> {
         .join("src")
         .join("tests")
         .join(mod_path.to_string().split("::").last().unwrap());
-    let mut driver = Driver::new(pkg, None, target);
+    let mut driver = Driver::new(pkg, target);
     driver.run()?;
     parse_outfile(&driver)
 }

@@ -7,16 +7,25 @@ priv_camelback_id = @{ "_" ~ pub_camelback_id }
 pub_camel_id = @{ ASCII_ALPHA_UPPER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
 priv_camel_id = @{ "_" ~ pub_camel_id }
 
-fn_id = { pub_camelback_id | priv_camelback_id }
+lower_id = @{ ASCII_ALPHA_LOWER+ }
+
+fn_id = { pub_fn_id | priv_fn_id }
+pub_fn_id = _{ pub_camelback_id }
+priv_fn_id = _{ priv_camelback_id }
 row_id = @{ "'" ~ pub_camel_id }
 implicit_id = { pub_camel_id }
-type_id = { pub_camel_id | priv_camel_id }
+type_id = { pub_type_id | priv_type_id }
+pub_type_id = _{ pub_camel_id }
+priv_type_id = _{ priv_camel_id }
 prop_id = { pub_camelback_id | priv_camelback_id }
 variant_id = { pub_camel_id | priv_camel_id }
 field_id = _{ prop_id | variant_id }
 param_id = { pub_camelback_id }
 let_id = { pub_camelback_id }
-class_id = { pub_camel_id | priv_camel_id }
+pkg_id = { std_pkg_id | vendor_pkg_id }
+std_pkg_id = _{ lower_id }
+vendor_pkg_id = @{ "@" ~ lower_id ~ "/" ~ lower_id }
+module_id = { lower_id }
 
 idref =
   { fn_id
@@ -24,10 +33,8 @@ idref =
   | let_id
   | prop_id
   }
-tyref =
-  { implicit_id
-  | type_id
-  }
+tyref = { implicit_id | type_id }
+importable = { pub_fn_id | pub_type_id }
 
 hole = { "?" }
 univ = { "type" }
@@ -152,7 +159,7 @@ branch =
   }
 branch_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" ~ branch }
 branch_unit_let = { expr ~ ";" ~ branch }
-new_expr = { "new" ~ class_id ~ ("<" ~ type_args ~ ">")? ~ args }
+new_expr = { "new" ~ type_id ~ ("<" ~ type_args ~ ">")? ~ args }
 method_app = { ("(" ~ expr ~ ")" | idref) ~ "." ~ prop_id ~ args+ }
 rev_app = { ("(" ~ expr ~ ")" | idref) ~ rev_app_callee+ }
 rev_app_callee = { "|" ~ ("(" ~ expr ~ ")" | idref) ~ implicit_args? ~ args+ }
@@ -258,7 +265,7 @@ type_alias =
 
 class_def =
   { "class"
-  ~ class_id
+  ~ type_id
   ~ ("<" ~ implicit_params ~ ">")?
   ~ "{"
   ~ class_body
@@ -316,4 +323,20 @@ decl =
   | implements_def
   }
 
-file = { SOI ~ decl* ~ EOI }
+import_std = { "from" ~ std_pkg_id ~ import_body }
+import_vendor = { "from" ~ vendor_pkg_id ~ import_body }
+import_local = { "from" ~ "." ~ module_id ~ import_body }
+import_body = _{ ("." ~ module_id)* ~ "import" ~ importables ~ ";" }
+importables =
+ _{ importable
+  | "{" ~ importable ~ ("," ~ importable)+ ~ "}"
+  }
+
+file =
+  { SOI
+  ~ import_std*
+  ~ import_vendor*
+  ~ import_local*
+  ~ decl*
+  ~ EOI
+  }
