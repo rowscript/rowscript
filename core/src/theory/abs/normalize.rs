@@ -25,6 +25,10 @@ impl<'a> Normalizer<'a> {
     }
 
     pub fn term(&mut self, tm: Term) -> Result<Term, Error> {
+        stacker::maybe_grow(512 * 1024, 4 * 1024 * 1024, move || self.term_impl(tm))
+    }
+
+    fn term_impl(&mut self, tm: Term) -> Result<Term, Error> {
         use Body::*;
         use Term::*;
 

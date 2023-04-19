@@ -28,6 +28,7 @@ version = "1.0.37"
 version = "0.2.0"
 
 [dependencies]
+stacker = "0.1"
 swc_ecma_parser = { version = "0.132.5", optional = true }
 swc_ecma_ast = { version = "0.102.4", optional = true }
 swc_ecma_codegen = { version = "0.137.5", optional = true }
