@@ -34,13 +34,10 @@ pub enum MetaKind {
 impl Display for MetaKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         use MetaKind::*;
-        f.write_str(
-            match self {
-                UserMeta => "?u".to_string(),
-                InsertedMeta => "?i".to_string(),
-            }
-            .as_str(),
-        )
+        f.write_str(match self {
+            UserMeta => "?u",
+            InsertedMeta => "?i",
+        })
     }
 }
 
