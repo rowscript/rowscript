@@ -1,6 +1,14 @@
-from web import fetch;
-from @rows/react import Element;
-from .a import a;
+from web import { fetch };
+import node;
+from std.orm import _;
+
+from @rows/react import { Element };
+import @rows/react.router;
+from @rows/react.state import _;
+
+from .a import { a };
+import .b;
+from .c import _;
 
 function f() {
     return a()

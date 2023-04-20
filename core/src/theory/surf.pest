@@ -22,7 +22,6 @@ variant_id = { pub_camel_id | priv_camel_id }
 field_id = _{ prop_id | variant_id }
 param_id = { pub_camelback_id }
 let_id = { pub_camelback_id }
-pkg_id = { std_pkg_id | vendor_pkg_id }
 std_pkg_id = _{ lower_id }
 vendor_pkg_id = @{ "@" ~ lower_id ~ "/" ~ lower_id }
 module_id = { lower_id }
@@ -323,14 +322,26 @@ decl =
   | implements_def
   }
 
-import_std = { "from" ~ std_pkg_id ~ import_body }
-import_vendor = { "from" ~ vendor_pkg_id ~ import_body }
-import_local = { "from" ~ "." ~ module_id ~ import_body }
-import_body = _{ ("." ~ module_id)* ~ "import" ~ importables ~ ";" }
-importables =
- _{ importable
-  | "{" ~ importable ~ ("," ~ importable)+ ~ "}"
+import_std =
+  { "from" ~ imported_std_module ~ "import" ~ importables ~ ";"
+  | "import" ~ imported_std_module ~ ";"
   }
+import_vendor =
+  { "from" ~ imported_vendor_module ~ "import" ~ importables ~ ";"
+  | "import" ~ imported_vendor_module ~ ";"
+  }
+import_local =
+  { "from" ~ imported_local_module ~ "import" ~ importables ~ ";"
+  | "import" ~ imported_local_module ~ ";"
+  }
+imported_std_module = _{ std_pkg_id ~ ("." ~ module_id)* }
+imported_vendor_module = _{ vendor_pkg_id ~ ("." ~ module_id)* }
+imported_local_module = _{ ("." ~ module_id)+ }
+importables =
+ _{ importable_unused
+  | "{" ~ importable ~ ("," ~ importable)* ~ "}"
+  }
+importable_unused = { "_" }
 
 file =
   { SOI
