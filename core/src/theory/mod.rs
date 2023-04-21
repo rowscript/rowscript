@@ -69,9 +69,9 @@ pub const VTBL_LOOKUP: &str = "__vtblLookup";
 pub const THIS: &str = "this";
 
 impl Var {
-    fn new<S: AsRef<str>>(name: S) -> Self {
+    fn new<S: Into<String>>(name: S) -> Self {
         Self {
-            name: Rc::new(name.as_ref().to_string()),
+            name: Rc::new(name.into()),
         }
     }
 
