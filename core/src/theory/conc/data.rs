@@ -231,7 +231,7 @@ impl Display for Expr {
                 App(_, f, i, x) => match i {
                     UnnamedExplicit => format!("({f} {x})"),
                     UnnamedImplicit => format!("({f} {{{x}}})"),
-                    NamedImplicit(r) => format!("({f} {{{r} = {x}}}"),
+                    NamedImplicit(r) => format!("({f} {{{r} = {x}}})"),
                 },
                 Sigma(_, p, b) => format!("{p} * {b}"),
                 Tuple(_, a, b) => format!("({a}, {b})"),
