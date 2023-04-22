@@ -198,7 +198,7 @@ impl Driver {
             match file.extension() {
                 None => continue,
                 Some(e) => {
-                    if self.codegen.try_push_import(e, &file) {
+                    if self.codegen.try_push_import(&file) {
                         continue;
                     }
 

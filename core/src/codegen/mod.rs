@@ -15,7 +15,7 @@ pub mod noop;
 
 pub trait Target {
     fn filename(&self) -> &'static str;
-    fn should_import(&self, ext: &OsStr) -> bool;
+    fn should_import(&self, path: &Path) -> bool;
     fn module(
         &mut self,
         buf: &mut Vec<u8>,
@@ -42,8 +42,8 @@ impl Codegen {
         }
     }
 
-    pub fn try_push_import(&mut self, ext: &OsStr, path: &Path) -> bool {
-        let ok = self.target.should_import(ext);
+    pub fn try_push_import(&mut self, path: &Path) -> bool {
+        let ok = self.target.should_import(path);
         if ok {
             self.imports.push(path.to_path_buf())
         }

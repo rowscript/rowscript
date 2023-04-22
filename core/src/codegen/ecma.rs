@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str::FromStr;
 
@@ -680,8 +680,15 @@ impl Target for Ecma {
         OUT_FILE
     }
 
-    fn should_import(&self, ext: &OsStr) -> bool {
-        ext == "js" || ext == "mjs"
+    fn should_import(&self, path: &Path) -> bool {
+        match path.file_name() {
+            None => false,
+            Some(f) if f == OUT_FILE => false,
+            _ => match path.extension() {
+                Some(ext) if ext == "js" || ext == "mjs" => true,
+                _ => false,
+            },
+        }
     }
 
     fn module(

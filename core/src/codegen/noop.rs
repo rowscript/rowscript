@@ -1,5 +1,5 @@
 use std::ffi::OsStr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::codegen::Target;
 use crate::theory::abs::data::Term;
@@ -14,7 +14,7 @@ impl Target for Noop {
         ""
     }
 
-    fn should_import(&self, _: &OsStr) -> bool {
+    fn should_import(&self, _: &Path) -> bool {
         false
     }
 
