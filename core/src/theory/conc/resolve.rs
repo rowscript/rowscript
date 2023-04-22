@@ -9,7 +9,7 @@ use crate::Error;
 use crate::Error::UnresolvedVar;
 
 #[derive(Default)]
-pub struct Resolver(HashMap<String, Var>);
+struct Resolver(HashMap<String, Var>);
 
 impl Resolver {
     pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<Vec<Def<Expr>>, Error> {
@@ -278,4 +278,8 @@ impl Resolver {
         self.insert(name);
         self.expr(f)
     }
+}
+
+pub fn resolve(defs: Vec<Def<Expr>>) -> Result<Vec<Def<Expr>>, Error> {
+    Resolver::default().defs(defs)
 }

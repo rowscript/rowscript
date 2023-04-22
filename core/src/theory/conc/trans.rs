@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use pest::iterators::{Pair, Pairs};
 
@@ -7,30 +8,10 @@ use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
+use crate::theory::conc::load::{Import, ImportedItems, ImportedPkg};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var};
 use crate::Rule;
-
-#[derive(Debug)]
-pub struct Import {
-    pkg: ImportedPkg,
-    modules: Vec<String>,
-    items: ImportedItems,
-}
-
-#[derive(Debug)]
-pub enum ImportedPkg {
-    Std(String),
-    Vendor(String),
-    Local,
-}
-
-#[derive(Debug)]
-pub enum ImportedItems {
-    Unqualified(Vec<String>),
-    Qualified,
-    Unused,
-}
 
 pub fn file(mut f: Pairs<Rule>) -> (Vec<Import>, Vec<Def<Expr>>) {
     let mut imports = Vec::default();
@@ -58,7 +39,7 @@ fn import(mut i: Pairs<Rule>) -> Import {
     use ImportedItems::*;
     use ImportedPkg::*;
 
-    let mut modules = Vec::default();
+    let mut modules = PathBuf::default();
     let pkg_or_mod = i.next().unwrap();
     let pkg_or_mod_name = pkg_or_mod.as_str().to_string();
     let pkg = match pkg_or_mod.as_rule() {
@@ -77,26 +58,20 @@ fn import(mut i: Pairs<Rule>) -> Import {
         match p.as_rule() {
             Rule::module_id => modules.push(item),
             Rule::importable => importables.push(item),
-            Rule::importable_unused => {
-                return Import {
-                    pkg,
-                    modules,
-                    items: Unused,
-                }
-            }
+            Rule::importable_unused => return Import::new(pkg, modules, Unused),
             _ => unreachable!(),
         };
     }
 
-    Import {
+    Import::new(
         pkg,
         modules,
-        items: if importables.is_empty() {
+        if importables.is_empty() {
             Qualified
         } else {
             Unqualified(importables)
         },
-    }
+    )
 }
 
 fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {

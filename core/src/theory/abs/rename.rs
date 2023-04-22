@@ -4,7 +4,7 @@ use crate::theory::abs::data::{CaseMap, FieldMap, Term};
 use crate::theory::{Param, Var};
 
 #[derive(Default)]
-pub struct Renamer(HashMap<Var, Var>);
+struct Renamer(HashMap<Var, Var>);
 
 impl Renamer {
     pub fn term(&mut self, tm: Term) -> Term {
