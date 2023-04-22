@@ -1,7 +1,7 @@
-use std::fs::read_to_string;
+use std::fs::{read_to_string, ReadDir};
 use std::io;
 use std::ops::Range;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use pest::error::InputLocation;
@@ -11,6 +11,7 @@ use thiserror::Error;
 
 use crate::codegen::{Codegen, Target};
 use crate::theory::abs::data::Term;
+use crate::theory::abs::def::Def;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
@@ -81,7 +82,7 @@ const CHECKER_FAILED: &str = "failed while typechecking";
 const UNIFIER_FAILED: &str = "failed while unifying";
 const CODEGEN_FAILED: &str = "failed while generating code";
 
-fn print_err<F: AsRef<str>, S: AsRef<str>>(e: Error, file: F, source: S) -> Error {
+fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
     fn simple_message<'a>(
         e: &Error,
         loc: &Loc,
@@ -128,18 +129,19 @@ fn print_err<F: AsRef<str>, S: AsRef<str>>(e: Error, file: F, source: S) -> Erro
         #[cfg(test)]
         CodegenTest => (Default::default(), CODEGEN_FAILED, None),
     };
-    let mut b = Report::build(ReportKind::Error, file.as_ref(), range.start)
+    let file_str = file.to_str().unwrap();
+    let mut b = Report::build(ReportKind::Error, file_str, range.start)
         .with_message(title)
         .with_code(1);
     if let Some(m) = msg {
         b = b.with_label(
-            Label::new((file.as_ref(), range))
+            Label::new((file_str, range))
                 .with_message(m)
                 .with_color(Color::Red),
         );
     }
     b.finish()
-        .print((file.as_ref(), Source::from(source.as_ref())))
+        .print((file_str, Source::from(source.as_ref())))
         .unwrap();
     e
 }
@@ -150,6 +152,12 @@ struct RowsParser;
 
 pub const OUTDIR: &str = "dist";
 pub const FILE_EXT_ROWS: &str = "rows";
+
+pub struct ModuleFile {
+    file: PathBuf,
+    src: String,
+    defs: Vec<Def<Term>>,
+}
 
 pub struct Driver {
     path: PathBuf,
@@ -168,9 +176,13 @@ impl Driver {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
+        self.load(self.path.read_dir()?)
+    }
+
+    fn load(&mut self, entries: ReadDir) -> Result<(), Error> {
         let mut files = Vec::default();
 
-        for r in self.path.read_dir()? {
+        for r in entries {
             let entry = r?;
             if entry.file_type()?.is_dir() {
                 continue;
@@ -181,14 +193,13 @@ impl Driver {
                 Some(e) => {
                     if e == FILE_EXT_ROWS {
                         let src = read_to_string(&file)?;
-                        let path = file.to_str().unwrap().to_string();
                         let defs = RowsParser::parse(Rule::file, src.as_str())
                             .map_err(|e| Error::from(Box::new(e)))
                             .map(trans::file)
                             .and_then(|d| Resolver::default().defs(d))
                             .and_then(|d| self.elab.defs(d))
-                            .map_err(|e| print_err(e, &path, &src))?;
-                        files.push((path, src, defs));
+                            .map_err(|e| print_err(e, &file, &src))?;
+                        files.push(ModuleFile { file, src, defs });
                         continue;
                     }
 

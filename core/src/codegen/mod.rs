@@ -6,7 +6,7 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Def, Sigma};
 use crate::theory::Loc;
 use crate::Error::NonErasable;
-use crate::{print_err, Error};
+use crate::{print_err, Error, ModuleFile};
 
 #[cfg(feature = "codegen-ecma")]
 pub mod ecma;
@@ -29,7 +29,7 @@ pub struct Codegen {
     buf: Vec<u8>,
     imports: Vec<PathBuf>,
     outdir: PathBuf,
-    pub outfile: PathBuf,
+    outfile: PathBuf,
 }
 
 impl Codegen {
@@ -44,18 +44,18 @@ impl Codegen {
         }
     }
 
+    pub fn outfile(&self) -> &Path {
+        self.outfile.as_path()
+    }
+
     pub fn try_push_import(&mut self, ext: &OsStr, path: &Path) {
         if self.target.should_import(ext) {
             self.imports.push(path.to_path_buf())
         }
     }
 
-    pub fn module(
-        &mut self,
-        sigma: &Sigma,
-        files: Vec<(String, String, Vec<Def<Term>>)>,
-    ) -> Result<(), Error> {
-        for (path, src, defs) in files {
+    pub fn module(&mut self, sigma: &Sigma, files: Vec<ModuleFile>) -> Result<(), Error> {
+        for ModuleFile { file, src, defs } in files {
             self.target
                 .module(
                     &mut self.buf,
@@ -71,7 +71,7 @@ impl Codegen {
                         })
                         .collect(),
                 )
-                .map_err(|e| print_err(e, &path, &src))?;
+                .map_err(|e| print_err(e, &file, &src))?;
         }
         if !self.buf.is_empty() {
             create_dir_all(&self.outdir)?;
