@@ -1,0 +1,3 @@
+function connect(dsn: string) {
+    return
+}

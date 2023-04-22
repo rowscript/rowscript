@@ -1,0 +1,3 @@
+function readFileSync(path: string): string {
+    return "lol"
+}

@@ -40,13 +40,19 @@ fn import(mut i: Pairs<Rule>) -> Import {
     use ImportedPkg::*;
 
     let mut modules = PathBuf::default();
-    let pkg_or_mod = i.next().unwrap();
-    let pkg_or_mod_name = pkg_or_mod.as_str().to_string();
-    let pkg = match pkg_or_mod.as_rule() {
-        Rule::std_pkg_id => Std(pkg_or_mod_name),
-        Rule::vendor_pkg_id => Vendor(pkg_or_mod_name),
+    let p = i.next().unwrap();
+    let item = p.as_str().to_string();
+    let pkg = match p.as_rule() {
+        Rule::std_pkg_id => Std(item),
+        Rule::vendor_pkg_id => {
+            let mut v = p.into_inner();
+            Vendor(
+                v.next().unwrap().as_str().to_string(),
+                v.next().unwrap().as_str().to_string(),
+            )
+        }
         Rule::module_id => {
-            modules.push(pkg_or_mod_name);
+            modules.push(item);
             Local
         }
         _ => unreachable!(),

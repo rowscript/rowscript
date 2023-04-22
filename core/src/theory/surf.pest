@@ -23,7 +23,8 @@ field_id = _{ prop_id | variant_id }
 param_id = { pub_camelback_id }
 let_id = { pub_camelback_id }
 std_pkg_id = { lower_id }
-vendor_pkg_id = @{ "@" ~ lower_id ~ "/" ~ lower_id }
+vendor_org_id = @{ "@" ~ lower_id }
+vendor_pkg_id = { vendor_org_id ~ "/" ~ lower_id }
 module_id = { lower_id }
 
 idref =
