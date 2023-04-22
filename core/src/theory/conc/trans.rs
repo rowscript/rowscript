@@ -11,10 +11,35 @@ use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var};
 use crate::Rule;
 
-pub fn file(mut f: Pairs<Rule>) -> Vec<Def<Expr>> {
+#[derive(Debug)]
+pub struct Import {
+    pkg: ImportedPkg,
+    modules: Vec<String>,
+    items: ImportedItems,
+}
+
+#[derive(Debug)]
+pub enum ImportedPkg {
+    Std(String),
+    Vendor(String),
+    Local,
+}
+
+#[derive(Debug)]
+pub enum ImportedItems {
+    Unqualified(Vec<String>),
+    Qualified,
+    Unused,
+}
+
+pub fn file(mut f: Pairs<Rule>) -> (Vec<Import>, Vec<Def<Expr>>) {
+    let mut imports = Vec::default();
     let mut defs = Vec::default();
     for d in f.next().unwrap().into_inner() {
         match d.as_rule() {
+            Rule::import_std | Rule::import_vendor | Rule::import_local => {
+                imports.push(import(d.into_inner()))
+            }
             Rule::fn_def => defs.push(fn_def(d, None)),
             Rule::fn_postulate => defs.push(fn_postulate(d)),
             Rule::type_postulate => defs.push(type_postulate(d)),
@@ -26,7 +51,52 @@ pub fn file(mut f: Pairs<Rule>) -> Vec<Def<Expr>> {
             _ => unreachable!(),
         }
     }
-    defs
+    (imports, defs)
+}
+
+fn import(mut i: Pairs<Rule>) -> Import {
+    use ImportedItems::*;
+    use ImportedPkg::*;
+
+    let mut modules = Vec::default();
+    let pkg_or_mod = i.next().unwrap();
+    let pkg_or_mod_name = pkg_or_mod.as_str().to_string();
+    let pkg = match pkg_or_mod.as_rule() {
+        Rule::std_pkg_id => Std(pkg_or_mod_name),
+        Rule::vendor_pkg_id => Vendor(pkg_or_mod_name),
+        Rule::module_id => {
+            modules.push(pkg_or_mod_name);
+            Local
+        }
+        _ => unreachable!(),
+    };
+
+    let mut importables = Vec::default();
+    for p in i {
+        let item = p.as_str().to_string();
+        match p.as_rule() {
+            Rule::module_id => modules.push(item),
+            Rule::importable => importables.push(item),
+            Rule::importable_unused => {
+                return Import {
+                    pkg,
+                    modules,
+                    items: Unused,
+                }
+            }
+            _ => unreachable!(),
+        };
+    }
+
+    Import {
+        pkg,
+        modules,
+        items: if importables.is_empty() {
+            Qualified
+        } else {
+            Unqualified(importables)
+        },
+    }
 }
 
 fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {

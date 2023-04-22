@@ -196,7 +196,7 @@ impl Driver {
                         let defs = RowsParser::parse(Rule::file, src.as_str())
                             .map_err(|e| Error::from(Box::new(e)))
                             .map(trans::file)
-                            .and_then(|d| Resolver::default().defs(d))
+                            .and_then(|(_, d)| Resolver::default().defs(d))
                             .and_then(|d| self.elab.defs(d))
                             .map_err(|e| print_err(e, &file, &src))?;
                         files.push(ModuleFile { file, src, defs });

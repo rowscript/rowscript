@@ -22,7 +22,7 @@ variant_id = { pub_camel_id | priv_camel_id }
 field_id = _{ prop_id | variant_id }
 param_id = { pub_camelback_id }
 let_id = { pub_camelback_id }
-std_pkg_id = _{ lower_id }
+std_pkg_id = { lower_id }
 vendor_pkg_id = @{ "@" ~ lower_id ~ "/" ~ lower_id }
 module_id = { lower_id }
 
@@ -312,7 +312,7 @@ implements_fn =
   ~ fn_body_block
   }
 
-decl =
+def =
  _{ fn_def
   | fn_postulate
   | type_postulate
@@ -348,6 +348,6 @@ file =
   ~ import_std*
   ~ import_vendor*
   ~ import_local*
-  ~ decl*
+  ~ def*
   ~ EOI
   }
