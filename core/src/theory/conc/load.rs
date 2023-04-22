@@ -13,27 +13,14 @@ pub enum ImportedPkg {
 }
 
 #[derive(Debug)]
-pub enum ImportedItems {
-    Initial,
-    Unqualified(Vec<String>),
-    Qualified,
-    Unused,
-}
-
-#[derive(Debug)]
-pub struct Import {
+pub struct ModuleID {
     pkg: ImportedPkg,
     modules: PathBuf,
-    items: ImportedItems,
 }
 
-impl Import {
-    pub fn new(pkg: ImportedPkg, modules: PathBuf, items: ImportedItems) -> Self {
-        Self {
-            pkg,
-            modules,
-            items,
-        }
+impl ModuleID {
+    pub fn new(pkg: ImportedPkg, modules: PathBuf) -> Self {
+        Self { pkg, modules }
     }
 
     pub fn to_path_buf(&self, base: &Path) -> PathBuf {
@@ -56,12 +43,30 @@ impl Import {
     }
 }
 
-impl Default for Import {
+impl Default for ModuleID {
     fn default() -> Self {
         Self {
             pkg: ImportedPkg::Local,
             modules: Default::default(),
-            items: ImportedItems::Initial,
         }
+    }
+}
+
+#[derive(Debug)]
+pub enum ImportedDefs {
+    Unqualified(Vec<String>),
+    Qualified,
+    Unused,
+}
+
+#[derive(Debug)]
+pub struct Import {
+    module: ModuleID,
+    defs: ImportedDefs,
+}
+
+impl Import {
+    pub fn new(module: ModuleID, defs: ImportedDefs) -> Self {
+        Self { module, defs }
     }
 }

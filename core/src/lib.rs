@@ -13,7 +13,7 @@ use crate::codegen::{Codegen, Target};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::elab::Elaborator;
-use crate::theory::conc::load::Import;
+use crate::theory::conc::load::ModuleID;
 use crate::theory::conc::resolve::resolve;
 use crate::theory::conc::trans;
 use crate::theory::Loc;
@@ -177,13 +177,13 @@ impl Driver {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
-        self.load(Import::default())
+        self.load(ModuleID::default())
     }
 
-    fn load(&mut self, import: Import) -> Result<(), Error> {
+    fn load(&mut self, module: ModuleID) -> Result<(), Error> {
         let mut files = Vec::default();
 
-        for r in import.to_path_buf(&self.path).read_dir()? {
+        for r in module.to_path_buf(&self.path).read_dir()? {
             let entry = r?;
             if entry.file_type()?.is_dir() {
                 continue;

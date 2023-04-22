@@ -8,7 +8,7 @@ use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
-use crate::theory::conc::load::{Import, ImportedItems, ImportedPkg};
+use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var};
 use crate::Rule;
@@ -36,7 +36,7 @@ pub fn file(mut f: Pairs<Rule>) -> (Vec<Import>, Vec<Def<Expr>>) {
 }
 
 fn import(mut i: Pairs<Rule>) -> Import {
-    use ImportedItems::*;
+    use ImportedDefs::*;
     use ImportedPkg::*;
 
     let mut modules = PathBuf::default();
@@ -64,14 +64,13 @@ fn import(mut i: Pairs<Rule>) -> Import {
         match p.as_rule() {
             Rule::module_id => modules.push(item),
             Rule::importable => importables.push(item),
-            Rule::importable_unused => return Import::new(pkg, modules, Unused),
+            Rule::importable_unused => return Import::new(ModuleID::new(pkg, modules), Unused),
             _ => unreachable!(),
         };
     }
 
     Import::new(
-        pkg,
-        modules,
+        ModuleID::new(pkg, modules),
         if importables.is_empty() {
             Qualified
         } else {
