@@ -1,5 +1,5 @@
 use std::ffi::OsStr;
-use std::fs::{copy, create_dir_all, write};
+use std::fs::{copy, create_dir_all, read_to_string, write};
 use std::path::{Path, PathBuf};
 
 use crate::theory::abs::data::Term;
@@ -55,23 +55,23 @@ impl Codegen {
     }
 
     pub fn module(&mut self, sigma: &Sigma, files: Vec<ModuleFile>) -> Result<(), Error> {
-        for ModuleFile { file, src, defs } in files {
-            self.target
-                .module(
-                    &mut self.buf,
-                    sigma,
-                    defs,
-                    self.imports
-                        .iter()
-                        .map(|p| {
-                            (
-                                p.file_stem().unwrap(),
-                                [OsStr::new("."), p.file_name().unwrap()].iter().collect(),
-                            )
-                        })
-                        .collect(),
-                )
-                .map_err(|e| print_err(e, &file, &src))?;
+        for ModuleFile { file, defs } in files {
+            if let Err(e) = self.target.module(
+                &mut self.buf,
+                sigma,
+                defs,
+                self.imports
+                    .iter()
+                    .map(|p| {
+                        (
+                            p.file_stem().unwrap(),
+                            [OsStr::new("."), p.file_name().unwrap()].iter().collect(),
+                        )
+                    })
+                    .collect(),
+            ) {
+                return Err(print_err(e, &file, read_to_string(&file)?));
+            }
         }
         if !self.buf.is_empty() {
             create_dir_all(&self.outdir)?;

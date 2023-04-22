@@ -156,7 +156,6 @@ pub const FILE_EXT_ROWS: &str = "rows";
 
 pub struct ModuleFile {
     file: PathBuf,
-    src: String,
     defs: Vec<Def<Term>>,
 }
 
@@ -199,8 +198,8 @@ impl Driver {
                             .map(trans::file)
                             .and_then(|(_, d)| resolve(d))
                             .and_then(|d| self.elab.defs(d))
-                            .map_err(|e| print_err(e, &file, &src))?;
-                        files.push(ModuleFile { file, src, defs });
+                            .map_err(|e| print_err(e, &file, src))?;
+                        files.push(ModuleFile { file, defs });
                         continue;
                     }
 
