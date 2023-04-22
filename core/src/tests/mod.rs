@@ -1,5 +1,5 @@
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 #[cfg(feature = "codegen-ecma")]
 use std::rc::Rc;
 
@@ -16,7 +16,7 @@ use swc_ecma_parser::{
 };
 
 #[cfg(feature = "codegen-ecma")]
-use crate::codegen::ecma::Ecma;
+use crate::codegen::ecma::{Ecma, OUT_FILE};
 #[cfg(not(feature = "codegen-ecma"))]
 use crate::codegen::noop::Noop;
 use crate::codegen::Target;
@@ -65,20 +65,37 @@ fn run_helper(mod_path: &str) -> Result<(), Error> {
         .join(mod_path.to_string().split("::").last().unwrap());
     let mut driver = Driver::new(pkg, target);
     driver.run()?;
-    parse_outfile(&driver)
+    parse_outfiles(&driver.codegen.outdir)
 }
 
 #[cfg(not(feature = "codegen-ecma"))]
-fn parse_outfile(_: &Driver) -> Result<(), Error> {
-    return Ok(());
+fn parse_outfiles(_: &Path) -> Result<(), Error> {
+    Ok(())
 }
 
 #[cfg(feature = "codegen-ecma")]
-fn parse_outfile(d: &Driver) -> Result<(), Error> {
+fn parse_outfiles(d: &Path) -> Result<(), Error> {
+    for r in d.to_path_buf().read_dir()? {
+        let entry = r?;
+        let path = entry.path();
+        if entry.file_type()?.is_dir() {
+            parse_outfiles(&path)?;
+            continue;
+        }
+        if entry.file_name() != OUT_FILE {
+            continue;
+        }
+        parse_outfile(&path)?
+    }
+    Ok(())
+}
+
+#[cfg(feature = "codegen-ecma")]
+fn parse_outfile(file: &Path) -> Result<(), Error> {
     let cm = Rc::<SourceMap>::default();
     let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(cm.clone()));
 
-    let file = cm.load_file(d.codegen.outfile())?;
+    let file = cm.load_file(file)?;
     let mut parser = Parser::new_from(Lexer::new(
         Syntax::Es(Default::default()),
         Default::default(),

@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Def, Sigma};
+use crate::theory::conc::load::ModuleID;
 use crate::theory::Loc;
 use crate::Error::NonErasable;
 use crate::{print_err, Error, ModuleFile};
@@ -28,33 +29,33 @@ pub struct Codegen {
     target: Box<dyn Target>,
     buf: Vec<u8>,
     imports: Vec<PathBuf>,
-    outdir: PathBuf,
-    outfile: PathBuf,
+    pub outdir: PathBuf,
 }
 
 impl Codegen {
     pub fn new(target: Box<dyn Target>, outdir: PathBuf) -> Self {
-        let outfile = outdir.join(target.filename());
         Self {
             target,
             buf: Default::default(),
             imports: Default::default(),
             outdir,
-            outfile,
         }
     }
 
-    pub fn outfile(&self) -> &Path {
-        self.outfile.as_path()
-    }
-
-    pub fn try_push_import(&mut self, ext: &OsStr, path: &Path) {
-        if self.target.should_import(ext) {
+    pub fn try_push_import(&mut self, ext: &OsStr, path: &Path) -> bool {
+        let ok = self.target.should_import(ext);
+        if ok {
             self.imports.push(path.to_path_buf())
         }
+        ok
     }
 
-    pub fn module(&mut self, sigma: &Sigma, files: Vec<ModuleFile>) -> Result<(), Error> {
+    pub fn module(
+        &mut self,
+        sigma: &Sigma,
+        module: &ModuleID,
+        files: Vec<ModuleFile>,
+    ) -> Result<(), Error> {
         for ModuleFile { file, defs } in files {
             if let Err(e) = self.target.module(
                 &mut self.buf,
@@ -73,14 +74,19 @@ impl Codegen {
                 return Err(print_err(e, &file, read_to_string(&file)?));
             }
         }
+
         if !self.buf.is_empty() {
-            create_dir_all(&self.outdir)?;
-            write(&self.outfile, &self.buf)?;
+            let module_dir = module.to_path_buf(&self.outdir);
+            let module_index_file = module_dir.join(self.target.filename());
+            create_dir_all(&module_dir)?;
+            write(&module_index_file, &self.buf)?;
+
             for file in &self.imports {
-                let to = self.outdir.join(file.file_name().unwrap());
+                let to = module_dir.join(file.file_name().unwrap());
                 copy(file, to)?;
             }
         }
+
         Ok(())
     }
 }
@@ -112,7 +118,7 @@ fn mangle(loc: Loc, tm: &Term) -> Result<String, Error> {
     })
 }
 
-fn mangle_hkt(loc: Loc, n: &str, ts: &Vec<Term>) -> Result<String, Error> {
+pub fn mangle_hkt(loc: Loc, n: &str, ts: &Vec<Term>) -> Result<String, Error> {
     let mut ms = vec![n.to_string()];
     for t in ts {
         ms.push(mangle(loc, t)?)

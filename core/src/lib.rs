@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fs::read_to_string;
 use std::io;
 use std::ops::Range;
@@ -161,6 +162,7 @@ pub struct ModuleFile {
 
 pub struct Driver {
     path: PathBuf,
+    loaded: HashSet<ModuleID>,
     elab: Elaborator,
     codegen: Codegen,
 }
@@ -170,6 +172,7 @@ impl Driver {
         let codegen = Codegen::new(target, path.join(OUTDIR));
         Self {
             path,
+            loaded: Default::default(),
             elab: Default::default(),
             codegen,
         }
@@ -180,6 +183,10 @@ impl Driver {
     }
 
     fn load(&mut self, module: ModuleID) -> Result<(), Error> {
+        if self.loaded.contains(&module) {
+            return Ok(());
+        }
+
         let mut files = Vec::default();
 
         for r in module.to_path_buf(&self.path).read_dir()? {
@@ -191,23 +198,36 @@ impl Driver {
             match file.extension() {
                 None => continue,
                 Some(e) => {
-                    if e == FILE_EXT_ROWS {
-                        let src = read_to_string(&file)?;
-                        let defs = RowsParser::parse(Rule::file, src.as_str())
-                            .map_err(|e| Error::from(Box::new(e)))
-                            .map(trans::file)
-                            .and_then(|(_, d)| resolve(d))
-                            .and_then(|d| self.elab.defs(d))
-                            .map_err(|e| print_err(e, &file, src))?;
-                        files.push(ModuleFile { file, defs });
+                    if self.codegen.try_push_import(e, &file) {
                         continue;
                     }
 
-                    self.codegen.try_push_import(e, &file)
+                    if e != FILE_EXT_ROWS {
+                        continue;
+                    }
+
+                    let src = read_to_string(&file)?;
+                    let defs = self
+                        .load_src(src.as_str())
+                        .map_err(|e| print_err(e, &file, src))?;
+                    files.push(ModuleFile { file, defs });
                 }
             }
         }
 
-        self.codegen.module(&self.elab.sigma, files)
+        self.codegen.module(&self.elab.sigma, &module, files)?;
+        self.loaded.insert(module);
+
+        Ok(())
+    }
+
+    fn load_src(&mut self, src: &str) -> Result<Vec<Def<Term>>, Error> {
+        let (imports, defs) = RowsParser::parse(Rule::file, src)
+            .map_err(|e| Error::from(Box::new(e)))
+            .map(trans::file)?;
+        imports
+            .into_iter()
+            .fold(Ok(()), |r, i| r.and_then(|_| self.load(i.module)))?;
+        resolve(defs).and_then(|d| self.elab.defs(d))
     }
 }

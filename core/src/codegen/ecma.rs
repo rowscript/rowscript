@@ -673,9 +673,11 @@ impl Ecma {
     }
 }
 
+pub const OUT_FILE: &str = "index.mjs";
+
 impl Target for Ecma {
     fn filename(&self) -> &'static str {
-        "index.mjs"
+        OUT_FILE
     }
 
     fn should_import(&self, ext: &OsStr) -> bool {

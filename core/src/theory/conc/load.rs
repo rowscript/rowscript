@@ -5,14 +5,14 @@ const MODULES_DIR: &str = "node_modules";
 #[cfg(test)]
 const MODULES_DIR: &str = "test_modules";
 
-#[derive(Debug)]
+#[derive(Debug, Hash, Eq, PartialEq)]
 pub enum ImportedPkg {
     Std(String),
     Vendor(String, String),
     Local,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash, Eq, PartialEq)]
 pub struct ModuleID {
     pkg: ImportedPkg,
     modules: PathBuf,
@@ -61,7 +61,7 @@ pub enum ImportedDefs {
 
 #[derive(Debug)]
 pub struct Import {
-    module: ModuleID,
+    pub module: ModuleID,
     defs: ImportedDefs,
 }
 
