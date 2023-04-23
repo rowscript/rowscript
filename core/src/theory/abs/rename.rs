@@ -1,3 +1,4 @@
+use crate::maybe_grow;
 use std::collections::HashMap;
 
 use crate::theory::abs::data::{CaseMap, FieldMap, Term};
@@ -8,6 +9,10 @@ struct Renamer(HashMap<Var, Var>);
 
 impl Renamer {
     pub fn term(&mut self, tm: Term) -> Term {
+        maybe_grow(move || self.term_impl(tm))
+    }
+
+    fn term_impl(&mut self, tm: Term) -> Term {
         use Term::*;
         match tm {
             Ref(x) => self.0.get(&x).map_or(Ref(x), |y| Ref(y.clone())),

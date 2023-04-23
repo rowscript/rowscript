@@ -3,8 +3,8 @@ use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Sigma;
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::{Loc, Var};
-use crate::Error;
 use crate::Error::{NonRowSat, NonUnifiable};
+use crate::{maybe_grow, Error};
 
 pub struct Unifier<'a> {
     sigma: &'a mut Sigma,
@@ -21,6 +21,10 @@ impl<'a> Unifier<'a> {
     }
 
     pub fn unify(&mut self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
+        maybe_grow(move || self.unify_impl(lhs, rhs))
+    }
+
+    fn unify_impl(&mut self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
         use Term::*;
 
         match (lhs, rhs) {

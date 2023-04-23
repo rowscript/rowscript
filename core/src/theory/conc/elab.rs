@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::maybe_grow;
 use crate::theory::abs::data::Dir::Le;
 use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, Term};
 use crate::theory::abs::def::{gamma_to_tele, Body, ClassBody};
@@ -166,6 +167,10 @@ impl Elaborator {
     }
 
     fn check(&mut self, e: Expr, ty: &Term) -> Result<Term, Error> {
+        maybe_grow(move || self.check_impl(e, ty))
+    }
+
+    fn check_impl(&mut self, e: Expr, ty: &Term) -> Result<Term, Error> {
         use Expr::*;
         Ok(match e {
             Let(_, var, maybe_typ, a, b) => {
@@ -268,6 +273,10 @@ impl Elaborator {
     }
 
     fn infer(&mut self, e: Expr, hint: Option<&Term>) -> Result<(Term, Term), Error> {
+        maybe_grow(move || self.infer_impl(e, hint))
+    }
+
+    fn infer_impl(&mut self, e: Expr, hint: Option<&Term>) -> Result<(Term, Term), Error> {
         use Expr::*;
         use MetaKind::*;
 
