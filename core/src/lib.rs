@@ -179,11 +179,11 @@ impl Driver {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
-        self.load(ModuleID::default())
+        self.load(&ModuleID::default())
     }
 
-    fn load(&mut self, module: ModuleID) -> Result<(), Error> {
-        if self.loaded.contains(&module) {
+    fn load(&mut self, module: &ModuleID) -> Result<(), Error> {
+        if self.loaded.contains(module) {
             return Ok(());
         }
 
@@ -215,8 +215,8 @@ impl Driver {
             }
         }
 
-        self.codegen.module(&self.elab.sigma, &module, files)?;
-        self.loaded.insert(module);
+        self.codegen.module(&self.elab.sigma, module, files)?;
+        self.loaded.insert(module.clone());
 
         Ok(())
     }
@@ -226,8 +226,8 @@ impl Driver {
             .map_err(|e| Error::from(Box::new(e)))
             .map(trans::file)?;
         imports
-            .into_iter()
-            .fold(Ok(()), |r, i| r.and_then(|_| self.load(i.module)))?;
+            .iter()
+            .fold(Ok(()), |r, i| r.and_then(|_| self.load(&i.module)))?;
         resolve(defs).and_then(|d| self.elab.defs(d))
     }
 }

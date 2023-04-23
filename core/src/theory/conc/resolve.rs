@@ -97,7 +97,7 @@ impl Resolver {
         };
 
         for x in removable {
-            self.0.remove(x.as_str());
+            self.remove(&x);
         }
         for x in recoverable {
             self.insert(&x);
@@ -107,8 +107,16 @@ impl Resolver {
         Ok(d)
     }
 
+    fn get(&self, v: &Var) -> Option<&Var> {
+        self.0.get(v.as_str())
+    }
+
     fn insert(&mut self, v: &Var) -> Option<Var> {
         self.0.insert(v.to_string(), v.clone())
+    }
+
+    fn remove(&mut self, v: &Var) {
+        self.0.remove(v.as_str());
     }
 
     fn bodied(&mut self, vars: &[&Var], e: Expr) -> Result<Expr, Error> {
@@ -125,7 +133,7 @@ impl Resolver {
             if let Some(v) = old {
                 self.insert(v);
             } else {
-                self.0.remove(&*vars.get(i).unwrap().name);
+                self.remove(vars.get(i).unwrap());
             }
         }
 
@@ -144,7 +152,7 @@ impl Resolver {
         use Expr::*;
         Ok(match e {
             Unresolved(loc, r) => {
-                if let Some(v) = self.0.get(&*r.name) {
+                if let Some(v) = self.get(&r) {
                     Resolved(loc, v.clone())
                 } else {
                     return Err(UnresolvedVar(loc));

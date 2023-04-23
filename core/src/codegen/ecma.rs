@@ -684,10 +684,7 @@ impl Target for Ecma {
         match path.file_name() {
             None => false,
             Some(f) if f == OUT_FILE => false,
-            _ => match path.extension() {
-                Some(ext) if ext == "js" || ext == "mjs" => true,
-                _ => false,
-            },
+            _ => matches!(path.extension(), Some(ext) if ext == "js" || ext == "mjs"),
         }
     }
 

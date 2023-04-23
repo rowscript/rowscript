@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 
 #[cfg(not(test))]
@@ -5,14 +6,14 @@ const MODULES_DIR: &str = "node_modules";
 #[cfg(test)]
 const MODULES_DIR: &str = "test_modules";
 
-#[derive(Debug, Hash, Eq, PartialEq)]
+#[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub enum ImportedPkg {
     Std(String),
     Vendor(String, String),
     Local,
 }
 
-#[derive(Debug, Hash, Eq, PartialEq)]
+#[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub struct ModuleID {
     pkg: ImportedPkg,
     modules: PathBuf,
@@ -49,6 +50,26 @@ impl Default for ModuleID {
             pkg: ImportedPkg::Local,
             modules: Default::default(),
         }
+    }
+}
+
+impl Display for ModuleID {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        use ImportedPkg::*;
+        write!(
+            f,
+            "{}{}",
+            match &self.pkg {
+                Std(p) => p.clone(),
+                Vendor(o, p) => format!("@{o}/{p}"),
+                Local => "::".to_string(),
+            },
+            self.modules
+                .iter()
+                .map(|s| s.to_string_lossy())
+                .collect::<Vec<_>>()
+                .join("::")
+        )
     }
 }
 
