@@ -108,7 +108,7 @@ impl Loaded {
     }
 
     pub fn get(&self, module: &ModuleID, n: &String) -> Option<&Var> {
-        self.0.get(module).map(|m| m.get(n)).flatten()
+        self.0.get(module).and_then(|m| m.get(n))
     }
 
     pub fn insert(&mut self, module: &ModuleID, def: &Def<Term>) -> Result<(), Error> {
