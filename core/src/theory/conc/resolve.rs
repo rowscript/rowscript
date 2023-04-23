@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Def;
+use crate::theory::abs::def::{Body, ImplementsBody};
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::{Param, RawNameSet, Tele, Var};
@@ -48,23 +48,10 @@ impl Resolver {
             Postulate => Postulate,
             Alias(t) => Alias(self.expr(t)?),
 
-            Class {
-                object,
-                methods,
-                ctor,
-                vptr,
-                vptr_ctor,
-                vtbl,
-                vtbl_lookup,
-            } => Class {
-                object: self.expr(object)?,
-                methods,
-                ctor,
-                vptr,
-                vptr_ctor,
-                vtbl,
-                vtbl_lookup,
-            },
+            Class(mut body) => {
+                body.object = self.expr(body.object)?;
+                Class(body)
+            }
             Ctor(f) => Ctor(self.self_referencing_fn(&d.name, f)?),
             Method(f) => Method(self.expr(f)?), // FIXME: currently cannot be recursive
             VptrType(t) => VptrType(self.expr(t)?),
@@ -73,21 +60,18 @@ impl Resolver {
             VtblLookup => VtblLookup,
 
             Interface { fns, ims } => Interface { fns, ims },
-            Implements { i: (i, im), fns } => {
+            Implements(body) => {
                 let loc = d.loc;
-                let i = self.expr(Unresolved(loc, i))?.resolved();
-                let im = self.expr(Unresolved(loc, im))?.resolved();
-                let mut resolved = HashMap::default();
-                for (i_fn, im_fn) in fns {
-                    resolved.insert(
+                let i = self.expr(Unresolved(loc, body.i.0))?.resolved();
+                let im = self.expr(Unresolved(loc, body.i.1))?.resolved();
+                let mut fns = HashMap::default();
+                for (i_fn, im_fn) in body.fns {
+                    fns.insert(
                         self.expr(Unresolved(loc, i_fn))?.resolved(),
                         self.expr(Unresolved(loc, im_fn))?.resolved(),
                     );
                 }
-                Implements {
-                    i: (i, im),
-                    fns: resolved,
-                }
+                Implements(Box::new(ImplementsBody { i: (i, im), fns }))
             }
             ImplementsFn(f) => ImplementsFn(self.expr(f)?), // FIXME: currently cannot be recursive
             Findable(i) => Findable(i),

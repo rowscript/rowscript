@@ -10,7 +10,7 @@ const MODULES_DIR: &str = "test_modules";
 pub enum ImportedPkg {
     Std(String),
     Vendor(String, String),
-    Local,
+    Root,
 }
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
@@ -29,7 +29,7 @@ impl ModuleID {
         let mut ret = match &self.pkg {
             Std(pkg) => base.join(MODULES_DIR).join("rowscript").join(pkg),
             Vendor(org, pkg) => base.join(MODULES_DIR).join(org).join(pkg),
-            Local => base.to_path_buf(),
+            Root => base.to_path_buf(),
         };
         ret.extend(&self.modules);
         ret
@@ -39,7 +39,7 @@ impl ModuleID {
         use ImportedPkg::*;
         match self.pkg {
             Std(_) | Vendor(_, _) => false,
-            Local => true,
+            Root => true,
         }
     }
 }
@@ -47,7 +47,7 @@ impl ModuleID {
 impl Default for ModuleID {
     fn default() -> Self {
         Self {
-            pkg: ImportedPkg::Local,
+            pkg: ImportedPkg::Root,
             modules: Default::default(),
         }
     }
@@ -62,7 +62,7 @@ impl Display for ModuleID {
             match &self.pkg {
                 Std(p) => p.clone(),
                 Vendor(o, p) => format!("@{o}/{p}"),
-                Local => "::".to_string(),
+                Root => "::".to_string(),
             },
             self.modules
                 .iter()
@@ -77,7 +77,7 @@ impl Display for ModuleID {
 pub enum ImportedDefs {
     Unqualified(Vec<String>),
     Qualified,
-    Unused,
+    Loaded,
 }
 
 #[derive(Debug)]

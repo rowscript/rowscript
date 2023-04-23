@@ -74,7 +74,7 @@ impl Renamer {
     }
 
     fn param(&mut self, p: Param<Term>) -> Param<Term> {
-        let var = Var::new(p.var.name.as_str());
+        let var = Var::local(p.var.name.as_str());
         self.0.insert(p.var, var.clone());
         Param {
             var,

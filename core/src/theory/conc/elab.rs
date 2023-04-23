@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::theory::abs::data::Dir::Le;
 use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, Term};
-use crate::theory::abs::def::{gamma_to_tele, Body};
+use crate::theory::abs::def::{gamma_to_tele, Body, ClassBody};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
@@ -73,23 +73,15 @@ impl Elaborator {
             Postulate => Postulate,
             Alias(t) => Alias(self.check(t, &ret)?),
 
-            Class {
-                object,
-                methods,
-                ctor,
-                vptr,
-                vptr_ctor,
-                vtbl,
-                vtbl_lookup,
-            } => Class {
-                object: self.check(object, &ret)?,
-                methods,
-                ctor,
-                vptr,
-                vptr_ctor,
-                vtbl,
-                vtbl_lookup,
-            },
+            Class(body) => Class(Box::new(ClassBody {
+                object: self.check(body.object, &ret)?,
+                methods: body.methods,
+                ctor: body.ctor,
+                vptr: body.vptr,
+                vptr_ctor: body.vptr_ctor,
+                vtbl: body.vtbl,
+                vtbl_lookup: body.vtbl_lookup,
+            })),
             Ctor(f) => Ctor(self.check(f, &ret)?),
             Method(f) => Method(self.check(f, &ret)?),
             VptrType(t) => VptrType(self.check(t, &ret)?),
@@ -98,9 +90,9 @@ impl Elaborator {
             VtblLookup => VtblLookup,
 
             Interface { fns, ims } => Interface { fns, ims },
-            Implements { i, fns } => {
-                self.push_implements(&d.name, &i, &fns)?;
-                Implements { i, fns }
+            Implements(body) => {
+                self.push_implements(&d.name, &body.i, &body.fns)?;
+                Implements(body)
             }
             ImplementsFn(f) => ImplementsFn(self.check(f, &ret)?),
             Findable(i) => Findable(i),
@@ -443,9 +435,9 @@ impl Elaborator {
                 (Term::Concat(Box::new(x), Box::new(y)), *ty)
             }
             Access(_, n) => {
-                let t = Var::new("T");
-                let a = Var::new("'A");
-                let o = Var::new("o");
+                let t = Var::local("T");
+                let a = Var::local("'A");
+                let o = Var::local("o");
                 let tele = vec![
                     Param {
                         var: t.clone(),

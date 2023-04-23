@@ -300,7 +300,10 @@ impl<'a> Normalizer<'a> {
         };
         for im in ims {
             let y = match &self.sigma.get(&im).unwrap().body {
-                Implements { i: (_, im), .. } => self.sigma.get(im).unwrap().to_term(im.clone()),
+                Implements(body) => {
+                    let im = &body.i.1;
+                    self.sigma.get(im).unwrap().to_term(im.clone())
+                }
                 _ => unreachable!(),
             };
             match Unifier::new(self.sigma, self.loc).unify(&y, x) {
@@ -321,12 +324,13 @@ impl<'a> Normalizer<'a> {
 
         for im in ims.into_iter().rev() {
             let (im_ty, im_fn) = match &self.sigma.get(&im).unwrap().body {
-                Implements {
-                    i: (_, im_ty), fns, ..
-                } => (
-                    self.sigma.get(im_ty).unwrap().to_term(im_ty.clone()),
-                    fns.get(&f).unwrap().clone(),
-                ),
+                Implements(body) => {
+                    let im_ty = &body.i.1;
+                    (
+                        self.sigma.get(im_ty).unwrap().to_term(im_ty.clone()),
+                        body.fns.get(&f).unwrap().clone(),
+                    )
+                }
                 _ => unreachable!(),
             };
 

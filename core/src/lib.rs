@@ -16,7 +16,7 @@ use crate::theory::abs::def::Def;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::load::ModuleID;
 use crate::theory::conc::resolve::resolve;
-use crate::theory::conc::trans;
+use crate::theory::conc::trans::Trans;
 use crate::theory::Loc;
 
 pub mod codegen;
@@ -208,7 +208,7 @@ impl Driver {
 
                     let src = read_to_string(&file)?;
                     let defs = self
-                        .load_src(src.as_str())
+                        .load_src(module, src.as_str())
                         .map_err(|e| print_err(e, &file, src))?;
                     files.push(ModuleFile { file, defs });
                 }
@@ -221,10 +221,11 @@ impl Driver {
         Ok(())
     }
 
-    fn load_src(&mut self, src: &str) -> Result<Vec<Def<Term>>, Error> {
+    fn load_src(&mut self, module: &ModuleID, src: &str) -> Result<Vec<Def<Term>>, Error> {
         let (imports, defs) = RowsParser::parse(Rule::file, src)
-            .map_err(|e| Error::from(Box::new(e)))
-            .map(trans::file)?;
+            .map_err(Box::new)
+            .map_err(Error::from)
+            .map(|p| Trans::new(module).file(p))?;
         imports
             .iter()
             .fold(Ok(()), |r, i| r.and_then(|_| self.load(&i.module)))?;

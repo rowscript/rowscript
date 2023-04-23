@@ -3,11 +3,11 @@ use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
-use pest::iterators::Pair;
 use pest::Span;
 
 use crate::theory::conc::data::ArgInfo;
-use crate::{Error, Rule};
+use crate::theory::conc::load::ModuleID;
+use crate::Error;
 
 pub mod abs;
 pub mod conc;
@@ -56,8 +56,16 @@ impl RawNameSet {
     }
 }
 
-#[derive(Clone, Eq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+pub enum VarKind {
+    Local,
+    Global(ModuleID),
+    Hidden,
+}
+
+#[derive(Debug, Clone, Eq)]
 pub struct Var {
+    kind: VarKind,
     name: Name,
 }
 
@@ -70,62 +78,75 @@ pub const VTBL_LOOKUP: &str = "__vtblLookup";
 pub const THIS: &str = "this";
 
 impl Var {
-    fn new<S: AsRef<str>>(name: S) -> Self {
+    fn new<S: AsRef<str>>(kind: VarKind, name: S) -> Self {
         Self {
+            kind,
             name: Rc::new(name.as_ref().to_string()),
         }
     }
 
+    pub fn local<S: AsRef<str>>(name: S) -> Self {
+        Self::new(VarKind::Local, name)
+    }
+
+    pub fn global<S: AsRef<str>>(module: &ModuleID, name: S) -> Self {
+        Self::new(VarKind::Global(module.clone()), name)
+    }
+
+    pub fn hidden<S: AsRef<str>>(name: S) -> Self {
+        Self::new(VarKind::Hidden, name)
+    }
+
     pub fn unbound() -> Self {
-        Self::new("_")
+        Self::local("_")
     }
 
     pub fn tupled() -> Self {
-        Self::new(TUPLED)
+        Self::local(TUPLED)
     }
 
     pub fn this() -> Self {
-        Self::new(THIS)
+        Self::local(THIS)
     }
 
     pub fn untupled_rhs(&self) -> Self {
-        Self::new(format!("{UNTUPLED_RHS}{self}"))
+        Self::local(format!("{UNTUPLED_RHS}{self}"))
     }
 
-    pub fn method(&self, m: Self) -> Self {
-        Self::new(format!("{self}__{m}"))
+    pub fn method(&self, module: &ModuleID, m: Self) -> Self {
+        Self::global(module, format!("{self}__{m}"))
     }
 
-    pub fn ctor(&self) -> Self {
-        Self::new(format!("{self}__new"))
+    pub fn ctor(&self, module: &ModuleID) -> Self {
+        Self::global(module, format!("{self}__new"))
     }
 
-    pub fn vptr() -> Self {
-        Self::new(VPTR)
+    pub fn vptr(module: &ModuleID) -> Self {
+        Self::global(module, VPTR)
     }
 
-    pub fn vptr_type(&self) -> Self {
-        Self::new(format!("{self}__vptr"))
+    pub fn vptr_type(&self, module: &ModuleID) -> Self {
+        Self::global(module, format!("{self}__vptr"))
     }
 
-    pub fn vptr_ctor(&self) -> Self {
-        Self::new(format!("{self}__vptrNew"))
+    pub fn vptr_ctor(&self, module: &ModuleID) -> Self {
+        Self::global(module, format!("{self}__vptrNew"))
     }
 
-    pub fn vtbl_type(&self) -> Self {
-        Self::new(format!("{self}__vtbl"))
+    pub fn vtbl_type(&self, module: &ModuleID) -> Self {
+        Self::global(module, format!("{self}__vtbl"))
     }
 
-    pub fn vtbl_lookup(&self) -> Self {
-        Self::new(format!("{self}{VTBL_LOOKUP}"))
+    pub fn vtbl_lookup(&self, module: &ModuleID) -> Self {
+        Self::global(module, format!("{self}{VTBL_LOOKUP}"))
     }
 
-    pub fn implements(&self, im: &Self) -> Self {
-        Self::new(format!("{self}__for__{im}"))
+    pub fn implements(&self, module: &ModuleID, im: &Self) -> Self {
+        Self::global(module, format!("{self}__for__{im}"))
     }
 
-    pub fn implement_func(&self, i: &Self, im: &Self) -> Self {
-        Self::new(format!("{i}__for__{im}__{self}"))
+    pub fn implement_func(&self, module: &ModuleID, i: &Self, im: &Self) -> Self {
+        Self::global(module, format!("{i}__for__{im}__{self}"))
     }
 
     pub fn id(&self) -> usize {
@@ -137,33 +158,22 @@ impl Var {
     }
 }
 
-impl Debug for Var {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(format!("Var(\"{}\", {})", self.name, self.id()).as_str())
-    }
-}
-
 impl Display for Var {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.name.as_str())
     }
 }
 
-impl<'a> From<Pair<'a, Rule>> for Var {
-    fn from(p: Pair<'a, Rule>) -> Self {
-        Self::new(p.as_str())
-    }
-}
-
 impl PartialEq<Self> for Var {
     fn eq(&self, other: &Self) -> bool {
-        self.id() == other.id()
+        self.kind == other.kind && self.id() == other.id()
     }
 }
 
 impl Hash for Var {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id().hash(state)
+        self.kind.hash(state);
+        self.id().hash(state);
     }
 }
 
@@ -173,7 +183,7 @@ pub struct VarGen(u64);
 impl VarGen {
     pub fn fresh(&mut self) -> Var {
         self.0 += 1;
-        Var::new(self.0.to_string())
+        Var::hidden(self.0.to_string())
     }
 }
 

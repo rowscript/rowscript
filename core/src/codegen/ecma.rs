@@ -567,9 +567,7 @@ impl Ecma {
         for def in defs {
             match match &def.body {
                 Fn(f) => self.func_decl(items, sigma, &def, f),
-                Class { ctor, methods, .. } => {
-                    self.class_decls(items, sigma, &def.name, ctor, methods)
-                }
+                Class(body) => self.class_decls(items, sigma, &def.name, &body.ctor, &body.methods),
                 Undefined => unreachable!(),
                 _ => continue,
             } {

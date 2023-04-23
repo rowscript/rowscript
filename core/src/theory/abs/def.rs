@@ -45,7 +45,7 @@ impl Def<Term> {
             Postulate => Term::Extern(v),
             Alias(t) => self.to_lam_term(t.clone()),
 
-            Class { object, .. } => self.to_lam_term(object.clone()),
+            Class(body) => self.to_lam_term(body.object.clone()),
             Ctor(f) => self.to_lam_term(f.clone()),
             Method(f) => self.to_lam_term(f.clone()),
             VptrType(t) => self.to_lam_term(t.clone()),
@@ -117,34 +117,11 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
-                Class {
-                    object,
-                    methods,
-                    ctor,
-                    vptr,
-                    vptr_ctor,
-                    vtbl,
-                    vtbl_lookup,
-                } => {
-                    format!(
-                        "class {} {} {{
-    {object}
-    {};
-    {ctor};
-    {vptr};
-    {vptr_ctor};
-    {vtbl};
-    {vtbl_lookup};
-}}",
-                        self.name,
-                        Param::tele_to_string(&self.tele),
-                        methods
-                            .iter()
-                            .map(|m| m.1.to_string())
-                            .collect::<Vec<_>>()
-                            .join(";\n    ")
-                    )
-                }
+                Class(body) => format!(
+                    "class {} {} {body}",
+                    self.name,
+                    Param::tele_to_string(&self.tele),
+                ),
                 Ctor(f) => format!(
                     "constructor {} {}: {} {{\n\t{f}\n}}",
                     self.name,
@@ -194,13 +171,7 @@ impl<T: Syntax> Display for Def<T> {
                         .collect::<Vec<_>>()
                         .concat()
                 ),
-                Implements { i: (i, im), fns } => format!(
-                    "implements {i} for {im} {{\n{}}}",
-                    fns.iter()
-                        .map(|(i, im)| format!("\t{i}; {im};\n"))
-                        .collect::<Vec<_>>()
-                        .concat()
-                ),
+                Implements(body) => body.to_string(),
                 ImplementsFn(f) => format!(
                     "implements function {} {}: {} {{\n\t{f}\n}}",
                     self.name,
@@ -241,15 +212,7 @@ pub enum Body<T: Syntax> {
     Postulate,
     Alias(T),
 
-    Class {
-        object: T,
-        methods: Vec<(String, Var)>,
-        ctor: Var,
-        vptr: Var,
-        vptr_ctor: Var,
-        vtbl: Var,
-        vtbl_lookup: Var,
-    },
+    Class(Box<ClassBody<T>>),
     Ctor(T),
     Method(T),
     VptrType(T),
@@ -257,17 +220,72 @@ pub enum Body<T: Syntax> {
     VtblType(T),
     VtblLookup,
 
-    Interface {
-        fns: Vec<Var>,
-        ims: Vec<Var>,
-    },
-    Implements {
-        i: (Var, Var),
-        fns: HashMap<Var, Var>,
-    },
+    Interface { fns: Vec<Var>, ims: Vec<Var> },
+    Implements(Box<ImplementsBody>),
     ImplementsFn(T),
     Findable(Var),
 
     Undefined,
     Meta(MetaKind, Option<T>),
+}
+
+#[derive(Clone, Debug)]
+pub struct ClassBody<T: Syntax> {
+    pub object: T,
+    pub methods: Vec<(String, Var)>,
+    pub ctor: Var,
+    pub vptr: Var,
+    pub vptr_ctor: Var,
+    pub vtbl: Var,
+    pub vtbl_lookup: Var,
+}
+
+impl<T: Syntax> Display for ClassBody<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{{
+    {}
+    {};
+    {};
+    {};
+    {};
+    {};
+    {};
+}}",
+            self.object,
+            self.methods
+                .iter()
+                .map(|m| m.1.to_string())
+                .collect::<Vec<_>>()
+                .join(";\n    "),
+            self.ctor,
+            self.vptr,
+            self.vptr_ctor,
+            self.vtbl,
+            self.vtbl_lookup,
+        )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ImplementsBody {
+    pub i: (Var, Var),
+    pub fns: HashMap<Var, Var>,
+}
+
+impl Display for ImplementsBody {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "implements {} for {} {{\n{}}}",
+            self.i.0,
+            self.i.1,
+            self.fns
+                .iter()
+                .map(|(i, im)| format!("\t{i}; {im};\n"))
+                .collect::<Vec<_>>()
+                .concat()
+        )
+    }
 }
