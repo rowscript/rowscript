@@ -14,7 +14,7 @@ impl Target for Noop {
         ""
     }
 
-    fn should_import(&self, _: &Path) -> bool {
+    fn should_include(&self, _: &Path) -> bool {
         false
     }
 

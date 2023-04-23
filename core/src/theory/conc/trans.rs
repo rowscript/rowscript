@@ -28,7 +28,7 @@ impl<'a> Trans<'a> {
         for d in f.next().unwrap().into_inner() {
             match d.as_rule() {
                 Rule::import_std | Rule::import_vendor | Rule::import_local => {
-                    imports.push(self.import(d.into_inner()))
+                    imports.push(self.import(d))
                 }
                 Rule::fn_def => defs.push(self.fn_def(d, None)),
                 Rule::fn_postulate => defs.push(self.fn_postulate(d)),
@@ -44,9 +44,12 @@ impl<'a> Trans<'a> {
         (imports, defs)
     }
 
-    fn import(&self, mut i: Pairs<Rule>) -> Import {
+    fn import(&self, d: Pair<Rule>) -> Import {
         use ImportedDefs::*;
         use ImportedPkg::*;
+
+        let loc = Loc::from(d.as_span());
+        let mut i = d.into_inner();
 
         let mut modules = PathBuf::default();
         let p = i.next().unwrap();
@@ -69,16 +72,20 @@ impl<'a> Trans<'a> {
 
         let mut importables = Vec::default();
         for p in i {
+            let loc = Loc::from(p.as_span());
             let item = p.as_str().to_string();
             match p.as_rule() {
                 Rule::module_id => modules.push(item),
-                Rule::importable => importables.push(item),
-                Rule::importable_loaded => return Import::new(ModuleID::new(pkg, modules), Loaded),
+                Rule::importable => importables.push((loc, item)),
+                Rule::importable_loaded => {
+                    return Import::new(loc, ModuleID::new(pkg, modules), Loaded)
+                }
                 _ => unreachable!(),
             };
         }
 
         Import::new(
+            loc,
             ModuleID::new(pkg, modules),
             if importables.is_empty() {
                 Qualified

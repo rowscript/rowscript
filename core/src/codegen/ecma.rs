@@ -500,13 +500,13 @@ impl Ecma {
         })
     }
 
-    fn imports(
+    fn includes(
         &mut self,
         items: &mut Vec<ModuleItem>,
-        imports: Vec<(&OsStr, PathBuf)>,
+        includes: Vec<(&OsStr, PathBuf)>,
     ) -> Result<(), Error> {
         let mut props = Vec::default();
-        for (m, src) in imports {
+        for (m, src) in includes {
             let ns = m.to_string_lossy();
             items.push(ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
                 span: DUMMY_SP,
@@ -678,7 +678,7 @@ impl Target for Ecma {
         OUT_FILE
     }
 
-    fn should_import(&self, path: &Path) -> bool {
+    fn should_include(&self, path: &Path) -> bool {
         match path.file_name() {
             None => false,
             Some(f) if f == OUT_FILE => false,
@@ -691,11 +691,11 @@ impl Target for Ecma {
         buf: &mut Vec<u8>,
         sigma: &Sigma,
         defs: Vec<Def<Term>>,
-        imports: Vec<(&OsStr, PathBuf)>,
+        includes: Vec<(&OsStr, PathBuf)>,
     ) -> Result<(), Error> {
         let mut body = Vec::default();
 
-        self.imports(&mut body, imports)?;
+        self.includes(&mut body, includes)?;
         self.decls(&mut body, sigma, defs)?;
         self.vtbl_decl(&mut body)?;
 

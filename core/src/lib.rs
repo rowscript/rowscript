@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::fs::read_to_string;
 use std::io;
 use std::ops::Range;
@@ -14,8 +13,8 @@ use crate::codegen::{Codegen, Target};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::elab::Elaborator;
-use crate::theory::conc::load::ModuleID;
-use crate::theory::conc::resolve::resolve;
+use crate::theory::conc::load::{Loaded, ModuleID};
+use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans::Trans;
 use crate::theory::Loc;
 
@@ -162,7 +161,7 @@ pub struct ModuleFile {
 
 pub struct Driver {
     path: PathBuf,
-    loaded: HashSet<ModuleID>,
+    loaded: Loaded,
     elab: Elaborator,
     codegen: Codegen,
 }
@@ -188,6 +187,7 @@ impl Driver {
         }
 
         let mut files = Vec::default();
+        let mut includes = Vec::default();
 
         for r in module.to_path_buf(&self.path).read_dir()? {
             let entry = r?;
@@ -198,7 +198,8 @@ impl Driver {
             match file.extension() {
                 None => continue,
                 Some(e) => {
-                    if self.codegen.try_push_import(&file) {
+                    if self.codegen.should_include(&file) {
+                        includes.push(file.clone());
                         continue;
                     }
 
@@ -215,8 +216,8 @@ impl Driver {
             }
         }
 
-        self.codegen.module(&self.elab.sigma, module, files)?;
-        self.loaded.insert(module.clone());
+        self.codegen
+            .module(&self.elab.sigma, module, includes, files)?;
 
         Ok(())
     }
@@ -229,7 +230,15 @@ impl Driver {
         imports
             .iter()
             .fold(Ok(()), |r, i| r.and_then(|_| self.load(&i.module)))?;
-        resolve(defs).and_then(|d| self.elab.defs(d))
+        let defs = Resolver::new(&self.loaded)
+            .file(&imports, defs)
+            .and_then(|d| self.elab.defs(d))?;
+        for d in &defs {
+            if !d.is_private() {
+                self.loaded.insert(module, d)?
+            }
+        }
+        Ok(defs)
     }
 }
 

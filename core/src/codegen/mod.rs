@@ -15,53 +15,45 @@ pub mod noop;
 
 pub trait Target {
     fn filename(&self) -> &'static str;
-    fn should_import(&self, path: &Path) -> bool;
+    fn should_include(&self, path: &Path) -> bool;
     fn module(
         &mut self,
         buf: &mut Vec<u8>,
         sigma: &Sigma,
         defs: Vec<Def<Term>>,
-        imports: Vec<(&OsStr, PathBuf)>,
+        includes: Vec<(&OsStr, PathBuf)>,
     ) -> Result<(), Error>;
 }
 
 pub struct Codegen {
     target: Box<dyn Target>,
-    buf: Vec<u8>,
-    imports: Vec<PathBuf>,
     pub outdir: PathBuf,
 }
 
 impl Codegen {
     pub fn new(target: Box<dyn Target>, outdir: PathBuf) -> Self {
-        Self {
-            target,
-            buf: Default::default(),
-            imports: Default::default(),
-            outdir,
-        }
+        Self { target, outdir }
     }
 
-    pub fn try_push_import(&mut self, path: &Path) -> bool {
-        let ok = self.target.should_import(path);
-        if ok {
-            self.imports.push(path.to_path_buf())
-        }
-        ok
+    pub fn should_include(&mut self, path: &Path) -> bool {
+        self.target.should_include(path)
     }
 
     pub fn module(
         &mut self,
         sigma: &Sigma,
         module: &ModuleID,
+        includes: Vec<PathBuf>,
         files: Vec<ModuleFile>,
     ) -> Result<(), Error> {
+        let mut buf = Vec::default();
+
         for ModuleFile { file, defs } in files {
             if let Err(e) = self.target.module(
-                &mut self.buf,
+                &mut buf,
                 sigma,
                 defs,
-                self.imports
+                includes
                     .iter()
                     .map(|p| {
                         (
@@ -75,13 +67,13 @@ impl Codegen {
             }
         }
 
-        if !self.buf.is_empty() {
+        if !buf.is_empty() {
             let module_dir = module.to_path_buf(&self.outdir);
             let module_index_file = module_dir.join(self.target.filename());
             create_dir_all(&module_dir)?;
-            write(&module_index_file, &self.buf)?;
+            write(&module_index_file, &buf)?;
 
-            for file in &self.imports {
+            for file in &includes {
                 let to = module_dir.join(file.file_name().unwrap());
                 copy(file, to)?;
             }

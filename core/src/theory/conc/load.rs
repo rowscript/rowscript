@@ -1,5 +1,11 @@
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
+
+use crate::theory::abs::data::Term;
+use crate::theory::abs::def::Def;
+use crate::theory::{Loc, Var};
+use crate::Error;
 
 #[cfg(not(test))]
 const MODULES_DIR: &str = "node_modules";
@@ -75,19 +81,50 @@ impl Display for ModuleID {
 
 #[derive(Debug)]
 pub enum ImportedDefs {
-    Unqualified(Vec<String>),
+    Unqualified(Vec<(Loc, String)>),
     Qualified,
     Loaded,
 }
 
 #[derive(Debug)]
 pub struct Import {
+    pub loc: Loc,
     pub module: ModuleID,
-    defs: ImportedDefs,
+    pub defs: ImportedDefs,
 }
 
 impl Import {
-    pub fn new(module: ModuleID, defs: ImportedDefs) -> Self {
-        Self { module, defs }
+    pub fn new(loc: Loc, module: ModuleID, defs: ImportedDefs) -> Self {
+        Self { loc, module, defs }
+    }
+}
+
+#[derive(Default)]
+pub struct Loaded(HashMap<ModuleID, HashMap<String, Var>>);
+
+impl Loaded {
+    pub fn contains(&self, module: &ModuleID) -> bool {
+        self.0.contains_key(module)
+    }
+
+    pub fn get(&self, module: &ModuleID, n: &String) -> Option<&Var> {
+        self.0.get(module).map(|m| m.get(n)).flatten()
+    }
+
+    pub fn insert(&mut self, module: &ModuleID, def: &Def<Term>) -> Result<(), Error> {
+        match self.0.get_mut(module) {
+            Some(m) => {
+                if m.insert(def.name.to_string(), def.name.clone()).is_some() {
+                    return Err(Error::DuplicateName(def.loc));
+                }
+            }
+            None => {
+                self.0.insert(
+                    module.clone(),
+                    HashMap::from([(def.name.to_string(), def.name.clone())]),
+                );
+            }
+        }
+        Ok(())
     }
 }

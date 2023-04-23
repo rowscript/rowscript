@@ -31,6 +31,12 @@ pub struct Def<T: Syntax> {
     pub body: Body<T>,
 }
 
+impl<T: Syntax> Def<T> {
+    pub fn is_private(&self) -> bool {
+        matches!( self.name.as_str().chars().next(), Some(b) if b == '_')
+    }
+}
+
 impl Def<Expr> {
     pub fn to_type(&self) -> Expr {
         Expr::pi(&self.tele, *self.ret.clone())

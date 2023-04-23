@@ -4,17 +4,60 @@ use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, ImplementsBody};
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::Unresolved;
+use crate::theory::conc::load::{Import, ImportedDefs, Loaded};
 use crate::theory::{Param, RawNameSet, Tele, Var};
 use crate::Error;
 use crate::Error::UnresolvedVar;
 
-#[derive(Default)]
-struct Resolver(HashMap<String, Var>);
+pub struct Resolver<'a> {
+    loaded: &'a Loaded,
+    names: HashMap<String, Var>,
+}
 
-impl Resolver {
-    pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<Vec<Def<Expr>>, Error> {
-        let mut ret = Vec::default();
+impl<'a> Resolver<'a> {
+    pub fn new(loaded: &'a Loaded) -> Self {
+        Self {
+            loaded,
+            names: Default::default(),
+        }
+    }
+
+    pub fn file(
+        &mut self,
+        imports: &Vec<Import>,
+        defs: Vec<Def<Expr>>,
+    ) -> Result<Vec<Def<Expr>>, Error> {
         let mut names = RawNameSet::default();
+        self.imports(&mut names, imports)?;
+        self.defs(&mut names, defs)
+    }
+
+    fn imports(&mut self, names: &mut RawNameSet, imports: &Vec<Import>) -> Result<(), Error> {
+        use ImportedDefs::*;
+        for Import { loc, module, defs } in imports {
+            match defs {
+                Unqualified(xs) => {
+                    for (loc, name) in xs {
+                        names.raw(*loc, name.clone())?;
+                        match self.loaded.get(module, name) {
+                            Some(v) => self.insert(v),
+                            None => return Err(UnresolvedVar(*loc)),
+                        };
+                    }
+                }
+                Qualified => names.raw(*loc, module.to_string())?,
+                Loaded => continue,
+            }
+        }
+        Ok(())
+    }
+
+    fn defs(
+        &mut self,
+        names: &mut RawNameSet,
+        defs: Vec<Def<Expr>>,
+    ) -> Result<Vec<Def<Expr>>, Error> {
+        let mut ret = Vec::default();
         for d in defs {
             names.var(d.loc, &d.name)?;
             ret.push(self.def(d)?);
@@ -92,15 +135,15 @@ impl Resolver {
     }
 
     fn get(&self, v: &Var) -> Option<&Var> {
-        self.0.get(v.as_str())
+        self.names.get(v.as_str())
     }
 
     fn insert(&mut self, v: &Var) -> Option<Var> {
-        self.0.insert(v.to_string(), v.clone())
+        self.names.insert(v.to_string(), v.clone())
     }
 
     fn remove(&mut self, v: &Var) {
-        self.0.remove(v.as_str());
+        self.names.remove(v.as_str());
     }
 
     fn bodied(&mut self, vars: &[&Var], e: Expr) -> Result<Expr, Error> {
@@ -270,8 +313,4 @@ impl Resolver {
         self.insert(name);
         self.expr(f)
     }
-}
-
-pub fn resolve(defs: Vec<Def<Expr>>) -> Result<Vec<Def<Expr>>, Error> {
-    Resolver::default().defs(defs)
 }
