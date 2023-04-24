@@ -502,7 +502,6 @@ impl Ecma {
     }
 
     fn imports(&self, items: &mut Vec<ModuleItem>, imports: Vec<Import>) -> Result<(), Error> {
-        // FIXME: Some postulates still no correctly exported.
         use ImportedDefs::*;
         for i in imports {
             let mut specifiers = Vec::default();
@@ -600,6 +599,7 @@ impl Ecma {
             match match &def.body {
                 Fn(f) => self.func_decl(items, sigma, &def, f),
                 Class(body) => self.class_decls(items, sigma, &def.name, &body.ctor, &body.methods),
+                Postulate => self.postulate_decl(items, &def),
                 Undefined => unreachable!(),
                 _ => continue,
             } {
@@ -668,6 +668,31 @@ impl Ecma {
             },
         )?;
 
+        Ok(())
+    }
+
+    fn postulate_decl(&self, items: &mut Vec<ModuleItem>, def: &Def<Term>) -> Result<(), Error> {
+        if def.is_private() {
+            return Ok(());
+        }
+        items.push(ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl {
+            span: def.loc.into(),
+            decl: Decl::Var(Box::new(VarDecl {
+                span: def.loc.into(),
+                kind: VarDeclKind::Const,
+                declare: false,
+                decls: vec![VarDeclarator {
+                    span: def.loc.into(),
+                    name: Self::ident_pat(def.loc, &def.name),
+                    init: Some(Box::new(Expr::Member(MemberExpr {
+                        span: def.loc.into(),
+                        obj: Box::new(Expr::Ident(Self::special_ident(JS_LIB))),
+                        prop: MemberProp::Ident(Self::ident(def.loc, &def.name)),
+                    }))),
+                    definite: false,
+                }],
+            })),
+        })));
         Ok(())
     }
 
