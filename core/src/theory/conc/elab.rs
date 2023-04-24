@@ -288,6 +288,10 @@ impl Elaborator {
                     (d.to_term(v), d.to_type())
                 }
             },
+            Imported(_, v) => {
+                let ty = self.sigma.get(&v).unwrap().to_type();
+                (Term::Ref(v), ty)
+            }
             Hole(loc) => self.insert_meta(loc, UserMeta),
             InsertedHole(loc) => self.insert_meta(loc, InsertedMeta),
             Pi(_, p, b) => {

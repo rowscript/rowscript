@@ -14,6 +14,7 @@ pub enum ArgInfo {
 pub enum Expr {
     Unresolved(Loc, Var),
     Resolved(Loc, Var),
+    Imported(Loc, Var),
 
     Hole(Loc),
     InsertedHole(Loc),
@@ -97,6 +98,7 @@ impl Expr {
         *match self {
             Unresolved(loc, _) => loc,
             Resolved(loc, _) => loc,
+            Imported(loc, _) => loc,
             Hole(loc) => loc,
             InsertedHole(loc) => loc,
             Let(loc, _, _, _, _) => loc,
@@ -200,6 +202,7 @@ impl Display for Expr {
             match self {
                 Unresolved(_, r) => r.to_string(),
                 Resolved(_, r) => r.to_string(),
+                Imported(_, r) => r.to_string(),
                 Hole(_) => "?".to_string(),
                 InsertedHole(_) => "?i".to_string(),
                 Let(_, v, typ, a, b) => {

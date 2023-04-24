@@ -9,9 +9,18 @@ use crate::theory::{Param, RawNameSet, Tele, Var};
 use crate::Error;
 use crate::Error::UnresolvedVar;
 
+#[derive(Copy, Clone)]
+enum VarKind {
+    InModule,
+    Imported,
+}
+
+#[derive(Clone)]
+struct ResolvedVar(VarKind, Var);
+
 pub struct Resolver<'a> {
     loaded: &'a Loaded,
-    names: HashMap<String, Var>,
+    names: HashMap<String, ResolvedVar>,
 }
 
 impl<'a> Resolver<'a> {
@@ -40,7 +49,7 @@ impl<'a> Resolver<'a> {
                     for (loc, name) in xs {
                         names.raw(*loc, name.clone())?;
                         match self.loaded.get(module, name) {
-                            Some(v) => self.insert(v),
+                            Some(v) => self.insert_imported(v),
                             None => return Err(UnresolvedVar(*loc)),
                         };
                     }
@@ -127,19 +136,29 @@ impl<'a> Resolver<'a> {
             self.remove(&x);
         }
         for x in recoverable {
-            self.insert(&x);
+            self.insert_resolved(x);
         }
         self.insert(&d.name);
 
         Ok(d)
     }
 
-    fn get(&self, v: &Var) -> Option<&Var> {
+    fn get(&self, v: &Var) -> Option<&ResolvedVar> {
         self.names.get(v.as_str())
     }
 
-    fn insert(&mut self, v: &Var) -> Option<Var> {
-        self.names.insert(v.to_string(), v.clone())
+    fn insert(&mut self, v: &Var) -> Option<ResolvedVar> {
+        self.names
+            .insert(v.to_string(), ResolvedVar(VarKind::InModule, v.clone()))
+    }
+
+    fn insert_imported(&mut self, v: &Var) -> Option<ResolvedVar> {
+        self.names
+            .insert(v.to_string(), ResolvedVar(VarKind::Imported, v.clone()))
+    }
+
+    fn insert_resolved(&mut self, v: ResolvedVar) {
+        self.names.insert(v.1.to_string(), v);
     }
 
     fn remove(&mut self, v: &Var) {
@@ -156,11 +175,9 @@ impl<'a> Resolver<'a> {
         let ret = self.expr(e)?;
 
         for i in 0..vars.len() {
-            let old = olds.get(i).unwrap();
-            if let Some(v) = old {
-                self.insert(v);
-            } else {
-                self.remove(vars.get(i).unwrap());
+            match olds.get(i).unwrap() {
+                Some(v) => self.insert_resolved(v.clone()),
+                None => self.remove(vars.get(i).unwrap()),
             }
         }
 
@@ -178,13 +195,17 @@ impl<'a> Resolver<'a> {
     fn expr(&mut self, e: Expr) -> Result<Expr, Error> {
         use Expr::*;
         Ok(match e {
-            Unresolved(loc, r) => {
-                if let Some(v) = self.get(&r) {
-                    Resolved(loc, v.clone())
-                } else {
-                    return Err(UnresolvedVar(loc));
+            Unresolved(loc, r) => match self.get(&r) {
+                Some(v) => {
+                    let k = v.0;
+                    let v = v.1.clone();
+                    match k {
+                        VarKind::InModule => Resolved(loc, v),
+                        VarKind::Imported => Imported(loc, v),
+                    }
                 }
-            }
+                None => return Err(UnresolvedVar(loc)),
+            },
             Let(loc, x, typ, a, b) => {
                 let b = self.bodied(&[&x], *b)?;
                 Let(
@@ -288,24 +309,7 @@ impl<'a> Resolver<'a> {
             Constraint(loc, r) => Constraint(loc, Box::new(self.expr(*r)?)),
             ImplementsOf(loc, a) => ImplementsOf(loc, Box::new(self.expr(*a)?)),
 
-            Resolved(loc, r) => Resolved(loc, r),
-            Hole(loc) => Hole(loc),
-            InsertedHole(loc) => InsertedHole(loc),
-            Univ(loc) => Univ(loc),
-            Unit(loc) => Unit(loc),
-            TT(loc) => TT(loc),
-            Boolean(loc) => Boolean(loc),
-            False(loc) => False(loc),
-            True(loc) => True(loc),
-            String(loc) => String(loc),
-            Str(loc, v) => Str(loc, v),
-            Number(loc) => Number(loc),
-            Num(loc, v) => Num(loc, v),
-            BigInt(loc) => BigInt(loc),
-            Big(loc, v) => Big(loc, v),
-            Row(loc) => Row(loc),
-            Access(loc, n) => Access(loc, n),
-            Find(loc, i, f) => Find(loc, i, f),
+            e => e,
         })
     }
 
