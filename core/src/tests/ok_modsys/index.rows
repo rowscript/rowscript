@@ -1,14 +1,14 @@
-//from web import { fetch };
+from web import { fetch };
 //import node;
-//from std.orm import _;
+from std.orm import _;
 
-//from @rows/react import { Element };
+from @rows/react import { Element };
 //import @rows/react.router;
-//from @rows/react.state import _;
+from @rows/react.state import _;
 
 from .a import { a };
 //import .b;
-//from .c import _;
+from .c import _;
 
 function f() {
     return a()

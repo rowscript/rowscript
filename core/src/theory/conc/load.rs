@@ -12,6 +12,8 @@ const MODULES_DIR: &str = "node_modules";
 #[cfg(test)]
 const MODULES_DIR: &str = "test_modules";
 
+const STD_PKG_DIR: &str = "rowscript";
+
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub enum ImportedPkg {
     Std(String),
@@ -33,7 +35,7 @@ impl ModuleID {
     pub fn to_path_buf(&self, base: &Path) -> PathBuf {
         use ImportedPkg::*;
         let mut ret = match &self.pkg {
-            Std(pkg) => base.join(MODULES_DIR).join("rowscript").join(pkg),
+            Std(pkg) => base.join(MODULES_DIR).join(STD_PKG_DIR).join(pkg),
             Vendor(org, pkg) => base.join(MODULES_DIR).join(org).join(pkg),
             Root => base.to_path_buf(),
         };
@@ -62,16 +64,13 @@ impl Default for ModuleID {
 impl Display for ModuleID {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         use ImportedPkg::*;
-        f.write_str(
-            match &self.pkg {
-                Std(p) => PathBuf::from(p),
-                Vendor(o, p) => Path::new(o).join(p),
-                Root => PathBuf::from("."),
-            }
-            .join(&self.modules)
-            .to_str()
-            .unwrap(),
-        )
+        let mut p = match &self.pkg {
+            Std(p) => Path::new(STD_PKG_DIR).join(p),
+            Vendor(o, p) => Path::new(o).join(p),
+            Root => PathBuf::from("."),
+        };
+        p.extend(&self.modules);
+        f.write_str(p.to_str().unwrap())
     }
 }
 
