@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str::FromStr;
@@ -8,11 +7,12 @@ use num_bigint::BigInt as BigIntValue;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
     ArrowExpr, AssignExpr, AssignOp, BigInt as JsBigInt, BindingIdent, BlockStmt, BlockStmtOrExpr,
-    Bool, CallExpr, Callee, ComputedPropName, CondExpr, Decl, Expr, ExprOrSpread, ExprStmt, FnDecl,
-    Function, Ident, ImportDecl, ImportSpecifier, ImportStarAsSpecifier, KeyValueProp, Lit,
-    MemberExpr, MemberProp, Module, ModuleDecl, ModuleItem, Number as JsNumber, ObjectLit,
-    Param as JsParam, ParenExpr, Pat, PatOrExpr, Prop, PropName, PropOrSpread, ReturnStmt,
-    SpreadElement, Stmt, Str as JsStr, VarDecl, VarDeclKind, VarDeclarator,
+    Bool, CallExpr, Callee, ComputedPropName, CondExpr, Decl, ExportDecl, Expr, ExprOrSpread,
+    ExprStmt, FnDecl, Function, Ident, ImportDecl, ImportNamedSpecifier, ImportSpecifier,
+    ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleDecl,
+    ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, PatOrExpr, Prop,
+    PropName, PropOrSpread, ReturnStmt, SpreadElement, Stmt, Str as JsStr, VarDecl, VarDeclKind,
+    VarDeclarator,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -21,10 +21,11 @@ use crate::codegen::{mangle_hkt, Target};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
+use crate::theory::conc::load::{Import, ImportedDefs};
 use crate::theory::ParamInfo::Explicit;
 use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNTUPLED_RHS};
-use crate::Error;
 use crate::Error::{NonErasable, UnsolvedMeta};
+use crate::{Error, ModuleFile};
 
 impl From<Loc> for Span {
     fn from(loc: Loc) -> Self {
@@ -500,14 +501,45 @@ impl Ecma {
         })
     }
 
-    fn includes(
-        &mut self,
-        items: &mut Vec<ModuleItem>,
-        includes: Vec<(&OsStr, PathBuf)>,
-    ) -> Result<(), Error> {
+    fn imports(&self, items: &mut Vec<ModuleItem>, imports: Vec<Import>) -> Result<(), Error> {
+        // FIXME: Some postulates still no correctly exported.
+        use ImportedDefs::*;
+        for i in imports {
+            let mut specifiers = Vec::default();
+            match i.defs {
+                Unqualified(defs) => {
+                    for (loc, d) in defs {
+                        specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
+                            span: loc.into(),
+                            local: Self::str_ident(loc, d.as_str()),
+                            imported: None,
+                            is_type_only: false,
+                        }))
+                    }
+                }
+                Qualified => todo!("vendors being qualified hard to be valid identifiers"),
+                Loaded => {}
+            }
+            items.push(ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
+                span: DUMMY_SP,
+                specifiers,
+                src: Box::new(JsStr {
+                    span: DUMMY_SP,
+                    value: i.module.to_string().into(),
+                    raw: None,
+                }),
+                type_only: false,
+                asserts: None,
+            })))
+        }
+        Ok(())
+    }
+
+    fn includes(&mut self, items: &mut Vec<ModuleItem>, includes: &[PathBuf]) -> Result<(), Error> {
         let mut props = Vec::default();
-        for (m, src) in includes {
-            let ns = m.to_string_lossy();
+        for i in includes {
+            let src = Path::new(".").join(i.file_name().unwrap());
+            let ns = i.file_stem().unwrap().to_string_lossy();
             items.push(ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
                 span: DUMMY_SP,
                 specifiers: vec![ImportSpecifier::Namespace(ImportStarAsSpecifier {
@@ -585,11 +617,19 @@ impl Ecma {
         def: &Def<Term>,
         body: &Term,
     ) -> Result<(), Error> {
-        items.push(ModuleItem::Stmt(Stmt::Decl(Decl::Fn(FnDecl {
+        let f = Decl::Fn(FnDecl {
             ident: Self::ident(def.loc, &def.name),
             declare: false,
             function: Box::new(self.func(sigma, def, body)?),
-        }))));
+        });
+        items.push(if def.is_private() {
+            ModuleItem::Stmt(Stmt::Decl(f))
+        } else {
+            ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl {
+                span: def.loc.into(),
+                decl: f,
+            }))
+        });
         Ok(())
     }
 
@@ -690,13 +730,14 @@ impl Target for Ecma {
         &mut self,
         buf: &mut Vec<u8>,
         sigma: &Sigma,
-        defs: Vec<Def<Term>>,
-        includes: Vec<(&OsStr, PathBuf)>,
+        includes: &[PathBuf],
+        file: ModuleFile,
     ) -> Result<(), Error> {
         let mut body = Vec::default();
 
+        self.imports(&mut body, file.imports)?;
         self.includes(&mut body, includes)?;
-        self.decls(&mut body, sigma, defs)?;
+        self.decls(&mut body, sigma, file.defs)?;
         self.vtbl_decl(&mut body)?;
 
         let m = Module {

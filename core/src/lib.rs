@@ -13,7 +13,7 @@ use crate::codegen::{Codegen, Target};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::elab::Elaborator;
-use crate::theory::conc::load::{Loaded, ModuleID};
+use crate::theory::conc::load::{Import, Loaded, ModuleID};
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans;
 use crate::theory::Loc;
@@ -152,10 +152,11 @@ fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
 struct RowsParser;
 
 pub const OUTDIR: &str = "dist";
-pub const FILE_EXT_ROWS: &str = "rows";
+pub const FILE_EXT: &str = "rows";
 
 pub struct ModuleFile {
     file: PathBuf,
+    imports: Vec<Import>,
     defs: Vec<Def<Term>>,
 }
 
@@ -209,15 +210,19 @@ impl Driver {
                         continue;
                     }
 
-                    if e != FILE_EXT_ROWS {
+                    if e != FILE_EXT {
                         continue;
                     }
 
                     let src = read_to_string(&file)?;
-                    let defs = self
+                    let (imports, defs) = self
                         .load_src(&module, src.as_str())
                         .map_err(|e| print_err(e, &file, src))?;
-                    files.push(ModuleFile { file, defs });
+                    files.push(ModuleFile {
+                        file,
+                        imports,
+                        defs,
+                    });
                 }
             }
         }
@@ -234,7 +239,11 @@ impl Driver {
         Ok(())
     }
 
-    fn load_src(&mut self, module: &ModuleID, src: &str) -> Result<Vec<Def<Term>>, Error> {
+    fn load_src(
+        &mut self,
+        module: &ModuleID,
+        src: &str,
+    ) -> Result<(Vec<Import>, Vec<Def<Term>>), Error> {
         let (imports, defs) = RowsParser::parse(Rule::file, src)
             .map_err(Box::new)
             .map_err(Error::from)
@@ -250,7 +259,7 @@ impl Driver {
                 self.loaded.insert(module, d)?
             }
         }
-        Ok(defs)
+        Ok((imports, defs))
     }
 }
 

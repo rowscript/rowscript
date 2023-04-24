@@ -1,9 +1,8 @@
-use std::ffi::OsStr;
 use std::fs::{copy, create_dir_all, read_to_string, write};
 use std::path::{Path, PathBuf};
 
 use crate::theory::abs::data::Term;
-use crate::theory::abs::def::{Def, Sigma};
+use crate::theory::abs::def::Sigma;
 use crate::theory::Loc;
 use crate::Error::NonErasable;
 use crate::{print_err, Error, Module, ModuleFile};
@@ -19,8 +18,8 @@ pub trait Target {
         &mut self,
         buf: &mut Vec<u8>,
         sigma: &Sigma,
-        defs: Vec<Def<Term>>,
-        includes: Vec<(&OsStr, PathBuf)>,
+        includes: &[PathBuf],
+        file: ModuleFile,
     ) -> Result<(), Error>;
 }
 
@@ -52,21 +51,9 @@ impl Codegen {
 
         let mut buf = Vec::default();
 
-        for ModuleFile { file, defs } in files {
-            if let Err(e) = self.target.module(
-                &mut buf,
-                sigma,
-                defs,
-                includes
-                    .iter()
-                    .map(|p| {
-                        (
-                            p.file_stem().unwrap(),
-                            [OsStr::new("."), p.file_name().unwrap()].iter().collect(),
-                        )
-                    })
-                    .collect(),
-            ) {
+        for f in files {
+            let file = f.file.clone();
+            if let Err(e) = self.target.module(&mut buf, sigma, &includes, f) {
                 return Err(print_err(e, &file, read_to_string(&file)?));
             }
         }

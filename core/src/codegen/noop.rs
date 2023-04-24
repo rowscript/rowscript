@@ -1,10 +1,8 @@
-use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use crate::codegen::Target;
-use crate::theory::abs::data::Term;
-use crate::theory::abs::def::{Def, Sigma};
-use crate::Error;
+use crate::theory::abs::def::Sigma;
+use crate::{Error, ModuleFile};
 
 #[derive(Default)]
 pub struct Noop;
@@ -22,8 +20,8 @@ impl Target for Noop {
         &mut self,
         _: &mut Vec<u8>,
         _: &Sigma,
-        _: Vec<Def<Term>>,
-        _: Vec<(&OsStr, PathBuf)>,
+        _: &[PathBuf],
+        _: ModuleFile,
     ) -> Result<(), Error> {
         Ok(())
     }

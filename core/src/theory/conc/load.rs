@@ -62,19 +62,15 @@ impl Default for ModuleID {
 impl Display for ModuleID {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         use ImportedPkg::*;
-        write!(
-            f,
-            "{}{}",
+        f.write_str(
             match &self.pkg {
-                Std(p) => p.clone(),
-                Vendor(o, p) => format!("@{o}/{p}"),
-                Root => "::".to_string(),
-            },
-            self.modules
-                .iter()
-                .map(|s| s.to_string_lossy())
-                .collect::<Vec<_>>()
-                .join("::")
+                Std(p) => PathBuf::from(p),
+                Vendor(o, p) => Path::new(o).join(p),
+                Root => PathBuf::from("."),
+            }
+            .join(&self.modules)
+            .to_str()
+            .unwrap(),
         )
     }
 }
