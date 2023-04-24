@@ -159,6 +159,12 @@ pub struct ModuleFile {
     defs: Vec<Def<Term>>,
 }
 
+pub struct Module {
+    module: ModuleID,
+    files: Vec<ModuleFile>,
+    includes: Vec<PathBuf>,
+}
+
 pub struct Driver {
     path: PathBuf,
     loaded: Loaded,
@@ -178,11 +184,11 @@ impl Driver {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
-        self.load(&ModuleID::default())
+        self.load(ModuleID::default())
     }
 
-    fn load(&mut self, module: &ModuleID) -> Result<(), Error> {
-        if self.loaded.contains(module) {
+    fn load(&mut self, module: ModuleID) -> Result<(), Error> {
+        if self.loaded.contains(&module) {
             return Ok(());
         }
 
@@ -209,15 +215,21 @@ impl Driver {
 
                     let src = read_to_string(&file)?;
                     let defs = self
-                        .load_src(module, src.as_str())
+                        .load_src(&module, src.as_str())
                         .map_err(|e| print_err(e, &file, src))?;
                     files.push(ModuleFile { file, defs });
                 }
             }
         }
 
-        self.codegen
-            .module(&self.elab.sigma, module, includes, files)?;
+        self.codegen.module(
+            &self.elab.sigma,
+            Module {
+                module,
+                files,
+                includes,
+            },
+        )?;
 
         Ok(())
     }
@@ -229,7 +241,7 @@ impl Driver {
             .map(trans::file)?;
         imports
             .iter()
-            .fold(Ok(()), |r, i| r.and_then(|_| self.load(&i.module)))?;
+            .fold(Ok(()), |r, i| r.and_then(|_| self.load(i.module.clone())))?;
         let defs = Resolver::new(&self.loaded)
             .file(&imports, defs)
             .and_then(|d| self.elab.defs(d))?;

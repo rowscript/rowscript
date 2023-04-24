@@ -666,7 +666,7 @@ fn fn_body(b: Pair<Rule>) -> Expr {
                 Box::new(fn_body(l.next().unwrap())),
             )
         }
-        Rule::fn_body_ret => p.into_inner().next().map_or(TT(loc), |p| expr(p)),
+        Rule::fn_body_ret => p.into_inner().next().map_or(TT(loc), expr),
         _ => unreachable!(),
     }
 }
@@ -940,7 +940,7 @@ fn fields(p: Pair<Rule>) -> Expr {
     for pair in p.into_inner() {
         let mut f = pair.into_inner();
         let id = f.next().unwrap().as_str().to_string();
-        let typ = f.next().map_or(Unit(loc), |p| type_expr(p));
+        let typ = f.next().map_or(Unit(loc), type_expr);
         fields.push((id, typ));
     }
 
@@ -960,7 +960,7 @@ fn object_literal(l: Pair<Rule>) -> Expr {
     let loc = Loc::from(l.as_span());
     Obj(
         loc,
-        Box::new(Fields(loc, l.into_inner().map(|p| label(p)).collect())),
+        Box::new(Fields(loc, l.into_inner().map(label).collect())),
     )
 }
 

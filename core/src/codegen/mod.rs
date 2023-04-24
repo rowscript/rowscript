@@ -4,10 +4,9 @@ use std::path::{Path, PathBuf};
 
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Def, Sigma};
-use crate::theory::conc::load::ModuleID;
 use crate::theory::Loc;
 use crate::Error::NonErasable;
-use crate::{print_err, Error, ModuleFile};
+use crate::{print_err, Error, Module, ModuleFile};
 
 #[cfg(feature = "codegen-ecma")]
 pub mod ecma;
@@ -39,13 +38,18 @@ impl Codegen {
         self.target.should_include(path)
     }
 
-    pub fn module(
-        &mut self,
-        sigma: &Sigma,
-        module: &ModuleID,
-        includes: Vec<PathBuf>,
-        files: Vec<ModuleFile>,
-    ) -> Result<(), Error> {
+    pub fn module(&mut self, sigma: &Sigma, module: Module) -> Result<(), Error> {
+        let Module {
+            module,
+            files,
+            includes,
+            ..
+        } = module;
+
+        if !module.should_generate() {
+            return Ok(());
+        }
+
         let mut buf = Vec::default();
 
         for ModuleFile { file, defs } in files {
@@ -67,16 +71,18 @@ impl Codegen {
             }
         }
 
-        if !buf.is_empty() {
-            let module_dir = module.to_path_buf(&self.outdir);
-            let module_index_file = module_dir.join(self.target.filename());
-            create_dir_all(&module_dir)?;
-            write(&module_index_file, &buf)?;
+        if buf.is_empty() {
+            return Ok(());
+        }
 
-            for file in &includes {
-                let to = module_dir.join(file.file_name().unwrap());
-                copy(file, to)?;
-            }
+        let module_dir = module.to_path_buf(&self.outdir);
+        let module_index_file = module_dir.join(self.target.filename());
+        create_dir_all(&module_dir)?;
+        write(&module_index_file, &buf)?;
+
+        for file in includes {
+            let to = module_dir.join(file.file_name().unwrap());
+            copy(file, to)?;
         }
 
         Ok(())
