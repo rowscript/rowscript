@@ -444,9 +444,9 @@ impl Elaborator {
                 (Term::Concat(Box::new(x), Box::new(y)), *ty)
             }
             Access(_, n) => {
-                let t = Var::local("T");
-                let a = Var::local("'A");
-                let o = Var::local("o");
+                let t = Var::new("T");
+                let a = Var::new("'A");
+                let o = Var::new("o");
                 let tele = vec![
                     Param {
                         var: t.clone(),

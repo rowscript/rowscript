@@ -15,7 +15,7 @@ use crate::theory::abs::def::Def;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::load::{Loaded, ModuleID};
 use crate::theory::conc::resolve::Resolver;
-use crate::theory::conc::trans::Trans;
+use crate::theory::conc::trans;
 use crate::theory::Loc;
 
 pub mod codegen;
@@ -226,7 +226,7 @@ impl Driver {
         let (imports, defs) = RowsParser::parse(Rule::file, src)
             .map_err(Box::new)
             .map_err(Error::from)
-            .map(|p| Trans::new(module).file(p))?;
+            .map(trans::file)?;
         imports
             .iter()
             .fold(Ok(()), |r, i| r.and_then(|_| self.load(&i.module)))?;
