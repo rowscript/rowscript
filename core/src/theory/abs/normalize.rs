@@ -52,13 +52,14 @@ impl<'a> Normalizer<'a> {
                             }
                             self.term(ret)?
                         }
-                        None => Self::auto_implicit(&def.ret).map_or(
-                            MetaRef(k.clone(), x.clone(), sp),
-                            |tm| {
+                        None => {
+                            if let Some(tm) = Self::auto_implicit(&def.ret) {
                                 def.body = Meta(k, Some(tm.clone()));
                                 tm
-                            },
-                        ),
+                            } else {
+                                MetaRef(k, x.clone(), sp)
+                            }
+                        }
                     },
                     _ => unreachable!(),
                 };
