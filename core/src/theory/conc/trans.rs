@@ -793,7 +793,7 @@ fn expr(e: Pair<Rule>) -> Expr {
             let mut body = None;
             for p in pairs {
                 match p.as_rule() {
-                    Rule::param_id => vars.push(maybe_qualified(p)),
+                    Rule::param_id => vars.push(unresolved(p)),
                     Rule::lambda_body => {
                         let b = p.into_inner().next().unwrap();
                         body = Some(match b.as_rule() {

@@ -169,7 +169,7 @@ branch =
   }
 branch_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" ~ branch }
 branch_unit_let = { expr ~ ";" ~ branch }
-new_expr = { "new" ~ type_id ~ ("<" ~ type_args ~ ">")? ~ args }
+new_expr = { "new" ~ tyref ~ ("<" ~ type_args ~ ">")? ~ args }
 method_app = { ("(" ~ expr ~ ")" | idref) ~ "." ~ prop_id ~ args+ }
 rev_app = { ("(" ~ expr ~ ")" | idref) ~ rev_app_callee+ }
 rev_app_callee = { "|" ~ ("(" ~ expr ~ ")" | idref) ~ implicit_args? ~ args+ }
