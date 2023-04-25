@@ -37,6 +37,16 @@ impl<'a> Unifier<'a> {
                 Ok(())
             }
 
+            (Ref(a), Ref(b)) if a == b => Ok(()),
+            (Ref(a), b) => match self.sigma.get(a) {
+                Some(d) => self.unify(&d.to_term(a.clone()), b),
+                None => self.unify_err(lhs, rhs),
+            },
+            (a, Ref(b)) => match self.sigma.get(b) {
+                Some(d) => self.unify(a, &d.to_term(b.clone())),
+                None => self.unify_err(lhs, rhs),
+            },
+
             (Let(p, a, b), Let(q, x, y)) => {
                 self.unify(&p.typ, &q.typ)?;
                 self.unify(a, x)?;
@@ -91,7 +101,6 @@ impl<'a> Unifier<'a> {
             (Enum(a), Enum(b)) => self.unify(a, b),
             (Variant(a), Variant(b)) => self.unify(a, b),
 
-            (Ref(a), Ref(b)) if a == b => Ok(()),
             (Extern(a), Extern(b)) if a == b => Ok(()),
             (Str(a), Str(b)) if a == b => Ok(()),
             (Num(_, a), Num(_, b)) if a == b => Ok(()),
