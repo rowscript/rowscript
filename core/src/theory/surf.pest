@@ -26,24 +26,24 @@ std_pkg_id = { lower_id }
 vendor_org_id = @{ "@" ~ lower_id }
 vendor_pkg_id = { vendor_org_id ~ "/" ~ lower_id }
 module_id = { lower_id }
-
-qualifier = { pkg_qualifier? ~ "::" ~ (module_id ~ "::")* }
-pkg_qualifier = _{ std_pkg_id | vendor_pkg_id }
+qualifier =
+  { (std_pkg_id | vendor_pkg_id) ~ "::" ~ (module_id ~ "::")*
+  | root_prefix ~ (module_id ~ "::")+
+  }
+root_prefix = { "::" }
 
 idref =
-  { qualified_idref
+  { qualifier ~ idref
   | fn_id
   | param_id
   | let_id
   | prop_id
   }
-qualified_idref = { qualifier ~ idref }
 tyref =
-  { qualified_tyref
+  { qualifier ~ tyref
   | implicit_id
   | type_id
   }
-qualified_tyref = { qualifier ~ tyref }
 importable = { pub_fn_id | pub_type_id }
 
 hole = { "?" }

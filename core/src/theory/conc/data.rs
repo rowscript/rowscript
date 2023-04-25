@@ -1,18 +1,21 @@
 use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::data::Dir;
+use crate::theory::conc::load::ModuleID;
 use crate::theory::{Loc, Param, Syntax, Tele, Var};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ArgInfo {
     UnnamedExplicit,
     UnnamedImplicit,
-    NamedImplicit(String),
+    NamedImplicit(Var),
 }
 
 #[derive(Debug, Clone)]
 pub enum Expr {
     Unresolved(Loc, Var),
+    Qualified(Loc, ModuleID, Var),
+
     Resolved(Loc, Var),
     Imported(Loc, Var),
 
@@ -97,6 +100,7 @@ impl Expr {
         use Expr::*;
         *match self {
             Unresolved(loc, _) => loc,
+            Qualified(loc, _, _) => loc,
             Resolved(loc, _) => loc,
             Imported(loc, _) => loc,
             Hole(loc) => loc,
@@ -201,6 +205,7 @@ impl Display for Expr {
         f.write_str(
             match self {
                 Unresolved(_, r) => r.to_string(),
+                Qualified(_, m, r) => format!("{m}::{r}"),
                 Resolved(_, r) => r.to_string(),
                 Imported(_, r) => r.to_string(),
                 Hole(_) => "?".to_string(),

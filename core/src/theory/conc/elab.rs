@@ -758,7 +758,7 @@ impl Elaborator {
         Ok(match f_ty {
             Term::Pi(p, _) if p.info == Implicit => match i {
                 UnnamedExplicit => Some(Expr::holed_app(f_e)),
-                NamedImplicit(name) => match holes_to_insert(f_e.loc(), name, f_ty)? {
+                NamedImplicit(name) => match holes_to_insert(f_e.loc(), name.to_string(), f_ty)? {
                     0 => None,
                     n => Some((0..n).fold(f_e, |e, _| Expr::holed_app(e))),
                 },

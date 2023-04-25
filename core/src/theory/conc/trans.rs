@@ -8,6 +8,7 @@ use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, ClassBody, ImplementsBody};
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
+use crate::theory::conc::load::ImportedPkg::Vendor;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var};
@@ -45,13 +46,7 @@ fn import(d: Pair<Rule>) -> Import {
     let item = p.as_str().to_string();
     let pkg = match p.as_rule() {
         Rule::std_pkg_id => Std(item),
-        Rule::vendor_pkg_id => {
-            let mut v = p.into_inner();
-            Vendor(
-                v.next().unwrap().as_str().to_string(),
-                v.next().unwrap().as_str().to_string(),
-            )
-        }
+        Rule::vendor_pkg_id => vendor_pkg(p),
         Rule::module_id => {
             modules.push(item);
             Root
@@ -84,6 +79,14 @@ fn import(d: Pair<Rule>) -> Import {
     )
 }
 
+fn vendor_pkg(v: Pair<Rule>) -> ImportedPkg {
+    let mut p = v.into_inner();
+    Vendor(
+        p.next().unwrap().as_str().to_string(),
+        p.next().unwrap().as_str().to_string(),
+    )
+}
+
 fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
     use Body::*;
     use Expr::*;
@@ -91,7 +94,7 @@ fn fn_def(f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
     let loc = Loc::from(f.as_span());
     let mut pairs = f.into_inner();
 
-    let name = Var::new(pairs.next().unwrap().as_str());
+    let name = Var::from(pairs.next().unwrap());
 
     let mut tele = Tele::default();
     let mut untupled = UntupledParams::new(loc);
@@ -154,7 +157,7 @@ fn fn_postulate(f: Pair<Rule>) -> Def<Expr> {
     let loc = Loc::from(f.as_span());
     let mut pairs = f.into_inner();
 
-    let name = Var::new(pairs.next().unwrap().as_str());
+    let name = Var::from(pairs.next().unwrap());
 
     let mut tele = Tele::default();
     let mut untupled = UntupledParams::new(loc);
@@ -184,7 +187,7 @@ fn type_postulate(t: Pair<Rule>) -> Def<Expr> {
     use Expr::*;
 
     let loc = Loc::from(t.as_span());
-    let name = Var::new(t.into_inner().next().unwrap().as_str());
+    let name = Var::from(t.into_inner().next().unwrap());
     let ret = Box::new(Univ(loc));
 
     Def {
@@ -203,7 +206,7 @@ fn type_alias(t: Pair<Rule>) -> Def<Expr> {
     let loc = Loc::from(t.as_span());
     let mut pairs = t.into_inner();
 
-    let name = Var::new(pairs.next().unwrap().as_str());
+    let name = Var::from(pairs.next().unwrap());
     let mut tele = Tele::default();
     let mut target = None;
     for p in pairs {
@@ -245,7 +248,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     let loc = Loc::from(c.as_span());
     let mut pairs = c.into_inner();
 
-    let name = Var::new(pairs.next().unwrap().as_str());
+    let name = Var::from(pairs.next().unwrap());
     let vptr_name = name.vptr_type();
     let vptr_ctor_name = name.vptr_ctor();
     let ctor_name = name.ctor();
@@ -410,11 +413,11 @@ fn interface_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
 
     let name_pair = pairs.next().unwrap();
     let ret = Box::new(Univ(Loc::from(name_pair.as_span())));
-    let name = Var::new(name_pair.as_str());
+    let name = Var::from(name_pair);
 
     let alias_pair = pairs.next().unwrap();
     let alias_loc = Loc::from(alias_pair.as_span());
-    let alias = Var::new(alias_pair.as_str());
+    let alias = Var::from(alias_pair);
 
     let mut im_tele = Tele::default();
     let mut fn_defs = Vec::default();
@@ -468,8 +471,8 @@ fn implements_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
 
     let mut defs = Vec::default();
 
-    let i = Var::new(pairs.next().unwrap().as_str());
-    let im = Var::new(pairs.next().unwrap().as_str());
+    let i = Var::from(pairs.next().unwrap());
+    let im = Var::from(pairs.next().unwrap());
 
     let mut fns = HashMap::default();
     for p in pairs {
@@ -524,7 +527,7 @@ fn type_expr(t: Pair<Rule>) -> Expr {
         Rule::enum_type_ref => Enum(loc, Box::new(unresolved(p.into_inner().next().unwrap()))),
         Rule::enum_type_literal => Enum(loc, Box::new(fields(p))),
         Rule::type_app => type_app(p),
-        Rule::tyref => unresolved(p),
+        Rule::tyref => maybe_qualified(p),
         Rule::paren_type_expr => type_expr(p.into_inner().next().unwrap()),
         Rule::hole => Hole(loc),
         _ => unreachable!(),
@@ -538,7 +541,7 @@ fn type_app(a: Pair<Rule>) -> Expr {
     let f = pairs.next().unwrap();
     let f = match f.as_rule() {
         Rule::type_expr => type_expr(f),
-        Rule::tyref => unresolved(f),
+        Rule::tyref => maybe_qualified(f),
         _ => unreachable!(),
     };
 
@@ -621,7 +624,7 @@ fn type_arg(a: Pair<Rule>) -> (ArgInfo, Expr) {
     match id_or_type.as_rule() {
         Rule::type_expr => (UnnamedImplicit, type_expr(id_or_type)),
         Rule::tyref => (
-            NamedImplicit(id_or_type.as_str().to_string()),
+            NamedImplicit(Var::from(id_or_type)),
             type_expr(p.next().unwrap()),
         ),
         _ => unreachable!(),
@@ -634,7 +637,7 @@ fn row_arg(a: Pair<Rule>) -> (ArgInfo, Expr) {
     match id_or_fields.as_rule() {
         Rule::paren_fields => (UnnamedImplicit, fields(id_or_fields)),
         Rule::row_id => (
-            NamedImplicit(id_or_fields.as_str().to_string()),
+            NamedImplicit(Var::from(id_or_fields)),
             fields(p.next().unwrap()),
         ),
         _ => unreachable!(),
@@ -698,7 +701,7 @@ fn expr(e: Pair<Rule>) -> Expr {
             let o = pairs.next().unwrap();
             let o = Box::new(match o.as_rule() {
                 Rule::expr => expr(o),
-                Rule::idref => unresolved(o),
+                Rule::idref => maybe_qualified(o),
                 _ => unreachable!(),
             });
             let n = pairs.next().unwrap().as_str().to_string();
@@ -719,7 +722,7 @@ fn expr(e: Pair<Rule>) -> Expr {
                         Loc::from(arg.as_span()),
                         match arg.as_rule() {
                             Rule::expr => expr(arg),
-                            Rule::idref => unresolved(arg),
+                            Rule::idref => maybe_qualified(arg),
                             _ => unreachable!(),
                         },
                     ),
@@ -729,7 +732,7 @@ fn expr(e: Pair<Rule>) -> Expr {
         }
         Rule::new_expr => {
             let mut pairs = p.into_inner();
-            let cls = match unresolved(pairs.next().unwrap()) {
+            let cls = match maybe_qualified(pairs.next().unwrap()) {
                 Unresolved(loc, v) => Unresolved(loc, v.ctor()),
                 _ => unreachable!(),
             };
@@ -775,7 +778,7 @@ fn expr(e: Pair<Rule>) -> Expr {
                 let mut body = None;
                 for p in c {
                     match p.as_rule() {
-                        Rule::param_id => v = Some(Var::new(p.as_str())),
+                        Rule::param_id => v = Some(Var::from(p)),
                         Rule::expr => body = Some(expr(p)),
                         _ => unreachable!(),
                     };
@@ -790,7 +793,7 @@ fn expr(e: Pair<Rule>) -> Expr {
             let mut body = None;
             for p in pairs {
                 match p.as_rule() {
-                    Rule::param_id => vars.push(unresolved(p)),
+                    Rule::param_id => vars.push(maybe_qualified(p)),
                     Rule::lambda_body => {
                         let b = p.into_inner().next().unwrap();
                         body = Some(match b.as_rule() {
@@ -807,7 +810,7 @@ fn expr(e: Pair<Rule>) -> Expr {
         }
         Rule::app => app(p, None),
         Rule::tt => TT(loc),
-        Rule::idref => unresolved(p),
+        Rule::idref => maybe_qualified(p),
         Rule::paren_expr => expr(p.into_inner().next().unwrap()),
         Rule::hole => Hole(loc),
         _ => unreachable!(),
@@ -851,7 +854,7 @@ fn app(a: Pair<Rule>, mut rev_operand: Option<(Loc, Expr)>) -> Expr {
     let f = pairs.next().unwrap();
     let f = match f.as_rule() {
         Rule::expr => expr(f),
-        Rule::idref => unresolved(f),
+        Rule::idref => maybe_qualified(f),
         _ => unreachable!(),
     };
 
@@ -876,16 +879,44 @@ fn app(a: Pair<Rule>, mut rev_operand: Option<(Loc, Expr)>) -> Expr {
         .fold(f, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
 }
 
+fn maybe_qualified(p: Pair<Rule>) -> Expr {
+    use Expr::*;
+    let loc = Loc::from(p.as_span());
+    let mut i = p.into_inner();
+    let id = i.next().unwrap();
+    match id.as_rule() {
+        Rule::qualifier => Qualified(loc, qualifier(id), Var::from(i.next().unwrap())),
+        _ => Unresolved(loc, Var::from(id)),
+    }
+}
+
+fn qualifier(q: Pair<Rule>) -> ModuleID {
+    use ImportedPkg::*;
+    let mut pairs = q.into_inner();
+    let prefix = pairs.next().unwrap();
+    let pkg = match prefix.as_rule() {
+        Rule::std_pkg_id => Std(prefix.as_str().to_string()),
+        Rule::vendor_pkg_id => vendor_pkg(prefix),
+        Rule::root_prefix => Root,
+        _ => unreachable!(),
+    };
+    let mut modules = PathBuf::default();
+    for p in pairs {
+        modules.push(p.as_str())
+    }
+    ModuleID::new(pkg, modules)
+}
+
 fn unresolved(p: Pair<Rule>) -> Expr {
     use Expr::*;
-    Unresolved(Loc::from(p.as_span()), Var::new(p.as_str()))
+    Unresolved(Loc::from(p.as_span()), Var::from(p))
 }
 
 fn row_param(p: Pair<Rule>) -> Param<Expr> {
     use Expr::*;
     let loc = Loc::from(p.as_span());
     Param {
-        var: Var::new(p.as_str()),
+        var: Var::from(p),
         info: Implicit,
         typ: Box::new(Row(loc)),
     }
@@ -895,7 +926,7 @@ fn implicit_param(p: Pair<Rule>) -> Param<Expr> {
     use Expr::*;
     let loc = Loc::from(p.as_span());
     Param {
-        var: Var::new(p.as_str()),
+        var: Var::from(p),
         info: Implicit,
         typ: Box::new(Univ(loc)),
     }
@@ -904,7 +935,7 @@ fn implicit_param(p: Pair<Rule>) -> Param<Expr> {
 fn hkt_param(p: Pair<Rule>) -> Param<Expr> {
     use Expr::*;
     let mut pairs = p.into_inner();
-    let var = Var::new(pairs.next().unwrap().as_str());
+    let var = Var::from(pairs.next().unwrap());
     let kind = Box::new(Univ(Loc::from(pairs.next().unwrap().as_span())));
     let typ = pairs.fold(kind, |a, b| {
         let loc = Loc::from(b.as_span());
@@ -925,7 +956,7 @@ fn hkt_param(p: Pair<Rule>) -> Param<Expr> {
 fn param(p: Pair<Rule>) -> Param<Expr> {
     let mut pairs = p.into_inner();
     Param {
-        var: Var::new(pairs.next().unwrap().as_str()),
+        var: Var::from(pairs.next().unwrap()),
         info: Explicit,
         typ: Box::new(type_expr(pairs.next().unwrap())),
     }
@@ -969,7 +1000,7 @@ fn object_operand(o: Pair<Rule>) -> Expr {
     match p.as_rule() {
         Rule::app => app(p, None),
         Rule::object_literal => object_literal(p),
-        Rule::idref => unresolved(p),
+        Rule::idref => maybe_qualified(p),
         Rule::paren_expr => expr(p.into_inner().next().unwrap()),
         _ => unreachable!(),
     }
@@ -991,7 +1022,7 @@ fn enum_operand(o: Pair<Rule>) -> Expr {
     match p.as_rule() {
         Rule::app => app(p, None),
         Rule::enum_variant => enum_variant(p),
-        Rule::idref => unresolved(p),
+        Rule::idref => maybe_qualified(p),
         Rule::paren_expr => expr(p.into_inner().next().unwrap()),
         _ => unreachable!(),
     }
@@ -1009,7 +1040,7 @@ fn tupled_args(a: Pair<Rule>) -> Expr {
 }
 
 fn partial_let(pairs: &mut Pairs<Rule>) -> (Var, Option<Box<Expr>>, Expr) {
-    let id = Var::new(pairs.next().unwrap().as_str());
+    let id = Var::from(pairs.next().unwrap());
     let mut typ = None;
     let type_or_expr = pairs.next().unwrap();
     let tm = match type_or_expr.as_rule() {

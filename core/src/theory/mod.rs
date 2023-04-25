@@ -1,3 +1,4 @@
+use pest::iterators::Pair;
 use std::collections::HashSet;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
@@ -6,7 +7,7 @@ use std::rc::Rc;
 use pest::Span;
 
 use crate::theory::conc::data::ArgInfo;
-use crate::Error;
+use crate::{Error, Rule};
 
 pub mod abs;
 pub mod conc;
@@ -133,6 +134,12 @@ impl Var {
 
     pub fn as_str(&self) -> &str {
         self.name.as_str()
+    }
+}
+
+impl From<Pair<'_, Rule>> for Var {
+    fn from(p: Pair<'_, Rule>) -> Self {
+        Self::new(p.as_str())
     }
 }
 

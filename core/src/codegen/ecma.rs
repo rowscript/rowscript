@@ -532,8 +532,8 @@ impl Ecma {
                         }))
                     }
                 }
-                Qualified => todo!("vendors being qualified hard to be valid identifiers"),
                 Loaded => {}
+                Qualified => unreachable!(),
             }
             items.push(ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
                 span: DUMMY_SP,

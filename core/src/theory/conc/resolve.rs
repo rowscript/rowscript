@@ -33,9 +33,10 @@ impl<'a> Resolver<'a> {
 
     pub fn file(
         &mut self,
-        imports: &Vec<Import>,
+        imports: &Vec<Import>, // FIXME: move here
         defs: Vec<Def<Expr>>,
     ) -> Result<Vec<Def<Expr>>, Error> {
+        // FIXME: return resolved all unqualified imports
         let mut names = RawNameSet::default();
         self.imports(&mut names, imports)?;
         self.defs(&mut names, defs)
@@ -204,6 +205,11 @@ impl<'a> Resolver<'a> {
                         VarKind::Imported => Imported(loc, v),
                     }
                 }
+                None => return Err(UnresolvedVar(loc)),
+            },
+            // FIXME: Insert the imported.
+            Qualified(loc, m, r) => match self.loaded.get(&m, &r.to_string()) {
+                Some(v) => Imported(loc, v.clone()),
                 None => return Err(UnresolvedVar(loc)),
             },
             Let(loc, x, typ, a, b) => {
