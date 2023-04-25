@@ -20,3 +20,10 @@ function f3(): number { return f2() }
 function f4() {
     return write(WriteOptions({path: "foo.txt"}))
 }
+
+function getData(): [Age: number | Name: string];
+function setData(data: [Age: number | Name: string]);
+
+function f5() {
+    return setData(getData())
+}

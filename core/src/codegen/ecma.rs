@@ -164,22 +164,20 @@ impl Ecma {
         mut tm: &Term,
     ) -> Result<Vec<ExprOrSpread>, Error> {
         use Term::*;
-        let is_postulate = matches!(f, Extern(_));
+
         let mut ret = Vec::default();
         loop {
             match tm {
                 Tuple(a, b) => {
                     ret.push(ExprOrSpread {
                         spread: None,
-                        expr: Box::new(self.expr(
-                            sigma,
-                            loc,
-                            if is_postulate {
-                                Self::untag_variant(a)
-                            } else {
-                                a
+                        expr: Box::new(match (f, &**a) {
+                            (Extern(_), Variant(fields)) => match &**fields {
+                                Fields(fm) => self.expr(sigma, loc, fm.iter().next().unwrap().1)?,
+                                _ => self.untag_variant(sigma, loc, a)?,
                             },
-                        )?),
+                            _ => self.untag_variant(sigma, loc, a)?,
+                        }),
                     });
                     tm = b
                 }
@@ -190,15 +188,12 @@ impl Ecma {
         Ok(ret)
     }
 
-    fn untag_variant(tm: &Term) -> &Term {
-        use Term::*;
-        match tm {
-            Variant(f) => match &**f {
-                Fields(fm) => fm.iter().next().unwrap().1,
-                _ => tm,
-            },
-            _ => tm,
-        }
+    fn untag_variant(&mut self, sigma: &Sigma, loc: Loc, tm: &Term) -> Result<Expr, Error> {
+        Ok(Expr::Member(MemberExpr {
+            span: loc.into(),
+            obj: Box::new(self.expr(sigma, loc, tm)?),
+            prop: MemberProp::Ident(Self::special_ident(JS_ENUM_VAL)),
+        }))
     }
 
     fn lambda_encoded_let(
