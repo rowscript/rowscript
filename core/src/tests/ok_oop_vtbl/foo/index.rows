@@ -1,0 +1,9 @@
+function log(m: string);
+
+class Foo {
+    name: string;
+    getName(): string {
+        log(this.name);
+        return this.name
+    }
+}

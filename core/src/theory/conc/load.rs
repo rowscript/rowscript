@@ -28,7 +28,7 @@ pub struct ModuleID {
 }
 
 impl ModuleID {
-    pub fn to_path_buf(&self, base: &Path) -> PathBuf {
+    pub fn to_full_path(&self, base: &Path) -> PathBuf {
         use ImportedPkg::*;
         let mut ret = match &self.pkg {
             Std(pkg) => base.join(MODULES_DIR).join(STD_PKG_DIR).join(pkg),
@@ -37,6 +37,17 @@ impl ModuleID {
         };
         ret.extend(&self.modules);
         ret
+    }
+
+    pub fn to_relative_path(&self) -> PathBuf {
+        use ImportedPkg::*;
+        let mut p = match &self.pkg {
+            Std(p) => Path::new(STD_PKG_DIR).join(p),
+            Vendor(o, p) => Path::new(o).join(p),
+            Root => PathBuf::from("."),
+        };
+        p.extend(&self.modules);
+        p
     }
 
     pub fn should_generate(&self) -> bool {
@@ -59,14 +70,7 @@ impl Default for ModuleID {
 
 impl Display for ModuleID {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        use ImportedPkg::*;
-        let mut p = match &self.pkg {
-            Std(p) => Path::new(STD_PKG_DIR).join(p),
-            Vendor(o, p) => Path::new(o).join(p),
-            Root => PathBuf::from("."),
-        };
-        p.extend(&self.modules);
-        f.write_str(p.to_str().unwrap())
+        f.write_str(self.to_relative_path().to_str().unwrap())
     }
 }
 

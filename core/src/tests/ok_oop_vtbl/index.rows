@@ -1,0 +1,16 @@
+import .foo;
+
+class Bar {
+    age: number;
+    getAge(): number { return this.age }
+}
+
+function f0(): string {
+    let a = new ::foo::Foo("John");
+    return a.getName()
+}
+
+function f1(): number {
+    let a = new Bar(42);
+    return a.getAge()
+}

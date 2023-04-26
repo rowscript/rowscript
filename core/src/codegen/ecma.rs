@@ -38,6 +38,7 @@ impl From<Loc> for Span {
 }
 
 const JS_LIB: &str = "__lib";
+const JS_LIB_PREFIX: &str = "__lib__";
 const JS_ESCAPED_THIS: &str = "_this";
 const JS_ENUM_TAG: &str = "__enumT";
 const JS_ENUM_VAL: &str = "__enumV";
@@ -505,10 +506,12 @@ impl Ecma {
                 raw: None,
             })),
             Lookup(a) => {
-                if let Vp(r, ts) = &**a {
-                    let meths_mapping = self.vtbl.get(r).unwrap();
-                    self.vtbl
-                        .insert(mangle_hkt(loc, r, ts)?, meths_mapping.clone());
+                match &**a {
+                    Vp(r, ts) if !ts.is_empty() => {
+                        let meths = self.vtbl.get(r).unwrap().clone();
+                        self.vtbl.insert(mangle_hkt(loc, r, ts)?, meths);
+                    }
+                    _ => {}
                 }
                 Expr::Member(MemberExpr {
                     span: loc.into(),
@@ -553,7 +556,12 @@ impl Ecma {
                 specifiers,
                 src: Box::new(JsStr {
                     span: DUMMY_SP,
-                    value: i.module.to_string().into(),
+                    value: i
+                        .module
+                        .to_relative_path()
+                        .join(self.filename())
+                        .to_string_lossy()
+                        .into(),
                     raw: None,
                 }),
                 type_only: false,
@@ -567,7 +575,10 @@ impl Ecma {
         let mut props = Vec::default();
         for i in includes {
             let src = Path::new(".").join(i.file_name().unwrap());
-            let ns = i.file_stem().unwrap().to_string_lossy();
+            let ns = format!(
+                "{JS_LIB_PREFIX}{}",
+                i.file_stem().unwrap().to_string_lossy()
+            ); // avoid naming conflicts
             items.push(ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
                 span: DUMMY_SP,
                 specifiers: vec![ImportSpecifier::Namespace(ImportStarAsSpecifier {
@@ -747,20 +758,30 @@ impl Ecma {
                 })),
             }))))
         }
-
         items.push(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
             span: DUMMY_SP,
             expr: Box::new(Expr::Assign(AssignExpr {
-                span: Default::default(),
+                span: DUMMY_SP,
                 op: AssignOp::Assign,
                 left: PatOrExpr::Expr(Box::new(Self::global_vtbl())),
                 right: Box::new(Expr::Object(ObjectLit {
                     span: DUMMY_SP,
-                    props,
+                    props: vec![
+                        PropOrSpread::Spread(SpreadElement {
+                            dot3_token: DUMMY_SP,
+                            expr: Box::new(Self::global_vtbl()),
+                        }),
+                        PropOrSpread::Spread(SpreadElement {
+                            dot3_token: DUMMY_SP,
+                            expr: Box::new(Expr::Object(ObjectLit {
+                                span: DUMMY_SP,
+                                props,
+                            })),
+                        }),
+                    ],
                 })),
             })),
         })));
-
         Ok(())
     }
 }
@@ -803,6 +824,7 @@ impl Target for Ecma {
     ) -> Result<(), Error> {
         let mut body = Vec::default();
 
+        self.vtbl.clear();
         self.imports(&mut body, file.imports)?;
         self.includes(&mut body, includes)?;
         self.decls(&mut body, sigma, file.defs)?;

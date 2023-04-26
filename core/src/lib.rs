@@ -196,7 +196,7 @@ impl Driver {
         let mut files = Vec::default();
         let mut includes = Vec::default();
 
-        for r in module.to_path_buf(&self.path).read_dir()? {
+        for r in module.to_full_path(&self.path).read_dir()? {
             let entry = r?;
             if entry.file_type()?.is_dir() {
                 continue;
