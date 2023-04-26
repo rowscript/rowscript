@@ -236,7 +236,7 @@ impl<'a> Normalizer<'a> {
                     Variant(r) => match &**r {
                         Fields(f) => {
                             // TODO: eliminate clone
-                            let (n, x) = f.into_iter().next().unwrap();
+                            let (n, x) = f.iter().next().unwrap();
                             let (v, tm) = cs.get(n).unwrap();
                             self.rho.insert(v.clone(), Box::new(x.clone()));
                             self.term(tm.clone())?

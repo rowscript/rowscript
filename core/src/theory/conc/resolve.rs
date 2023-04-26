@@ -4,8 +4,8 @@ use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, ImplementsBody};
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::Unresolved;
-use crate::theory::conc::load::{Import, ImportedDefs, Loaded};
-use crate::theory::{Param, RawNameSet, Tele, Var};
+use crate::theory::conc::load::{Import, ImportedDefs, Loaded, ModuleID};
+use crate::theory::{Loc, Param, RawNameSet, Tele, Var};
 use crate::Error;
 use crate::Error::UnresolvedVar;
 
@@ -18,9 +18,37 @@ enum VarKind {
 #[derive(Clone)]
 struct ResolvedVar(VarKind, Var);
 
+#[derive(Default)]
+struct ResolvedQualified(HashMap<ModuleID, (Loc, Vec<(Loc, String)>)>);
+
+impl ResolvedQualified {
+    fn insert_qualified(&mut self, loc: Loc, module: &ModuleID) {
+        self.0.insert(module.clone(), (loc, Default::default()));
+    }
+
+    fn insert_imported(&mut self, loc: Loc, module: ModuleID, v: &Var) {
+        self.0
+            .get_mut(&module)
+            .unwrap()
+            .1
+            .push((loc, v.to_string()))
+    }
+
+    fn to_unqualified(&self, module: ModuleID) -> Import {
+        use ImportedDefs::*;
+        let (loc, vs) = self.0.get(&module).unwrap();
+        Import {
+            loc: *loc,
+            module,
+            defs: Unqualified(vs.clone()),
+        }
+    }
+}
+
 pub struct Resolver<'a> {
     loaded: &'a Loaded,
     names: HashMap<String, ResolvedVar>,
+    qualified: ResolvedQualified,
 }
 
 impl<'a> Resolver<'a> {
@@ -28,18 +56,20 @@ impl<'a> Resolver<'a> {
         Self {
             loaded,
             names: Default::default(),
+            qualified: Default::default(),
         }
     }
 
     pub fn file(
         &mut self,
-        imports: &Vec<Import>, // FIXME: move here
+        imports: Vec<Import>,
         defs: Vec<Def<Expr>>,
-    ) -> Result<Vec<Def<Expr>>, Error> {
-        // FIXME: return resolved all unqualified imports
+    ) -> Result<(Vec<Import>, Vec<Def<Expr>>), Error> {
         let mut names = RawNameSet::default();
-        self.imports(&mut names, imports)?;
-        self.defs(&mut names, defs)
+        self.imports(&mut names, &imports)?;
+        let defs = self.defs(&mut names, defs)?;
+        let imports = self.unfold_imports(imports)?;
+        Ok((imports, defs))
     }
 
     fn imports(&mut self, names: &mut RawNameSet, imports: &Vec<Import>) -> Result<(), Error> {
@@ -55,11 +85,27 @@ impl<'a> Resolver<'a> {
                         };
                     }
                 }
-                Qualified => names.raw(*loc, module.to_string())?,
+                Qualified => {
+                    names.raw(*loc, module.to_string())?;
+                    self.qualified.insert_qualified(*loc, module)
+                }
                 Loaded => continue,
             }
         }
         Ok(())
+    }
+
+    fn unfold_imports(&self, imports: Vec<Import>) -> Result<Vec<Import>, Error> {
+        use ImportedDefs::*;
+        let mut ret = Vec::default();
+        for i in imports {
+            ret.push(if matches!(i.defs, Qualified) {
+                self.qualified.to_unqualified(i.module)
+            } else {
+                i
+            })
+        }
+        Ok(ret)
     }
 
     fn defs(
@@ -207,9 +253,11 @@ impl<'a> Resolver<'a> {
                 }
                 None => return Err(UnresolvedVar(loc)),
             },
-            // FIXME: Insert the imported.
             Qualified(loc, m, r) => match self.loaded.get(&m, &r.to_string()) {
-                Some(v) => Imported(loc, v.clone()),
+                Some(v) => {
+                    self.qualified.insert_imported(loc, m, v);
+                    Imported(loc, v.clone())
+                }
                 None => return Err(UnresolvedVar(loc)),
             },
             Let(loc, x, typ, a, b) => {
