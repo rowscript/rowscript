@@ -25,3 +25,7 @@ function f2() {
 function f3(): string {
     return node::readFileSync("hello.txt")
 }
+
+function f4(): ::b::Foo {
+    return {n: 42}
+}

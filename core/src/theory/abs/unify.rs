@@ -47,6 +47,16 @@ impl<'a> Unifier<'a> {
                 None => self.unify_err(lhs, rhs),
             },
 
+            (Qualified(_, a), Qualified(_, b)) if a == b => Ok(()),
+            (Qualified(_, a), b) => match self.sigma.get(a) {
+                Some(d) => self.unify(&d.to_term(a.clone()), b),
+                None => self.unify_err(lhs, rhs),
+            },
+            (a, Qualified(_, b)) => match self.sigma.get(b) {
+                Some(d) => self.unify(a, &d.to_term(b.clone())),
+                None => self.unify_err(lhs, rhs),
+            },
+
             (Let(p, a, b), Let(q, x, y)) => {
                 self.unify(&p.typ, &q.typ)?;
                 self.unify(a, x)?;

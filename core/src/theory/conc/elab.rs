@@ -292,6 +292,10 @@ impl Elaborator {
                 let ty = self.sigma.get(&v).unwrap().to_type();
                 (Term::Ref(v), ty)
             }
+            Qualified(_, m, v) => {
+                let ty = self.sigma.get(&v).unwrap().to_type();
+                (Term::Qualified(m, v), ty)
+            }
             Hole(loc) => self.insert_meta(loc, UserMeta),
             InsertedHole(loc) => self.insert_meta(loc, InsertedMeta),
             Pi(_, p, b) => {

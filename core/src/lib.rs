@@ -251,8 +251,9 @@ impl Driver {
         imports
             .iter()
             .fold(Ok(()), |r, i| r.and_then(|_| self.load(i.module.clone())))?;
-        let (imports, defs) = Resolver::new(&self.loaded).file(imports, defs)?;
-        let defs = self.elab.defs(defs)?;
+        let defs = Resolver::new(&self.loaded)
+            .file(&imports, defs)
+            .and_then(|d| self.elab.defs(d))?;
         for d in &defs {
             if !d.is_private() {
                 self.loaded.insert(module, d)?

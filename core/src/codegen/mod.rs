@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Sigma;
+use crate::theory::conc::load::ModuleID;
 use crate::theory::Loc;
 use crate::Error::NonErasable;
 use crate::{print_err, Error, Module, ModuleFile};
@@ -13,6 +14,7 @@ pub mod noop;
 
 pub trait Target {
     fn filename(&self) -> &'static str;
+    fn to_qualifier(&self, module: &ModuleID) -> String;
     fn should_include(&self, path: &Path) -> bool;
     fn module(
         &mut self,

@@ -61,16 +61,14 @@ fn import(d: Pair<Rule>) -> Import {
         match p.as_rule() {
             Rule::module_id => modules.push(item),
             Rule::importable => importables.push((loc, item)),
-            Rule::importable_loaded => {
-                return Import::new(loc, ModuleID::new(pkg, modules), Loaded)
-            }
+            Rule::importable_loaded => return Import::new(loc, ModuleID { pkg, modules }, Loaded),
             _ => unreachable!(),
         };
     }
 
     Import::new(
         loc,
-        ModuleID::new(pkg, modules),
+        ModuleID { pkg, modules },
         if importables.is_empty() {
             Qualified
         } else {
@@ -235,7 +233,7 @@ fn wrap_implicit_apps(implicits: &Tele<Expr>, mut e: Expr) -> Expr {
             loc,
             Box::new(e),
             UnnamedImplicit,
-            Box::new(Unresolved(loc, p.var.clone())),
+            Box::new(Unresolved(loc, None, p.var.clone())),
         );
     }
     e
@@ -269,7 +267,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
                 members.push((loc, param(p)));
             }
             Rule::class_method => {
-                let mut m = fn_def(p, Some((Unresolved(loc, name.clone()), tele.clone())));
+                let mut m = fn_def(p, Some((Unresolved(loc, None, name.clone()), tele.clone())));
                 vtbl_fields.push((m.name.to_string(), m.to_type()));
 
                 let meth_name = m.name.to_string();
@@ -297,7 +295,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
             loc,
             vtbl_lookup_name.clone(),
             tele.iter()
-                .map(|p| Unresolved(loc, p.var.clone()))
+                .map(|p| Unresolved(loc, None, p.var.clone()))
                 .collect(),
         )),
     };
@@ -307,7 +305,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         tele: tele.clone(),
         ret: Box::new(wrap_implicit_apps(
             &tele,
-            Unresolved(loc, vptr_name.clone()),
+            Unresolved(loc, None, vptr_name.clone()),
         )),
         body: VptrCtor(name.to_string()),
     };
@@ -317,16 +315,16 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     let mut tm_fields = Vec::default();
     for (loc, m) in members {
         ty_fields.push((m.var.to_string(), *m.typ.clone()));
-        tm_fields.push((m.var.to_string(), Unresolved(loc, m.var.clone())));
+        tm_fields.push((m.var.to_string(), Unresolved(loc, None, m.var.clone())));
         ctor_untupled.push(loc, m)
     }
     ty_fields.push((
         Var::vptr().to_string(),
-        wrap_implicit_apps(&tele, Unresolved(loc, name.vptr_type())),
+        wrap_implicit_apps(&tele, Unresolved(loc, None, name.vptr_type())),
     ));
     tm_fields.push((
         Var::vptr().to_string(),
-        wrap_implicit_apps(&tele, Unresolved(loc, name.vptr_ctor())),
+        wrap_implicit_apps(&tele, Unresolved(loc, None, name.vptr_ctor())),
     ));
     let object = Object(loc, Box::new(Fields(loc, ty_fields)));
 
@@ -345,7 +343,7 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
         loc,
         name: ctor_name.clone(),
         tele: ctor_tele,
-        ret: Box::new(Unresolved(loc, name.clone())),
+        ret: Box::new(Unresolved(loc, None, name.clone())),
         body: ctor_body,
     };
 
@@ -378,13 +376,13 @@ fn class_def(c: Pair<Rule>) -> Vec<Def<Expr>> {
     lookup_tele.push(Param {
         var: Var::new("vp"),
         info: Explicit,
-        typ: Box::new(wrap_implicit_apps(&tele, Unresolved(loc, vptr_name))),
+        typ: Box::new(wrap_implicit_apps(&tele, Unresolved(loc, None, vptr_name))),
     });
     let vtbl_lookup_def = Def {
         loc,
         name: vtbl_lookup_name,
         tele: lookup_tele,
-        ret: Box::new(wrap_implicit_apps(&tele, Unresolved(loc, vtbl_name))),
+        ret: Box::new(wrap_implicit_apps(&tele, Unresolved(loc, None, vtbl_name))),
         body: VtblLookup,
     };
 
@@ -733,7 +731,7 @@ fn expr(e: Pair<Rule>) -> Expr {
         Rule::new_expr => {
             let mut pairs = p.into_inner();
             let cls = match maybe_qualified(pairs.next().unwrap()) {
-                Unresolved(loc, v) => Unresolved(loc, v.ctor()),
+                Unresolved(loc, m, v) => Unresolved(loc, m, v.ctor()),
                 _ => unreachable!(),
             };
             pairs
@@ -885,8 +883,8 @@ fn maybe_qualified(p: Pair<Rule>) -> Expr {
     let mut i = p.into_inner();
     let id = i.next().unwrap();
     match id.as_rule() {
-        Rule::qualifier => Qualified(loc, qualifier(id), Var::from(i.next().unwrap())),
-        _ => Unresolved(loc, Var::from(id)),
+        Rule::qualifier => Unresolved(loc, Some(qualifier(id)), Var::from(i.next().unwrap())),
+        _ => Unresolved(loc, None, Var::from(id)),
     }
 }
 
@@ -904,12 +902,12 @@ fn qualifier(q: Pair<Rule>) -> ModuleID {
     for p in pairs {
         modules.push(p.as_str())
     }
-    ModuleID::new(pkg, modules)
+    ModuleID { pkg, modules }
 }
 
 fn unresolved(p: Pair<Rule>) -> Expr {
     use Expr::*;
-    Unresolved(Loc::from(p.as_span()), Var::from(p))
+    Unresolved(Loc::from(p.as_span()), None, Var::from(p))
 }
 
 fn row_param(p: Pair<Rule>) -> Param<Expr> {
@@ -1069,7 +1067,7 @@ impl UntupledParams {
         use Expr::*;
         self.1
             .iter()
-            .map(|(loc, p)| Unresolved(*loc, p.var.clone()))
+            .map(|(loc, p)| Unresolved(*loc, None, p.var.clone()))
             .collect()
     }
 }

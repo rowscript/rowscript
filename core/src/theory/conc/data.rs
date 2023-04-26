@@ -13,11 +13,10 @@ pub enum ArgInfo {
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-    Unresolved(Loc, Var),
-    Qualified(Loc, ModuleID, Var),
-
+    Unresolved(Loc, Option<ModuleID>, Var),
     Resolved(Loc, Var),
     Imported(Loc, Var),
+    Qualified(Loc, ModuleID, Var),
 
     Hole(Loc),
     InsertedHole(Loc),
@@ -99,10 +98,10 @@ impl Expr {
     pub fn loc(&self) -> Loc {
         use Expr::*;
         *match self {
-            Unresolved(loc, _) => loc,
-            Qualified(loc, _, _) => loc,
+            Unresolved(loc, _, _) => loc,
             Resolved(loc, _) => loc,
             Imported(loc, _) => loc,
+            Qualified(loc, _, _) => loc,
             Hole(loc) => loc,
             InsertedHole(loc) => loc,
             Let(loc, _, _, _, _) => loc,
@@ -157,16 +156,16 @@ impl Expr {
         let mut untupled_vars = Vec::default();
         for x in vars.iter().rev() {
             untupled_vars.push(match x {
-                Unresolved(l, r) => Unresolved(*l, r.untupled_rhs()),
+                Unresolved(l, _, r) => Unresolved(*l, None, r.untupled_rhs()),
                 _ => unreachable!(),
             });
         }
-        untupled_vars.push(Unresolved(loc, x.clone()));
+        untupled_vars.push(Unresolved(loc, None, x.clone()));
 
         let mut wrapped = b;
         for (i, v) in vars.into_iter().rev().enumerate() {
             let (loc, lhs, rhs) = match (v, untupled_vars.get(i).unwrap()) {
-                (Unresolved(loc, lhs), Unresolved(_, rhs)) => (loc, lhs, rhs),
+                (Unresolved(loc, _, lhs), Unresolved(_, _, rhs)) => (loc, lhs, rhs),
                 _ => unreachable!(),
             };
             let tm = untupled_vars.get(i + 1).unwrap();
@@ -204,10 +203,13 @@ impl Display for Expr {
 
         f.write_str(
             match self {
-                Unresolved(_, r) => r.to_string(),
-                Qualified(_, m, r) => format!("{m}::{r}"),
+                Unresolved(_, m, r) => match m {
+                    Some(m) => format!("{m}::{r}"),
+                    None => r.to_string(),
+                },
                 Resolved(_, r) => r.to_string(),
                 Imported(_, r) => r.to_string(),
+                Qualified(_, m, r) => format!("{m}::{r}"),
                 Hole(_) => "?".to_string(),
                 InsertedHole(_) => "?i".to_string(),
                 Let(_, v, typ, a, b) => {

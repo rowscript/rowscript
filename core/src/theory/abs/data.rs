@@ -3,6 +3,7 @@ use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::data::Term::{Lam, Pi};
 use crate::theory::conc::data::ArgInfo;
+use crate::theory::conc::load::ModuleID;
 use crate::theory::{Param, ParamInfo, Syntax, Tele, Var};
 
 pub type Spine = Vec<(ParamInfo, Term)>;
@@ -44,6 +45,7 @@ impl Display for MetaKind {
 #[derive(Debug, Clone)]
 pub enum Term {
     Ref(Var),
+    Qualified(ModuleID, Var),
     Extern(Var),
     MetaRef(MetaKind, Var, Spine),
     Undef(Var),
@@ -133,6 +135,7 @@ impl Display for Term {
             match self {
                 Ref(r) => r.to_string(),
                 Extern(r) => r.to_string(),
+                Qualified(m, r) => format!("{m}::{r}"),
                 MetaRef(k, r, sp) => {
                     let mut s = vec![format!("{k}{r}")];
                     s.extend(

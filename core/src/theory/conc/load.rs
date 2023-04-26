@@ -23,15 +23,11 @@ pub enum ImportedPkg {
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub struct ModuleID {
-    pkg: ImportedPkg,
-    modules: PathBuf,
+    pub pkg: ImportedPkg,
+    pub modules: PathBuf,
 }
 
 impl ModuleID {
-    pub fn new(pkg: ImportedPkg, modules: PathBuf) -> Self {
-        Self { pkg, modules }
-    }
-
     pub fn to_path_buf(&self, base: &Path) -> PathBuf {
         use ImportedPkg::*;
         let mut ret = match &self.pkg {

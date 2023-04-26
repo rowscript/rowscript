@@ -21,7 +21,7 @@ use crate::codegen::{mangle_hkt, Target};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
-use crate::theory::conc::load::{Import, ImportedDefs};
+use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::Explicit;
 use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNTUPLED_RHS};
 use crate::Error::{NonErasable, UnsolvedMeta};
@@ -312,6 +312,14 @@ impl Ecma {
                 obj: Box::new(Expr::Ident(Self::lib())),
                 prop: MemberProp::Ident(Self::ident(loc, r)),
             }),
+            Qualified(m, r) => Expr::Member(MemberExpr {
+                span: loc.into(),
+                obj: Box::new(Expr::Ident(Self::str_ident(
+                    loc,
+                    self.to_qualifier(m).as_str(),
+                ))),
+                prop: MemberProp::Ident(Self::ident(loc, r)),
+            }),
             Lam(p, b) => match p.info {
                 Explicit => Expr::Arrow(ArrowExpr {
                     span: loc.into(),
@@ -532,8 +540,13 @@ impl Ecma {
                         }))
                     }
                 }
+                Qualified => {
+                    specifiers.push(ImportSpecifier::Namespace(ImportStarAsSpecifier {
+                        span: i.loc.into(),
+                        local: Self::str_ident(i.loc, self.to_qualifier(&i.module).as_str()),
+                    }));
+                }
                 Loaded => {}
-                Qualified => unreachable!(),
             }
             items.push(ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
                 span: DUMMY_SP,
@@ -753,10 +766,24 @@ impl Ecma {
 }
 
 pub const OUT_FILE: &str = "index.mjs";
+pub const QUALIFIER_SEP: &str = "$";
 
 impl Target for Ecma {
     fn filename(&self) -> &'static str {
         OUT_FILE
+    }
+
+    fn to_qualifier(&self, module: &ModuleID) -> String {
+        use ImportedPkg::*;
+        let mut ret = match &module.pkg {
+            Std(p) => vec![p.clone()],
+            Vendor(o, p) => vec![o.strip_prefix('@').unwrap().to_string(), p.clone()],
+            Root => vec![QUALIFIER_SEP.to_string()],
+        };
+        for m in &module.modules {
+            ret.push(m.to_str().unwrap().to_string());
+        }
+        ret.join(QUALIFIER_SEP)
     }
 
     fn should_include(&self, path: &Path) -> bool {
