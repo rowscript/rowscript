@@ -177,7 +177,7 @@ impl Ecma {
                                 Fields(fm) => self.expr(sigma, loc, fm.iter().next().unwrap().1)?,
                                 _ => self.untag_variant(sigma, loc, a)?,
                             },
-                            _ => self.untag_variant(sigma, loc, a)?,
+                            _ => self.expr(sigma, loc, a)?,
                         }),
                     });
                     tm = b
