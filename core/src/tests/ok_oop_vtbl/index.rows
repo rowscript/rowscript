@@ -1,4 +1,4 @@
-import .foo;
+from .foo import { Foo };
 
 class Bar {
     age: number;
@@ -6,7 +6,7 @@ class Bar {
 }
 
 function f0(): string {
-    let a = new ::foo::Foo("John");
+    let a = new Foo("John");
     return a.getName()
 }
 

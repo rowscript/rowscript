@@ -5,7 +5,7 @@ use crate::theory::abs::def::{Body, ImplementsBody};
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::conc::load::{Import, ImportedDefs, Loaded};
-use crate::theory::{Param, RawNameSet, Tele, Var};
+use crate::theory::{Param, RawNameSet, Tele, Var, CTOR};
 use crate::Error;
 use crate::Error::UnresolvedVar;
 
@@ -33,7 +33,7 @@ impl<'a> Resolver<'a> {
 
     pub fn file(
         &mut self,
-        imports: &Vec<Import>,
+        imports: &mut Vec<Import>,
         defs: Vec<Def<Expr>>,
     ) -> Result<Vec<Def<Expr>>, Error> {
         let mut names = RawNameSet::default();
@@ -41,13 +41,20 @@ impl<'a> Resolver<'a> {
         self.defs(&mut names, defs)
     }
 
-    fn imports(&mut self, names: &mut RawNameSet, imports: &Vec<Import>) -> Result<(), Error> {
+    fn imports(&mut self, names: &mut RawNameSet, imports: &mut Vec<Import>) -> Result<(), Error> {
         use ImportedDefs::*;
         for Import { loc, module, defs } in imports {
             match defs {
                 Unqualified(xs) => {
                     for (loc, name) in xs {
                         names.raw(*loc, name.clone())?;
+
+                        let ctor = format!("{name}{CTOR}");
+                        if let Some(ctor_var) = self.loaded.get(module, &ctor) {
+                            self.insert_imported(ctor_var);
+                            *name = ctor
+                        }
+
                         match self.loaded.get(module, name) {
                             Some(v) => self.insert_imported(v),
                             None => return Err(UnresolvedVar(*loc)),

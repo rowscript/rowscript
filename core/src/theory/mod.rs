@@ -64,6 +64,7 @@ pub struct Var {
 pub const TUPLED: &str = "_tupled";
 pub const UNTUPLED_RHS: &str = "_untupled_";
 
+pub const CTOR: &str = "__new";
 pub const VPTR: &str = "__vptr";
 pub const VTBL_LOOKUP: &str = "__vtblLookup";
 
@@ -97,7 +98,7 @@ impl Var {
     }
 
     pub fn ctor(&self) -> Self {
-        Self::new(format!("{self}__new"))
+        Self::new(format!("{self}{CTOR}"))
     }
 
     pub fn vptr() -> Self {
@@ -105,7 +106,7 @@ impl Var {
     }
 
     pub fn vptr_type(&self) -> Self {
-        Self::new(format!("{self}__vptr"))
+        Self::new(format!("{self}{VPTR}"))
     }
 
     pub fn vptr_ctor(&self) -> Self {

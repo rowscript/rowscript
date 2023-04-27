@@ -244,7 +244,7 @@ impl Driver {
         module: &ModuleID,
         src: &str,
     ) -> Result<(Vec<Import>, Vec<Def<Term>>), Error> {
-        let (imports, defs) = RowsParser::parse(Rule::file, src)
+        let (mut imports, defs) = RowsParser::parse(Rule::file, src)
             .map_err(Box::new)
             .map_err(Error::from)
             .map(trans::file)?;
@@ -252,7 +252,7 @@ impl Driver {
             .iter()
             .fold(Ok(()), |r, i| r.and_then(|_| self.load(i.module.clone())))?;
         let defs = Resolver::new(&self.loaded)
-            .file(&imports, defs)
+            .file(&mut imports, defs)
             .and_then(|d| self.elab.defs(d))?;
         for d in &defs {
             if !d.is_private() {
