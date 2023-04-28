@@ -42,6 +42,7 @@ impl Renamer {
                 Box::new(self.term(*t)),
                 Box::new(self.term(*e)),
             ),
+            NumAdd(a, b) => NumAdd(Box::new(self.term(*a)), Box::new(self.term(*b))),
             Fields(fields) => {
                 let mut m = FieldMap::default();
                 for (f, tm) in fields {

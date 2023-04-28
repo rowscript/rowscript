@@ -27,6 +27,7 @@ mod fail_parse;
 mod fail_resolve;
 mod ok_alias;
 mod ok_bool;
+mod ok_builtin;
 mod ok_enum;
 mod ok_enum_rowpoly;
 mod ok_fn;

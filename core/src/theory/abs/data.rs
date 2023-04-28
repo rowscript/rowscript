@@ -75,7 +75,8 @@ pub enum Term {
     Str(String),
 
     Number,
-    Num(String, f64),
+    Num(f64),
+    NumAdd(Box<Self>, Box<Self>),
 
     BigInt,
     Big(String),
@@ -167,7 +168,8 @@ impl Display for Term {
                 String => "string".to_string(),
                 Str(v) => format!("\"{v}\""),
                 Number => "number".to_string(),
-                Num(v, _) => v.clone(),
+                Num(v) => v.to_string(),
+                NumAdd(a, b) => format!("{a} + {b}"),
                 BigInt => "bigint".to_string(),
                 Big(v) => v.clone(),
                 Row => "row".to_string(),

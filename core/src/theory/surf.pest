@@ -34,11 +34,19 @@ root_prefix = { "::" }
 
 idref =
   { qualifier ~ idref
+  | builtin
   | fn_id
   | param_id
   | let_id
   | prop_id
   }
+builtin =
+  { numberAdd
+  | stringAdd
+  }
+numberAdd = { "number#__add__" }
+stringAdd = { "string#__add__" }
+
 tyref =
   { qualifier ~ tyref
   | implicit_id

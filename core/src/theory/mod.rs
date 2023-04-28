@@ -12,7 +12,7 @@ use crate::{Error, Rule};
 pub mod abs;
 pub mod conc;
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
+#[derive(Default, Debug, Copy, Clone, Hash, Eq, PartialEq)]
 pub struct Loc {
     pub line: usize,
     pub col: usize,

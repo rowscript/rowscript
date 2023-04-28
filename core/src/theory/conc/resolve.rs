@@ -9,23 +9,27 @@ use crate::theory::{Param, RawNameSet, Tele, Var, CTOR};
 use crate::Error;
 use crate::Error::UnresolvedVar;
 
+pub type NameMap = HashMap<String, ResolvedVar>;
+
 #[derive(Copy, Clone)]
-enum VarKind {
+pub enum VarKind {
     InModule,
     Imported,
 }
 
 #[derive(Clone)]
-struct ResolvedVar(VarKind, Var);
+pub struct ResolvedVar(pub VarKind, pub Var);
 
 pub struct Resolver<'a> {
+    builtins: &'a NameMap,
     loaded: &'a Loaded,
-    names: HashMap<String, ResolvedVar>,
+    names: NameMap,
 }
 
 impl<'a> Resolver<'a> {
-    pub fn new(loaded: &'a Loaded) -> Self {
+    pub fn new(builtins: &'a NameMap, loaded: &'a Loaded) -> Self {
         Self {
+            builtins,
             loaded,
             names: Default::default(),
         }
@@ -151,7 +155,8 @@ impl<'a> Resolver<'a> {
     }
 
     fn get(&self, v: &Var) -> Option<&ResolvedVar> {
-        self.names.get(v.as_str())
+        let k = v.as_str();
+        self.names.get(k).or_else(|| self.builtins.get(k))
     }
 
     fn insert(&mut self, v: &Var) -> Option<ResolvedVar> {

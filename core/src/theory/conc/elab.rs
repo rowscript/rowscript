@@ -661,10 +661,7 @@ impl Elaborator {
             String(_) => (Term::String, Term::Univ),
             Str(_, v) => (Term::Str(v), Term::String),
             Number(_) => (Term::Number, Term::Univ),
-            Num(_, r) => {
-                let v = r.parse().unwrap();
-                (Term::Num(r, v), Term::Number)
-            }
+            Num(_, r) => (Term::Num(r.parse().unwrap()), Term::Number),
             BigInt(_) => (Term::BigInt, Term::Univ),
             Big(_, v) => (Term::Big(v), Term::BigInt),
             Row(_) => (Term::Row, Term::Univ),

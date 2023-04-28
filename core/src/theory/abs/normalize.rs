@@ -123,6 +123,14 @@ impl<'a> Normalizer<'a> {
                     _ => If(p, t, e),
                 }
             }
+            NumAdd(a, b) => {
+                let a = self.term_box(a)?;
+                let b = self.term_box(b)?;
+                match (*a, *b) {
+                    (Num(a), Num(b)) => Num(a + b),
+                    (a, b) => NumAdd(Box::new(a), Box::new(b)),
+                }
+            }
             Fields(mut fields) => {
                 for tm in fields.values_mut() {
                     // FIXME: not unwind-safe, refactor `Self::term` to accept a `&mut Term`

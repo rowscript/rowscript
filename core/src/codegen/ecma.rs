@@ -6,13 +6,13 @@ use std::str::FromStr;
 use num_bigint::BigInt as BigIntValue;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
-    ArrowExpr, AssignExpr, AssignOp, BigInt as JsBigInt, BindingIdent, BlockStmt, BlockStmtOrExpr,
-    Bool, CallExpr, Callee, ComputedPropName, CondExpr, Decl, ExportDecl, Expr, ExprOrSpread,
-    ExprStmt, FnDecl, Function, Ident, ImportDecl, ImportNamedSpecifier, ImportSpecifier,
-    ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleDecl,
-    ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, PatOrExpr, Prop,
-    PropName, PropOrSpread, ReturnStmt, SpreadElement, Stmt, Str as JsStr, VarDecl, VarDeclKind,
-    VarDeclarator,
+    ArrowExpr, AssignExpr, AssignOp, BigInt as JsBigInt, BinExpr, BinaryOp, BindingIdent,
+    BlockStmt, BlockStmtOrExpr, Bool, CallExpr, Callee, ComputedPropName, CondExpr, Decl,
+    ExportDecl, Expr, ExprOrSpread, ExprStmt, FnDecl, Function, Ident, ImportDecl,
+    ImportNamedSpecifier, ImportSpecifier, ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr,
+    MemberProp, Module, ModuleDecl, ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam,
+    ParenExpr, Pat, PatOrExpr, Prop, PropName, PropOrSpread, ReturnStmt, SpreadElement, Stmt,
+    Str as JsStr, VarDecl, VarDeclKind, VarDeclarator,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -177,6 +177,7 @@ impl Ecma {
                                 Fields(fm) => self.expr(sigma, loc, fm.iter().next().unwrap().1)?,
                                 _ => self.untag_variant(sigma, loc, a)?,
                             },
+                            (Extern(_), b) => self.untag_variant(sigma, loc, b)?,
                             _ => self.expr(sigma, loc, a)?,
                         }),
                     });
@@ -363,11 +364,17 @@ impl Ecma {
                 value: s.as_str().into(),
                 raw: None,
             })),
-            Num(_, v) => Expr::Lit(Lit::Num(JsNumber {
+            Num(v) => Expr::Lit(Lit::Num(JsNumber {
                 span: loc.into(),
                 value: *v,
                 raw: None,
             })),
+            NumAdd(a, b) => Expr::Bin(BinExpr {
+                span: loc.into(),
+                op: BinaryOp::Add,
+                left: Box::new(self.expr(sigma, loc, a)?),
+                right: Box::new(self.expr(sigma, loc, b)?),
+            }),
             Big(v) => Expr::Lit(Lit::BigInt(JsBigInt {
                 span: loc.into(),
                 value: Box::new(BigIntValue::from_str(v).unwrap()),

@@ -10,11 +10,12 @@ use pest_derive::Parser;
 use thiserror::Error;
 
 use crate::codegen::{Codegen, Target};
+use crate::theory::abs::builtin::number_add;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::load::{Import, Loaded, ModuleID};
-use crate::theory::conc::resolve::Resolver;
+use crate::theory::conc::resolve::{NameMap, ResolvedVar, Resolver, VarKind};
 use crate::theory::conc::trans;
 use crate::theory::Loc;
 
@@ -168,6 +169,7 @@ pub struct Module {
 
 pub struct Driver {
     path: PathBuf,
+    builtins: NameMap,
     loaded: Loaded,
     elab: Elaborator,
     codegen: Codegen,
@@ -176,11 +178,24 @@ pub struct Driver {
 impl Driver {
     pub fn new(path: PathBuf, target: Box<dyn Target>) -> Self {
         let codegen = Codegen::new(target, path.join(OUTDIR));
-        Self {
+        let mut ret = Self {
             path,
+            builtins: Default::default(),
             loaded: Default::default(),
             elab: Default::default(),
             codegen,
+        };
+        ret.load_builtins([number_add()]);
+        ret
+    }
+
+    fn load_builtins<const N: usize>(&mut self, defs: [Def<Term>; N]) {
+        for def in defs {
+            self.builtins.insert(
+                def.name.to_string(),
+                ResolvedVar(VarKind::InModule, def.name.clone()),
+            );
+            self.elab.sigma.insert(def.name.clone(), def);
         }
     }
 
@@ -251,7 +266,7 @@ impl Driver {
         imports
             .iter()
             .fold(Ok(()), |r, i| r.and_then(|_| self.load(i.module.clone())))?;
-        let defs = Resolver::new(&self.loaded)
+        let defs = Resolver::new(&self.builtins, &self.loaded)
             .file(&mut imports, defs)
             .and_then(|d| self.elab.defs(d))?;
         for d in &defs {

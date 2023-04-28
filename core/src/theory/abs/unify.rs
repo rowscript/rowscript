@@ -113,7 +113,7 @@ impl<'a> Unifier<'a> {
 
             (Extern(a), Extern(b)) if a == b => Ok(()),
             (Str(a), Str(b)) if a == b => Ok(()),
-            (Num(_, a), Num(_, b)) if a == b => Ok(()),
+            (Num(a), Num(b)) if a == b => Ok(()),
             (Big(a), Big(b)) if a == b => Ok(()),
             (Vptr(a, _), Vptr(b, _)) if a == b => Ok(()),
 
