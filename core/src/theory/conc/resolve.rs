@@ -126,7 +126,7 @@ impl<'a> Resolver<'a> {
             Implements(body) => {
                 let loc = d.loc;
                 let i = self.expr(Unresolved(loc, None, body.i.0))?.resolved();
-                let im = self.expr(Unresolved(loc, None, body.i.1))?.resolved();
+                let im = self.expr(*body.i.1)?;
                 let mut fns = HashMap::default();
                 for (i_fn, im_fn) in body.fns {
                     fns.insert(
@@ -134,7 +134,10 @@ impl<'a> Resolver<'a> {
                         self.expr(Unresolved(loc, None, im_fn))?.resolved(),
                     );
                 }
-                Implements(Box::new(ImplementsBody { i: (i, im), fns }))
+                Implements(Box::new(ImplementsBody {
+                    i: (i, Box::new(im)),
+                    fns,
+                }))
             }
             ImplementsFn(f) => ImplementsFn(self.expr(f)?), // FIXME: currently cannot be recursive
             Findable(i) => Findable(i),

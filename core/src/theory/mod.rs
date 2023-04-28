@@ -6,7 +6,7 @@ use std::rc::Rc;
 
 use pest::Span;
 
-use crate::theory::conc::data::ArgInfo;
+use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::{Error, Rule};
 
 pub mod abs;
@@ -121,11 +121,11 @@ impl Var {
         Self::new(format!("{self}{VTBL_LOOKUP}"))
     }
 
-    pub fn implements(&self, im: &Self) -> Self {
+    pub fn implements(&self, im: &Expr) -> Self {
         Self::new(format!("{self}__for__{im}"))
     }
 
-    pub fn implement_func(&self, i: &Self, im: &Self) -> Self {
+    pub fn implement_func(&self, i: &Self, im: &Expr) -> Self {
         Self::new(format!("{i}__for__{im}__{self}"))
     }
 

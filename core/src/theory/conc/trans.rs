@@ -470,7 +470,14 @@ fn implements_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
     let mut defs = Vec::default();
 
     let i = Var::from(pairs.next().unwrap());
-    let im = Var::from(pairs.next().unwrap());
+    let im = {
+        let p = pairs.next().unwrap();
+        match p.as_rule() {
+            Rule::tyref => unresolved(p),
+            Rule::primitive_type => primitive_type(p),
+            _ => unreachable!(),
+        }
+    };
 
     let mut fns = HashMap::default();
     for p in pairs {
@@ -490,7 +497,10 @@ fn implements_def(i: Pair<Rule>) -> Vec<Def<Expr>> {
         name: i.implements(&im),
         tele: Default::default(),
         ret: Box::new(Univ(loc)),
-        body: Implements(Box::new(ImplementsBody { i: (i, im), fns })),
+        body: Implements(Box::new(ImplementsBody {
+            i: (i, Box::new(im)),
+            fns,
+        })),
     });
     defs
 }
@@ -515,11 +525,7 @@ fn type_expr(t: Pair<Rule>) -> Expr {
             }
             unreachable!()
         }
-        Rule::string_type => String(loc),
-        Rule::number_type => Number(loc),
-        Rule::bigint_type => BigInt(loc),
-        Rule::boolean_type => Boolean(loc),
-        Rule::unit_type => Unit(loc),
+        Rule::primitive_type => primitive_type(p),
         Rule::object_type_ref => Object(loc, Box::new(unresolved(p.into_inner().next().unwrap()))),
         Rule::object_type_literal => Object(loc, Box::new(fields(p))),
         Rule::enum_type_ref => Enum(loc, Box::new(unresolved(p.into_inner().next().unwrap()))),
@@ -528,6 +534,20 @@ fn type_expr(t: Pair<Rule>) -> Expr {
         Rule::tyref => maybe_qualified(p),
         Rule::paren_type_expr => type_expr(p.into_inner().next().unwrap()),
         Rule::hole => Hole(loc),
+        _ => unreachable!(),
+    }
+}
+
+fn primitive_type(p: Pair<Rule>) -> Expr {
+    use Expr::*;
+    let loc = Loc::from(p.as_span());
+    let t = p.into_inner().next().unwrap();
+    match t.as_rule() {
+        Rule::string_type => String(loc),
+        Rule::number_type => Number(loc),
+        Rule::bigint_type => BigInt(loc),
+        Rule::boolean_type => Boolean(loc),
+        Rule::unit_type => Unit(loc),
         _ => unreachable!(),
     }
 }

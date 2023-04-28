@@ -1,0 +1,9 @@
+interface AddOp for T {
+    __add__(a: T, b: T): T;
+}
+
+implements AddOp for number {
+    __add__(a: number, b: number): number {
+        return number#__add__(a, b)
+    }
+}

@@ -1,9 +1,7 @@
-use std::collections::HashMap;
-
 use crate::maybe_grow;
 use crate::theory::abs::data::Dir::Le;
 use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, Term};
-use crate::theory::abs::def::{gamma_to_tele, Body, ClassBody};
+use crate::theory::abs::def::{gamma_to_tele, Body, ClassBody, ImplementsBody};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
@@ -14,8 +12,8 @@ use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var, VarGen, VPTR};
 use crate::Error;
 use crate::Error::{
-    ExpectedAlias, ExpectedClass, ExpectedEnum, ExpectedImplementsOf, ExpectedInterface,
-    ExpectedObject, ExpectedPi, ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField,
+    ExpectedClass, ExpectedEnum, ExpectedImplementsOf, ExpectedInterface, ExpectedObject,
+    ExpectedPi, ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField,
     UnresolvedImplicitParam,
 };
 
@@ -91,10 +89,7 @@ impl Elaborator {
             VtblLookup => VtblLookup,
 
             Interface { fns, ims } => Interface { fns, ims },
-            Implements(body) => {
-                self.push_implements(&d.name, &body.i, &body.fns)?;
-                Implements(body)
-            }
+            Implements(body) => Implements(self.check_implements_body(&d.name, *body)?),
             ImplementsFn(f) => ImplementsFn(self.check(f, &ret)?),
             Findable(i) => Findable(i),
 
@@ -112,41 +107,37 @@ impl Elaborator {
         Ok(checked.clone())
     }
 
-    fn push_implements(
+    fn check_implements_body(
         &mut self,
         d: &Var,
-        i: &(Var, Var),
-        im_fns: &HashMap<Var, Var>,
-    ) -> Result<(), Error> {
+        body: ImplementsBody<Expr>,
+    ) -> Result<Box<ImplementsBody<Term>>, Error> {
         use Body::*;
         use Expr::*;
 
-        let (i, im) = i;
+        let (i, im) = body.i;
+        let ret = Box::new(ImplementsBody {
+            i: (i, Box::new(self.infer(*im, None)?.0)),
+            fns: body.fns,
+        });
+        let im_tm = ret.implementor_type(&self.sigma)?;
 
-        let im_def = self.sigma.get(im).unwrap();
-        let im_def_loc = im_def.loc;
-        let im_tm = im_def.to_term(im.clone());
-        match im_def.body {
-            Alias(_) => {}
-            _ => return Err(ExpectedAlias(Term::Ref(im.clone()), im_def_loc)),
-        }
-
-        let i_def = self.sigma.get_mut(i).unwrap();
+        let i_def = self.sigma.get_mut(&ret.i.0).unwrap();
         let i_def_loc = i_def.loc;
         match &mut i_def.body {
             Interface { fns, ims, .. } => {
                 ims.push(d.clone());
                 for f in fns {
-                    if im_fns.contains_key(f) {
+                    if ret.fns.contains_key(f) {
                         continue;
                     }
-                    return Err(NonExhaustive(Term::Ref(im.clone()), i_def_loc));
+                    return Err(NonExhaustive(im_tm, i_def_loc));
                 }
             }
-            _ => return Err(ExpectedInterface(Term::Ref(i.clone()), i_def_loc)),
+            _ => return Err(ExpectedInterface(Term::Ref(ret.i.0.clone()), i_def_loc)),
         };
 
-        for (i_fn, im_fn) in im_fns {
+        for (i_fn, im_fn) in &ret.fns {
             let i_fn_def = self.sigma.get(i_fn).unwrap();
 
             let i_loc = i_fn_def.loc;
@@ -163,7 +154,7 @@ impl Elaborator {
             Unifier::new(&mut self.sigma, im_loc).unify(&i_fn_ty_applied, &im_fn_ty)?;
         }
 
-        Ok(())
+        Ok(ret)
     }
 
     fn check(&mut self, e: Expr, ty: &Term) -> Result<Term, Error> {

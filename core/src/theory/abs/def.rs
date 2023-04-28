@@ -7,6 +7,7 @@ use crate::theory::abs::rename::rename;
 use crate::theory::conc::data::Expr;
 use crate::theory::ParamInfo::Explicit;
 use crate::theory::{Loc, Param, Syntax, Tele, Var};
+use crate::Error;
 
 pub type Sigma = HashMap<Var, Def<Term>>;
 pub type Gamma = HashMap<Var, Box<Term>>;
@@ -227,7 +228,7 @@ pub enum Body<T: Syntax> {
     VtblLookup,
 
     Interface { fns: Vec<Var>, ims: Vec<Var> },
-    Implements(Box<ImplementsBody>),
+    Implements(Box<ImplementsBody<T>>),
     ImplementsFn(T),
     Findable(Var),
 
@@ -275,12 +276,31 @@ impl<T: Syntax> Display for ClassBody<T> {
 }
 
 #[derive(Clone, Debug)]
-pub struct ImplementsBody {
-    pub i: (Var, Var),
+pub struct ImplementsBody<T: Syntax> {
+    pub i: (Var, Box<T>),
     pub fns: HashMap<Var, Var>,
 }
 
-impl Display for ImplementsBody {
+impl ImplementsBody<Term> {
+    pub fn implementor_type(&self, sigma: &Sigma) -> Result<Term, Error> {
+        use Body::*;
+        use Error::*;
+        use Term::*;
+        Ok(match &*self.i.1 {
+            Ref(im) => {
+                let im = im.clone();
+                let def = sigma.get(&im).unwrap();
+                if !matches!(def.body, Alias(_)) {
+                    return Err(ExpectedAlias(Term::Ref(im), def.loc));
+                }
+                def.to_term(im.clone())
+            }
+            tm => tm.clone(),
+        })
+    }
+}
+
+impl<T: Syntax> Display for ImplementsBody<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,

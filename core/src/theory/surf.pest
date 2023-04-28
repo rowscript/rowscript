@@ -10,6 +10,9 @@ priv_camel_id = @{ "_" ~ pub_camel_id }
 lower_id = @{ ASCII_ALPHA_LOWER+ }
 
 fn_id = { pub_fn_id | priv_fn_id }
+magic_fn_id =
+  { "__add__"
+  }
 pub_fn_id = _{ pub_camelback_id }
 priv_fn_id = _{ priv_camelback_id }
 row_id = @{ "'" ~ pub_camel_id }
@@ -111,11 +114,7 @@ variant = { variant_id ~ (":" ~ type_expr)? }
 
 type_expr =
   { fn_type
-  | string_type
-  | number_type
-  | bigint_type
-  | boolean_type
-  | unit_type
+  | primitive_type
   | object_type_ref
   | object_type_literal
   | enum_type_ref
@@ -125,6 +124,13 @@ type_expr =
   | paren_type_expr
   | hole
   | row_id
+  }
+primitive_type =
+  { string_type
+  | number_type
+  | bigint_type
+  | boolean_type
+  | unit_type
   }
 paren_type_expr = { "(" ~ type_expr ~ ")" }
 fn_type = { params ~ "->" ~ type_expr }
@@ -307,7 +313,7 @@ interface_def =
   ~ "}"
   }
 interface_fn =
-  { fn_id
+  { (fn_id | magic_fn_id)
   ~ implicits?
   ~ params
   ~ (":" ~ type_expr)?
@@ -318,13 +324,13 @@ implements_def =
   { "implements"
   ~ type_id
   ~ "for"
-  ~ tyref
+  ~ (tyref | primitive_type)
   ~ "{"
   ~ implements_fn+
   ~ "}"
   }
 implements_fn =
-  { fn_id
+  { (fn_id | magic_fn_id)
   ~ implicits?
   ~ params
   ~ (":" ~ type_expr)?
