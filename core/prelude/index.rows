@@ -7,3 +7,13 @@ implements AddOp for number {
         return number#__add__(a, b)
     }
 }
+
+interface SubOp for T {
+    __sub__(a: T, b: T): T;
+}
+
+implements SubOp for number {
+    __sub__(a: number, b: number): number {
+        return number#__sub__(a, b)
+    }
+}

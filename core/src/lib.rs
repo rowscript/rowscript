@@ -16,7 +16,7 @@ use crate::theory::abs::def::Def;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::load::{prelude_path, Import, Loaded, ModuleID};
 use crate::theory::conc::resolve::{NameMap, ResolvedVar, Resolver, VarKind};
-use crate::theory::conc::trans;
+use crate::theory::conc::trans::Trans;
 use crate::theory::Loc;
 
 pub mod codegen;
@@ -169,6 +169,7 @@ pub struct Module {
 
 pub struct Driver {
     path: PathBuf,
+    trans: Trans,
     builtins: NameMap,
     loaded: Loaded,
     elab: Elaborator,
@@ -185,6 +186,7 @@ impl Driver {
         let codegen = Codegen::new(target, path.join(OUTDIR));
         Self {
             path,
+            trans: Default::default(),
             builtins: Default::default(),
             loaded: Default::default(),
             elab: Default::default(),
@@ -193,12 +195,6 @@ impl Driver {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
-        self.load_builtins();
-        self.load_prelude()?;
-        self.load_module(ModuleID::default())
-    }
-
-    fn load_builtins(&mut self) {
         for def in all_builtins() {
             self.builtins.insert(
                 def.name.to_string(),
@@ -206,26 +202,26 @@ impl Driver {
             );
             self.elab.sigma.insert(def.name.clone(), def);
         }
-    }
-
-    fn load_prelude(&mut self) -> Result<(), Error> {
-        self.load(Loadable::ViaPath(prelude_path()))
+        self.load(Loadable::ViaPath(prelude_path()), true)?;
+        self.load_module(ModuleID::default())
     }
 
     fn load_module(&mut self, module: ModuleID) -> Result<(), Error> {
         match self.loaded.contains(&module) {
             true => Ok(()),
-            false => self.load(Loadable::ViaID(module)),
+            false => self.load(Loadable::ViaID(module), false),
         }
     }
 
-    fn load(&mut self, loadable: Loadable) -> Result<(), Error> {
+    fn load(&mut self, loadable: Loadable, is_builtin: bool) -> Result<(), Error> {
+        use Loadable::*;
+
         let mut files = Vec::default();
         let mut includes = Vec::default();
 
         let (path, module) = match loadable {
-            Loadable::ViaID(m) => (m.to_full_path(&self.path), Some(m)),
-            Loadable::ViaPath(p) => (p, None),
+            ViaID(m) => (m.to_full_path(&self.path), Some(m)),
+            ViaPath(p) => (p, None),
         };
 
         for r in path.read_dir()? {
@@ -248,7 +244,7 @@ impl Driver {
 
                     let src = read_to_string(&file)?;
                     let (imports, defs) = self
-                        .load_src(&module, src.as_str())
+                        .load_src(&module, src.as_str(), is_builtin)
                         .map_err(|e| print_err(e, &file, src))?;
                     files.push(ModuleFile {
                         file,
@@ -277,11 +273,12 @@ impl Driver {
         &mut self,
         module: &Option<ModuleID>,
         src: &str,
+        is_builtin: bool,
     ) -> Result<(Vec<Import>, Vec<Def<Term>>), Error> {
         let (mut imports, defs) = RowsParser::parse(Rule::file, src)
             .map_err(Box::new)
             .map_err(Error::from)
-            .map(trans::file)?;
+            .map(|p| self.trans.file(p))?;
         imports.iter().fold(Ok(()), |r, i| {
             r.and_then(|_| self.load_module(i.module.clone()))
         })?;
@@ -289,6 +286,12 @@ impl Driver {
             .file(&mut imports, defs)
             .and_then(|d| self.elab.defs(d))?;
         for d in &defs {
+            if is_builtin {
+                self.builtins.insert(
+                    d.name.to_string(),
+                    ResolvedVar(VarKind::InModule, d.name.clone()),
+                );
+            }
             match module {
                 Some(m) if !d.is_private() => self.loaded.insert(m, d)?,
                 _ => {}

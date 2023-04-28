@@ -114,6 +114,22 @@ impl Ecma {
         }))
     }
 
+    fn bin_expr(
+        &mut self,
+        sigma: &Sigma,
+        loc: Loc,
+        op: BinaryOp,
+        a: &Term,
+        b: &Term,
+    ) -> Result<Expr, Error> {
+        Ok(Expr::Bin(BinExpr {
+            span: loc.into(),
+            op,
+            left: Box::new(self.expr(sigma, loc, a)?),
+            right: Box::new(self.expr(sigma, loc, b)?),
+        }))
+    }
+
     fn func(&mut self, sigma: &Sigma, def: &Def<Term>, body: &Term) -> Result<Function, Error> {
         Ok(Function {
             params: Self::type_erased_params(def.loc, &def.tele),
@@ -368,12 +384,8 @@ impl Ecma {
                 value: *v,
                 raw: None,
             })),
-            NumAdd(a, b) => Expr::Bin(BinExpr {
-                span: loc.into(),
-                op: BinaryOp::Add,
-                left: Box::new(self.expr(sigma, loc, a)?),
-                right: Box::new(self.expr(sigma, loc, b)?),
-            }),
+            NumAdd(a, b) => self.bin_expr(sigma, loc, BinaryOp::Add, a, b)?,
+            NumSub(a, b) => self.bin_expr(sigma, loc, BinaryOp::Sub, a, b)?,
             Big(v) => Expr::Lit(Lit::BigInt(JsBigInt {
                 span: loc.into(),
                 value: Box::new(BigIntValue::from_str(v).unwrap()),

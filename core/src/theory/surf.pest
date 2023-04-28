@@ -12,6 +12,7 @@ lower_id = @{ ASCII_ALPHA_LOWER+ }
 fn_id = { pub_fn_id | priv_fn_id }
 magic_fn_id =
   { "__add__"
+  | "__sub__"
   }
 pub_fn_id = _{ pub_camelback_id }
 priv_fn_id = _{ priv_camelback_id }
@@ -44,11 +45,13 @@ idref =
   | prop_id
   }
 builtin =
-  { numberAdd
-  | stringAdd
+  { numAdd
+  | numSub
+  | strAdd
   }
-numberAdd = { "number#__add__" }
-stringAdd = { "string#__add__" }
+numAdd = { "number#__add__" }
+numSub = { "number#__sub__" }
+strAdd = { "string#__add__" }
 
 tyref =
   { qualifier ~ tyref
@@ -145,7 +148,14 @@ enum_type_ref = { "[" ~ row_id ~ "]" }
 enum_type_literal = { "[" ~ variant ~ ("|" ~ variant)* ~ "]" }
 type_app = { ("(" ~ type_expr ~ ")" | tyref) ~ implicit_args? }
 
-expr =
+expr = { primary_expr ~ (infix_op ~ primary_expr)* }
+infix_op =
+ _{ infix_add
+  | infix_sub
+  }
+infix_add = { "+" }
+infix_sub = { "-" }
+primary_expr =
   { string
   | number
   | bigint
@@ -166,8 +176,8 @@ expr =
   | app
   | tt
   | idref
-  | paren_expr
   | hole
+  | paren_expr
   }
 boolean_false = { "false" }
 boolean_true = { "true" }

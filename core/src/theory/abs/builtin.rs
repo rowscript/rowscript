@@ -3,6 +3,14 @@ use crate::theory::abs::def::{Body, Def};
 use crate::theory::ParamInfo::Explicit;
 use crate::theory::{Loc, Param, Tele, Var};
 
+fn explicit_param(var: Var, typ: Term) -> Param<Term> {
+    Param {
+        var,
+        info: Explicit,
+        typ: Box::new(typ),
+    }
+}
+
 fn tuple_args_body(args: Tele<Term>, mut body: Term) -> (Tele<Term>, Term) {
     let param_var = Var::tupled();
     let mut param_typ = Term::Unit;
@@ -35,8 +43,8 @@ fn tuple_args_body(args: Tele<Term>, mut body: Term) -> (Tele<Term>, Term) {
     (vec![param], body)
 }
 
-pub fn all_builtins() -> [Def<Term>; 1] {
-    [number_add()]
+pub fn all_builtins() -> [Def<Term>; 2] {
+    [number_add(), number_sub()]
 }
 
 fn number_add() -> Def<Term> {
@@ -44,22 +52,33 @@ fn number_add() -> Def<Term> {
     let b = Var::new("b");
     let (tele, body) = tuple_args_body(
         vec![
-            Param {
-                var: a.clone(),
-                info: Explicit,
-                typ: Box::new(Term::Number),
-            },
-            Param {
-                var: b.clone(),
-                info: Explicit,
-                typ: Box::new(Term::Number),
-            },
+            explicit_param(a.clone(), Term::Number),
+            explicit_param(b.clone(), Term::Number),
         ],
         Term::NumAdd(Box::new(Term::Ref(a)), Box::new(Term::Ref(b))),
     );
     Def {
         loc: Loc::default(),
         name: Var::new("number#__add__"),
+        tele,
+        ret: Box::new(Term::Number),
+        body: Body::Fn(body),
+    }
+}
+
+fn number_sub() -> Def<Term> {
+    let a = Var::new("a");
+    let b = Var::new("b");
+    let (tele, body) = tuple_args_body(
+        vec![
+            explicit_param(a.clone(), Term::Number),
+            explicit_param(b.clone(), Term::Number),
+        ],
+        Term::NumSub(Box::new(Term::Ref(a)), Box::new(Term::Ref(b))),
+    );
+    Def {
+        loc: Loc::default(),
+        name: Var::new("number#__sub__"),
         tele,
         ret: Box::new(Term::Number),
         body: Body::Fn(body),
