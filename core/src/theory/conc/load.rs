@@ -12,7 +12,22 @@ const MODULES_DIR: &str = "node_modules";
 #[cfg(test)]
 const MODULES_DIR: &str = "test_modules";
 
-const STD_PKG_DIR: &str = "rowscript";
+const PKG_DIR: &str = "rowscript";
+const STD_PKG_DIR: &str = "std";
+
+const PRELUDE_DIR: &str = "prelude";
+
+#[cfg(not(test))]
+pub fn prelude_path() -> PathBuf {
+    Path::new(MODULES_DIR)
+        .join(PKG_DIR)
+        .join("core")
+        .join(PRELUDE_DIR)
+}
+#[cfg(test)]
+pub fn prelude_path() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join(PRELUDE_DIR)
+}
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
 pub enum ImportedPkg {
@@ -31,7 +46,11 @@ impl ModuleID {
     pub fn to_full_path(&self, base: &Path) -> PathBuf {
         use ImportedPkg::*;
         let mut ret = match &self.pkg {
-            Std(pkg) => base.join(MODULES_DIR).join(STD_PKG_DIR).join(pkg),
+            Std(pkg) => base
+                .join(MODULES_DIR)
+                .join(PKG_DIR)
+                .join(STD_PKG_DIR)
+                .join(pkg),
             Vendor(org, pkg) => base.join(MODULES_DIR).join(org).join(pkg),
             Root => base.to_path_buf(),
         };
@@ -42,7 +61,7 @@ impl ModuleID {
     pub fn to_relative_path(&self) -> PathBuf {
         use ImportedPkg::*;
         let mut p = match &self.pkg {
-            Std(p) => Path::new(STD_PKG_DIR).join(p),
+            Std(p) => Path::new(PKG_DIR).join(STD_PKG_DIR).join(p),
             Vendor(o, p) => Path::new(o).join(p),
             Root => PathBuf::from("."),
         };

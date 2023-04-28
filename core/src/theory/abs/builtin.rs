@@ -35,7 +35,11 @@ fn tuple_args_body(args: Tele<Term>, mut body: Term) -> (Tele<Term>, Term) {
     (vec![param], body)
 }
 
-pub fn number_add() -> Def<Term> {
+pub fn all_builtins() -> [Def<Term>; 1] {
+    [number_add()]
+}
+
+fn number_add() -> Def<Term> {
     let a = Var::new("a");
     let b = Var::new("b");
     let (tele, body) = tuple_args_body(

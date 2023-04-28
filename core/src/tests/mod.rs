@@ -1,5 +1,5 @@
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 #[cfg(feature = "codegen-ecma")]
 use std::rc::Rc;
 
@@ -61,7 +61,7 @@ fn run_target() -> Box<dyn Target> {
 
 fn run_helper(mod_path: &str) -> Result<(), Error> {
     let target = run_target();
-    let pkg = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let pkg = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("src")
         .join("tests")
         .join(mod_path.to_string().split("::").last().unwrap());

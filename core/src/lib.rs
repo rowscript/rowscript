@@ -10,11 +10,11 @@ use pest_derive::Parser;
 use thiserror::Error;
 
 use crate::codegen::{Codegen, Target};
-use crate::theory::abs::builtin::number_add;
+use crate::theory::abs::builtin::all_builtins;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::elab::Elaborator;
-use crate::theory::conc::load::{Import, Loaded, ModuleID};
+use crate::theory::conc::load::{prelude_path, Import, Loaded, ModuleID};
 use crate::theory::conc::resolve::{NameMap, ResolvedVar, Resolver, VarKind};
 use crate::theory::conc::trans;
 use crate::theory::Loc;
@@ -175,22 +175,31 @@ pub struct Driver {
     codegen: Codegen,
 }
 
+enum Loadable {
+    ViaID(ModuleID),
+    ViaPath(PathBuf),
+}
+
 impl Driver {
     pub fn new(path: PathBuf, target: Box<dyn Target>) -> Self {
         let codegen = Codegen::new(target, path.join(OUTDIR));
-        let mut ret = Self {
+        Self {
             path,
             builtins: Default::default(),
             loaded: Default::default(),
             elab: Default::default(),
             codegen,
-        };
-        ret.load_builtins([number_add()]);
-        ret
+        }
     }
 
-    fn load_builtins<const N: usize>(&mut self, defs: [Def<Term>; N]) {
-        for def in defs {
+    pub fn run(&mut self) -> Result<(), Error> {
+        self.load_builtins();
+        self.load_prelude()?;
+        self.load_module(ModuleID::default())
+    }
+
+    fn load_builtins(&mut self) {
+        for def in all_builtins() {
             self.builtins.insert(
                 def.name.to_string(),
                 ResolvedVar(VarKind::InModule, def.name.clone()),
@@ -199,19 +208,27 @@ impl Driver {
         }
     }
 
-    pub fn run(&mut self) -> Result<(), Error> {
-        self.load(ModuleID::default())
+    fn load_prelude(&mut self) -> Result<(), Error> {
+        self.load(Loadable::ViaPath(prelude_path()))
     }
 
-    fn load(&mut self, module: ModuleID) -> Result<(), Error> {
-        if self.loaded.contains(&module) {
-            return Ok(());
+    fn load_module(&mut self, module: ModuleID) -> Result<(), Error> {
+        match self.loaded.contains(&module) {
+            true => Ok(()),
+            false => self.load(Loadable::ViaID(module)),
         }
+    }
 
+    fn load(&mut self, loadable: Loadable) -> Result<(), Error> {
         let mut files = Vec::default();
         let mut includes = Vec::default();
 
-        for r in module.to_full_path(&self.path).read_dir()? {
+        let (path, module) = match loadable {
+            Loadable::ViaID(m) => (m.to_full_path(&self.path), Some(m)),
+            Loadable::ViaPath(p) => (p, None),
+        };
+
+        for r in path.read_dir()? {
             let entry = r?;
             if entry.file_type()?.is_dir() {
                 continue;
@@ -242,36 +259,39 @@ impl Driver {
             }
         }
 
-        self.codegen.module(
-            &self.elab.sigma,
-            Module {
-                module,
-                files,
-                includes,
-            },
-        )?;
+        if let Some(module) = module {
+            self.codegen.module(
+                &self.elab.sigma,
+                Module {
+                    module,
+                    files,
+                    includes,
+                },
+            )?;
+        }
 
         Ok(())
     }
 
     fn load_src(
         &mut self,
-        module: &ModuleID,
+        module: &Option<ModuleID>,
         src: &str,
     ) -> Result<(Vec<Import>, Vec<Def<Term>>), Error> {
         let (mut imports, defs) = RowsParser::parse(Rule::file, src)
             .map_err(Box::new)
             .map_err(Error::from)
             .map(trans::file)?;
-        imports
-            .iter()
-            .fold(Ok(()), |r, i| r.and_then(|_| self.load(i.module.clone())))?;
+        imports.iter().fold(Ok(()), |r, i| {
+            r.and_then(|_| self.load_module(i.module.clone()))
+        })?;
         let defs = Resolver::new(&self.builtins, &self.loaded)
             .file(&mut imports, defs)
             .and_then(|d| self.elab.defs(d))?;
         for d in &defs {
-            if !d.is_private() {
-                self.loaded.insert(module, d)?
+            match module {
+                Some(m) if !d.is_private() => self.loaded.insert(m, d)?,
+                _ => {}
             }
         }
         Ok((imports, defs))

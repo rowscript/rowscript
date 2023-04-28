@@ -1,6 +1,6 @@
 from web import { fetch };
 import node;
-from std.orm import _;
+from orm import _;
 
 from @rows/react import { Element };
 import @rows/react.router;
