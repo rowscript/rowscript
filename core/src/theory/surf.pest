@@ -30,7 +30,7 @@ reserved =
   | "return"
   | "super"
   | "switch"
-  // "this" is valid
+  | "this"
   | "throw"
   | "true"
   | "try"
@@ -127,6 +127,7 @@ variant_id = { pub_camel_id | priv_camel_id }
 field_id = _{ prop_id | variant_id }
 param_id = { pub_camelback_id }
 let_id = { pub_camelback_id }
+this_id = { "this" }
 std_pkg_id = { lower_id }
 vendor_org_id = @{ "@" ~ lower_id }
 vendor_pkg_id = { vendor_org_id ~ "/" ~ lower_id }
@@ -144,6 +145,7 @@ idref =
   | param_id
   | let_id
   | prop_id
+  | this_id
   }
 builtin =
   { numAdd
