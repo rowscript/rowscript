@@ -102,13 +102,13 @@ reserved =
   }
 
 camelback_id = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
-pub_camelback_id = @{ (reserved ~ (ASCII_ALPHA | ASCII_DIGIT)+) | (!reserved ~ camelback_id) }
+pub_camelback_id = @{ reserved? ~ (ASCII_ALPHA | ASCII_DIGIT)+ }
 priv_camelback_id = @{ "_" ~ pub_camelback_id }
 
 pub_camel_id = @{ ASCII_ALPHA_UPPER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
 priv_camel_id = @{ "_" ~ pub_camel_id }
 
-lower_id = @{ (!reserved ~ ASCII_ALPHA_LOWER+) | (reserved ~ ASCII_ALPHA_LOWER+) }
+lower_id = @{ reserved? ~ ASCII_ALPHA_LOWER+ }
 
 fn_id = { pub_fn_id | priv_fn_id }
 magic_fn_id =
