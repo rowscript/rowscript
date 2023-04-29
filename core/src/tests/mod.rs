@@ -24,6 +24,7 @@ use crate::{Driver, Error};
 
 mod fail_hole;
 mod fail_parse;
+mod fail_reserved;
 mod fail_resolve;
 mod ok_alias;
 mod ok_bool;

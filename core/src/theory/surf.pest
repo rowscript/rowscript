@@ -1,13 +1,114 @@
 WHITESPACE = _{ WHITE_SPACE }
-COMMENT = _{ "//" ~ (!NEWLINE ~ ANY)* | "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+COMMENT = _{ "// " ~ (!NEWLINE ~ ANY)* | "/* " ~ (!"*/" ~ ANY)* ~ "*/" }
 
-pub_camelback_id = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
+// Most specified at https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#reserved_words.
+reserved =
+  // Basic reserved words.
+ _{ "break"
+  | "case"
+  | "catch"
+  | "class"
+  | "const"
+  | "continue"
+  | "debugger"
+  | "default"
+  | "delete"
+  | "do"
+  | "else"
+  | "export"
+  | "extends"
+  | "false"
+  | "finally"
+  | "for"
+  | "function"
+  | "if"
+  | "import"
+  | "in"
+  | "instanceof"
+  | "new"
+  | "null"
+  | "return"
+  | "super"
+  | "switch"
+  // "this" is valid
+  | "throw"
+  | "true"
+  | "try"
+  | "typeof"
+  | "var"
+  | "void"
+  | "while"
+  | "with"
+
+  // Strict mode reserved words.
+  | "let"
+  | "static"
+  | "yield"
+
+  // Contextual reserved words.
+  | "await"
+
+  // Future reserved words.
+  | "enum"
+
+  // Future strict mode reserved words.
+  | "implements"
+  | "interface"
+  | "package"
+  | "private"
+  | "protected"
+  | "public"
+
+  // Conventional reserved words.
+  | "abstract"
+  | "boolean"
+  | "byte"
+  | "char"
+  | "double"
+  | "final"
+  | "float"
+  | "goto"
+  | "int"
+  | "long"
+  | "native"
+  | "short"
+  | "synchronized"
+  | "throws"
+  | "transient"
+  | "volatile"
+
+  // Special identifiers.
+  | "arguments"
+  | "as"
+  | "async"
+  | "eval"
+  | "from"
+  | "get"
+  | "of"
+  | "set"
+
+  // Sanity keywords.
+  | "null"
+  | "undefined"
+
+  // RowScript ones.
+  | "where"
+  | "then"
+  | "string"
+  | "number"
+  | "bigint"
+  | "unit"
+  | "type"
+  }
+
+camelback_id = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
+pub_camelback_id = @{ (reserved ~ (ASCII_ALPHA | ASCII_DIGIT)+) | (!reserved ~ camelback_id) }
 priv_camelback_id = @{ "_" ~ pub_camelback_id }
 
 pub_camel_id = @{ ASCII_ALPHA_UPPER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
 priv_camel_id = @{ "_" ~ pub_camel_id }
 
-lower_id = @{ ASCII_ALPHA_LOWER+ }
+lower_id = @{ (!reserved ~ ASCII_ALPHA_LOWER+) | (reserved ~ ASCII_ALPHA_LOWER+) }
 
 fn_id = { pub_fn_id | priv_fn_id }
 magic_fn_id =

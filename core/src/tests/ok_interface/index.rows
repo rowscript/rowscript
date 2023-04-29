@@ -26,7 +26,7 @@ function f1(): number {
     return f0()
 }
 
-interface Default for T { default(): T; }
-implements Default for Foo { default(): Foo { return {n: 0} } }
-function g0(): Foo { return default() }
+interface Default for T { pure(): T; }
+implements Default for Foo { pure(): Foo { return {n: 0} } }
+function g0(): Foo { return pure() }
 function g1(): Foo { return g0() }
