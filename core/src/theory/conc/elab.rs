@@ -67,10 +67,21 @@ impl Elaborator {
             },
         );
 
+        let mut inferred_ret = None;
         let body = match d.body {
             Fn(f) => Fn(self.check(f, &ret)?),
             Postulate => Postulate,
             Alias(t) => Alias(self.check(t, &ret)?),
+            Const(anno, f) => Const(
+                anno,
+                if anno {
+                    self.check(f, &ret)?
+                } else {
+                    let (tm, ty) = self.infer(f, None)?;
+                    inferred_ret = Some(Box::new(ty));
+                    tm
+                },
+            ),
 
             Class(body) => Class(Box::new(ClassBody {
                 object: self.check(body.object, &ret)?,
@@ -103,6 +114,9 @@ impl Elaborator {
 
         let mut checked = self.sigma.get_mut(&d.name).unwrap();
         checked.body = body;
+        if let Some(ret) = inferred_ret {
+            checked.ret = ret;
+        }
 
         Ok(checked.clone())
     }

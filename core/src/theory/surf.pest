@@ -452,6 +452,8 @@ implements_fn =
   ~ fn_body_block
   }
 
+const_def = { ("const" ~ fn_id ~ (":" ~ type_expr)? ~ "=")? ~ expr ~ ";" }
+
 def =
  _{ fn_def
   | fn_postulate
@@ -460,6 +462,7 @@ def =
   | class_def
   | interface_def
   | implements_def
+  | const_def
   }
 
 import_std =

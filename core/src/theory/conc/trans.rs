@@ -45,6 +45,7 @@ impl Trans {
                 Rule::class_def => defs.extend(self.class_def(d)),
                 Rule::interface_def => defs.extend(self.interface_def(d)),
                 Rule::implements_def => defs.extend(self.implements_def(d)),
+                Rule::const_def => defs.push(self.const_def(d)),
                 Rule::EOI => break,
                 _ => unreachable!(),
             }
@@ -530,6 +531,35 @@ impl Trans {
             })),
         });
         defs
+    }
+
+    fn const_def(&self, c: Pair<Rule>) -> Def<Expr> {
+        use Body::*;
+        use Expr::*;
+        let loc = Loc::from(c.as_span());
+        let mut name = Var::unbound();
+        let mut ret = Box::new(Unit(loc));
+        let mut is_annotated = false;
+        for p in c.into_inner() {
+            match p.as_rule() {
+                Rule::fn_id => name = Var::from(p),
+                Rule::type_expr => {
+                    is_annotated = true;
+                    ret = Box::new(self.type_expr(p))
+                }
+                Rule::expr => {
+                    return Def {
+                        loc,
+                        name,
+                        tele: Default::default(),
+                        ret,
+                        body: Const(is_annotated, self.expr(p)),
+                    }
+                }
+                _ => break,
+            }
+        }
+        unreachable!()
     }
 
     fn type_expr(&self, t: Pair<Rule>) -> Expr {

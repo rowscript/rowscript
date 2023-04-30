@@ -648,6 +648,7 @@ impl Ecma {
                 Fn(f) => self.func_decl(items, sigma, &def, f),
                 Class(body) => self.class_decls(items, sigma, &def.name, &body.ctor, &body.methods),
                 Postulate => self.postulate_decl(items, &def),
+                Const(_, f) => self.const_decl(items, sigma, &def, f),
                 Undefined => unreachable!(),
                 _ => continue,
             } {
@@ -658,6 +659,17 @@ impl Ecma {
         Ok(())
     }
 
+    fn try_export_decl(def: &Def<Term>, decl: Decl) -> ModuleItem {
+        if def.is_private() {
+            ModuleItem::Stmt(Stmt::Decl(decl))
+        } else {
+            ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl {
+                span: def.loc.into(),
+                decl,
+            }))
+        }
+    }
+
     fn func_decl(
         &mut self,
         items: &mut Vec<ModuleItem>,
@@ -665,19 +677,14 @@ impl Ecma {
         def: &Def<Term>,
         body: &Term,
     ) -> Result<(), Error> {
-        let f = Decl::Fn(FnDecl {
-            ident: Self::ident(def.loc, &def.name),
-            declare: false,
-            function: Box::new(self.func(sigma, def, body)?),
-        });
-        items.push(if def.is_private() {
-            ModuleItem::Stmt(Stmt::Decl(f))
-        } else {
-            ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl {
-                span: def.loc.into(),
-                decl: f,
-            }))
-        });
+        items.push(Self::try_export_decl(
+            def,
+            Decl::Fn(FnDecl {
+                ident: Self::ident(def.loc, &def.name),
+                declare: false,
+                function: Box::new(self.func(sigma, def, body)?),
+            }),
+        ));
         Ok(())
     }
 
@@ -741,6 +748,30 @@ impl Ecma {
                 }],
             })),
         })));
+        Ok(())
+    }
+
+    fn const_decl(
+        &mut self,
+        items: &mut Vec<ModuleItem>,
+        sigma: &Sigma,
+        def: &Def<Term>,
+        f: &Term,
+    ) -> Result<(), Error> {
+        items.push(Self::try_export_decl(
+            def,
+            Decl::Var(Box::new(VarDecl {
+                span: def.loc.into(),
+                kind: VarDeclKind::Const,
+                declare: false,
+                decls: vec![VarDeclarator {
+                    span: def.loc.into(),
+                    name: Self::ident_pat(def.loc, &def.name),
+                    init: Some(Box::new(self.expr(sigma, def.loc, f)?)),
+                    definite: false,
+                }],
+            })),
+        ));
         Ok(())
     }
 

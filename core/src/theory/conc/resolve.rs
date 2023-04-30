@@ -110,6 +110,7 @@ impl<'a> Resolver<'a> {
             Fn(f) => Fn(self.self_referencing_fn(&d.name, f)?),
             Postulate => Postulate,
             Alias(t) => Alias(self.expr(t)?),
+            Const(anno, f) => Const(anno, self.expr(f)?),
 
             Class(mut body) => {
                 body.object = self.expr(body.object)?;

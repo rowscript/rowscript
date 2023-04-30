@@ -1,0 +1,15 @@
+const a = 42;
+
+function f0(): number {
+    return a
+}
+
+function f1() { return }
+
+f1();
+
+const b: string = "hello";
+
+function f2(): string {
+    return b
+}

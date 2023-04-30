@@ -51,6 +51,7 @@ impl Def<Term> {
             Fn(f) => self.to_lam_term(f.clone()),
             Postulate => Term::Extern(v),
             Alias(t) => self.to_lam_term(t.clone()),
+            Const(_, f) => self.to_lam_term(f.clone()),
 
             Class(body) => self.to_lam_term(body.object.clone()),
             Ctor(f) => self.to_lam_term(f.clone()),
@@ -124,6 +125,13 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
+                Const(anno, f) => {
+                    if *anno {
+                        format!("const {}: {} = {f};", self.name, self.ret)
+                    } else {
+                        format!("const {} = {f};", self.name)
+                    }
+                }
                 Class(body) => format!(
                     "class {} {} {body}",
                     self.name,
@@ -218,6 +226,7 @@ pub enum Body<T: Syntax> {
     Fn(T),
     Postulate,
     Alias(T),
+    Const(bool, T),
 
     Class(Box<ClassBody<T>>),
     Ctor(T),
@@ -291,7 +300,7 @@ impl ImplementsBody<Term> {
                 let im = im.clone();
                 let def = sigma.get(&im).unwrap();
                 if !matches!(def.body, Alias(_)) {
-                    return Err(ExpectedAlias(Term::Ref(im), def.loc));
+                    return Err(ExpectedAlias(Ref(im), def.loc));
                 }
                 def.to_term(im.clone())
             }
