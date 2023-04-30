@@ -1,7 +1,15 @@
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def};
-use crate::theory::ParamInfo::Explicit;
-use crate::theory::{Loc, Param, Tele, Var};
+use crate::theory::ParamInfo::{Explicit, Implicit};
+use crate::theory::{Param, Tele, Var};
+
+fn implicit_param(var: Var, typ: Term) -> Param<Term> {
+    Param {
+        var,
+        info: Implicit,
+        typ: Box::new(typ),
+    }
+}
 
 fn explicit_param(var: Var, typ: Term) -> Param<Term> {
     Param {
@@ -11,40 +19,61 @@ fn explicit_param(var: Var, typ: Term) -> Param<Term> {
     }
 }
 
-fn tuple_args_body(args: Tele<Term>, mut body: Term) -> (Tele<Term>, Term) {
+fn tuple_args_body(mut args: Tele<Term>, mut body: Term) -> (Tele<Term>, Term) {
     let param_var = Var::tupled();
     let mut param_typ = Term::Unit;
 
-    let mut untupled_params = Vec::default();
     for p in args.iter().rev() {
-        let mut untupled = p.clone();
-        untupled.var = untupled.var.untupled_rhs();
-        untupled_params.push(untupled);
         param_typ = Term::Sigma(p.clone(), Box::new(param_typ));
     }
-    let param = Param {
-        var: param_var,
+    args.push(Param {
+        var: param_var.clone(),
         info: Explicit,
-        typ: Box::new(param_typ),
-    };
-    untupled_params.push(param.clone());
+        typ: Box::new(Term::Unit),
+    });
+    args.reverse();
 
-    for (i, lhs) in args.into_iter().rev().enumerate() {
-        let rhs = untupled_params.get(i).unwrap();
-        let tm = untupled_params.get(i + 1).unwrap();
-        body = Term::TupleLet(
-            lhs,
-            rhs.clone(),
-            Box::new(Term::Ref(tm.var.clone())),
-            Box::new(body),
-        );
+    for i in 0..args.len() - 1 {
+        let lhs = args.get(i + 1).unwrap().clone();
+        let mut rhs = args.get(i).unwrap().clone();
+        let tm = Box::new(Term::Ref(rhs.var.clone()));
+        rhs.var = lhs.var.untupled_rhs();
+        body = Term::TupleLet(lhs, rhs, tm, Box::new(body));
     }
 
-    (vec![param], body)
+    (
+        vec![Param {
+            var: param_var,
+            info: Explicit,
+            typ: Box::new(param_typ),
+        }],
+        body,
+    )
 }
 
-pub fn all_builtins() -> [Def<Term>; 2] {
-    [number_add(), number_sub()]
+pub fn all_builtins() -> [Def<Term>; 3] {
+    [unionize(), number_add(), number_sub()]
+}
+
+fn unionize() -> Def<Term> {
+    let r = Var::new("'R");
+    let a = Var::new("a");
+    let mut tele = vec![implicit_param(r.clone(), Term::Row)];
+    let (tupled_tele, body) = tuple_args_body(
+        vec![explicit_param(
+            a.clone(),
+            Term::Enum(Box::new(Term::Ref(r.clone()))),
+        )],
+        Term::Unionize(Box::new(Term::Ref(a))),
+    );
+    tele.extend(tupled_tele);
+    Def {
+        loc: Default::default(),
+        name: Var::new("unionize"),
+        tele,
+        ret: Box::new(Term::Enum(Box::new(Term::Ref(r)))),
+        body: Body::Fn(body),
+    }
 }
 
 fn number_add() -> Def<Term> {
@@ -58,7 +87,7 @@ fn number_add() -> Def<Term> {
         Term::NumAdd(Box::new(Term::Ref(a)), Box::new(Term::Ref(b))),
     );
     Def {
-        loc: Loc::default(),
+        loc: Default::default(),
         name: Var::new("number#__add__"),
         tele,
         ret: Box::new(Term::Number),
@@ -77,7 +106,7 @@ fn number_sub() -> Def<Term> {
         Term::NumSub(Box::new(Term::Ref(a)), Box::new(Term::Ref(b))),
     );
     Def {
-        loc: Loc::default(),
+        loc: Default::default(),
         name: Var::new("number#__sub__"),
         tele,
         ret: Box::new(Term::Number),

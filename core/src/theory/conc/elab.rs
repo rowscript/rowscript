@@ -507,7 +507,10 @@ impl Elaborator {
                 let b_ty =
                     Box::new(Normalizer::new(&mut self.sigma, loc).term(hint.unwrap().clone())?);
                 let (a, a_ty) = self.infer(*a, hint)?;
-                match &*b_ty {
+                match *b_ty {
+                    // FIXME: If `to` is a `Term::Fields`, use a quick path to check `RowOrd`.
+                    //        If's not, do not automatically wrap it with an implicit lambda, since
+                    //        it might run into a loop.
                     Term::Enum(to) => {
                         let ty_fields = FieldMap::from([(n.clone(), a_ty)]);
                         let tm_fields = FieldMap::from([(n, a)]);
@@ -522,10 +525,10 @@ impl Elaborator {
                                 &tele,
                                 Term::Variant(Box::new(Term::Fields(tm_fields))),
                             )),
-                            rename(Term::pi(&tele, Term::Enum(to.clone()))),
+                            rename(Term::pi(&tele, Term::Enum(to))),
                         )
                     }
-                    _ => return Err(ExpectedEnum(*b_ty, loc)),
+                    ty => return Err(ExpectedEnum(ty, loc)),
                 }
             }
             Upcast(loc, a) => {

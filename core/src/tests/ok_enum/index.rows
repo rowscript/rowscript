@@ -1,4 +1,6 @@
-function write(opts: [None | WriteOptions: {path: string}]);
+type WriteOptions = [None | WritePath: {path: string}];
+
+function write(opts: WriteOptions);
 
 function f0(): [None | Some: number] {
     return Some(42)
@@ -18,12 +20,13 @@ function f2(): number {
 function f3(): number { return f2() }
 
 function f4() {
-    return write(WriteOptions({path: "foo.txt"}))
+    let a: WriteOptions = WritePath({path: "foo.txt"});
+    return write(unionize(a))
 }
 
 function getData(): [Age: number | Name: string];
 function setData(data: [Age: number | Name: string]);
 
 function f5() {
-    return setData(getData())
+    return setData(unionize(getData()))
 }

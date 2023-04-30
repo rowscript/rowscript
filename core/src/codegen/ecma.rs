@@ -177,7 +177,6 @@ impl Ecma {
         &mut self,
         sigma: &Sigma,
         loc: Loc,
-        f: &Term,
         mut tm: &Term,
     ) -> Result<Vec<ExprOrSpread>, Error> {
         use Term::*;
@@ -188,13 +187,7 @@ impl Ecma {
                 Tuple(a, b) => {
                     ret.push(ExprOrSpread {
                         spread: None,
-                        expr: Box::new(match (f, &**a) {
-                            (Extern(_), Variant(fields)) => match &**fields {
-                                Fields(fm) => self.expr(sigma, loc, fm.iter().next().unwrap().1)?,
-                                _ => self.untag_variant(sigma, loc, a)?,
-                            },
-                            _ => self.expr(sigma, loc, a)?,
-                        }),
+                        expr: Box::new(self.expr(sigma, loc, a)?),
                     });
                     tm = b
                 }
@@ -203,14 +196,6 @@ impl Ecma {
             }
         }
         Ok(ret)
-    }
-
-    fn untag_variant(&mut self, sigma: &Sigma, loc: Loc, tm: &Term) -> Result<Expr, Error> {
-        Ok(Expr::Member(MemberExpr {
-            span: loc.into(),
-            obj: Box::new(self.expr(sigma, loc, tm)?),
-            prop: MemberProp::Ident(Self::special_ident(JS_ENUM_VAL)),
-        }))
     }
 
     fn lambda_encoded_let(
@@ -354,7 +339,7 @@ impl Ecma {
                 UnnamedExplicit => Expr::Call(CallExpr {
                     span: loc.into(),
                     callee: Callee::Expr(Box::new(self.expr(sigma, loc, f)?)),
-                    args: self.untuple_args(sigma, loc, f, x)?,
+                    args: self.untuple_args(sigma, loc, x)?,
                     type_args: None,
                 }),
                 _ => self.expr(sigma, loc, f)?,
@@ -518,6 +503,11 @@ impl Ecma {
                     type_args: None,
                 })
             }
+            Unionize(a) => Expr::Member(MemberExpr {
+                span: loc.into(),
+                obj: Box::new(self.expr(sigma, loc, a)?),
+                prop: MemberProp::Ident(Self::special_ident(JS_ENUM_VAL)),
+            }),
             Vp(r, ts) => Expr::Lit(Lit::Str(JsStr {
                 span: loc.into(),
                 value: mangle_hkt(loc, r, ts)?.as_str().into(),
