@@ -102,7 +102,7 @@ reserved =
   }
 
 camelback_id = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
-pub_camelback_id = @{ reserved? ~ (ASCII_ALPHA | ASCII_DIGIT)+ }
+pub_camelback_id = @{ (reserved ~ (ASCII_ALPHA | ASCII_DIGIT)+) | (!reserved ~ camelback_id) }
 priv_camelback_id = @{ "_" ~ pub_camelback_id }
 
 pub_camel_id = @{ ASCII_ALPHA_UPPER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
