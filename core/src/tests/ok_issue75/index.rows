@@ -1,0 +1,7 @@
+function f0<'A>(a: ['A]): ['A] {
+    return a
+}
+
+function f1(): [None | Data: number] {
+    return f0(Data(42))
+}

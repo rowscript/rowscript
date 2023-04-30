@@ -164,11 +164,11 @@ impl<'a> Normalizer<'a> {
             RowOrd(a, d, b) => {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;
-                if let (Fields(_), Fields(_)) = (&*a, &*b) {
+                if let (Fields(a), Fields(b)) = (&*a, &*b) {
                     let mut u = Unifier::new(self.sigma, self.loc);
                     match d {
-                        Dir::Le => u.unify_fields_ord(&a, &b)?,
-                        Dir::Ge => u.unify_fields_ord(&b, &a)?,
+                        Dir::Le => u.unify_fields_ord(a, b)?,
+                        Dir::Ge => u.unify_fields_ord(b, a)?,
                     };
                 }
                 RowOrd(a, d, b)
@@ -176,8 +176,8 @@ impl<'a> Normalizer<'a> {
             RowEq(a, b) => {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;
-                if let (Fields(_), Fields(_)) = (&*a, &*b) {
-                    Unifier::new(self.sigma, self.loc).unify_fields_eq(&a, &b)?;
+                if let (Fields(a), Fields(b)) = (&*a, &*b) {
+                    Unifier::new(self.sigma, self.loc).unify_fields_eq(a, b)?;
                 }
                 RowEq(a, b)
             }

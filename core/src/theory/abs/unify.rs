@@ -1,4 +1,4 @@
-use crate::theory::abs::data::Term;
+use crate::theory::abs::data::{FieldMap, Term};
 use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Sigma;
 use crate::theory::abs::normalize::Normalizer;
@@ -105,7 +105,7 @@ impl<'a> Unifier<'a> {
                 self.unify(b, y)?;
                 self.unify(c, z)
             }
-            (Fields(_), Fields(_)) => self.unify_fields_eq(lhs, rhs),
+            (Fields(a), Fields(b)) => self.unify_fields_eq(a, b),
             (Object(a), Object(b)) => self.unify(a, b),
             (Obj(a), Obj(b)) => self.unify(a, b),
             (Enum(a), Enum(b)) => self.unify(a, b),
@@ -158,42 +158,30 @@ impl<'a> Unifier<'a> {
         }
     }
 
-    pub fn unify_fields_ord(&mut self, smaller: &Term, bigger: &Term) -> Result<(), Error> {
+    pub fn unify_fields_ord(&mut self, f: &FieldMap, g: &FieldMap) -> Result<(), Error> {
         use Term::*;
-
-        match (smaller, bigger) {
-            (Fields(f), Fields(g)) => {
-                for (x, a) in f {
-                    if let Some(b) = g.get(x) {
-                        self.unify(a, b)?;
-                        continue;
-                    }
-                    return Err(NonRowSat(smaller.clone(), bigger.clone(), self.loc));
-                }
-                Ok(())
+        for (x, a) in f {
+            if let Some(b) = g.get(x) {
+                self.unify(a, b)?;
+                continue;
             }
-            _ => unreachable!(),
+            return Err(NonRowSat(Fields(f.clone()), Fields(g.clone()), self.loc));
         }
+        Ok(())
     }
 
-    pub fn unify_fields_eq(&mut self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
+    pub fn unify_fields_eq(&mut self, a: &FieldMap, b: &FieldMap) -> Result<(), Error> {
         use Term::*;
-
-        match (lhs, rhs) {
-            (Fields(a), Fields(b)) => {
-                if a.len() != b.len() {
-                    return self.unify_err(lhs, rhs);
-                }
-                for (n, x) in a {
-                    if let Some(y) = b.get(n) {
-                        self.unify(x, y)?;
-                    } else {
-                        return self.unify_err(lhs, rhs);
-                    }
-                }
-                Ok(())
-            }
-            _ => unreachable!(),
+        if a.len() != b.len() {
+            return self.unify_err(&Fields(a.clone()), &Fields(b.clone()));
         }
+        for (n, x) in a {
+            if let Some(y) = b.get(n) {
+                self.unify(x, y)?;
+                continue;
+            }
+            return self.unify_err(&Fields(a.clone()), &Fields(b.clone()));
+        }
+        Ok(())
     }
 }
