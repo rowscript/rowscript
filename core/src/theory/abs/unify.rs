@@ -158,14 +158,19 @@ impl<'a> Unifier<'a> {
         }
     }
 
-    pub fn unify_fields_ord(&mut self, f: &FieldMap, g: &FieldMap) -> Result<(), Error> {
+    pub fn unify_fields_ord(&mut self, small: &FieldMap, big: &FieldMap) -> Result<(), Error> {
         use Term::*;
-        for (x, a) in f {
-            if let Some(b) = g.get(x) {
-                self.unify(a, b)?;
-                continue;
+        for (x, a) in small {
+            match big.get(x) {
+                Some(b) => self.unify(a, b)?,
+                None => {
+                    return Err(NonRowSat(
+                        Fields(small.clone()),
+                        Fields(big.clone()),
+                        self.loc,
+                    ))
+                }
             }
-            return Err(NonRowSat(Fields(f.clone()), Fields(g.clone()), self.loc));
         }
         Ok(())
     }

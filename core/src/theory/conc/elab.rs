@@ -508,26 +508,20 @@ impl Elaborator {
                     Box::new(Normalizer::new(&mut self.sigma, loc).term(hint.unwrap().clone())?);
                 let (a, a_ty) = self.infer(*a, hint)?;
                 match *b_ty {
-                    // FIXME: If `to` is a `Term::Fields`, use a quick path to check `RowOrd`.
-                    //        If's not, do not automatically wrap it with an implicit lambda, since
-                    //        it might run into a loop.
-                    Term::Enum(to) => {
-                        let ty_fields = FieldMap::from([(n.clone(), a_ty)]);
-                        let tm_fields = FieldMap::from([(n, a)]);
-                        let from = Box::new(Term::Fields(ty_fields));
-                        let tele = vec![Param {
-                            var: Var::unbound(),
-                            info: Implicit,
-                            typ: Box::new(Term::RowOrd(from, Le, to.clone())),
-                        }];
-                        (
-                            rename(Term::lam(
-                                &tele,
-                                Term::Variant(Box::new(Term::Fields(tm_fields))),
-                            )),
-                            rename(Term::pi(&tele, Term::Enum(to))),
-                        )
-                    }
+                    Term::Enum(to) => match (a_ty, *to) {
+                        (from, Term::Fields(to)) => {
+                            let from = FieldMap::from([(n.clone(), from)]);
+                            Unifier::new(&mut self.sigma, loc).unify_fields_ord(&from, &to)?;
+                            (
+                                Term::Variant(Box::new(Term::Fields(FieldMap::from([(n, a)])))),
+                                Term::Enum(Box::new(Term::Fields(to))),
+                            )
+                        }
+                        (ty, _) => (
+                            Term::Variant(Box::new(Term::Fields(FieldMap::from([(n.clone(), a)])))),
+                            Term::Enum(Box::new(Term::Fields(FieldMap::from([(n, ty)])))),
+                        ),
+                    },
                     ty => return Err(ExpectedEnum(ty, loc)),
                 }
             }

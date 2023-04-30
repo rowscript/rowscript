@@ -3,5 +3,5 @@ function f0<'A>(a: ['A]): ['A] {
 }
 
 function f1(): [None | Data: number] {
-    return f0(Data(42))
+    return [...f0(Data(42))]
 }
