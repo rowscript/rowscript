@@ -125,6 +125,7 @@ priv_type_id = _{ priv_camel_id }
 prop_id = { pub_camelback_id | priv_camelback_id }
 variant_id = { pub_camel_id | priv_camel_id }
 field_id = _{ prop_id | variant_id }
+pub_field_id = _{ pub_camelback_id | pub_camel_id }
 param_id = { pub_camelback_id }
 let_id = { pub_camelback_id }
 this_id = { "this" }
@@ -216,6 +217,7 @@ param = { param_id ~ ":" ~ type_expr }
 params = _{ "()" | "(" ~ param ~ ("," ~ param)* ~ ")" }
 
 field = { field_id ~ ":" ~ type_expr }
+pub_field = { pub_field_id ~ ":" ~ type_expr }
 property = { prop_id ~ ":" ~ type_expr }
 label = { prop_id ~ ":" ~ expr }
 variant = { variant_id ~ (":" ~ type_expr)? }
@@ -314,7 +316,7 @@ implicit_args =
 type_args = _{ type_arg ~ ("," ~ type_arg)* }
 type_arg = { (tyref ~ "=")? ~ type_expr }
 row_args = _{ row_arg ~ ("," ~ row_arg)* }
-row_arg = { (row_id ~ "=")? ~ paren_fields }
+row_arg = { (row_id ~ "=")? ~ row_literal }
 args = { "()" | "(" ~ expr ~ ("," ~ expr)* ~ ")" }
 tt = { "()" }
 object_literal = { "{" ~ label ~ ("," ~ label)* ~ "}" }
@@ -355,10 +357,10 @@ row_expr =
   }
 row_primary_expr =
   { row_id
-  | paren_fields
+  | row_literal
   | paren_row_expr
   }
-paren_fields = { "(" ~ field ~ ("," ~ field)* ~ ")" }
+row_literal = { "(" ~ pub_field ~ ("," ~ pub_field)* ~ ")" }
 row_concat = { row_primary_expr ~ "+" ~ row_expr }
 paren_row_expr = { "(" ~ row_expr ~ ")" }
 constraint_expr = { tyref ~ implicit_args }

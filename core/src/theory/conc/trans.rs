@@ -693,7 +693,7 @@ impl Trans {
         let p = e.into_inner().next().unwrap();
         match p.as_rule() {
             Rule::row_id => Self::unresolved(p),
-            Rule::paren_fields => self.fields(p),
+            Rule::row_literal => self.fields(p),
             Rule::paren_row_expr => self.row_expr(p.into_inner().next().unwrap()),
             _ => unreachable!(),
         }
@@ -716,7 +716,7 @@ impl Trans {
         let mut p = a.into_inner();
         let id_or_fields = p.next().unwrap();
         match id_or_fields.as_rule() {
-            Rule::paren_fields => (UnnamedImplicit, self.fields(id_or_fields)),
+            Rule::row_literal => (UnnamedImplicit, self.fields(id_or_fields)),
             Rule::row_id => (
                 NamedImplicit(Var::from(id_or_fields)),
                 self.fields(p.next().unwrap()),
