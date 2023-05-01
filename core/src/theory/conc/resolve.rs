@@ -56,7 +56,9 @@ impl<'a> Resolver<'a> {
                         let ctor = format!("{name}{CTOR}");
                         if let Some(ctor_var) = self.loaded.get(module, &ctor) {
                             self.insert_imported(ctor_var);
-                            *name = ctor
+                            self.insert(self.loaded.get(module, name).unwrap());
+                            *name = ctor;
+                            continue;
                         }
 
                         match self.loaded.get(module, name) {

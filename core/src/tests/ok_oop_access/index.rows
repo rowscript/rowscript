@@ -1,0 +1,16 @@
+from .foo import { Foo };
+
+function log(msg: string);
+
+function f0(): Foo {
+    return new Foo("John")
+}
+
+function f1() {
+    let a = f0();
+    log(a._name);
+    log(a.getName());
+    return
+}
+
+f1();

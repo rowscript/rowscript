@@ -248,6 +248,13 @@ impl Ecma {
         }))))
     }
 
+    fn unit_stmt(&mut self, sigma: &Sigma, loc: Loc, tm: &Term) -> Result<Stmt, Error> {
+        Ok(Stmt::Expr(ExprStmt {
+            span: loc.into(),
+            expr: Box::new(self.expr(sigma, loc, tm)?),
+        }))
+    }
+
     fn block(&mut self, sigma: &Sigma, loc: Loc, body: &Term) -> Result<BlockStmt, Error> {
         fn strip_untupled_lets(mut tm: &Term) -> Term {
             use Term::*;
@@ -273,7 +280,7 @@ impl Ecma {
                 }
                 TupleLet(_, _, _, _) => unreachable!(),
                 UnitLet(a, b) => {
-                    stmts.push(self.const_decl_stmt(sigma, loc, &Var::unbound(), a)?);
+                    stmts.push(self.unit_stmt(sigma, loc, a)?);
                     tm = b
                 }
                 _ => {
