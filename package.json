@@ -3,17 +3,12 @@
   "version": "1.0.0-alpha.1",
   "description": "RowScript programming language",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build": "cargo build --release"
   },
-  "bin": {
-    "rowscript": "./target/release/rowscript"
+  "optionalDependencies": {
+    "@rows/cli-darwin-x64": "1.0.0-alpha.1",
+    "@rows/cli-linux-x64": "1.0.0-alpha.1"
   },
-  "files": [
-    "./target/release/rowscript",
-    "LICENSE",
-    ".github/README.md"
-  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/rowscript/rowscript.git"
@@ -24,8 +19,5 @@
   ],
   "author": "RowScript developers",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/rowscript/rowscript/issues"
-  },
   "homepage": "https://rowscript-lang.org"
 }
