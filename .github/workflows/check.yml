@@ -1,4 +1,4 @@
-name: Rust Check
+name: Check
 on:
   push:
     branches: [ "main" ]
