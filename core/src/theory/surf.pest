@@ -1,5 +1,5 @@
 WHITESPACE = _{ WHITE_SPACE }
-COMMENT = _{ "// " ~ (!NEWLINE ~ ANY)* | "/* " ~ (!"*/" ~ ANY)* ~ "*/" }
+COMMENT = _{ "//" ~ (!NEWLINE ~ ANY)* | "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
 
 // Most specified at https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#reserved_words.
 reserved =

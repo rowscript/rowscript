@@ -1,0 +1,40 @@
+{
+  "name": "vscode-rows",
+  "displayName": "vscode-rows",
+  "description": "VS Code plugin for RowScript",
+  "publisher": "rowscript",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.78.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "rowscript",
+        "aliases": [
+          "RowScript",
+          "rowscript"
+        ],
+        "extensions": [
+          ".rows"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "rowscript",
+        "scopeName": "source.rowscript",
+        "path": "./syntaxes/rowscript.tmLanguage.json"
+      }
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rowscript/rowscript.git"
+  },
+  "license": "MIT"
+}
