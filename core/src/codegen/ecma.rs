@@ -783,6 +783,9 @@ impl Ecma {
     }
 
     fn vtbl_decl(&self, items: &mut Vec<ModuleItem>) -> Result<(), Error> {
+        if self.vtbl.is_empty() {
+            return Ok(());
+        }
         let mut props = Vec::default();
         for (cls, meths) in &self.vtbl {
             let mut meth_props = Vec::default();
