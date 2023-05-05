@@ -220,7 +220,7 @@ impl Driver {
         let mut includes = Vec::default();
 
         let (path, module) = match loadable {
-            ViaID(m) => (m.to_full_path(&self.path), Some(m)),
+            ViaID(m) => (m.to_source_path(&self.path), Some(m)),
             ViaPath(p) => (p, None),
         };
 

@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use std::process::ExitCode;
 
 use clap::{Parser, ValueEnum};
 
@@ -36,9 +35,9 @@ impl From<TargetID> for Box<dyn Target> {
     }
 }
 
-fn main() -> ExitCode {
+fn main() {
     let args = Args::parse();
     Driver::new(args.path, args.target.into())
         .run()
-        .map_or(ExitCode::FAILURE, |_| ExitCode::SUCCESS)
+        .expect("compilation failed")
 }

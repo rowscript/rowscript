@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::{Loc, Var};
-use crate::Error;
+use crate::{Error, OUTDIR};
 
 #[cfg(not(test))]
 const MODULES_DIR: &str = "node_modules";
@@ -19,10 +19,14 @@ const PRELUDE_DIR: &str = "prelude";
 
 #[cfg(not(test))]
 pub fn prelude_path() -> PathBuf {
-    Path::new(MODULES_DIR)
-        .join(PKG_DIR)
-        .join("core")
-        .join(PRELUDE_DIR)
+    use std::env::var;
+    match var("ROWS_PRELUDE_DIR") {
+        Ok(p) => p.into(),
+        Err(_) => Path::new(MODULES_DIR)
+            .join(PKG_DIR)
+            .join("core")
+            .join(PRELUDE_DIR),
+    }
 }
 #[cfg(test)]
 pub fn prelude_path() -> PathBuf {
@@ -43,7 +47,7 @@ pub struct ModuleID {
 }
 
 impl ModuleID {
-    pub fn to_full_path(&self, base: &Path) -> PathBuf {
+    pub fn to_source_path(&self, base: &Path) -> PathBuf {
         use ImportedPkg::*;
         let mut ret = match &self.pkg {
             Std(pkg) => base
@@ -58,11 +62,11 @@ impl ModuleID {
         ret
     }
 
-    pub fn to_relative_path(&self) -> PathBuf {
+    pub fn to_generated_path(&self) -> PathBuf {
         use ImportedPkg::*;
         let mut p = match &self.pkg {
-            Std(p) => Path::new(PKG_DIR).join(STD_PKG_DIR).join(p),
-            Vendor(o, p) => Path::new(o).join(p),
+            Std(p) => Path::new(PKG_DIR).join(STD_PKG_DIR).join(OUTDIR).join(p),
+            Vendor(o, p) => Path::new(o).join(p).join(OUTDIR),
             Root => PathBuf::from("."),
         };
         p.extend(&self.modules);
@@ -89,7 +93,7 @@ impl Default for ModuleID {
 
 impl Display for ModuleID {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.to_relative_path().to_str().unwrap())
+        f.write_str(self.to_generated_path().to_str().unwrap())
     }
 }
 

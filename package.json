@@ -3,7 +3,8 @@
   "version": "1.0.0-alpha.1",
   "description": "RowScript programming language",
   "scripts": {
-    "build": "cargo build --release"
+    "build": "cargo build --release",
+    "prepublish": "npm run build && env ROWS_PRELUDE_DIR=core/prelude ./target/release/rowscript ./std"
   },
   "optionalDependencies": {
     "@rows/cli-darwin-x64": "1.0.0-alpha.1",

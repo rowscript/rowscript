@@ -64,7 +64,7 @@ impl Codegen {
             return Ok(());
         }
 
-        let module_dir = module.to_full_path(&self.outdir);
+        let module_dir = module.to_source_path(&self.outdir);
         let module_index_file = module_dir.join(self.target.filename());
         create_dir_all(&module_dir)?;
         write(&module_index_file, &buf)?;

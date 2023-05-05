@@ -573,7 +573,7 @@ impl Ecma {
                     span: DUMMY_SP,
                     value: i
                         .module
-                        .to_relative_path()
+                        .to_generated_path()
                         .join(self.filename())
                         .to_string_lossy()
                         .into(),
