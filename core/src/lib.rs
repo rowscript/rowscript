@@ -22,7 +22,7 @@ use crate::theory::Loc;
 pub mod codegen;
 #[cfg(test)]
 mod tests;
-mod theory;
+pub mod theory;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -150,7 +150,7 @@ fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
 
 #[derive(Parser)]
 #[grammar = "theory/surf.pest"]
-struct RowsParser;
+pub struct RowsParser;
 
 pub const OUTDIR: &str = "dist";
 pub const FILE_EXT: &str = "rows";

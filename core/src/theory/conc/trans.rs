@@ -68,7 +68,7 @@ impl Trans {
             Rule::vendor_pkg_id => self.vendor_pkg(p),
             Rule::module_id => {
                 modules.push(item);
-                Root
+                Relative
             }
             _ => unreachable!(),
         };
@@ -1011,7 +1011,7 @@ impl Trans {
         let pkg = match prefix.as_rule() {
             Rule::std_pkg_id => Std(prefix.as_str().to_string()),
             Rule::vendor_pkg_id => self.vendor_pkg(prefix),
-            Rule::root_prefix => Root,
+            Rule::root_prefix => Relative,
             _ => unreachable!(),
         };
         let mut modules = PathBuf::default();
