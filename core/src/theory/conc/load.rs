@@ -38,7 +38,7 @@ pub fn prelude_path() -> PathBuf {
 pub enum ImportedPkg {
     Std(String),
     Vendor(String, String),
-    Relative,
+    Root,
 }
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone)]
@@ -57,7 +57,7 @@ impl ModuleID {
                 .join(STD_PKG_DIR)
                 .join(pkg),
             Vendor(org, pkg) => base.join(MODULES_DIR).join(org).join(pkg),
-            Relative => base.to_path_buf(),
+            Root => base.to_path_buf(),
         };
         ret.extend(&self.modules);
         ret
@@ -68,7 +68,7 @@ impl ModuleID {
         let mut p = match &self.pkg {
             Std(p) => Path::new(PKG_DIR).join(STD_PKG_DIR).join(OUTDIR).join(p),
             Vendor(o, p) => Path::new(o).join(p).join(OUTDIR),
-            Relative => PathBuf::from("."),
+            Root => PathBuf::from("."),
         };
         p.extend(&self.modules);
         p
@@ -78,7 +78,7 @@ impl ModuleID {
         use ImportedPkg::*;
         match self.pkg {
             Std(_) | Vendor(_, _) => false,
-            Relative => true,
+            Root => true,
         }
     }
 }
@@ -86,7 +86,7 @@ impl ModuleID {
 impl Default for ModuleID {
     fn default() -> Self {
         Self {
-            pkg: ImportedPkg::Relative,
+            pkg: ImportedPkg::Root,
             modules: Default::default(),
         }
     }

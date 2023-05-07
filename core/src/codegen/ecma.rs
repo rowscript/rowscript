@@ -848,7 +848,7 @@ impl Target for Ecma {
         let mut ret = match &module.pkg {
             Std(p) => vec![p.clone()],
             Vendor(o, p) => vec![o.strip_prefix('@').unwrap().to_string(), p.clone()],
-            Relative => vec![QUALIFIER_SEP.to_string()],
+            Root => vec![QUALIFIER_SEP.to_string()],
         };
         for m in &module.modules {
             ret.push(m.to_str().unwrap().to_string());
