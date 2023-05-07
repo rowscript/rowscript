@@ -1,1 +1,1 @@
-function log(msg: string);
+function log<T>(msg: T);

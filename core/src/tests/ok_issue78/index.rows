@@ -1,0 +1,15 @@
+function log<T>(m: T);
+
+class Foo<T> {
+    data: T;
+    foo(): T { return this.data }
+}
+
+function f() {
+    let a = new Foo<number>(42);
+    log(a.foo());
+    return
+}
+
+// This should run after vtbl is initialized.
+f();

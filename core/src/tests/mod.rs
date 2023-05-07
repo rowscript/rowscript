@@ -39,6 +39,7 @@ mod ok_implicit_unnamed;
 mod ok_interface;
 mod ok_interface_stuck;
 mod ok_issue75;
+mod ok_issue78;
 mod ok_modsys;
 mod ok_object;
 mod ok_object_rowpoly;

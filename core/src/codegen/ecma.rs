@@ -305,7 +305,7 @@ impl Ecma {
             MetaRef(k, r, sp) => match &sigma.get(r).unwrap().body {
                 Meta(_, tm) => match tm {
                     None => {
-                        return Err(UnsolvedMeta(MetaRef(k.clone(), r.clone(), sp.clone()), loc))
+                        return Err(UnsolvedMeta(MetaRef(k.clone(), r.clone(), sp.clone()), loc));
                     }
                     Some(_) => unreachable!(),
                 },
@@ -543,8 +543,9 @@ impl Ecma {
         })
     }
 
-    fn imports(&self, items: &mut Vec<ModuleItem>, imports: Vec<Import>) -> Result<(), Error> {
+    fn imports(&self, imports: Vec<Import>) -> Result<Vec<ModuleItem>, Error> {
         use ImportedDefs::*;
+        let mut items = Vec::default();
         for i in imports {
             let mut specifiers = Vec::default();
             match i.defs {
@@ -583,10 +584,11 @@ impl Ecma {
                 asserts: None,
             })))
         }
-        Ok(())
+        Ok(items)
     }
 
-    fn includes(&mut self, items: &mut Vec<ModuleItem>, includes: &[PathBuf]) -> Result<(), Error> {
+    fn includes(&mut self, includes: &[PathBuf]) -> Result<Vec<ModuleItem>, Error> {
+        let mut items = Vec::default();
         let mut props = Vec::default();
         for i in includes {
             let src = Path::new(".").join(i.file_name().unwrap());
@@ -640,22 +642,20 @@ impl Ecma {
                 }],
             })))))
         }
-        Ok(())
+        Ok(items)
     }
 
-    fn decls(
-        &mut self,
-        items: &mut Vec<ModuleItem>,
-        sigma: &Sigma,
-        defs: Vec<Def<Term>>,
-    ) -> Result<(), Error> {
+    fn decls(&mut self, sigma: &Sigma, defs: Vec<Def<Term>>) -> Result<Vec<ModuleItem>, Error> {
         use Body::*;
+        let mut items = Vec::default();
         for def in defs {
             match match &def.body {
-                Fn(f) => self.func_decl(items, sigma, &def, f),
-                Class(body) => self.class_decls(items, sigma, &def.name, &body.ctor, &body.methods),
-                Postulate => self.postulate_decl(items, &def),
-                Const(_, f) => self.const_decl(items, sigma, &def, f),
+                Fn(f) => self.func_decl(&mut items, sigma, &def, f),
+                Class(body) => {
+                    self.class_decls(&mut items, sigma, &def.name, &body.ctor, &body.methods)
+                }
+                Postulate => self.postulate_decl(&mut items, &def),
+                Const(_, f) => self.const_decl(&mut items, sigma, &def, f),
                 Undefined => unreachable!(),
                 _ => continue,
             } {
@@ -663,7 +663,7 @@ impl Ecma {
                 Err(e) => return Err(e),
             };
         }
-        Ok(())
+        Ok(items)
     }
 
     fn try_export_decl(def: &Def<Term>, decl: Decl) -> ModuleItem {
@@ -782,10 +782,11 @@ impl Ecma {
         Ok(())
     }
 
-    fn vtbl_decl(&self, items: &mut Vec<ModuleItem>) -> Result<(), Error> {
+    fn vtbl_decl(&self) -> Result<Vec<ModuleItem>, Error> {
         if self.vtbl.is_empty() {
-            return Ok(());
+            return Ok(Default::default());
         }
+        let mut items = Vec::default();
         let mut props = Vec::default();
         for (cls, meths) in &self.vtbl {
             let mut meth_props = Vec::default();
@@ -831,7 +832,7 @@ impl Ecma {
                 })),
             })),
         })));
-        Ok(())
+        Ok(items)
     }
 }
 
@@ -871,13 +872,17 @@ impl Target for Ecma {
         includes: &[PathBuf],
         file: ModuleFile,
     ) -> Result<(), Error> {
-        let mut body = Vec::default();
-
         self.vtbl.clear();
-        self.imports(&mut body, file.imports)?;
-        self.includes(&mut body, includes)?;
-        self.decls(&mut body, sigma, file.defs)?;
-        self.vtbl_decl(&mut body)?;
+
+        let imports = self.imports(file.imports)?;
+        let includes = self.includes(includes)?;
+        let decls = self.decls(sigma, file.defs)?;
+        let vtbl = self.vtbl_decl()?; // decls add new entries to vtbl
+
+        let mut body = imports;
+        body.extend(includes);
+        body.extend(vtbl); // initialized earlier
+        body.extend(decls);
 
         let m = Module {
             span: DUMMY_SP,
