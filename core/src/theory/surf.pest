@@ -479,9 +479,9 @@ import_local =
   { "from" ~ imported_local_module ~ "import" ~ importables ~ ";"
   | "import" ~ imported_local_module ~ ";"
   }
-imported_std_module = _{ std_pkg_id ~ ("." ~ module_id)* }
-imported_vendor_module = _{ vendor_pkg_id ~ ("." ~ module_id)* }
-imported_local_module = _{ ("." ~ module_id)+ }
+imported_std_module = { std_pkg_id ~ ("." ~ module_id)* }
+imported_vendor_module = { vendor_pkg_id ~ ("." ~ module_id)* }
+imported_local_module = { ("." ~ module_id)+ }
 importables =
  _{ importable_loaded
   | "{" ~ importable ~ ("," ~ importable)* ~ "}"

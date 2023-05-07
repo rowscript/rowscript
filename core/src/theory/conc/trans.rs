@@ -57,11 +57,14 @@ impl Trans {
         use ImportedDefs::*;
         use ImportedPkg::*;
 
-        let loc = Loc::from(d.as_span());
         let mut i = d.into_inner();
 
+        let m = i.next().unwrap();
+        let loc = Loc::from(m.as_span());
+
         let mut modules = PathBuf::default();
-        let p = i.next().unwrap();
+        let mut ms = m.into_inner();
+        let p = ms.next().unwrap();
         let item = p.as_str().to_string();
         let pkg = match p.as_rule() {
             Rule::std_pkg_id => Std(item),
@@ -72,16 +75,20 @@ impl Trans {
             }
             _ => unreachable!(),
         };
+        for p in ms {
+            if p.as_rule() != Rule::module_id {
+                unreachable!()
+            }
+            modules.push(p.as_str().to_string())
+        }
 
         let mut importables = Vec::default();
         for p in i {
             let loc = Loc::from(p.as_span());
-            let item = p.as_str().to_string();
             match p.as_rule() {
-                Rule::module_id => modules.push(item),
-                Rule::importable => importables.push((loc, item)),
+                Rule::importable => importables.push((loc, p.as_str().to_string())),
                 Rule::importable_loaded => {
-                    return Import::new(loc, ModuleID { pkg, modules }, Loaded)
+                    return Import::new(loc, ModuleID { pkg, modules }, Loaded);
                 }
                 _ => unreachable!(),
             };
@@ -554,7 +561,7 @@ impl Trans {
                         tele: Default::default(),
                         ret,
                         body: Const(is_annotated, self.expr(p)),
-                    }
+                    };
                 }
                 _ => break,
             }
