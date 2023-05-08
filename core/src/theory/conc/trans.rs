@@ -79,7 +79,7 @@ impl Trans {
             if p.as_rule() != Rule::module_id {
                 unreachable!()
             }
-            modules.push(p.as_str().to_string())
+            modules.push(p.as_str())
         }
 
         let mut importables = Vec::default();
@@ -287,12 +287,17 @@ impl Trans {
         let mut methods = Vec::default();
 
         let mut vtbl_fields = Vec::default();
+        let mut init_expr = None;
         for p in pairs {
             match p.as_rule() {
                 Rule::implicit_id => tele.push(Self::implicit_param(p)),
                 Rule::class_member => {
                     let loc = Loc::from(p.as_span());
                     members.push((loc, self.param(p)));
+                }
+                Rule::class_init => {
+                    let loc = Loc::from(p.as_span());
+                    init_expr = Some((loc, self.fn_body(p.into_inner().next().unwrap())));
                 }
                 Rule::class_method => {
                     let mut m =
@@ -360,11 +365,26 @@ impl Trans {
         let untupled_vars = ctor_untupled.unresolved();
         let untupled_loc = ctor_untupled.0;
         let tupled_param = Param::from(ctor_untupled);
+        let mut ctor_body_expr = Obj(loc, Box::new(Fields(loc, tm_fields)));
+        if let Some((init_loc, e)) = init_expr {
+            let this = Var::this();
+            ctor_body_expr = Let(
+                loc,
+                this.clone(),
+                None,
+                Box::new(ctor_body_expr),
+                Box::new(UnitLet(
+                    init_loc,
+                    Box::new(e),
+                    Box::new(Unresolved(loc, None, this)),
+                )),
+            )
+        }
         let ctor_body = Ctor(Expr::wrap_tuple_lets(
             untupled_loc,
             &tupled_param.var,
             untupled_vars,
-            Obj(loc, Box::new(Fields(loc, tm_fields))),
+            ctor_body_expr,
         ));
         let mut ctor_tele = tele.clone();
         ctor_tele.push(tupled_param);

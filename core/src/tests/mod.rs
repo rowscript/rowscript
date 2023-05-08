@@ -45,6 +45,7 @@ mod ok_object;
 mod ok_object_rowpoly;
 mod ok_oop;
 mod ok_oop_generics;
+mod ok_oop_init;
 mod ok_oop_vtbl;
 mod ok_op;
 mod ok_postulate_fn;

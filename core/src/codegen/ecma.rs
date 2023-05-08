@@ -392,9 +392,12 @@ impl Ecma {
                             value: Box::new(self.expr(sigma, loc, &tm.clone())?),
                         }))));
                     }
-                    Expr::Object(ObjectLit {
+                    Expr::Paren(ParenExpr {
                         span: loc.into(),
-                        props,
+                        expr: Box::new(Expr::Object(ObjectLit {
+                            span: loc.into(),
+                            props,
+                        })),
                     })
                 }
                 _ => unreachable!(),

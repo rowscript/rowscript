@@ -413,10 +413,11 @@ class_def =
   ~ "}"
   }
 class_body =
- _{ class_member+ ~ class_method*
-  | class_member* ~ class_method+
+ _{ class_member+ ~ class_init? ~ class_method*
+  | class_member* ~ class_init? ~ class_method+
   }
 class_member = { prop_id ~ ":" ~ type_expr ~ ";" }
+class_init = { "init" ~ fn_body_block }
 class_method = { fn_id ~ params ~ (":" ~ type_expr)? ~ fn_body_block }
 
 interface_def =
