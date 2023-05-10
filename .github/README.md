@@ -1,4 +1,10 @@
-<h1 align="center">RowScript</h1>
+<!--suppress HtmlDeprecatedAttribute -->
+<h1 align="center">
+<!--suppress CheckImageSize -->
+<img src="banner.jpeg" alt="banner" width="50%" height="50%">
+<br>
+RowScript
+</h1>
 
 ![Rust Build](https://github.com/rowscript/rowscript/actions/workflows/build.yml/badge.svg)
 ![Rust Check](https://github.com/rowscript/rowscript/actions/workflows/check.yml/badge.svg)
