@@ -152,7 +152,7 @@ impl<'a> Normalizer<'a> {
             Combine(a, b) => {
                 let mut a = self.term_box(a)?;
                 let b = self.term_box(b)?;
-                match (&mut *a, &*b) {
+                match (a.as_mut(), b.as_ref()) {
                     (Fields(x), Fields(y)) => {
                         // TODO: eliminate clone
                         x.extend(y.iter().map(|(n, tm)| (n.clone(), tm.clone())));
@@ -164,7 +164,7 @@ impl<'a> Normalizer<'a> {
             RowOrd(a, d, b) => {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;
-                if let (Fields(a), Fields(b)) = (&*a, &*b) {
+                if let (Fields(a), Fields(b)) = (a.as_ref(), b.as_ref()) {
                     let mut u = Unifier::new(self.sigma, self.loc);
                     match d {
                         Dir::Le => u.unify_fields_ord(a, b)?,
@@ -176,7 +176,7 @@ impl<'a> Normalizer<'a> {
             RowEq(a, b) => {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;
-                if let (Fields(a), Fields(b)) = (&*a, &*b) {
+                if let (Fields(a), Fields(b)) = (a.as_ref(), b.as_ref()) {
                     Unifier::new(self.sigma, self.loc).unify_fields_eq(a, b)?;
                 }
                 RowEq(a, b)
@@ -186,8 +186,8 @@ impl<'a> Normalizer<'a> {
             Concat(a, b) => {
                 let mut a = self.term_box(a)?;
                 let b = self.term_box(b)?;
-                match (&mut *a, &*b) {
-                    (Obj(x), Obj(y)) => match (&mut **x, &**y) {
+                match (a.as_mut(), b.as_ref()) {
+                    (Obj(x), Obj(y)) => match (x.as_mut(), y.as_ref()) {
                         (Fields(x), Fields(y)) => {
                             // TODO: eliminate clone
                             x.extend(y.iter().map(|(n, tm)| (n.clone(), tm.clone())));
@@ -200,8 +200,8 @@ impl<'a> Normalizer<'a> {
             }
             Access(a, n) => {
                 let a = self.term_box(a)?;
-                match &*a {
-                    Obj(x) => match &**x {
+                match a.as_ref() {
+                    Obj(x) => match x.as_ref() {
                         Fields(fields) => fields.get(&n).unwrap().clone(),
                         _ => Access(a, n),
                     },
@@ -210,8 +210,8 @@ impl<'a> Normalizer<'a> {
             }
             Downcast(a, mut f) => {
                 let a = self.term_box(a)?;
-                match &*a {
-                    Obj(o) => match (&**o, &mut *f) {
+                match a.as_ref() {
+                    Obj(o) => match (o.as_ref(), f.as_mut()) {
                         (Fields(x), Fields(y)) => {
                             // TODO: eliminate clone
                             *y = y
@@ -232,8 +232,8 @@ impl<'a> Normalizer<'a> {
             Variant(r) => Variant(self.term_box(r)?),
             Upcast(a, f) => {
                 let a = self.term_box(a)?;
-                match &*a {
-                    Variant(o) => match (&**o, &*f) {
+                match a.as_ref() {
+                    Variant(o) => match (o.as_ref(), f.as_ref()) {
                         (Fields(x), Fields(y)) => {
                             let name = x.iter().next().unwrap().0;
                             if !y.contains_key(name) {
@@ -248,8 +248,8 @@ impl<'a> Normalizer<'a> {
             }
             Switch(a, cs) => {
                 let a = self.term_box(a)?;
-                match &*a {
-                    Variant(r) => match &**r {
+                match a.as_ref() {
+                    Variant(r) => match r.as_ref() {
                         Fields(f) => {
                             // TODO: eliminate clone
                             let (n, x) = f.iter().next().unwrap();

@@ -295,7 +295,7 @@ impl ImplementsBody<Term> {
         use Body::*;
         use Error::*;
         use Term::*;
-        Ok(match &*self.i.1 {
+        Ok(match self.i.1.as_ref() {
             Ref(im) => {
                 let im = im.clone();
                 let def = sigma.get(&im).unwrap();

@@ -20,6 +20,7 @@ use swc_ecma_codegen::Emitter;
 use crate::codegen::{mangle_hkt, Target};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
+use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::Explicit;
@@ -112,6 +113,25 @@ impl Ecma {
             })),
             prop: MemberProp::Ident(Self::str_ident(loc, n)),
         }))
+    }
+
+    fn app(
+        &mut self,
+        sigma: &Sigma,
+        loc: Loc,
+        f: &Term,
+        i: &ArgInfo,
+        x: &Term,
+    ) -> Result<Expr, Error> {
+        match i {
+            UnnamedExplicit => Ok(Expr::Call(CallExpr {
+                span: loc.into(),
+                callee: Callee::Expr(Box::new(self.expr(sigma, loc, f)?)),
+                args: self.untuple_args(sigma, loc, x)?,
+                type_args: None,
+            })),
+            _ => self.expr(sigma, loc, f),
+        }
     }
 
     fn bin_expr(
@@ -342,14 +362,12 @@ impl Ecma {
                 _ => self.expr(sigma, loc, b)?,
             },
 
-            App(f, i, x) => match i {
-                UnnamedExplicit => Expr::Call(CallExpr {
-                    span: loc.into(),
-                    callee: Callee::Expr(Box::new(self.expr(sigma, loc, f)?)),
-                    args: self.untuple_args(sigma, loc, x)?,
-                    type_args: None,
-                }),
-                _ => self.expr(sigma, loc, f)?,
+            App(f, i, x) => match f.as_ref() {
+                // Access(l, s) => match l.as_ref() {
+                //     Lookup(o) => todo!(),
+                //     _ => self.app(sigma, loc, f, i, x)?,
+                // },
+                _ => self.app(sigma, loc, f, i, x)?,
             },
             TT => Expr::Ident(Self::undefined()),
             False => Expr::Lit(Lit::Bool(Bool {
@@ -383,7 +401,7 @@ impl Ecma {
                 value: Box::new(BigIntValue::from_str(v).unwrap()),
                 raw: None,
             })),
-            Obj(f) => match &**f {
+            Obj(f) => match f.as_ref() {
                 Fields(fields) => {
                     let mut props = Vec::default();
                     for (name, tm) in fields {
@@ -416,7 +434,7 @@ impl Ecma {
                 ],
             }),
             Access(a, n) => self.access(sigma, loc, a, n)?,
-            Downcast(a, f) => match &**f {
+            Downcast(a, f) => match f.as_ref() {
                 Fields(fields) => {
                     let mut props = Vec::default();
                     for name in fields.keys() {
@@ -432,7 +450,7 @@ impl Ecma {
                 }
                 _ => unreachable!(),
             },
-            Variant(f) => match &**f {
+            Variant(f) => match f.as_ref() {
                 Fields(fields) => {
                     let (name, tm) = fields.iter().next().unwrap();
                     Expr::Object(ObjectLit {
@@ -524,7 +542,7 @@ impl Ecma {
                 raw: None,
             })),
             Lookup(a) => {
-                match &**a {
+                match a.as_ref() {
                     Vp(r, ts) if !ts.is_empty() => {
                         let meths = self.vtbl.get(r).unwrap().clone();
                         self.vtbl.insert(mangle_hkt(loc, r, ts)?, meths);

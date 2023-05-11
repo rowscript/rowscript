@@ -107,7 +107,7 @@ fn parse_outfile(file: &Path) -> Result<(), Error> {
     let mut parser = Parser::new_from(Lexer::new(
         Syntax::Es(Default::default()),
         Default::default(),
-        StringInput::from(&*file),
+        StringInput::from(file.as_ref()),
         None,
     ));
 
