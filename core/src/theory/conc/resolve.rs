@@ -5,7 +5,7 @@ use crate::theory::abs::def::{Body, ImplementsBody};
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::conc::load::{Import, ImportedDefs, Loaded};
-use crate::theory::{Param, RawNameSet, Tele, Var, CTOR};
+use crate::theory::{Param, RawNameSet, Tele, Var, CTOR, UNBOUND};
 use crate::Error;
 use crate::Error::UnresolvedVar;
 
@@ -81,7 +81,9 @@ impl<'a> Resolver<'a> {
     ) -> Result<Vec<Def<Expr>>, Error> {
         let mut ret = Vec::default();
         for d in defs {
-            names.var(d.loc, &d.name)?;
+            if d.name.as_str() != UNBOUND {
+                names.var(d.loc, &d.name)?;
+            }
             ret.push(self.def(d)?);
         }
         Ok(ret)

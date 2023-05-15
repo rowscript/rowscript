@@ -1,14 +1,26 @@
 function log(msg: string);
 
-class Foo {
+class A {
     name: string;
     init { return log(this.name) }
     hello() { return log("hi") }
 }
 
-function f() {
-    let a = new Foo("John");
+function f0() {
+    let a = new A("John");
     return a.hello()
 }
 
-f();
+class B<T> {
+    name: T;
+    init { return log("hello") }
+    hello() { return log("hi") }
+}
+
+function f1() {
+    let a = new B("John");
+    return a.hello()
+}
+
+f0();
+f1();

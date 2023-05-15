@@ -24,7 +24,7 @@ use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::Explicit;
-use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNTUPLED_RHS};
+use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNBOUND, UNTUPLED_RHS};
 use crate::Error::{NonErasable, UnsolvedMeta};
 use crate::{Error, ModuleFile};
 
@@ -40,7 +40,7 @@ impl From<Loc> for Span {
 
 const JS_LIB: &str = "__lib";
 const JS_LIB_PREFIX: &str = "__lib__";
-const JS_ESCAPED_THIS: &str = "_this";
+const JS_ESCAPED_THIS: &str = "__this";
 const JS_ENUM_TAG: &str = "__enumT";
 const JS_ENUM_VAL: &str = "__enumV";
 const JS_VTBL: &str = "__vtbl";
@@ -362,13 +362,7 @@ impl Ecma {
                 _ => self.expr(sigma, loc, b)?,
             },
 
-            App(f, i, x) => match f.as_ref() {
-                // Access(l, s) => match l.as_ref() {
-                //     Lookup(o) => todo!(),
-                //     _ => self.app(sigma, loc, f, i, x)?,
-                // },
-                _ => self.app(sigma, loc, f, i, x)?,
-            },
+            App(f, i, x) => self.app(sigma, loc, f, i, x)?,
             TT => Expr::Ident(Self::undefined()),
             False => Expr::Lit(Lit::Bool(Bool {
                 span: loc.into(),
@@ -536,28 +530,25 @@ impl Ecma {
                 obj: Box::new(self.expr(sigma, loc, a)?),
                 prop: MemberProp::Ident(Self::special_ident(JS_ENUM_VAL)),
             }),
-            Vp(r, ts) => Expr::Lit(Lit::Str(JsStr {
-                span: loc.into(),
-                value: mangle_hkt(loc, r, ts)?.as_str().into(),
-                raw: None,
-            })),
-            Lookup(a) => {
-                match a.as_ref() {
-                    Vp(r, ts) if !ts.is_empty() => {
-                        let meths = self.vtbl.get(r).unwrap().clone();
-                        self.vtbl.insert(mangle_hkt(loc, r, ts)?, meths);
-                    }
-                    _ => {}
+            Vp(r, ts) => {
+                if !ts.is_empty() {
+                    let meths = self.vtbl.get(r).unwrap().clone();
+                    self.vtbl.insert(mangle_hkt(loc, r, ts)?, meths);
                 }
-                Expr::Member(MemberExpr {
+                Expr::Lit(Lit::Str(JsStr {
                     span: loc.into(),
-                    obj: Box::new(Self::global_vtbl()),
-                    prop: MemberProp::Computed(ComputedPropName {
-                        span: loc.into(),
-                        expr: Box::new(self.expr(sigma, loc, a)?),
-                    }),
-                })
+                    value: mangle_hkt(loc, r, ts)?.as_str().into(),
+                    raw: None,
+                }))
             }
+            Lookup(a) => Expr::Member(MemberExpr {
+                span: loc.into(),
+                obj: Box::new(Self::global_vtbl()),
+                prop: MemberProp::Computed(ComputedPropName {
+                    span: loc.into(),
+                    expr: Box::new(self.expr(sigma, loc, a)?),
+                }),
+            }),
             Find(_, _, f) => return Err(NonErasable(Ref(f.clone()), loc)),
 
             _ => unreachable!(),
@@ -786,20 +777,26 @@ impl Ecma {
         def: &Def<Term>,
         f: &Term,
     ) -> Result<(), Error> {
-        items.push(Self::try_export_decl(
-            def,
-            Decl::Var(Box::new(VarDecl {
+        items.push(match def.name.as_str() {
+            UNBOUND => ModuleItem::Stmt(Stmt::Expr(ExprStmt {
                 span: def.loc.into(),
-                kind: VarDeclKind::Const,
-                declare: false,
-                decls: vec![VarDeclarator {
-                    span: def.loc.into(),
-                    name: Self::ident_pat(def.loc, &def.name),
-                    init: Some(Box::new(self.expr(sigma, def.loc, f)?)),
-                    definite: false,
-                }],
+                expr: Box::new(self.expr(sigma, def.loc, f)?),
             })),
-        ));
+            _ => Self::try_export_decl(
+                def,
+                Decl::Var(Box::new(VarDecl {
+                    span: def.loc.into(),
+                    kind: VarDeclKind::Const,
+                    declare: false,
+                    decls: vec![VarDeclarator {
+                        span: def.loc.into(),
+                        name: Self::ident_pat(def.loc, &def.name),
+                        init: Some(Box::new(self.expr(sigma, def.loc, f)?)),
+                        definite: false,
+                    }],
+                })),
+            ),
+        });
         Ok(())
     }
 

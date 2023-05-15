@@ -61,6 +61,8 @@ pub struct Var {
     name: Name,
 }
 
+pub const UNBOUND: &str = "_";
+
 pub const TUPLED: &str = "_tupled";
 pub const UNTUPLED_RHS: &str = "_untupled_";
 
@@ -78,7 +80,7 @@ impl Var {
     }
 
     pub fn unbound() -> Self {
-        Self::new("_")
+        Self::new(UNBOUND)
     }
 
     pub fn tupled() -> Self {
