@@ -24,7 +24,7 @@ use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::Explicit;
-use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNBOUND, UNTUPLED_RHS};
+use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNBOUND, UNTUPLED_RHS, VPTR};
 use crate::Error::{NonErasable, UnsolvedMeta};
 use crate::{Error, ModuleFile};
 
@@ -134,13 +134,61 @@ impl Ecma {
                     continue;
                 }
             }
-            return Ok(Expr::Call(CallExpr {
-                span: loc.into(),
-                callee: Callee::Expr(Box::new(self.expr(sigma, loc, f)?)),
-                args: self.untuple_args(sigma, loc, x)?,
-                type_args: None,
-            }));
+            break;
         }
+        let callee = match f {
+            Access(l, m) => match l.as_ref() {
+                Lookup(_) => {
+                    // (__x0, __x1) => globalThis.__vtbl[__x0.__vptr].m(__x0, __x1)
+                    let (args, params) = Self::untuple_lazy(loc, x);
+                    let this = args.first().unwrap().clone();
+                    let vp = Expr::Member(MemberExpr {
+                        span: loc.into(),
+                        obj: this.expr,
+                        prop: MemberProp::Ident(Self::special_ident(VPTR)),
+                    });
+                    let vtbl = Expr::Member(MemberExpr {
+                        span: loc.into(),
+                        obj: Box::new(Self::global_vtbl()),
+                        prop: MemberProp::Computed(ComputedPropName {
+                            span: loc.into(),
+                            expr: Box::new(vp),
+                        }),
+                    });
+                    let meth = Expr::Member(MemberExpr {
+                        span: loc.into(),
+                        obj: Box::new(vtbl),
+                        prop: MemberProp::Ident(Self::str_ident(loc, m.as_str())),
+                    });
+                    let call = Expr::Call(CallExpr {
+                        span: loc.into(),
+                        callee: Callee::Expr(Box::new(meth)),
+                        args,
+                        type_args: None,
+                    });
+                    Expr::Paren(ParenExpr {
+                        span: loc.into(),
+                        expr: Box::new(Expr::Arrow(ArrowExpr {
+                            span: loc.into(),
+                            params,
+                            body: Box::new(BlockStmtOrExpr::Expr(Box::new(call))),
+                            is_async: false,
+                            is_generator: false,
+                            type_params: None,
+                            return_type: None,
+                        })),
+                    })
+                }
+                _ => self.expr(sigma, loc, f)?,
+            },
+            _ => self.expr(sigma, loc, f)?,
+        };
+        Ok(Expr::Call(CallExpr {
+            span: loc.into(),
+            callee: Callee::Expr(Box::new(callee)),
+            args: self.untuple_args(sigma, loc, x)?,
+            type_args: None,
+        }))
     }
 
     fn bin_expr(
@@ -200,6 +248,34 @@ impl Ecma {
                 pat,
             })
             .collect()
+    }
+
+    fn untuple_lazy(loc: Loc, mut tm: &Term) -> (Vec<ExprOrSpread>, Vec<Pat>) {
+        use Term::*;
+        let mut args = Vec::default();
+        let mut params = Vec::default();
+        let mut i = 0;
+        loop {
+            match tm {
+                Tuple(_, b) => {
+                    let id = Ident {
+                        span: loc.into(),
+                        sym: format!("__x{i}").into(),
+                        optional: false,
+                    };
+                    args.push(ExprOrSpread {
+                        spread: None,
+                        expr: Box::new(Expr::Ident(id.clone())),
+                    });
+                    params.push(Pat::Ident(BindingIdent { id, type_ann: None }));
+                    tm = b;
+                    i += 1;
+                }
+                TT => break,
+                _ => unreachable!(),
+            }
+        }
+        (args, params)
     }
 
     fn untuple_args(
@@ -550,14 +626,6 @@ impl Ecma {
                     raw: None,
                 }))
             }
-            Lookup(a) => Expr::Member(MemberExpr {
-                span: loc.into(),
-                obj: Box::new(Self::global_vtbl()),
-                prop: MemberProp::Computed(ComputedPropName {
-                    span: loc.into(),
-                    expr: Box::new(self.expr(sigma, loc, a)?),
-                }),
-            }),
             Find(_, _, f) => return Err(NonErasable(Ref(f.clone()), loc)),
 
             _ => unreachable!(),
