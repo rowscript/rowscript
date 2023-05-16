@@ -593,47 +593,49 @@ impl Elaborator {
             }
             Lookup(loc, o, n, arg) => {
                 let o_loc = o.loc();
-                match self.infer(*o.clone(), hint)?.1 {
-                    Term::Object(f) => match *f {
-                        Term::Fields(f) => match f.get(VPTR) {
-                            Some(vp) => match vp {
-                                Term::Vptr(v, _) => {
-                                    let desugared = Box::new(App(
-                                        loc,
-                                        Box::new(App(
-                                            loc,
-                                            Box::new(Access(loc, n)),
-                                            UnnamedExplicit,
-                                            Box::new(App(
-                                                loc,
-                                                Box::new(Resolved(loc, v.clone())),
-                                                UnnamedExplicit,
-                                                Box::new(App(
-                                                    loc,
-                                                    Box::new(Access(loc, VPTR.to_string())),
-                                                    UnnamedExplicit,
-                                                    o.clone(),
-                                                )),
-                                            )),
-                                        )),
-                                        UnnamedExplicit,
-                                        Box::new(Tuple(arg.loc(), o, arg)),
-                                    ));
-                                    self.infer(*desugared, hint)?
-                                }
-                                _ => unreachable!(),
-                            },
-                            None => {
-                                return Err(ExpectedClass(
-                                    Term::Object(Box::new(Term::Fields(f))),
-                                    o_loc,
-                                ));
-                            }
-                        },
-                        tm => return Err(FieldsUnknown(tm, o_loc)),
-                    },
+                let f = match self.infer(*o.clone(), hint)?.1 {
+                    Term::Object(f) => f,
                     tm => return Err(ExpectedClass(tm, o_loc)),
-                }
+                };
+                let f = match *f {
+                    Term::Fields(f) => f,
+                    tm => return Err(FieldsUnknown(tm, o_loc)),
+                };
+                let vp = match f.get(VPTR) {
+                    Some(vp) => vp,
+                    None => {
+                        return Err(ExpectedClass(
+                            Term::Object(Box::new(Term::Fields(f))),
+                            o_loc,
+                        ));
+                    }
+                };
+                let v = match vp {
+                    Term::Vptr(v, _) => v,
+                    _ => unreachable!(),
+                };
+                let desugared = App(
+                    loc,
+                    Box::new(App(
+                        loc,
+                        Box::new(Access(loc, n)),
+                        UnnamedExplicit,
+                        Box::new(App(
+                            loc,
+                            Box::new(Resolved(loc, v.clone())),
+                            UnnamedExplicit,
+                            Box::new(App(
+                                loc,
+                                Box::new(Access(loc, VPTR.to_string())),
+                                UnnamedExplicit,
+                                o.clone(),
+                            )),
+                        )),
+                    )),
+                    UnnamedExplicit,
+                    Box::new(Tuple(arg.loc(), o, arg)),
+                );
+                self.infer(desugared, hint)?
             }
             Vptr(_, r, ts) => {
                 let mut types = Vec::default();
