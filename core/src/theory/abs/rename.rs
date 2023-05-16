@@ -70,7 +70,7 @@ impl Renamer {
                 }
                 Switch(Box::new(a), m)
             }
-            Unionize(a) => Unionize(Box::new(self.term(*a))),
+            Unionify(a) => Unionify(Box::new(self.term(*a))),
             Vptr(r, ts) => Vptr(r, ts.into_iter().map(|t| self.term(t)).collect()),
             Vp(r, ts) => Vp(r, ts.into_iter().map(|t| self.term(t)).collect()),
             Lookup(a) => Lookup(Box::new(self.term(*a))),

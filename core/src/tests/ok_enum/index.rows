@@ -21,12 +21,12 @@ function f3(): number { return f2() }
 
 function f4() {
     let a: WriteOptions = WritePath({path: "foo.txt"});
-    return write(unionize(a))
+    return write(unionify(a))
 }
 
 function getData(): [Age: number | Name: string];
 function setData(data: [Age: number | Name: string]);
 
 function f5() {
-    return setData(unionize(getData()))
+    return setData(unionify(getData()))
 }

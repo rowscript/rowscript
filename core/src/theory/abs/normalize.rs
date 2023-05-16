@@ -262,7 +262,7 @@ impl<'a> Normalizer<'a> {
                     _ => Switch(a, self.case_map(cs)?),
                 }
             }
-            Unionize(a) => Unionize(self.term_box(a)?),
+            Unionify(a) => Unionify(self.term_box(a)?),
             Vptr(r, ts) => {
                 let types = ts
                     .into_iter()

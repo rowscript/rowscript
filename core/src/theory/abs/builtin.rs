@@ -52,10 +52,10 @@ fn tuple_args_body(mut args: Tele<Term>, mut body: Term) -> (Tele<Term>, Term) {
 }
 
 pub fn all_builtins() -> [Def<Term>; 3] {
-    [unionize(), number_add(), number_sub()]
+    [unionify(), number_add(), number_sub()]
 }
 
-fn unionize() -> Def<Term> {
+fn unionify() -> Def<Term> {
     let r = Var::new("'R");
     let a = Var::new("a");
     let mut tele = vec![implicit_param(r.clone(), Term::Row)];
@@ -64,12 +64,12 @@ fn unionize() -> Def<Term> {
             a.clone(),
             Term::Enum(Box::new(Term::Ref(r.clone()))),
         )],
-        Term::Unionize(Box::new(Term::Ref(a))),
+        Term::Unionify(Box::new(Term::Ref(a))),
     );
     tele.extend(tupled_tele);
     Def {
         loc: Default::default(),
-        name: Var::new("unionize"),
+        name: Var::new("unionify"),
         tele,
         ret: Box::new(Term::Enum(Box::new(Term::Ref(r)))),
         body: Body::Fn(body),

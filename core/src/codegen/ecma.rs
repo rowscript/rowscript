@@ -525,7 +525,7 @@ impl Ecma {
                     type_args: None,
                 })
             }
-            Unionize(a) => Expr::Member(MemberExpr {
+            Unionify(a) => Expr::Member(MemberExpr {
                 span: loc.into(),
                 obj: Box::new(self.expr(sigma, loc, a)?),
                 prop: MemberProp::Ident(Self::special_ident(JS_ENUM_VAL)),

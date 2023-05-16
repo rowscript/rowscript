@@ -102,7 +102,7 @@ pub enum Term {
     Variant(Box<Self>),
     Upcast(Box<Self>, Box<Self>),
     Switch(Box<Self>, CaseMap),
-    Unionize(Box<Self>),
+    Unionify(Box<Self>),
 
     Vptr(Var, Vec<Self>),
     Vp(String, Vec<Self>),
@@ -206,7 +206,7 @@ impl Display for Term {
                             .join("\n")
                     )
                 }
-                Unionize(a) => format!("unionize({a})"),
+                Unionify(a) => format!("unionify({a})"),
                 Vptr(r, ts) => format!(
                     "vptr@{r}<{}>",
                     ts.iter()
