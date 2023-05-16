@@ -8,7 +8,8 @@
   },
   "optionalDependencies": {
     "@rows/cli-darwin-x64": "1.0.0-alpha.1",
-    "@rows/cli-linux-x64": "1.0.0-alpha.1"
+    "@rows/cli-linux-x64": "1.0.0-alpha.1",
+    "@rows/cli-win32-x64": "1.0.0-alpha.1"
   },
   "repository": {
     "type": "git",
