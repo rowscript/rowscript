@@ -119,18 +119,27 @@ impl Ecma {
         &mut self,
         sigma: &Sigma,
         loc: Loc,
-        f: &Term,
+        mut f: &Term,
         i: &ArgInfo,
         x: &Term,
     ) -> Result<Expr, Error> {
-        match i {
-            UnnamedExplicit => Ok(Expr::Call(CallExpr {
+        use Term::*;
+        if !matches!(i, UnnamedExplicit) {
+            unreachable!()
+        }
+        loop {
+            if let App(ff, ii, _) = f {
+                if !matches!(ii, UnnamedExplicit) {
+                    f = ff;
+                    continue;
+                }
+            }
+            return Ok(Expr::Call(CallExpr {
                 span: loc.into(),
                 callee: Callee::Expr(Box::new(self.expr(sigma, loc, f)?)),
                 args: self.untuple_args(sigma, loc, x)?,
                 type_args: None,
-            })),
-            _ => self.expr(sigma, loc, f),
+            }));
         }
     }
 
