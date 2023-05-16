@@ -20,6 +20,10 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Run clippy
         run: cargo clippy --all
-        # FIXME: All tests are based on filesystem for now, Miri is not usable here.
-#      - name: Test with Miri
-#        run: cargo miri test --release
+      # FIXME: All tests are based on filesystem for now, Miri is not usable here.
+      #- name: Test with Miri
+      #  run: cargo miri test --release
+      - name: Build
+        run: cargo build --release --verbose
+      - name: Run tests
+        run: cargo test --verbose

@@ -1,0 +1,50 @@
+name: Release
+on:
+  push:
+    tags:
+      - v*
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build --release --verbose
+      - name: Run tests
+        run: cargo test --verbose
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: rowscript
+          path: target/release/rowscript
+          retention-days: 1
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build --release --verbose
+      - name: Run tests
+        run: cargo test --verbose
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: rowscript
+          path: target/release/rowscript
+          retention-days: 1
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build --release --verbose
+      - name: Run tests
+        run: cargo test --verbose
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: rowscript
+          path: target/release/rowscript
+          retention-days: 1
