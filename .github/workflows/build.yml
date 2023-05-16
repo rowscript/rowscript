@@ -1,4 +1,4 @@
-name: Check
+name: Build
 on:
   push:
     branches: [ "main" ]

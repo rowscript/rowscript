@@ -6,8 +6,7 @@
 RowScript
 </h1>
 
-![Rust Build](https://github.com/rowscript/rowscript/actions/workflows/build.yml/badge.svg)
-![Rust Check](https://github.com/rowscript/rowscript/actions/workflows/check.yml/badge.svg)
+![Build](https://github.com/rowscript/rowscript/actions/workflows/build.yml/badge.svg)
 
 RowScript is a robustly-typed functional language that compiles to efficient and reliable JavaScript.
 

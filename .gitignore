@@ -2,7 +2,7 @@
 .vscode/
 .idea/
 
-/cli/releases/*/rowscript
+/cli/releases/*/rowscript*
 *.vsix
 
 ### Rust ###
