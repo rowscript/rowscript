@@ -1,6 +1,6 @@
 {
   "name": "rowscript",
-  "version": "1.0.0-alpha.2",
+  "version": "1.0.0-alpha.3",
   "description": "RowScript programming language",
   "scripts": {
     "build": "cargo build --release",
@@ -14,9 +14,9 @@
   ],
   "bin": "cli/npm/index.js",
   "optionalDependencies": {
-    "@rowscript/cli-darwin-x64": "1.0.0-alpha.2",
-    "@rowscript/cli-linux-x64": "1.0.0-alpha.2",
-    "@rowscript/cli-win32-x64": "1.0.0-alpha.2"
+    "@rowscript/cli-darwin-x64": "1.0.0-alpha.3",
+    "@rowscript/cli-linux-x64": "1.0.0-alpha.3",
+    "@rowscript/cli-win32-x64": "1.0.0-alpha.3"
   },
   "repository": {
     "type": "git",
