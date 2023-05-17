@@ -1,15 +1,22 @@
 {
   "name": "rowscript",
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "description": "RowScript programming language",
   "scripts": {
     "build": "cargo build --release",
     "prepublish": "npm run build && env ROWS_PRELUDE_DIR=core/prelude ./target/release/rowscript ./std"
   },
+  "files": [
+    "api/",
+    "cli/npm/index.js",
+    "std/",
+    "core/prelude/"
+  ],
+  "bin": "cli/npm/index.js",
   "optionalDependencies": {
-    "@rowscript/cli-darwin-x64": "1.0.0-alpha.1",
-    "@rowscript/cli-linux-x64": "1.0.0-alpha.1",
-    "@rowscript/cli-win32-x64": "1.0.0-alpha.1"
+    "@rowscript/cli-darwin-x64": "1.0.0-alpha.2",
+    "@rowscript/cli-linux-x64": "1.0.0-alpha.2",
+    "@rowscript/cli-win32-x64": "1.0.0-alpha.2"
   },
   "repository": {
     "type": "git",

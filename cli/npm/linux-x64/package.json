@@ -1,17 +1,11 @@
 {
-  "name": "@rowscript/cli-win32-x64",
-  "version": "1.0.0-alpha.1",
+  "name": "@rowscript/cli-linux-x64",
+  "version": "1.0.0-alpha.2",
   "os": [
-    "win32"
+    "linux"
   ],
   "cpu": [
     "x64"
-  ],
-  "bin": {
-    "rowscript": "./rowscript.exe"
-  },
-  "files": [
-    "./rowscript.exe"
   ],
   "repository": {
     "type": "git",
