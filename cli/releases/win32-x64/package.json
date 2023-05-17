@@ -1,5 +1,5 @@
 {
-  "name": "@rows/cli-win32-x64",
+  "name": "@rowscript/cli-win32-x64",
   "version": "1.0.0-alpha.1",
   "os": [
     "win32"

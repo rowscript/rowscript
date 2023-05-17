@@ -2,9 +2,9 @@ from web import { fetch };
 import node;
 from orm import _;
 
-from @rows/react import { Element };
-import @rows/react.router;
-from @rows/react.state import _;
+from @rowscript/react import { Element };
+import @rowscript/react.router;
+from @rowscript/react.state import _;
 
 from .a import { a };
 import .b;
@@ -14,7 +14,7 @@ function f0() {
     return a()
 }
 
-function f1(): @rows/react::router::Route {
+function f1(): @rowscript/react::router::Route {
     return {path: "/home"}
 }
 

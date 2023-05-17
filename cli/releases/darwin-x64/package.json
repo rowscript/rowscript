@@ -1,5 +1,5 @@
 {
-  "name": "@rows/cli-darwin-x64",
+  "name": "@rowscript/cli-darwin-x64",
   "version": "1.0.0-alpha.1",
   "os": [
     "darwin"
