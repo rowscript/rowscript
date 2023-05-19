@@ -49,16 +49,22 @@ jobs:
           path: target/release/rowscript
           retention-days: 1
   macos-arm64:
-    runs-on: macos-arm64
+    runs-on: macos-11.0
     steps:
       - uses: actions/checkout@v3
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          target: aarch64-apple-darwin
       - name: Build
-        run: cargo build --release --verbose
+        run: cargo build --release --verbose --target aarch64-apple-darwin
       - name: Run tests
-        run: cargo test --verbose
+        run: cargo test --verbose --target aarch64-apple-darwin
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: rowscript-macos
+          name: rowscript-macos-arm64
           path: target/release/rowscript
           retention-days: 1
