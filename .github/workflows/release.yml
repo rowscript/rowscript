@@ -1,8 +1,8 @@
 name: Release
 on:
   push:
-    tags:
-      - v*
+    branches:
+      - main
 env:
   CARGO_TERM_COLOR: always
 jobs:
@@ -36,6 +36,20 @@ jobs:
           retention-days: 1
   macos:
     runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build --release --verbose
+      - name: Run tests
+        run: cargo test --verbose
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: rowscript-macos
+          path: target/release/rowscript
+          retention-days: 1
+  macos-arm64:
+    runs-on: macos-arm64
     steps:
       - uses: actions/checkout@v3
       - name: Build
