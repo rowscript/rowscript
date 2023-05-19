@@ -1,0 +1,13 @@
+function f0(): number {
+    let a = {n: 42};
+    a.n = 69;
+    return a.n
+}
+
+function f1(): number {
+    let a = {n: 1};
+    return if (true) { a.m = 2; a.m } else { 3 }
+}
+
+const a = f0();
+const b = f1();

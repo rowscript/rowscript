@@ -777,6 +777,22 @@ impl Trans {
                     Box::new(self.fn_body(l.next().unwrap())),
                 )
             }
+            Rule::fn_body_object_assign => {
+                let mut pairs = p.into_inner();
+                let a = pairs.next().unwrap();
+                let a_loc = Loc::from(a.as_span());
+                let a_var = Var::from(a);
+                let n = pairs.next().unwrap();
+                let n_loc = Loc::from(n.as_span());
+                let fields = vec![(n.as_str().to_string(), self.expr(pairs.next().unwrap()))];
+                let expr = Concat(
+                    loc,
+                    Box::new(Unresolved(a_loc, None, a_var.clone())),
+                    Box::new(Obj(n_loc, Box::new(Fields(n_loc, fields)))),
+                );
+                let body = self.fn_body(pairs.next().unwrap());
+                Let(loc, a_var, None, Box::new(expr), Box::new(body))
+            }
             Rule::fn_body_ret => p.into_inner().next().map_or(TT(loc), |e| self.expr(e)),
             _ => unreachable!(),
         }
@@ -980,6 +996,22 @@ impl Trans {
                     Box::new(self.expr(l.next().unwrap())),
                     Box::new(self.branch(l.next().unwrap())),
                 )
+            }
+            Rule::branch_object_assign => {
+                let mut pairs = p.into_inner();
+                let a = pairs.next().unwrap();
+                let a_loc = Loc::from(a.as_span());
+                let a_var = Var::from(a);
+                let n = pairs.next().unwrap();
+                let n_loc = Loc::from(n.as_span());
+                let fields = vec![(n.as_str().to_string(), self.expr(pairs.next().unwrap()))];
+                let expr = Concat(
+                    loc,
+                    Box::new(Unresolved(a_loc, None, a_var.clone())),
+                    Box::new(Obj(n_loc, Box::new(Fields(n_loc, fields)))),
+                );
+                let body = self.branch(pairs.next().unwrap());
+                Let(loc, a_var, None, Box::new(expr), Box::new(body))
             }
             Rule::expr => self.expr(p),
             _ => unreachable!(),

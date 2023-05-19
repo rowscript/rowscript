@@ -342,7 +342,7 @@ impl Ecma {
     ) -> Result<Stmt, Error> {
         Ok(Stmt::Decl(Decl::Var(Box::new(VarDecl {
             span: loc.into(),
-            kind: VarDeclKind::Const,
+            kind: VarDeclKind::Var,
             declare: false,
             decls: vec![VarDeclarator {
                 span: loc.into(),

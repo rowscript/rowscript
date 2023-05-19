@@ -296,10 +296,12 @@ boolean_if =
 branch =
   { branch_let
   | branch_unit_let
+  | branch_object_assign
   | expr
   }
 branch_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" ~ branch }
 branch_unit_let = { expr ~ ";" ~ branch }
+branch_object_assign = { let_id ~ "." ~ prop_id ~ "=" ~ expr ~ ";" ~ branch }
 new_expr = { "new" ~ tyref ~ ("<" ~ type_args ~ ">")? ~ args }
 method_app = { ("(" ~ expr ~ ")" | idref) ~ "." ~ prop_id ~ args+ }
 rev_app = { ("(" ~ expr ~ ")" | idref) ~ rev_app_callee+ }
@@ -378,10 +380,12 @@ fn_body_block = _{ "{" ~ fn_body ~ "}" }
 fn_body =
   { fn_body_let
   | fn_body_unit_let
+  | fn_body_object_assign
   | fn_body_ret
   }
 fn_body_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" ~ fn_body }
 fn_body_unit_let = { expr ~ ";" ~ fn_body }
+fn_body_object_assign = { let_id ~ "." ~ prop_id ~ "=" ~ expr ~ ";" ~ fn_body }
 fn_body_ret = { "return" ~ expr? }
 
 fn_postulate =
