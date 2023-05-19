@@ -34,7 +34,7 @@ jobs:
           name: rowscript-windows.exe
           path: target/release/rowscript.exe
           retention-days: 1
-  macos:
+  macos-x86_64:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
@@ -45,11 +45,11 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: rowscript-macos
+          name: rowscript-macos-x86_64
           path: target/release/rowscript
           retention-days: 1
   macos-arm64:
-    runs-on: macos-11.0
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
       - name: Set up Rust toolchain
@@ -59,9 +59,9 @@ jobs:
           override: true
           target: aarch64-apple-darwin
       - name: Build
-        run: cargo build --release --verbose --target aarch64-apple-darwin
+        run: cargo build --release --verbose
       - name: Run tests
-        run: cargo test --verbose --target aarch64-apple-darwin
+        run: cargo test --verbose
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
