@@ -20,7 +20,7 @@ jobs:
           name: rowscript-ubuntu
           path: target/release/rowscript
           retention-days: 1
-  windows:
+  win32:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
@@ -31,10 +31,10 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: rowscript-windows.exe
+          name: rowscript-win32.exe
           path: target/release/rowscript.exe
           retention-days: 1
-  macos-x86_64:
+  darwin-x64:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
@@ -45,10 +45,10 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: rowscript-macos-x86_64
+          name: rowscript-darwin-x64
           path: target/release/rowscript
           retention-days: 1
-  macos-arm64:
+  darwin-arm64:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
@@ -65,6 +65,6 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: rowscript-macos-arm64
+          name: rowscript-darwin-arm64
           path: target/release/rowscript
           retention-days: 1
