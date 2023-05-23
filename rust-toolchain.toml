@@ -1,0 +1,4 @@
+[toolchain]
+channel = "stable-2023-04-20"
+components = [ "rustfmt", "clippy", "cargo", "rust-std", "llvm-tools", "rust"]
+profile = "minimal"
