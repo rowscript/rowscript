@@ -11,11 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Install Miri
-        run: |
-          rustup toolchain install nightly --component miri rustfmt clippy
-          rustup override set nightly
-          cargo miri setup
       - name: Run rustfmt
         run: cargo fmt --all -- --check
       - name: Run clippy
