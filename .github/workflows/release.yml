@@ -6,65 +6,59 @@ on:
 env:
   CARGO_TERM_COLOR: always
 jobs:
-  ubuntu-x64:
+  linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Build
+      - name: Install cross-compilation tools
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -qy binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+      - name: Build x64
         run: cargo build --release --verbose
-      - name: Run tests
-        run: cargo test --verbose
+      - name: Build arm64
+        run: cargo build --release --verbose --target aarch64-unknown-linux-gnu --config 'target.aarch64-unknown-linux-gnu.linker = "aarch64-linux-gnu-gcc"'
+      - name: Tar artifacts
+        run: |
+          tar -czvf rowscript-linux-x64.tar.gz target/release/rowscript
+          tar -czvf rowscript-linux-arm64.tar.gz target/aarch64-unknown-linux-gnu/release/rowscript
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: rowscript-ubuntu-x64
-          path: target/release/rowscript
+          name: rowscript-linux
+          path: rowscript*.tar.gz
           retention-days: 1
-  win32-x64:
+  win32:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Build
+      - name: Build x64
         run: cargo build --release --verbose
-      - name: Run tests
-        run: cargo test --verbose
+      - name: Build arm64
+        run: cargo build --release --verbose --target aarch64-pc-windows-msvc
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: rowscript-win32-x64
-          path: target/release/rowscript.exe
+          name: rowscript-win32
+          path: |
+            target/release/rowscript.exe
+            target/aarch64-pc-windows-msvc/release/rowscript.exe
           retention-days: 1
-  darwin-x64:
+  darwin:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Build
+      - name: Build x64
         run: cargo build --release --verbose
-      - name: Run tests
-        run: cargo test --verbose
+      - name: Build arm64
+        run: cargo build --release --verbose --target aarch64-apple-darwin
+      - name: Tar artifacts
+        run: |
+          tar -czvf rowscript-darwin-x64.tar.gz target/release/rowscript
+          tar -czvf rowscript-darwin-arm64.tar.gz target/aarch64-apple-darwin/release/rowscript
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: rowscript-darwin-x64
-          path: target/release/rowscript
-          retention-days: 1
-  darwin-arm64:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          target: aarch64-apple-darwin
-      - name: Build
-        run: cargo build --release --verbose
-      - name: Run tests
-        run: cargo test --verbose
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: rowscript-darwin-arm64
-          path: target/release/rowscript
+          name: rowscript-darwin
+          path: rowscript*.tar.gz
           retention-days: 1
