@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Initialize Rustup
+        run: |
+          rustup toolchain install stable --component rustfmt clippy --profile minimal --force
       - name: Run rustfmt
         run: cargo fmt --all -- --check
       - name: Run clippy
