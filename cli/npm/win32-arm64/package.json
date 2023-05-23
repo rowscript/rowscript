@@ -1,0 +1,17 @@
+{
+  "name": "@rowscript/cli-win32-arm64",
+  "version": "1.0.0-alpha.4",
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rowscript/rowscript.git"
+  },
+  "author": "RowScript developers",
+  "license": "MIT",
+  "homepage": "https://rowscript-lang.org"
+}

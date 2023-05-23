@@ -15,8 +15,11 @@
   "bin": "cli/npm/index.js",
   "optionalDependencies": {
     "@rowscript/cli-darwin-x64": "1.0.0-alpha.4",
+    "@rowscript/cli-darwin-arm64": "1.0.0-alpha.4",
     "@rowscript/cli-linux-x64": "1.0.0-alpha.4",
-    "@rowscript/cli-win32-x64": "1.0.0-alpha.4"
+    "@rowscript/cli-linux-arm64": "1.0.0-alpha.4",
+    "@rowscript/cli-win32-x64": "1.0.0-alpha.4",
+    "@rowscript/cli-win32-arm64": "1.0.0-alpha.4"
   },
   "repository": {
     "type": "git",
