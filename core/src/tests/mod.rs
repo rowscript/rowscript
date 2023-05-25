@@ -41,6 +41,7 @@ mod ok_interface_stuck;
 mod ok_issue75;
 mod ok_issue78;
 mod ok_modsys;
+mod ok_num_add;
 mod ok_object;
 mod ok_object_assign;
 mod ok_object_rowpoly;

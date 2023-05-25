@@ -3,7 +3,7 @@ use crate::theory::abs::def::{Body, Def};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Param, Tele, Var};
 
-fn implicit_param(var: Var, typ: Term) -> Param<Term> {
+fn implicit(var: Var, typ: Term) -> Param<Term> {
     Param {
         var,
         info: Implicit,
@@ -11,7 +11,7 @@ fn implicit_param(var: Var, typ: Term) -> Param<Term> {
     }
 }
 
-fn explicit_param(var: Var, typ: Term) -> Param<Term> {
+fn explicit(var: Var, typ: Term) -> Param<Term> {
     Param {
         var,
         info: Explicit,
@@ -19,36 +19,16 @@ fn explicit_param(var: Var, typ: Term) -> Param<Term> {
     }
 }
 
-fn tuple_args_body(mut args: Tele<Term>, mut body: Term) -> (Tele<Term>, Term) {
-    let param_var = Var::tupled();
-    let mut param_typ = Term::Unit;
-
-    for p in args.iter().rev() {
-        param_typ = Term::Sigma(p.clone(), Box::new(param_typ));
+fn tuple_params<const N: usize>(var: Var, tele: [Param<Term>; N]) -> Tele<Term> {
+    let mut ty = Term::Unit;
+    for x in tele.into_iter().rev() {
+        ty = Term::Sigma(x, Box::new(ty));
     }
-    args.push(Param {
-        var: param_var.clone(),
+    vec![Param {
+        var,
         info: Explicit,
-        typ: Box::new(Term::Unit),
-    });
-    args.reverse();
-
-    for i in 0..args.len() - 1 {
-        let lhs = args.get(i + 1).unwrap().clone();
-        let mut rhs = args.get(i).unwrap().clone();
-        let tm = Box::new(Term::Ref(rhs.var.clone()));
-        rhs.var = lhs.var.untupled_rhs();
-        body = Term::TupleLet(lhs, rhs, tm, Box::new(body));
-    }
-
-    (
-        vec![Param {
-            var: param_var,
-            info: Explicit,
-            typ: Box::new(param_typ),
-        }],
-        body,
-    )
+        typ: Box::new(ty),
+    }]
 }
 
 pub fn all_builtins() -> [Def<Term>; 3] {
@@ -57,59 +37,99 @@ pub fn all_builtins() -> [Def<Term>; 3] {
 
 fn unionify() -> Def<Term> {
     let r = Var::new("'R");
-    let a = Var::new("a");
-    let mut tele = vec![implicit_param(r.clone(), Term::Row)];
-    let (tupled_tele, body) = tuple_args_body(
-        vec![explicit_param(
-            a.clone(),
-            Term::Enum(Box::new(Term::Ref(r.clone()))),
-        )],
-        Term::Unionify(Box::new(Term::Ref(a))),
-    );
+    let a_ty = Term::Enum(Box::new(Term::Ref(r.clone())));
+    let tupled = Var::tupled();
+    let mut tele = vec![implicit(r, Term::Row)];
+    let tupled_tele = tuple_params(tupled.clone(), [explicit(Var::new("a"), a_ty.clone())]);
+    let untupled_a = Var::new("a");
+    let body = Body::Fn(Term::TupleLet(
+        explicit(untupled_a.clone(), a_ty.clone()),
+        explicit(Var::unbound(), Term::Unit),
+        Box::new(Term::Ref(tupled)),
+        Box::new(Term::Unionify(Box::new(Term::Ref(untupled_a)))),
+    ));
     tele.extend(tupled_tele);
     Def {
         loc: Default::default(),
         name: Var::new("unionify"),
         tele,
-        ret: Box::new(Term::Enum(Box::new(Term::Ref(r)))),
-        body: Body::Fn(body),
+        ret: Box::new(a_ty),
+        body,
     }
 }
 
 fn number_add() -> Def<Term> {
-    let a = Var::new("a");
     let b = Var::new("b");
-    let (tele, body) = tuple_args_body(
-        vec![
-            explicit_param(a.clone(), Term::Number),
-            explicit_param(b.clone(), Term::Number),
-        ],
-        Term::NumAdd(Box::new(Term::Ref(a)), Box::new(Term::Ref(b))),
-    );
+    let tupled = Var::tupled();
+    let untupled_a = Var::new("a");
+    let untupled_a_rhs = Var::new("a").untupled_rhs();
+    let untupled_b = Var::new("b");
+    let body = Body::Fn(Term::TupleLet(
+        explicit(untupled_a.clone(), Term::Number),
+        explicit(
+            untupled_a_rhs.clone(),
+            Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
+        ),
+        Box::new(Term::Ref(tupled.clone())),
+        Box::new(Term::TupleLet(
+            explicit(untupled_b.clone(), Term::Number),
+            explicit(Var::unbound(), Term::Unit),
+            Box::new(Term::Ref(untupled_a_rhs)),
+            Box::new(Term::NumAdd(
+                Box::new(Term::Ref(untupled_a)),
+                Box::new(Term::Ref(untupled_b)),
+            )),
+        )),
+    ));
     Def {
         loc: Default::default(),
         name: Var::new("number#__add__"),
-        tele,
+        tele: tuple_params(
+            tupled,
+            [
+                explicit(Var::new("a"), Term::Number),
+                explicit(b, Term::Number),
+            ],
+        ),
         ret: Box::new(Term::Number),
-        body: Body::Fn(body),
+        body,
     }
 }
 
 fn number_sub() -> Def<Term> {
-    let a = Var::new("a");
     let b = Var::new("b");
-    let (tele, body) = tuple_args_body(
-        vec![
-            explicit_param(a.clone(), Term::Number),
-            explicit_param(b.clone(), Term::Number),
-        ],
-        Term::NumSub(Box::new(Term::Ref(a)), Box::new(Term::Ref(b))),
-    );
+    let tupled = Var::tupled();
+    let untupled_a = Var::new("a");
+    let untupled_a_rhs = Var::new("a").untupled_rhs();
+    let untupled_b = Var::new("b");
+    let body = Body::Fn(Term::TupleLet(
+        explicit(untupled_a.clone(), Term::Number),
+        explicit(
+            untupled_a_rhs.clone(),
+            Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
+        ),
+        Box::new(Term::Ref(tupled.clone())),
+        Box::new(Term::TupleLet(
+            explicit(untupled_b.clone(), Term::Number),
+            explicit(Var::unbound(), Term::Unit),
+            Box::new(Term::Ref(untupled_a_rhs)),
+            Box::new(Term::NumSub(
+                Box::new(Term::Ref(untupled_a)),
+                Box::new(Term::Ref(untupled_b)),
+            )),
+        )),
+    ));
     Def {
         loc: Default::default(),
         name: Var::new("number#__sub__"),
-        tele,
+        tele: tuple_params(
+            tupled,
+            [
+                explicit(Var::new("a"), Term::Number),
+                explicit(b, Term::Number),
+            ],
+        ),
         ret: Box::new(Term::Number),
-        body: Body::Fn(body),
+        body,
     }
 }

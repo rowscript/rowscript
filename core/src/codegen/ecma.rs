@@ -24,7 +24,7 @@ use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::Explicit;
-use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNBOUND, UNTUPLED_RHS, VPTR};
+use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNBOUND, UNTUPLED_RHS_PREFIX, VPTR};
 use crate::Error::{NonErasable, UnsolvedMeta};
 use crate::{Error, ModuleFile};
 
@@ -365,7 +365,9 @@ impl Ecma {
             use Term::*;
             loop {
                 match tm {
-                    TupleLet(_, q, _, b) if q.var.as_str().starts_with(UNTUPLED_RHS) => tm = b,
+                    TupleLet(_, q, _, b) if q.var.as_str().starts_with(UNTUPLED_RHS_PREFIX) => {
+                        tm = b
+                    }
                     _ => break,
                 }
             }

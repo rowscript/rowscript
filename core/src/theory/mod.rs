@@ -63,8 +63,8 @@ pub struct Var {
 
 pub const UNBOUND: &str = "_";
 
-pub const TUPLED: &str = "_tupled";
-pub const UNTUPLED_RHS: &str = "_untupled_";
+pub const TUPLED: &str = "__tupled";
+pub const UNTUPLED_RHS_PREFIX: &str = "__untupled_";
 
 pub const CTOR: &str = "__new";
 pub const VPTR: &str = "__vptr";
@@ -92,7 +92,7 @@ impl Var {
     }
 
     pub fn untupled_rhs(&self) -> Self {
-        Self::new(format!("{UNTUPLED_RHS}{self}"))
+        Self::new(format!("{UNTUPLED_RHS_PREFIX}{self}"))
     }
 
     pub fn method(&self, m: Self) -> Self {
