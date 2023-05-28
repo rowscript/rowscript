@@ -31,8 +31,8 @@ fn tuple_params<const N: usize>(var: Var, tele: [Param<Term>; N]) -> Tele<Term> 
     }]
 }
 
-pub fn all_builtins() -> [Def<Term>; 3] {
-    [unionify(), number_add(), number_sub()]
+pub fn all_builtins() -> [Def<Term>; 4] {
+    [unionify(), reflect(), number_add(), number_sub()]
 }
 
 fn unionify() -> Def<Term> {
@@ -55,6 +55,17 @@ fn unionify() -> Def<Term> {
         tele,
         ret: Box::new(a_ty),
         body,
+    }
+}
+
+fn reflect() -> Def<Term> {
+    let t = Var::new("T");
+    Def {
+        loc: Default::default(),
+        name: Var::new("Reflect"),
+        tele: vec![implicit(t.clone(), Term::Univ)],
+        ret: Box::new(Term::Univ),
+        body: Body::Fn(Term::Reflect(Box::new(Term::Ref(t)))),
     }
 }
 

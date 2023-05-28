@@ -1,0 +1,4 @@
+interface Reflector for T {
+    reflect(t: T): Reflect<T>;
+    unreflect(r: Reflect<T>): T;
+}

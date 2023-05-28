@@ -149,12 +149,10 @@ idref =
   | this_id
   }
 builtin =
-  { unionify
-  | numAdd
+  { numAdd
   | numSub
   | strAdd
   }
-unionify = { "unionify" }
 numAdd = { "number#__add__" }
 numSub = { "number#__sub__" }
 strAdd = { "string#__add__" }
