@@ -7,7 +7,7 @@ use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
-use crate::Error::{UnresolvedField, UnresolvedImplementation};
+use crate::Error::{ExpectedReflectable, UnresolvedField, UnresolvedImplementation};
 
 pub struct Normalizer<'a> {
     sigma: &'a mut Sigma,
@@ -292,6 +292,11 @@ impl<'a> Normalizer<'a> {
                 }
                 Find(ty, i, f)
             }
+            Reflect(a) => match *self.term_box(a)? {
+                Object(r) | Enum(r) => todo!(),
+                Ref(a) => Reflect(Box::new(Ref(a))),
+                a => return Err(ExpectedReflectable(a, self.loc)),
+            },
             tm => tm,
         })
     }

@@ -52,6 +52,7 @@ mod ok_oop_vtbl;
 mod ok_op;
 mod ok_postulate_fn;
 mod ok_postulate_type;
+mod ok_reflect;
 mod ok_rev_app;
 mod ok_typeclassopedia;
 mod ok_typeclassopedia_stuck;

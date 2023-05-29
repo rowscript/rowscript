@@ -62,6 +62,8 @@ pub enum Error {
     UnresolvedImplementation(Term, Loc),
     #[error("expected constraint, got \"{0}\"")]
     ExpectedImplementsOf(Term, Loc),
+    #[error("expected reflectable type, got \"{0}\"")]
+    ExpectedReflectable(Term, Loc),
 
     #[error("expected \"{0}\", found \"{1}\"")]
     NonUnifiable(Term, Term, Loc),
@@ -121,6 +123,7 @@ fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
         ExpectedAlias(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
         UnresolvedImplementation(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
         ExpectedImplementsOf(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
+        ExpectedReflectable(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
 
         NonUnifiable(_, _, loc) => simple_message(&e, loc, UNIFIER_FAILED),
         NonRowSat(_, _, loc) => simple_message(&e, loc, UNIFIER_FAILED),
