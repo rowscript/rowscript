@@ -9,6 +9,14 @@ use crate::theory::{Loc, Param, Var};
 use crate::Error;
 use crate::Error::{ExpectedReflectable, UnresolvedField, UnresolvedImplementation};
 
+pub const FIELD_REP_KIND_NUMBER: &str = "RepKindNumber";
+pub const FIELD_REP_KIND_STRING: &str = "RepKindString";
+pub const FIELD_REP_KIND_BOOLEAN: &str = "RepKindBoolean";
+pub const FIELD_REP_KIND_BIGINT: &str = "RepKindBigint";
+pub const FIELD_REP_KIND_UNIT: &str = "RepKindUnit";
+pub const FIELD_REP_KIND_OBJECT: &str = "RepKindObject";
+pub const FIELD_REP_KIND_ENUM: &str = "RepKindEnum";
+
 pub struct Normalizer<'a> {
     sigma: &'a mut Sigma,
     rho: Rho,
@@ -293,7 +301,8 @@ impl<'a> Normalizer<'a> {
                 Find(ty, i, f)
             }
             Reflect(a) => match *self.term_box(a)? {
-                Object(r) | Enum(r) => todo!(),
+                Object(r) => self.reflect_type(*r, FIELD_REP_KIND_OBJECT),
+                Enum(r) => self.reflect_type(*r, FIELD_REP_KIND_ENUM),
                 Ref(a) => Reflect(Box::new(Ref(a))),
                 a => return Err(ExpectedReflectable(a, self.loc)),
             },
@@ -395,5 +404,9 @@ impl<'a> Normalizer<'a> {
         }
 
         Err(UnresolvedImplementation(ty, self.loc))
+    }
+
+    fn reflect_type(&self, _ty: Term, _kind_field: &str) -> Term {
+        todo!()
     }
 }

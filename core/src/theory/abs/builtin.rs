@@ -1,5 +1,9 @@
-use crate::theory::abs::data::Term;
+use crate::theory::abs::data::{FieldMap, Term};
 use crate::theory::abs::def::{Body, Def};
+use crate::theory::abs::normalize::{
+    FIELD_REP_KIND_BIGINT, FIELD_REP_KIND_BOOLEAN, FIELD_REP_KIND_ENUM, FIELD_REP_KIND_NUMBER,
+    FIELD_REP_KIND_OBJECT, FIELD_REP_KIND_STRING, FIELD_REP_KIND_UNIT,
+};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Param, Tele, Var};
 
@@ -31,8 +35,14 @@ fn tuple_params<const N: usize>(var: Var, tele: [Param<Term>; N]) -> Tele<Term> 
     }]
 }
 
-pub fn all_builtins() -> [Def<Term>; 4] {
-    [unionify(), reflect(), number_add(), number_sub()]
+pub fn all_builtins() -> [Def<Term>; 5] {
+    [
+        unionify(),
+        reflect(),
+        rep_kind(),
+        number_add(),
+        number_sub(),
+    ]
 }
 
 fn unionify() -> Def<Term> {
@@ -66,6 +76,25 @@ fn reflect() -> Def<Term> {
         tele: vec![implicit(t.clone(), Term::Univ)],
         ret: Box::new(Term::Univ),
         body: Body::Fn(Term::Reflect(Box::new(Term::Ref(t)))),
+    }
+}
+
+fn rep_kind() -> Def<Term> {
+    use Term::*;
+    Def {
+        loc: Default::default(),
+        name: Var::new("RepKind"),
+        tele: Default::default(),
+        ret: Box::new(Univ),
+        body: Body::Alias(Enum(Box::new(Fields(FieldMap::from([
+            (FIELD_REP_KIND_NUMBER.to_string(), Unit),
+            (FIELD_REP_KIND_STRING.to_string(), Unit),
+            (FIELD_REP_KIND_BOOLEAN.to_string(), Unit),
+            (FIELD_REP_KIND_BIGINT.to_string(), Unit),
+            (FIELD_REP_KIND_UNIT.to_string(), Unit),
+            (FIELD_REP_KIND_OBJECT.to_string(), Unit),
+            (FIELD_REP_KIND_ENUM.to_string(), Unit),
+        ]))))),
     }
 }
 
