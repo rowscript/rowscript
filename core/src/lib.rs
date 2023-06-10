@@ -10,7 +10,7 @@ use pest_derive::Parser;
 use thiserror::Error;
 
 use crate::codegen::{Codegen, Target};
-use crate::theory::abs::builtin::all_builtins;
+use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::elab::Elaborator;
@@ -173,7 +173,8 @@ pub struct Module {
 pub struct Driver {
     path: PathBuf,
     trans: Trans,
-    builtins: NameMap,
+    ubiquitous: NameMap,
+    builtins: Builtins,
     loaded: Loaded,
     elab: Elaborator,
     codegen: Codegen,
@@ -187,24 +188,21 @@ enum Loadable {
 impl Driver {
     pub fn new(path: PathBuf, target: Box<dyn Target>) -> Self {
         let codegen = Codegen::new(target, path.join(OUTDIR));
+        let mut ubiquitous = NameMap::default();
+        let mut elab = Elaborator::default();
+        let builtins = Builtins::new(&mut elab.sigma, &mut ubiquitous);
         Self {
             path,
             trans: Default::default(),
-            builtins: Default::default(),
+            ubiquitous,
+            builtins,
             loaded: Default::default(),
-            elab: Default::default(),
+            elab,
             codegen,
         }
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
-        for def in all_builtins() {
-            self.builtins.insert(
-                def.name.to_string(),
-                ResolvedVar(VarKind::InModule, def.name.clone()),
-            );
-            self.elab.sigma.insert(def.name.clone(), def);
-        }
         self.load(Loadable::ViaPath(prelude_path()), true)?;
         self.load_module(ModuleID::default())
     }
@@ -216,7 +214,7 @@ impl Driver {
         }
     }
 
-    fn load(&mut self, loadable: Loadable, is_builtin: bool) -> Result<(), Error> {
+    fn load(&mut self, loadable: Loadable, is_pervasive: bool) -> Result<(), Error> {
         use Loadable::*;
 
         let mut files = Vec::default();
@@ -247,7 +245,7 @@ impl Driver {
 
                     let src = read_to_string(&file)?;
                     let (imports, defs) = self
-                        .load_src(&module, src.as_str(), is_builtin)
+                        .load_src(&module, src.as_str(), is_pervasive)
                         .map_err(|e| print_err(e, &file, src))?;
                     files.push(ModuleFile {
                         file,
@@ -285,12 +283,12 @@ impl Driver {
         imports.iter().fold(Ok(()), |r, i| {
             r.and_then(|_| self.load_module(i.module.clone()))
         })?;
-        let defs = Resolver::new(&self.builtins, &self.loaded)
+        let defs = Resolver::new(&self.ubiquitous, &self.loaded)
             .file(&mut imports, defs)
             .and_then(|d| self.elab.defs(d))?;
         for d in &defs {
             if is_builtin {
-                self.builtins.insert(
+                self.ubiquitous.insert(
                     d.name.to_string(),
                     ResolvedVar(VarKind::InModule, d.name.clone()),
                 );
