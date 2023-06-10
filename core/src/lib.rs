@@ -214,7 +214,7 @@ impl Driver {
         }
     }
 
-    fn load(&mut self, loadable: Loadable, is_pervasive: bool) -> Result<(), Error> {
+    fn load(&mut self, loadable: Loadable, is_ubiquitous: bool) -> Result<(), Error> {
         use Loadable::*;
 
         let mut files = Vec::default();
@@ -245,7 +245,7 @@ impl Driver {
 
                     let src = read_to_string(&file)?;
                     let (imports, defs) = self
-                        .load_src(&module, src.as_str(), is_pervasive)
+                        .load_src(&module, src.as_str(), is_ubiquitous)
                         .map_err(|e| print_err(e, &file, src))?;
                     files.push(ModuleFile {
                         file,
@@ -274,7 +274,7 @@ impl Driver {
         &mut self,
         module: &Option<ModuleID>,
         src: &str,
-        is_builtin: bool,
+        is_ubiquitous: bool,
     ) -> Result<(Vec<Import>, Vec<Def<Term>>), Error> {
         let (mut imports, defs) = RowsParser::parse(Rule::file, src)
             .map_err(Box::new)
@@ -287,7 +287,7 @@ impl Driver {
             .file(&mut imports, defs)
             .and_then(|d| self.elab.defs(d))?;
         for d in &defs {
-            if is_builtin {
+            if is_ubiquitous {
                 self.ubiquitous.insert(
                     d.name.to_string(),
                     ResolvedVar(VarKind::InModule, d.name.clone()),
