@@ -1,3 +1,4 @@
+use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::Term::{App, Lam};
 use crate::theory::abs::data::{CaseMap, Dir, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
@@ -18,18 +19,24 @@ pub const FIELD_REP_KIND_OBJECT: &str = "RepKindObject";
 pub const FIELD_REP_KIND_ENUM: &str = "RepKindEnum";
 
 pub struct Normalizer<'a> {
+    builtins: &'a Builtins,
     sigma: &'a mut Sigma,
     rho: Rho,
     loc: Loc,
 }
 
 impl<'a> Normalizer<'a> {
-    pub fn new(sigma: &'a mut Sigma, loc: Loc) -> Self {
+    pub fn new(builtins: &'a Builtins, sigma: &'a mut Sigma, loc: Loc) -> Self {
         Self {
+            builtins,
             sigma,
             rho: Default::default(),
             loc,
         }
+    }
+
+    fn unifier(&mut self) -> Unifier {
+        Unifier::new(self.builtins, self.sigma, self.loc)
     }
 
     pub fn term(&mut self, tm: Term) -> Result<Term, Error> {
@@ -173,10 +180,10 @@ impl<'a> Normalizer<'a> {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;
                 if let (Fields(a), Fields(b)) = (a.as_ref(), b.as_ref()) {
-                    let mut u = Unifier::new(self.sigma, self.loc);
+                    let mut u = self.unifier();
                     match d {
-                        Dir::Le => u.unify_fields_ord(a, b)?,
-                        Dir::Ge => u.unify_fields_ord(b, a)?,
+                        Dir::Le => u.fields_ord(a, b)?,
+                        Dir::Ge => u.fields_ord(b, a)?,
                     };
                 }
                 RowOrd(a, d, b)
@@ -185,7 +192,7 @@ impl<'a> Normalizer<'a> {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;
                 if let (Fields(a), Fields(b)) = (a.as_ref(), b.as_ref()) {
-                    Unifier::new(self.sigma, self.loc).unify_fields_eq(a, b)?;
+                    self.unifier().fields_eq(a, b)?;
                 }
                 RowEq(a, b)
             }
@@ -368,7 +375,7 @@ impl<'a> Normalizer<'a> {
                 Implements(body) => body.implementor_type(self.sigma)?,
                 _ => unreachable!(),
             };
-            match Unifier::new(self.sigma, self.loc).unify(&y, x) {
+            match self.unifier().unify(&y, x) {
                 Ok(_) => return Ok(()),
                 Err(_) => continue,
             }
@@ -393,10 +400,7 @@ impl<'a> Normalizer<'a> {
                 _ => unreachable!(),
             };
 
-            if Unifier::new(self.sigma, self.loc)
-                .unify(&ty, &im_ty)
-                .is_err()
-            {
+            if self.unifier().unify(&ty, &im_ty).is_err() {
                 continue;
             }
 

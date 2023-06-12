@@ -1,4 +1,5 @@
 use crate::maybe_grow;
+use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::Dir::Le;
 use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, Term};
 use crate::theory::abs::def::{gamma_to_tele, Body, ClassBody, ImplementsBody};
@@ -8,6 +9,7 @@ use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
+use crate::theory::conc::resolve::NameMap;
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var, VarGen, VPTR};
 use crate::Error;
@@ -17,14 +19,34 @@ use crate::Error::{
     UnresolvedImplicitParam,
 };
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Elaborator {
+    builtins: Builtins,
     pub sigma: Sigma,
     gamma: Gamma,
     vg: VarGen,
 }
 
 impl Elaborator {
+    pub fn new(ubiquitous: &mut NameMap) -> Self {
+        let mut sigma = Default::default();
+        let builtins = Builtins::new(&mut sigma, ubiquitous);
+        Self {
+            builtins,
+            sigma,
+            gamma: Default::default(),
+            vg: Default::default(),
+        }
+    }
+
+    fn unifier(&mut self, loc: Loc) -> Unifier {
+        Unifier::new(&self.builtins, &mut self.sigma, loc)
+    }
+
+    fn nf(&mut self, loc: Loc) -> Normalizer {
+        Normalizer::new(&self.builtins, &mut self.sigma, loc)
+    }
+
     pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<Vec<Def<Term>>, Error> {
         let mut ret = Vec::default();
         for d in defs {
@@ -161,11 +183,12 @@ impl Elaborator {
                 Term::Pi(p, b) => (p, b),
                 _ => unreachable!(),
             };
-            let i_fn_ty_applied = Normalizer::new(&mut self.sigma, i_loc)
+            let i_fn_ty_applied = self
+                .nf(i_loc)
                 .with(&[(&i_fn_ty_p.var, &im_tm)], *i_fn_ty_b)?;
             let (_, im_fn_ty) = self.infer(Resolved(im_loc, im_fn.clone()), None)?;
 
-            Unifier::new(&mut self.sigma, im_loc).unify(&i_fn_ty_applied, &im_fn_ty)?;
+            self.unifier(im_loc).unify(&i_fn_ty_applied, &im_fn_ty)?;
         }
 
         Ok(ret)
@@ -194,7 +217,7 @@ impl Elaborator {
                 Term::Let(param, Box::new(tm), Box::new(body))
             }
             Lam(loc, var, body) => {
-                let pi = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
+                let pi = self.nf(loc).term(ty.clone())?;
                 match pi {
                     Term::Pi(ty_param, ty_body) => {
                         let param = Param {
@@ -202,7 +225,8 @@ impl Elaborator {
                             info: Explicit,
                             typ: ty_param.typ.clone(),
                         };
-                        let body_type = Normalizer::new(&mut self.sigma, loc)
+                        let body_type = self
+                            .nf(loc)
                             .with(&[(&ty_param.var, &Term::Ref(var))], *ty_body)?;
                         let checked_body = self.guarded_check(&[&param], *body, &body_type)?;
                         Term::Lam(param.clone(), Box::new(checked_body))
@@ -211,12 +235,11 @@ impl Elaborator {
                 }
             }
             Tuple(loc, a, b) => {
-                let sig = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
+                let sig = self.nf(loc).term(ty.clone())?;
                 match sig {
                     Term::Sigma(ty_param, ty_body) => {
                         let a = self.check(*a, &ty_param.typ)?;
-                        let body_type = Normalizer::new(&mut self.sigma, loc)
-                            .with(&[(&ty_param.var, &a)], *ty_body)?;
+                        let body_type = self.nf(loc).with(&[(&ty_param.var, &a)], *ty_body)?;
                         let b = self.check(*b, &body_type)?;
                         Term::Tuple(Box::new(a), Box::new(b))
                     }
@@ -226,7 +249,7 @@ impl Elaborator {
             TupleLet(_, x, y, a, b) => {
                 let a_loc = a.loc();
                 let (a, a_ty) = self.infer(*a, Some(ty))?;
-                let sig = Normalizer::new(&mut self.sigma, a_loc).term(a_ty)?;
+                let sig = self.nf(a_loc).term(a_ty)?;
                 match sig {
                     Term::Sigma(ty_param, typ) => {
                         let x = Param {
@@ -259,8 +282,8 @@ impl Elaborator {
                 let f_e = e.clone();
 
                 let (mut inferred_tm, inferred_ty) = self.infer(e, Some(ty))?;
-                let mut inferred = Normalizer::new(&mut self.sigma, loc).term(inferred_ty)?;
-                let expected = Normalizer::new(&mut self.sigma, loc).term(ty.clone())?;
+                let mut inferred = self.nf(loc).term(inferred_ty)?;
+                let expected = self.nf(loc).term(ty.clone())?;
 
                 if Self::is_hole_insertable(&expected) {
                     if let Some(f_e) = Self::app_insert_holes(f_e, UnnamedExplicit, &inferred)? {
@@ -270,7 +293,7 @@ impl Elaborator {
                     }
                 }
 
-                Unifier::new(&mut self.sigma, loc).unify(&expected, &inferred)?;
+                self.unifier(loc).unify(&expected, &inferred)?;
 
                 inferred_tm
             }
@@ -346,13 +369,8 @@ impl Elaborator {
                             *x,
                             &p.typ,
                         )?;
-                        let applied_ty =
-                            Normalizer::new(&mut self.sigma, f_loc).with(&[(&p.var, &x)], *b)?;
-                        let applied = Normalizer::new(&mut self.sigma, f_loc).apply(
-                            f,
-                            p.info.into(),
-                            &[x],
-                        )?;
+                        let applied_ty = self.nf(f_loc).with(&[(&p.var, &x)], *b)?;
+                        let applied = self.nf(f_loc).apply(f, p.info.into(), &[x])?;
                         (applied, applied_ty)
                     }
                     ty => return Err(ExpectedPi(ty, f_loc)),
@@ -495,7 +513,7 @@ impl Elaborator {
                 )
             }
             Downcast(loc, a) => {
-                let b_ty = Normalizer::new(&mut self.sigma, loc).term(hint.unwrap().clone())?;
+                let b_ty = self.nf(loc).term(hint.unwrap().clone())?;
                 let (a, a_ty) = self.infer(*a, hint)?;
                 match (a_ty, b_ty) {
                     (Term::Object(from), Term::Object(to)) => {
@@ -518,14 +536,13 @@ impl Elaborator {
                 (Term::Enum(Box::new(r)), Term::Univ)
             }
             Variant(loc, n, a) => {
-                let b_ty =
-                    Box::new(Normalizer::new(&mut self.sigma, loc).term(hint.unwrap().clone())?);
+                let b_ty = Box::new(self.nf(loc).term(hint.unwrap().clone())?);
                 let (a, a_ty) = self.infer(*a, hint)?;
                 match *b_ty {
                     Term::Enum(to) => match (a_ty, *to) {
                         (from, Term::Fields(to)) => {
                             let from = FieldMap::from([(n.clone(), from)]);
-                            Unifier::new(&mut self.sigma, loc).unify_fields_ord(&from, &to)?;
+                            self.unifier(loc).fields_ord(&from, &to)?;
                             (
                                 Term::Variant(Box::new(Term::Fields(FieldMap::from([(n, a)])))),
                                 Term::Enum(Box::new(Term::Fields(to))),
@@ -540,7 +557,7 @@ impl Elaborator {
                 }
             }
             Upcast(loc, a) => {
-                let b_ty = Normalizer::new(&mut self.sigma, loc).term(hint.unwrap().clone())?;
+                let b_ty = self.nf(loc).term(hint.unwrap().clone())?;
                 let (a, a_ty) = self.infer(*a, hint)?;
                 match (a_ty, b_ty) {
                     (Term::Enum(from), Term::Enum(to)) => {
@@ -562,7 +579,7 @@ impl Elaborator {
                 let ret_ty = hint.unwrap();
                 let a_loc = a.loc();
                 let (a, a_ty) = self.infer(*a, hint)?;
-                let en = Normalizer::new(&mut self.sigma, loc).term(a_ty)?;
+                let en = self.nf(loc).term(a_ty)?;
                 match en {
                     Term::Enum(y) => match *y {
                         Term::Fields(f) => {

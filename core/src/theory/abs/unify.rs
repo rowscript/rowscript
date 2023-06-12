@@ -1,3 +1,4 @@
+use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::{FieldMap, Term};
 use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Sigma;
@@ -7,17 +8,26 @@ use crate::Error::{NonRowSat, NonUnifiable};
 use crate::{maybe_grow, Error};
 
 pub struct Unifier<'a> {
+    builtins: &'a Builtins,
     sigma: &'a mut Sigma,
     loc: Loc,
 }
 
 impl<'a> Unifier<'a> {
-    pub fn new(sigma: &'a mut Sigma, loc: Loc) -> Self {
-        Self { sigma, loc }
+    pub fn new(builtins: &'a Builtins, sigma: &'a mut Sigma, loc: Loc) -> Self {
+        Self {
+            builtins,
+            sigma,
+            loc,
+        }
     }
 
     fn unify_err(&self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
         Err(NonUnifiable(lhs.clone(), rhs.clone(), self.loc))
+    }
+
+    fn nf(&mut self) -> Normalizer {
+        Normalizer::new(self.builtins, self.sigma, self.loc)
     }
 
     pub fn unify(&mut self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
@@ -65,15 +75,13 @@ impl<'a> Unifier<'a> {
             (Pi(p, a), Pi(q, b)) => {
                 self.unify(&p.typ, &q.typ)?;
                 let rho = &[(&q.var, &Ref(p.var.clone()))];
-                let b = Normalizer::new(self.sigma, self.loc).with(rho, *b.clone())?;
+                let b = self.nf().with(rho, *b.clone())?;
                 self.unify(a, &b)
             }
             (Lam(p, a), Lam(_, _)) => {
-                let b = Normalizer::new(self.sigma, self.loc).apply(
-                    rhs.clone(),
-                    p.info.into(),
-                    &[Ref(p.var.clone())],
-                )?;
+                let b = self
+                    .nf()
+                    .apply(rhs.clone(), p.info.into(), &[Ref(p.var.clone())])?;
                 self.unify(a, &b)
             }
             (App(f, i, x), App(g, j, y)) if i == j => {
@@ -83,7 +91,7 @@ impl<'a> Unifier<'a> {
             (Sigma(p, a), Sigma(q, b)) => {
                 self.unify(&p.typ, &q.typ)?;
                 let rho = &[(&q.var, &Ref(p.var.clone()))];
-                let b = Normalizer::new(self.sigma, self.loc).with(rho, *b.clone())?;
+                let b = self.nf().with(rho, *b.clone())?;
                 self.unify(a, &b)
             }
             (Tuple(a, b), Tuple(x, y)) => {
@@ -92,7 +100,7 @@ impl<'a> Unifier<'a> {
             }
             (TupleLet(p, q, a, b), TupleLet(r, s, x, y)) => {
                 let rho = &[(&r.var, &Ref(p.var.clone())), (&s.var, &Ref(q.var.clone()))];
-                let y = Normalizer::new(self.sigma, self.loc).with(rho, *y.clone())?;
+                let y = self.nf().with(rho, *y.clone())?;
                 self.unify(a, x)?;
                 self.unify(b, &y)
             }
@@ -105,7 +113,7 @@ impl<'a> Unifier<'a> {
                 self.unify(b, y)?;
                 self.unify(c, z)
             }
-            (Fields(a), Fields(b)) => self.unify_fields_eq(a, b),
+            (Fields(a), Fields(b)) => self.fields_eq(a, b),
             (Object(a), Object(b)) => self.unify(a, b),
             (Obj(a), Obj(b)) => self.unify(a, b),
             (Enum(a), Enum(b)) => self.unify(a, b),
@@ -158,7 +166,7 @@ impl<'a> Unifier<'a> {
         }
     }
 
-    pub fn unify_fields_ord(&mut self, small: &FieldMap, big: &FieldMap) -> Result<(), Error> {
+    pub fn fields_ord(&mut self, small: &FieldMap, big: &FieldMap) -> Result<(), Error> {
         use Term::*;
         for (x, a) in small {
             match big.get(x) {
@@ -175,7 +183,7 @@ impl<'a> Unifier<'a> {
         Ok(())
     }
 
-    pub fn unify_fields_eq(&mut self, a: &FieldMap, b: &FieldMap) -> Result<(), Error> {
+    pub fn fields_eq(&mut self, a: &FieldMap, b: &FieldMap) -> Result<(), Error> {
         use Term::*;
         if a.len() != b.len() {
             return self.unify_err(&Fields(a.clone()), &Fields(b.clone()));

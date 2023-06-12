@@ -10,7 +10,6 @@ use pest_derive::Parser;
 use thiserror::Error;
 
 use crate::codegen::{Codegen, Target};
-use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::elab::Elaborator;
@@ -174,7 +173,6 @@ pub struct Driver {
     path: PathBuf,
     trans: Trans,
     ubiquitous: NameMap,
-    builtins: Builtins,
     loaded: Loaded,
     elab: Elaborator,
     codegen: Codegen,
@@ -189,13 +187,11 @@ impl Driver {
     pub fn new(path: PathBuf, target: Box<dyn Target>) -> Self {
         let codegen = Codegen::new(target, path.join(OUTDIR));
         let mut ubiquitous = NameMap::default();
-        let mut elab = Elaborator::default();
-        let builtins = Builtins::new(&mut elab.sigma, &mut ubiquitous);
+        let elab = Elaborator::new(&mut ubiquitous);
         Self {
             path,
             trans: Default::default(),
             ubiquitous,
-            builtins,
             loaded: Default::default(),
             elab,
             codegen,

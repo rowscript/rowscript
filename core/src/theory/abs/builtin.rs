@@ -36,6 +36,7 @@ fn tuple_params<const N: usize>(var: Var, tele: [Param<Term>; N]) -> Tele<Term> 
     }]
 }
 
+#[derive(Debug)]
 pub struct Builtins {
     pub unionify: Var,
 
