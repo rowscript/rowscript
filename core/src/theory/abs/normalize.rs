@@ -1,6 +1,5 @@
 use crate::theory::abs::builtin::Builtins;
-use crate::theory::abs::data::Term::{App, Lam};
-use crate::theory::abs::data::{CaseMap, Dir, Term};
+use crate::theory::abs::data::{CaseMap, Dir, FieldMap, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
@@ -307,12 +306,10 @@ impl<'a> Normalizer<'a> {
                 }
                 Find(ty, i, f)
             }
-            Reflect(a) => match *self.term_box(a)? {
-                Object(r) => self.reflect_type(*r, FIELD_REP_KIND_OBJECT),
-                Enum(r) => self.reflect_type(*r, FIELD_REP_KIND_ENUM),
-                Ref(a) => Reflect(Box::new(Ref(a))),
-                a => return Err(ExpectedReflectable(a, self.loc)),
-            },
+            Reflect(a) => {
+                let ty = *self.term_box(a)?;
+                *self.reflect_type(ty)?
+            }
             tm => tm,
         })
     }
@@ -325,6 +322,7 @@ impl<'a> Normalizer<'a> {
     }
 
     pub fn apply(&mut self, f: Term, ai: ArgInfo, args: &[Term]) -> Result<Term, Error> {
+        use Term::*;
         let mut ret = f;
         for x in args {
             match ret {
@@ -410,7 +408,48 @@ impl<'a> Normalizer<'a> {
         Err(UnresolvedImplementation(ty, self.loc))
     }
 
-    fn reflect_type(&self, _ty: Term, _kind_field: &str) -> Term {
-        todo!()
+    fn reflect_type(&self, ty: Term) -> Result<Box<Term>, Error> {
+        use Term::*;
+        Ok(Box::new(match ty {
+            Object(f) | Enum(f) => {
+                let fields = match *f {
+                    Fields(fields) => fields,
+                    _ => unreachable!(),
+                };
+                let mut reflected_fields = FieldMap::new();
+                for (name, ty) in fields {
+                    let reflected_field_ty = Object(Box::new(Fields(FieldMap::from([
+                        ("name".to_string(), String),
+                        ("info".to_string(), *self.reflect_type(ty)?),
+                    ]))));
+                    reflected_fields.insert(name, reflected_field_ty);
+                }
+                Object(Box::new(Fields(FieldMap::from([
+                    ("kind".to_string(), Undef(self.builtins.rep_kind.clone())),
+                    (
+                        "fields".to_string(),
+                        Object(Box::new(Fields(reflected_fields))),
+                    ),
+                ]))))
+            }
+
+            Unit => *self.simple_reflect_type(Unit),
+            Boolean => *self.simple_reflect_type(Boolean),
+            String => *self.simple_reflect_type(String),
+            Number => *self.simple_reflect_type(Number),
+            BigInt => *self.simple_reflect_type(BigInt),
+
+            Ref(a) => Reflect(Box::new(Ref(a))),
+
+            a => return Err(ExpectedReflectable(a, self.loc)),
+        }))
+    }
+
+    fn simple_reflect_type(&self, ty: Term) -> Box<Term> {
+        use Term::*;
+        Box::new(Object(Box::new(Fields(FieldMap::from([
+            ("kind".to_string(), Undef(self.builtins.rep_kind.clone())),
+            ("value".to_string(), ty),
+        ])))))
     }
 }

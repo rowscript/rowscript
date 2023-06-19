@@ -1,3 +1,17 @@
 type Foo = {a: string};
 
-const x: Foo = {a: "42"};
+//function f() {
+//    let a: Reflect<Foo> = {
+//        kind: RepKindObject,
+//        fields: {
+//            a: {
+//                name: "a",
+//                info: {
+//                    kind: RepKindString,
+//                    value: "hello"
+//                }
+//            }
+//        }
+//    };
+//    return
+//}

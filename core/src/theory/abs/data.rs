@@ -227,7 +227,7 @@ impl Display for Term {
                 Find(ty, i, f) => format!("{i}.{f}<{ty}>"),
                 ImplementsOf(t, i) => format!("{t} implementsOf {i}"),
                 ImplementsSat => "implementsSat".to_string(),
-                Reflect(a) => format!("reflect({a})"),
+                Reflect(a) => format!("Reflect<{a}>"),
             }
             .as_str(),
         )

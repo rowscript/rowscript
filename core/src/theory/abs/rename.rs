@@ -76,6 +76,7 @@ impl Renamer {
             Lookup(a) => Lookup(Box::new(self.term(*a))),
             Find(ty, i, f) => Find(Box::new(self.term(*ty)), i, f),
             ImplementsOf(a, i) => ImplementsOf(Box::new(self.term(*a)), i),
+            Reflect(a) => Reflect(Box::new(self.term(*a))),
             tm => tm,
         }
     }
