@@ -1,5 +1,7 @@
 type Foo = {a: string};
 
+function f() { return }
+
 //function f() {
 //    let a: Reflect<Foo> = {
 //        kind: RepKindObject,
