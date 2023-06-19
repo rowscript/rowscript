@@ -1,0 +1,3 @@
+function f(): {a: [A | B]} {
+    return {a: A}
+}

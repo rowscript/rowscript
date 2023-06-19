@@ -26,6 +26,7 @@ mod fail_hole;
 mod fail_parse;
 mod fail_reserved;
 mod fail_resolve;
+
 mod ok_alias;
 mod ok_bool;
 mod ok_builtin;
@@ -38,8 +39,6 @@ mod ok_implicit_named;
 mod ok_implicit_unnamed;
 mod ok_interface;
 mod ok_interface_stuck;
-mod ok_issue75;
-mod ok_issue78;
 mod ok_modsys;
 mod ok_num_add;
 mod ok_object;
@@ -57,6 +56,10 @@ mod ok_rev_app;
 mod ok_typeclassopedia;
 mod ok_typeclassopedia_stuck;
 mod ok_unit;
+
+mod ok_issue75;
+mod ok_issue78;
+mod ok_issue93;
 
 #[cfg(not(feature = "codegen-ecma"))]
 fn run_target() -> Box<dyn Target> {

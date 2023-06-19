@@ -536,9 +536,9 @@ impl Elaborator {
                 (Term::Enum(Box::new(r)), Term::Univ)
             }
             Variant(loc, n, a) => {
-                let b_ty = Box::new(self.nf(loc).term(hint.unwrap().clone())?);
+                let b_ty = self.nf(loc).term(hint.unwrap().clone())?;
                 let (a, a_ty) = self.infer(*a, hint)?;
-                match *b_ty {
+                match b_ty {
                     Term::Enum(to) => match (a_ty, *to) {
                         (from, Term::Fields(to)) => {
                             let from = FieldMap::from([(n.clone(), from)]);
@@ -553,7 +553,10 @@ impl Elaborator {
                             Term::Enum(Box::new(Term::Fields(FieldMap::from([(n, ty)])))),
                         ),
                     },
-                    ty => return Err(ExpectedEnum(ty, loc)),
+                    _ => (
+                        Term::Variant(Box::new(Term::Fields(FieldMap::from([(n.clone(), a)])))),
+                        Term::Enum(Box::new(Term::Fields(FieldMap::from([(n, a_ty)])))),
+                    ),
                 }
             }
             Upcast(loc, a) => {
