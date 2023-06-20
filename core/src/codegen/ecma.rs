@@ -53,6 +53,14 @@ pub struct Ecma {
 }
 
 impl Ecma {
+    fn solution<'a>(sigma: &'a Sigma, m: &'a Var) -> Option<&'a Term> {
+        use Body::*;
+        match &sigma.get(m).unwrap().body {
+            Meta(_, s) => s.as_ref(),
+            _ => unreachable!(),
+        }
+    }
+
     fn special_ident(s: &str) -> Ident {
         Ident {
             span: DUMMY_SP,
@@ -406,17 +414,11 @@ impl Ecma {
     }
 
     fn expr(&mut self, sigma: &Sigma, loc: Loc, tm: &Term) -> Result<Expr, Error> {
-        use Body::*;
         use Term::*;
         Ok(match tm {
-            MetaRef(k, r, sp) => match &sigma.get(r).unwrap().body {
-                Meta(_, tm) => match tm {
-                    None => {
-                        return Err(UnsolvedMeta(MetaRef(k.clone(), r.clone(), sp.clone()), loc));
-                    }
-                    Some(_) => unreachable!(),
-                },
-                _ => unreachable!(),
+            MetaRef(k, r, sp) => match Self::solution(sigma, r) {
+                None => return Err(UnsolvedMeta(MetaRef(k.clone(), r.clone(), sp.clone()), loc)),
+                Some(_) => unreachable!(),
             },
 
             Let(p, a, b) => self.lambda_encoded_let(sigma, loc, Some(&p.var), a, b)?,
@@ -515,22 +517,35 @@ impl Ecma {
                 ],
             }),
             Access(a, n) => self.access(sigma, loc, a, n)?,
-            Downcast(a, f) => match f.as_ref() {
-                Fields(fields) => {
-                    let mut props = Vec::default();
-                    for name in fields.keys() {
-                        props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                            key: PropName::Ident(Self::str_ident(loc, name)),
-                            value: Box::new(self.access(sigma, loc, a, name)?),
-                        }))))
-                    }
-                    Expr::Object(ObjectLit {
-                        span: loc.into(),
-                        props,
-                    })
+            Down(a, to) => {
+                let fields = match to.as_ref() {
+                    Fields(fields) => fields,
+                    MetaRef(k, m, sp) => match Self::solution(sigma, m) {
+                        None => {
+                            return Err(UnsolvedMeta(
+                                MetaRef(k.clone(), m.clone(), sp.clone()),
+                                loc,
+                            ))
+                        }
+                        Some(fields) => match fields {
+                            Fields(fields) => fields,
+                            _ => unreachable!(),
+                        },
+                    },
+                    _ => unreachable!(),
+                };
+                let mut props = Vec::default();
+                for name in fields.keys() {
+                    props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                        key: PropName::Ident(Self::str_ident(loc, name)),
+                        value: Box::new(self.access(sigma, loc, a, name)?),
+                    }))))
                 }
-                _ => unreachable!(),
-            },
+                Expr::Object(ObjectLit {
+                    span: loc.into(),
+                    props,
+                })
+            }
             Variant(f) => match f.as_ref() {
                 Fields(fields) => {
                     let (name, tm) = fields.iter().next().unwrap();

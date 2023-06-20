@@ -222,10 +222,12 @@ impl<'a> Normalizer<'a> {
                     _ => Access(a, n),
                 }
             }
-            Downcast(a, mut f) => {
+            Downcast(r, m) => Downcast(self.term_box(r)?, self.term_box(m)?),
+            Down(a, m) => {
                 let a = self.term_box(a)?;
+                let mut m = self.term_box(m)?;
                 match a.as_ref() {
-                    Obj(o) => match (o.as_ref(), f.as_mut()) {
+                    Obj(o) => match (o.as_ref(), m.as_mut()) {
                         (Fields(x), Fields(y)) => {
                             // TODO: eliminate clone
                             *y = y
@@ -235,11 +237,11 @@ impl<'a> Normalizer<'a> {
                                     (n.clone(), tm)
                                 })
                                 .collect();
-                            Obj(f)
+                            Obj(m)
                         }
-                        _ => Downcast(a, f),
+                        _ => Down(a, m),
                     },
-                    _ => Downcast(a, f),
+                    _ => Down(a, m),
                 }
             }
             Enum(r) => Enum(self.term_box(r)?),

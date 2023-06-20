@@ -277,6 +277,17 @@ impl Elaborator {
                 Box::new(self.check(*t, ty)?),
                 Box::new(self.check(*e, ty)?),
             ),
+            Downcast(loc, a) => {
+                let (a, a_ty) = self.infer(*a, Some(ty))?;
+                let to = match self.nf(loc).term(ty.clone())? {
+                    Term::Object(to) => to,
+                    ty => return Err(ExpectedObject(ty, loc)),
+                };
+                match a_ty {
+                    Term::Object(_) => Term::Down(Box::new(a), to),
+                    ty => return Err(ExpectedObject(ty, loc)),
+                }
+            }
             Upcast(loc, a) => {
                 let (a, a_ty) = self.infer(*a, Some(ty))?;
                 let to = match self.nf(loc).term(ty.clone())? {
@@ -524,22 +535,14 @@ impl Elaborator {
                 )
             }
             Downcast(loc, a) => {
-                let b_ty = self.nf(loc).term(hint.unwrap().clone())?;
-                let (a, a_ty) = self.infer(*a, hint)?;
-                match (a_ty, b_ty) {
-                    (Term::Object(from), Term::Object(to)) => {
-                        let tele = vec![Param {
-                            var: Var::unbound(),
-                            info: Implicit,
-                            typ: Box::new(Term::RowOrd(to.clone(), Le, from)),
-                        }];
-                        (
-                            rename(Term::lam(&tele, Term::Downcast(Box::new(a), to.clone()))),
-                            rename(Term::pi(&tele, Term::Object(to))),
-                        )
-                    }
-                    (Term::Object(_), ty) => return Err(ExpectedObject(ty, loc)),
-                    (ty, _) => return Err(ExpectedObject(ty, loc)),
+                let (a, ty) = self.infer(*a, hint)?;
+                let m = self.insert_meta(loc, InsertedMeta).0;
+                match ty {
+                    Term::Object(r) => (
+                        Term::Down(Box::new(a), Box::new(m.clone())),
+                        Term::Downcast(Box::new(Term::Object(r)), Box::new(m)),
+                    ),
+                    ty => return Err(ExpectedObject(ty, loc)),
                 }
             }
             Enum(_, r) => (
