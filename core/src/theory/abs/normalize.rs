@@ -7,7 +7,7 @@ use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
-use crate::Error::{ExpectedReflectable, UnresolvedField, UnresolvedImplementation};
+use crate::Error::{ExpectedReflectable, UnresolvedImplementation};
 
 pub const FIELD_REP_KIND_NUMBER: &str = "RepKindNumber";
 pub const FIELD_REP_KIND_STRING: &str = "RepKindString";
@@ -244,22 +244,7 @@ impl<'a> Normalizer<'a> {
             }
             Enum(r) => Enum(self.term_box(r)?),
             Variant(r) => Variant(self.term_box(r)?),
-            Upcast(a, f) => {
-                let a = self.term_box(a)?;
-                match a.as_ref() {
-                    Variant(o) => match (o.as_ref(), f.as_ref()) {
-                        (Fields(x), Fields(y)) => {
-                            let name = x.iter().next().unwrap().0;
-                            if !y.contains_key(name) {
-                                return Err(UnresolvedField(name.clone(), *f, self.loc));
-                            }
-                            *a
-                        }
-                        _ => Upcast(a, f),
-                    },
-                    _ => Upcast(a, f),
-                }
-            }
+            Upcast(r) => Upcast(self.term_box(r)?),
             Switch(a, cs) => {
                 let a = self.term_box(a)?;
                 match a.as_ref() {

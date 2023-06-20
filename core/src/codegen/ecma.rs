@@ -554,7 +554,6 @@ impl Ecma {
                 }
                 _ => unreachable!(),
             },
-            Upcast(a, _) => self.expr(sigma, loc, a)?,
             Switch(a, cs) => {
                 // ({Some: a => a + 1, None: () => undefined}[a.__rowsT])(a.__rowsV)
                 let mut props = Vec::default();

@@ -61,7 +61,7 @@ impl Renamer {
             Downcast(a, f) => Downcast(Box::new(self.term(*a)), Box::new(self.term(*f))),
             Enum(f) => Enum(Box::new(self.term(*f))),
             Variant(f) => Variant(Box::new(self.term(*f))),
-            Upcast(a, f) => Upcast(Box::new(self.term(*a)), Box::new(self.term(*f))),
+            Upcast(a) => Upcast(Box::new(self.term(*a))),
             Switch(a, cs) => {
                 let a = self.term(*a);
                 let mut m = CaseMap::default();

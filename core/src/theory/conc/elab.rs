@@ -560,22 +560,10 @@ impl Elaborator {
                 }
             }
             Upcast(loc, a) => {
-                let b_ty = self.nf(loc).term(hint.unwrap().clone())?;
-                let (a, a_ty) = self.infer(*a, hint)?;
-                match (a_ty, b_ty) {
-                    (Term::Enum(from), Term::Enum(to)) => {
-                        let tele = vec![Param {
-                            var: Var::unbound(),
-                            info: Implicit,
-                            typ: Box::new(Term::RowOrd(from, Le, to.clone())),
-                        }];
-                        (
-                            rename(Term::lam(&tele, Term::Upcast(Box::new(a), to.clone()))),
-                            rename(Term::pi(&tele, Term::Enum(to))),
-                        )
-                    }
-                    (Term::Enum(_), ty) => return Err(ExpectedEnum(ty, loc)),
-                    (ty, _) => return Err(ExpectedEnum(ty, loc)),
+                let (a, ty) = self.infer(*a, hint)?;
+                match ty {
+                    Term::Enum(r) => (a, Term::Upcast(Box::new(Term::Enum(r)))),
+                    ty => return Err(ExpectedEnum(ty, loc)),
                 }
             }
             Switch(loc, a, cs) => {

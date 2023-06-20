@@ -118,6 +118,8 @@ impl<'a> Unifier<'a> {
             (Obj(a), Obj(b)) => self.unify(a, b),
             (Enum(a), Enum(b)) => self.unify(a, b),
             (Variant(a), Variant(b)) => self.unify(a, b),
+            (Upcast(a), Enum(b)) => self.upcast(a, b),
+            (Enum(a), Upcast(b)) => self.upcast(b, a),
 
             (Extern(a), Extern(b)) if a == b => Ok(()),
             (Str(a), Str(b)) if a == b => Ok(()),
@@ -196,5 +198,16 @@ impl<'a> Unifier<'a> {
             return self.unify_err(&Fields(a.clone()), &Fields(b.clone()));
         }
         Ok(())
+    }
+
+    fn upcast(&mut self, small: &Term, big: &Term) -> Result<(), Error> {
+        use Term::*;
+        match small {
+            Enum(small) => match (small.as_ref(), big) {
+                (Fields(a), Fields(b)) => self.fields_ord(a, b),
+                (a, b) => self.unify(a, b),
+            },
+            _ => unreachable!(),
+        }
     }
 }
