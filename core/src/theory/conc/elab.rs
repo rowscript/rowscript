@@ -277,6 +277,17 @@ impl Elaborator {
                 Box::new(self.check(*t, ty)?),
                 Box::new(self.check(*e, ty)?),
             ),
+            Upcast(loc, a) => {
+                let (a, a_ty) = self.infer(*a, Some(ty))?;
+                let to = match self.nf(loc).term(ty.clone())? {
+                    Term::Enum(to) => to,
+                    ty => return Err(ExpectedEnum(ty, loc)),
+                };
+                match a_ty {
+                    Term::Enum(from) => Term::Up(Box::new(a), from, to),
+                    ty => return Err(ExpectedEnum(ty, loc)),
+                }
+            }
             _ => {
                 let loc = e.loc();
                 let f_e = e.clone();
@@ -531,10 +542,10 @@ impl Elaborator {
                     (ty, _) => return Err(ExpectedObject(ty, loc)),
                 }
             }
-            Enum(_, r) => {
-                let r = self.check(*r, &Term::Row)?;
-                (Term::Enum(Box::new(r)), Term::Univ)
-            }
+            Enum(_, r) => (
+                Term::Enum(Box::new(self.check(*r, &Term::Row)?)),
+                Term::Univ,
+            ),
             Variant(loc, n, a) => {
                 let b_ty = self.nf(loc).term(hint.unwrap().clone())?;
                 let (a, a_ty) = self.infer(*a, hint)?;

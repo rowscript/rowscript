@@ -101,6 +101,7 @@ pub enum Term {
     Enum(Box<Self>),
     Variant(Box<Self>),
     Upcast(Box<Self>),
+    Up(Box<Self>, Box<Self>, Box<Self>),
     Switch(Box<Self>, CaseMap),
     Unionify(Box<Self>),
 
@@ -198,7 +199,8 @@ impl Display for Term {
                 Downcast(a, _) => format!("{{...{a}}}"),
                 Enum(r) => format!("[{r}]"),
                 Variant(r) => format!("[{r}]"),
-                Upcast(a) => format!("[...{a}]"),
+                Upcast(a) => format!("upcast<{a}>"),
+                Up(a, _, _) => format!("[...{a}]"),
                 Switch(a, cs) => {
                     format!(
                         "switch ({a}) {{\n{}\n}}",

@@ -245,6 +245,18 @@ impl<'a> Normalizer<'a> {
             Enum(r) => Enum(self.term_box(r)?),
             Variant(r) => Variant(self.term_box(r)?),
             Upcast(r) => Upcast(self.term_box(r)?),
+            Up(r, from, to) => {
+                let r = self.term_box(r)?;
+                let from = self.term_box(from)?;
+                let to = self.term_box(to)?;
+                match (*from, *to) {
+                    (Fields(from), Fields(to)) => {
+                        self.unifier().fields_ord(&from, &to)?;
+                        *r
+                    }
+                    (from, to) => Up(r, Box::new(from), Box::new(to)),
+                }
+            }
             Switch(a, cs) => {
                 let a = self.term_box(a)?;
                 match a.as_ref() {
