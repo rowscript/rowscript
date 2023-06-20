@@ -562,15 +562,17 @@ impl Elaborator {
                                 Term::Enum(Box::new(Term::Fields(to))),
                             )
                         }
-                        (ty, _) => (
-                            Term::Variant(Box::new(Term::Fields(FieldMap::from([(n.clone(), a)])))),
-                            Term::Enum(Box::new(Term::Fields(FieldMap::from([(n, ty)])))),
-                        ),
+                        (ty, _) => {
+                            let tm = Term::Fields(FieldMap::from([(n.clone(), a)]));
+                            let ty = Term::Fields(FieldMap::from([(n, ty)]));
+                            (Term::Variant(Box::new(tm)), Term::Enum(Box::new(ty)))
+                        }
                     },
-                    _ => (
-                        Term::Variant(Box::new(Term::Fields(FieldMap::from([(n.clone(), a)])))),
-                        Term::Enum(Box::new(Term::Fields(FieldMap::from([(n, a_ty)])))),
-                    ),
+                    _ => {
+                        let tm = Term::Fields(FieldMap::from([(n.clone(), a)]));
+                        let ty = Term::Fields(FieldMap::from([(n, a_ty)]));
+                        (Term::Variant(Box::new(tm)), Term::Enum(Box::new(ty)))
+                    }
                 }
             }
             Upcast(loc, a) => {
