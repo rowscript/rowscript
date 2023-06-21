@@ -549,36 +549,20 @@ impl Elaborator {
                 Term::Enum(Box::new(self.check(*r, &Term::Row)?)),
                 Term::Univ,
             ),
-            Variant(loc, n, a) => {
-                let b_ty = self.nf(loc).term(hint.unwrap().clone())?;
+            Variant(_, n, a) => {
                 let (a, a_ty) = self.infer(*a, hint)?;
-                match b_ty {
-                    Term::Enum(to) => match (a_ty, *to) {
-                        (from, Term::Fields(to)) => {
-                            let from = FieldMap::from([(n.clone(), from)]);
-                            self.unifier(loc).fields_ord(&from, &to)?;
-                            (
-                                Term::Variant(Box::new(Term::Fields(FieldMap::from([(n, a)])))),
-                                Term::Enum(Box::new(Term::Fields(to))),
-                            )
-                        }
-                        (ty, _) => {
-                            let tm = Term::Fields(FieldMap::from([(n.clone(), a)]));
-                            let ty = Term::Fields(FieldMap::from([(n, ty)]));
-                            (Term::Variant(Box::new(tm)), Term::Enum(Box::new(ty)))
-                        }
-                    },
-                    _ => {
-                        let tm = Term::Fields(FieldMap::from([(n.clone(), a)]));
-                        let ty = Term::Fields(FieldMap::from([(n, a_ty)]));
-                        (Term::Variant(Box::new(tm)), Term::Enum(Box::new(ty)))
-                    }
-                }
+                let tm = Term::Fields(FieldMap::from([(n.clone(), a)]));
+                let ty = Term::Fields(FieldMap::from([(n, a_ty)]));
+                (
+                    Term::Variant(Box::new(tm)),
+                    Term::Upcast(Box::new(Term::Enum(Box::new(ty)))),
+                )
             }
             Upcast(loc, a) => {
                 let (a, ty) = self.infer(*a, hint)?;
                 match ty {
                     Term::Enum(r) => (a, Term::Upcast(Box::new(Term::Enum(r)))),
+                    Term::Upcast(r) => (a, Term::Upcast(r)),
                     ty => return Err(ExpectedEnum(ty, loc)),
                 }
             }

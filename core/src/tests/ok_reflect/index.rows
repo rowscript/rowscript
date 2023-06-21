@@ -2,12 +2,12 @@ type Foo = {a: string};
 
 function f() {
     let a: Reflect<Foo> = {
-        kind: [...RepKindObject],
+        kind: RepKindObject,
         fields: {
             a: {
                 name: "a",
                 info: {
-                    kind: [...RepKindString],
+                    kind: RepKindString,
                     value: "hello"
                 }
             }
