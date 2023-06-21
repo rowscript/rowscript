@@ -14,6 +14,10 @@ function g1(): {n: number} {
     return g0({n: 42, m: 69})
 }
 
-function h(): {a: {b: number}} {
+function h0(): {a: {b: number}} {
     return {a: {...{b: 42, c: "hello"}}}
+}
+
+function h1(): {a: {b: number}} {
+    return h0()
 }

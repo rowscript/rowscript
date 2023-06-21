@@ -518,6 +518,9 @@ impl Ecma {
             }),
             Access(a, n) => self.access(sigma, loc, a, n)?,
             Down(a, to) => {
+                // ((x) => {a: x.a, b: x.b})(n)
+                let x = Self::str_ident(loc, "x");
+
                 let fields = match to.as_ref() {
                     Fields(fields) => fields,
                     MetaRef(k, m, sp) => match Self::solution(sigma, m) {
@@ -538,12 +541,48 @@ impl Ecma {
                 for name in fields.keys() {
                     props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                         key: PropName::Ident(Self::str_ident(loc, name)),
-                        value: Box::new(self.access(sigma, loc, a, name)?),
+                        value: Box::new(Expr::Member(MemberExpr {
+                            span: loc.into(),
+                            obj: Box::new(Expr::Paren(ParenExpr {
+                                span: loc.into(),
+                                expr: Box::new(Expr::Ident(x.clone())),
+                            })),
+                            prop: MemberProp::Ident(Self::str_ident(loc, name)),
+                        })),
                     }))))
                 }
-                Expr::Object(ObjectLit {
+                let body = Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Paren(ParenExpr {
                     span: loc.into(),
-                    props,
+                    expr: Box::new(Expr::Object(ObjectLit {
+                        span: loc.into(),
+                        props,
+                    })),
+                }))));
+
+                let f = Expr::Paren(ParenExpr {
+                    span: loc.into(),
+                    expr: Box::new(Expr::Arrow(ArrowExpr {
+                        span: loc.into(),
+                        params: vec![Pat::Ident(BindingIdent {
+                            id: x,
+                            type_ann: None,
+                        })],
+                        body,
+                        is_async: false,
+                        is_generator: false,
+                        type_params: None,
+                        return_type: None,
+                    })),
+                });
+
+                Expr::Call(CallExpr {
+                    span: loc.into(),
+                    callee: Callee::Expr(Box::new(f)),
+                    args: vec![ExprOrSpread {
+                        spread: None,
+                        expr: Box::new(self.expr(sigma, loc, a)?),
+                    }],
+                    type_args: None,
                 })
             }
             Variant(f) => match f.as_ref() {
