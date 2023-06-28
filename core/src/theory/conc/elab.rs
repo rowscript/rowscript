@@ -567,7 +567,7 @@ impl Elaborator {
                 }
             }
             Switch(loc, a, cs) => {
-                let ret_ty = hint.unwrap();
+                let mut ret_ty = None;
                 let a_loc = a.loc();
                 let (a, a_ty) = self.infer(*a, hint)?;
                 let en = self.nf(loc).term(a_ty)?;
@@ -579,20 +579,32 @@ impl Elaborator {
                             }
                             let mut m = CaseMap::default();
                             for (n, v, e) in cs {
-                                let ty = f.get(&n).ok_or(UnresolvedField(
-                                    n.clone(),
-                                    Term::Fields(f.clone()),
-                                    loc,
-                                ))?;
-                                let p = Param {
-                                    var: v.clone(),
-                                    info: Explicit,
-                                    typ: Box::new(ty.clone()),
+                                let ty = f
+                                    .get(&n)
+                                    .ok_or(UnresolvedField(
+                                        n.clone(),
+                                        Term::Fields(f.clone()),
+                                        loc,
+                                    ))?
+                                    .clone();
+                                let tm = match &ret_ty {
+                                    None => {
+                                        let (tm, ty) = self.infer(e, hint)?;
+                                        ret_ty = Some(ty);
+                                        tm
+                                    }
+                                    Some(ret) => {
+                                        let p = Param {
+                                            var: v.clone(),
+                                            info: Explicit,
+                                            typ: Box::new(ty),
+                                        };
+                                        self.guarded_check(&[&p], e, ret)?
+                                    }
                                 };
-                                let tm = self.guarded_check(&[&p], e, ret_ty)?;
                                 m.insert(n, (v, tm));
                             }
-                            (Term::Switch(Box::new(a), m), ret_ty.clone())
+                            (Term::Switch(Box::new(a), m), ret_ty.unwrap())
                         }
                         y => return Err(FieldsUnknown(y, loc)),
                     },
