@@ -25,15 +25,15 @@ version = "2.4.1"
 version = "1.0.37"
 
 [dependencies.ariadne]
-version = "0.2.0"
+version = "0.3.0"
 
 [dependencies.stacker]
 version = "0.1"
 
 [dependencies]
-swc_ecma_parser = { version = "0.134.7", optional = true }
-swc_ecma_ast = { version = "0.104.3", optional = true }
-swc_ecma_codegen = { version = "0.139.9", optional = true }
+swc_ecma_parser = { version = "0.136.8", optional = true }
+swc_ecma_ast = { version = "0.106.6", optional = true }
+swc_ecma_codegen = { version = "0.141.11", optional = true }
 swc_atoms = { version = "0.5.3", optional = true }
 swc_common = { version = "0.31.5", features = ["tty-emitter"], optional = true }
 num-bigint = { version = "0.4.3", optional = true }

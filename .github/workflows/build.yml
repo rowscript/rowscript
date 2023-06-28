@@ -14,7 +14,7 @@ jobs:
       - name: Run rustfmt
         run: cargo fmt --all -- --check
       - name: Run clippy
-        run: cargo clippy --all
+        run: cargo clippy --all --no-deps
       - name: Build
         run: cargo build --release --verbose
       - name: Run tests
