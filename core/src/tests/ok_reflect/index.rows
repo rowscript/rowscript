@@ -1,17 +1,33 @@
-type Foo = {a: string};
+type A = {a: string};
+type B = [B0: string | B1];
+type C = [C0: A | C1: B];
+type D = {a: A, b: B};
 
-function f() {
-    let a: Reflect<Foo> = {
-        kind: RepKindObject,
-        fields: {
-            a: {
-                name: "a",
-                info: {
-                    kind: RepKindString,
-                    value: "hello"
-                }
-            }
-        }
-    };
-    return
-}
+type E = {_a: string};
+type F = [_F0 | _F1];
+
+//const x0: Reflect<A> = {
+//    kind: RepKindObject,
+//    props: {
+//        a: {
+//            name: "a",
+//            kind: RepKindString,
+//            value: "hello"
+//        }
+//    }
+//};
+
+//const x1: Reflect<B> = {
+//    kind: RepKindEnum,
+//    variants: {
+//        caseB1: {
+//            name: "B1",
+//            kind: RepKindUnit
+//        }
+//    },
+//    variant: {
+//        name: "B1",
+//        kind: RepKindString,
+//        value: "hello"
+//    }
+//};
