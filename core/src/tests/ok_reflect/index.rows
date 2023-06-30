@@ -6,16 +6,18 @@ type D = {a: A, b: B};
 type E = {_a: string};
 type F = [_F0 | _F1];
 
-//const x0: Reflect<A> = {
-//    kind: RepKindObject,
-//    props: {
-//        a: {
-//            name: "a",
-//            kind: RepKindString,
-//            value: "hello"
-//        }
-//    }
-//};
+type G = string;
+
+const x0: Reflect<A> = {
+    kind: RepKindObject,
+    props: {
+        a: {
+            name: "a",
+            kind: RepKindString,
+            value: "hello"
+        }
+    }
+};
 
 //const x1: Reflect<B> = {
 //    kind: RepKindEnum,

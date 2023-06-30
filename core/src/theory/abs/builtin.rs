@@ -1,8 +1,9 @@
 use crate::theory::abs::data::{FieldMap, Term};
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::abs::normalize::{
-    FIELD_REP_KIND_BIGINT, FIELD_REP_KIND_BOOLEAN, FIELD_REP_KIND_ENUM, FIELD_REP_KIND_NUMBER,
-    FIELD_REP_KIND_OBJECT, FIELD_REP_KIND_STRING, FIELD_REP_KIND_UNIT,
+    VARIANT_REP_KIND_BIGINT, VARIANT_REP_KIND_BOOLEAN, VARIANT_REP_KIND_ENUM,
+    VARIANT_REP_KIND_NUMBER, VARIANT_REP_KIND_OBJECT, VARIANT_REP_KIND_STRING,
+    VARIANT_REP_KIND_UNIT,
 };
 use crate::theory::conc::resolve::{NameMap, ResolvedVar, VarKind};
 use crate::theory::ParamInfo::{Explicit, Implicit};
@@ -125,13 +126,13 @@ impl Builtins {
                 tele: Default::default(),
                 ret: Box::new(Univ),
                 body: Body::Alias(Enum(Box::new(Fields(FieldMap::from([
-                    (FIELD_REP_KIND_NUMBER.to_string(), Unit),
-                    (FIELD_REP_KIND_STRING.to_string(), Unit),
-                    (FIELD_REP_KIND_BOOLEAN.to_string(), Unit),
-                    (FIELD_REP_KIND_BIGINT.to_string(), Unit),
-                    (FIELD_REP_KIND_UNIT.to_string(), Unit),
-                    (FIELD_REP_KIND_OBJECT.to_string(), Unit),
-                    (FIELD_REP_KIND_ENUM.to_string(), Unit),
+                    (VARIANT_REP_KIND_NUMBER.to_string(), Unit),
+                    (VARIANT_REP_KIND_STRING.to_string(), Unit),
+                    (VARIANT_REP_KIND_BOOLEAN.to_string(), Unit),
+                    (VARIANT_REP_KIND_BIGINT.to_string(), Unit),
+                    (VARIANT_REP_KIND_UNIT.to_string(), Unit),
+                    (VARIANT_REP_KIND_OBJECT.to_string(), Unit),
+                    (VARIANT_REP_KIND_ENUM.to_string(), Unit),
                 ]))))),
             },
         )

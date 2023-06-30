@@ -9,13 +9,18 @@ use crate::theory::{Loc, Param, Var};
 use crate::Error;
 use crate::Error::{ExpectedReflectable, UnresolvedImplementation};
 
-pub const FIELD_REP_KIND_NUMBER: &str = "RepKindNumber";
-pub const FIELD_REP_KIND_STRING: &str = "RepKindString";
-pub const FIELD_REP_KIND_BOOLEAN: &str = "RepKindBoolean";
-pub const FIELD_REP_KIND_BIGINT: &str = "RepKindBigint";
-pub const FIELD_REP_KIND_UNIT: &str = "RepKindUnit";
-pub const FIELD_REP_KIND_OBJECT: &str = "RepKindObject";
-pub const FIELD_REP_KIND_ENUM: &str = "RepKindEnum";
+pub const VARIANT_REP_KIND_NUMBER: &str = "RepKindNumber";
+pub const VARIANT_REP_KIND_STRING: &str = "RepKindString";
+pub const VARIANT_REP_KIND_BOOLEAN: &str = "RepKindBoolean";
+pub const VARIANT_REP_KIND_BIGINT: &str = "RepKindBigint";
+pub const VARIANT_REP_KIND_UNIT: &str = "RepKindUnit";
+pub const VARIANT_REP_KIND_OBJECT: &str = "RepKindObject";
+pub const VARIANT_REP_KIND_ENUM: &str = "RepKindEnum";
+
+const PROP_NAME: &str = "name";
+const PROP_KIND: &str = "kind";
+const PROP_VALUE: &str = "value";
+const PROP_PROPS: &str = "props";
 
 pub struct Normalizer<'a> {
     builtins: &'a Builtins,
@@ -409,46 +414,56 @@ impl<'a> Normalizer<'a> {
 
     fn reflect_type(&self, ty: Term) -> Result<Box<Term>, Error> {
         use Term::*;
-        Ok(Box::new(match ty {
-            Object(f) | Enum(f) => {
-                let fields = match *f {
-                    Fields(fields) => fields,
-                    _ => unreachable!(),
-                };
-                let mut reflected_fields = FieldMap::new();
-                for (name, ty) in fields {
-                    let reflected_field_ty = Object(Box::new(Fields(FieldMap::from([
-                        ("name".to_string(), String),
-                        ("info".to_string(), *self.reflect_type(ty)?),
-                    ]))));
-                    reflected_fields.insert(name, reflected_field_ty);
-                }
-                Object(Box::new(Fields(FieldMap::from([
-                    ("kind".to_string(), Undef(self.builtins.rep_kind.clone())),
-                    (
-                        "fields".to_string(),
-                        Object(Box::new(Fields(reflected_fields))),
-                    ),
-                ]))))
-            }
+        Ok(match ty {
+            Object(f) => self.reflect_object(*f)?,
+            Enum(_) => todo!(),
 
-            Unit => *self.simple_reflect_type(Unit),
-            Boolean => *self.simple_reflect_type(Boolean),
-            String => *self.simple_reflect_type(String),
-            Number => *self.simple_reflect_type(Number),
-            BigInt => *self.simple_reflect_type(BigInt),
+            Unit => self.simple_reflect_type(Unit),
+            Boolean => self.simple_reflect_type(Boolean),
+            String => self.simple_reflect_type(String),
+            Number => self.simple_reflect_type(Number),
+            BigInt => self.simple_reflect_type(BigInt),
 
-            Ref(a) => Reflect(Box::new(Ref(a))),
+            Ref(a) => Box::new(Reflect(Box::new(Ref(a)))),
 
             a => return Err(ExpectedReflectable(a, self.loc)),
-        }))
+        })
+    }
+
+    fn reflect_object(&self, fields: Term) -> Result<Box<Term>, Error> {
+        use Term::*;
+        let fields = match fields {
+            Fields(fields) => fields,
+            a => return Err(ExpectedReflectable(a, self.loc)),
+        };
+        Ok(Box::new(Object(Box::new(Fields(FieldMap::from([
+            (PROP_KIND.to_string(), Undef(self.builtins.rep_kind.clone())),
+            (
+                PROP_PROPS.to_string(),
+                Object(Box::new(Fields(
+                    fields
+                        .into_iter()
+                        .map(|(name, ty)| {
+                            (
+                                name,
+                                Object(Box::new(Fields(FieldMap::from([
+                                    (PROP_NAME.to_string(), String),
+                                    (PROP_KIND.to_string(), Undef(self.builtins.rep_kind.clone())),
+                                    (PROP_VALUE.to_string(), ty),
+                                ])))),
+                            )
+                        })
+                        .collect(),
+                ))),
+            ),
+        ]))))))
     }
 
     fn simple_reflect_type(&self, ty: Term) -> Box<Term> {
         use Term::*;
         Box::new(Object(Box::new(Fields(FieldMap::from([
-            ("kind".to_string(), Undef(self.builtins.rep_kind.clone())),
-            ("value".to_string(), ty),
+            (PROP_KIND.to_string(), Undef(self.builtins.rep_kind.clone())),
+            (PROP_VALUE.to_string(), ty),
         ])))))
     }
 }
