@@ -10,17 +10,18 @@ type G = string;
 
 const x0: Reflect<A> = {
     kind: RepKindObject,
+    value: {a: "hello"},
     props: {
         a: {
             name: "a",
-            kind: RepKindString,
-            value: "hello"
+            kind: RepKindString
         }
     }
 };
 
 const x1: Reflect<B> = {
     kind: RepKindEnum,
+    value: B0("hello"),
     variants: {
         caseB0: {
             name: "B0",
@@ -30,6 +31,78 @@ const x1: Reflect<B> = {
             name: "B1",
             kind: RepKindUnit
         }
+    }
+};
+
+const x2: Reflect<C> = {
+    kind: RepKindEnum,
+    value: C0({a: "hello"}),
+    variants: {
+        caseC0: {
+            name: "C0",
+            kind: {
+                kind: RepKindObject,
+                props: {
+                    a: {
+                        name: "a",
+                        kind: RepKindString
+                    }
+                }
+            }
+        },
+        caseC1: {
+            name: "C1",
+            kind: {
+                kind: RepKindEnum,
+                variants: {
+                    caseB0: {
+                        name: "B0",
+                        kind: RepKindString
+                    },
+                    caseB1: {
+                        name: "B1",
+                        kind: RepKindUnit
+                    }
+                }
+            }
+        }
+    }
+};
+
+const x3: Reflect<D> = {
+    kind: RepKindObject,
+    value: {
+        a: {a: "hello"},
+        b: B1
     },
-    value: B0("hello")
+    props: {
+        a: {
+            name: "a",
+            kind: {
+                kind: RepKindObject,
+                props: {
+                    a: {
+                        name: "a",
+                        kind: RepKindString
+                    }
+                }
+            }
+        },
+        b: {
+            name: "b",
+            kind: {
+                kind: RepKindEnum,
+                variants: {
+                    caseB0: {
+                        name: "B0",
+                        kind: RepKindString
+                    },
+                    caseB1: {
+                        name: "B1",
+                        kind: RepKindUnit
+                    }
+                }
+            }
+        }
+    }
 };
