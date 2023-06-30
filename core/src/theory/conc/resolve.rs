@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, ImplementsBody};
 use crate::theory::conc::data::Expr;
@@ -11,23 +12,23 @@ use crate::Error::UnresolvedVar;
 
 pub type NameMap = HashMap<String, ResolvedVar>;
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum VarKind {
     InModule,
     Imported,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ResolvedVar(pub VarKind, pub Var);
 
 pub struct Resolver<'a> {
-    builtins: &'a NameMap,
+    builtins: &'a Builtins,
     loaded: &'a Loaded,
     names: NameMap,
 }
 
 impl<'a> Resolver<'a> {
-    pub fn new(builtins: &'a NameMap, loaded: &'a Loaded) -> Self {
+    pub fn new(builtins: &'a Builtins, loaded: &'a Loaded) -> Self {
         Self {
             builtins,
             loaded,
@@ -164,7 +165,9 @@ impl<'a> Resolver<'a> {
 
     fn get(&self, v: &Var) -> Option<&ResolvedVar> {
         let k = v.as_str();
-        self.names.get(k).or_else(|| self.builtins.get(k))
+        self.names
+            .get(k)
+            .or_else(|| self.builtins.ubiquitous.get(k))
     }
 
     fn insert(&mut self, v: &Var) -> Option<ResolvedVar> {

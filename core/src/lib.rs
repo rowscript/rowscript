@@ -14,7 +14,7 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::load::{prelude_path, Import, Loaded, ModuleID};
-use crate::theory::conc::resolve::{NameMap, ResolvedVar, Resolver, VarKind};
+use crate::theory::conc::resolve::{ResolvedVar, Resolver, VarKind};
 use crate::theory::conc::trans::Trans;
 use crate::theory::Loc;
 
@@ -172,7 +172,6 @@ pub struct Module {
 pub struct Driver {
     path: PathBuf,
     trans: Trans,
-    ubiquitous: NameMap,
     loaded: Loaded,
     elab: Elaborator,
     codegen: Codegen,
@@ -186,14 +185,11 @@ enum Loadable {
 impl Driver {
     pub fn new(path: PathBuf, target: Box<dyn Target>) -> Self {
         let codegen = Codegen::new(target, path.join(OUTDIR));
-        let mut ubiquitous = NameMap::default();
-        let elab = Elaborator::new(&mut ubiquitous);
         Self {
             path,
             trans: Default::default(),
-            ubiquitous,
             loaded: Default::default(),
-            elab,
+            elab: Default::default(),
             codegen,
         }
     }
@@ -279,12 +275,12 @@ impl Driver {
         imports.iter().fold(Ok(()), |r, i| {
             r.and_then(|_| self.load_module(i.module.clone()))
         })?;
-        let defs = Resolver::new(&self.ubiquitous, &self.loaded)
+        let defs = Resolver::new(&self.elab.builtins, &self.loaded)
             .file(&mut imports, defs)
             .and_then(|d| self.elab.defs(d))?;
         for d in &defs {
             if is_ubiquitous {
-                self.ubiquitous.insert(
+                self.elab.builtins.ubiquitous.insert(
                     d.name.to_string(),
                     ResolvedVar(VarKind::InModule, d.name.clone()),
                 );

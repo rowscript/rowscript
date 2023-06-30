@@ -39,6 +39,8 @@ fn tuple_params<const N: usize>(var: Var, tele: [Param<Term>; N]) -> Tele<Term> 
 
 #[derive(Debug)]
 pub struct Builtins {
+    pub ubiquitous: NameMap,
+
     pub unionify: Var,
 
     pub reflect: Var,
@@ -49,31 +51,32 @@ pub struct Builtins {
 }
 
 impl Builtins {
-    pub fn new(sigma: &mut Sigma, ubiquitous: &mut NameMap) -> Self {
+    pub fn new(sigma: &mut Sigma) -> Self {
         let mut ret = Self {
+            ubiquitous: NameMap::default(),
             unionify: Var::new("unionify"),
             reflect: Var::new("Reflect"),
             rep_kind: Var::new("RepKind"),
             number_add: Var::new("number#__add__"),
             number_sub: Var::new("number#__sub__"),
         };
-        ret.insert_unionify(sigma, ubiquitous);
-        ret.insert_reflect(sigma, ubiquitous);
-        ret.insert_rep_kind(sigma, ubiquitous);
-        ret.insert_number_add(sigma, ubiquitous);
-        ret.insert_number_sub(sigma, ubiquitous);
+        ret.insert_unionify(sigma);
+        ret.insert_reflect(sigma);
+        ret.insert_rep_kind(sigma);
+        ret.insert_number_add(sigma);
+        ret.insert_number_sub(sigma);
         ret
     }
 
-    fn insert_def(&mut self, sigma: &mut Sigma, ubiquitous: &mut NameMap, def: Def<Term>) {
-        ubiquitous.insert(
+    fn insert_def(&mut self, sigma: &mut Sigma, def: Def<Term>) {
+        self.ubiquitous.insert(
             def.name.to_string(),
             ResolvedVar(VarKind::InModule, def.name.clone()),
         );
         sigma.insert(def.name.clone(), def);
     }
 
-    fn insert_unionify(&mut self, sigma: &mut Sigma, ubiquitous: &mut NameMap) {
+    fn insert_unionify(&mut self, sigma: &mut Sigma) {
         let r = Var::new("'R");
         let a_ty = Term::Enum(Box::new(Term::Ref(r.clone())));
         let tupled = Var::tupled();
@@ -89,7 +92,6 @@ impl Builtins {
         tele.extend(tupled_tele);
         self.insert_def(
             sigma,
-            ubiquitous,
             Def {
                 loc: Default::default(),
                 name: self.unionify.clone(),
@@ -100,11 +102,10 @@ impl Builtins {
         )
     }
 
-    fn insert_reflect(&mut self, sigma: &mut Sigma, ubiquitous: &mut NameMap) {
+    fn insert_reflect(&mut self, sigma: &mut Sigma) {
         let t = Var::new("T");
         self.insert_def(
             sigma,
-            ubiquitous,
             Def {
                 loc: Default::default(),
                 name: self.reflect.clone(),
@@ -115,11 +116,10 @@ impl Builtins {
         )
     }
 
-    fn insert_rep_kind(&mut self, sigma: &mut Sigma, ubiquitous: &mut NameMap) {
+    fn insert_rep_kind(&mut self, sigma: &mut Sigma) {
         use Term::*;
         self.insert_def(
             sigma,
-            ubiquitous,
             Def {
                 loc: Default::default(),
                 name: self.rep_kind.clone(),
@@ -138,7 +138,7 @@ impl Builtins {
         )
     }
 
-    fn insert_number_add(&mut self, sigma: &mut Sigma, ubiquitous: &mut NameMap) {
+    fn insert_number_add(&mut self, sigma: &mut Sigma) {
         let b = Var::new("b");
         let tupled = Var::tupled();
         let untupled_a = Var::new("a");
@@ -163,7 +163,6 @@ impl Builtins {
         ));
         self.insert_def(
             sigma,
-            ubiquitous,
             Def {
                 loc: Default::default(),
                 name: self.number_add.clone(),
@@ -180,7 +179,7 @@ impl Builtins {
         )
     }
 
-    fn insert_number_sub(&mut self, sigma: &mut Sigma, ubiquitous: &mut NameMap) {
+    fn insert_number_sub(&mut self, sigma: &mut Sigma) {
         let b = Var::new("b");
         let tupled = Var::tupled();
         let untupled_a = Var::new("a");
@@ -205,7 +204,6 @@ impl Builtins {
         ));
         self.insert_def(
             sigma,
-            ubiquitous,
             Def {
                 loc: Default::default(),
                 name: Var::new("number#__sub__"),

@@ -9,7 +9,6 @@ use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
-use crate::theory::conc::resolve::NameMap;
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var, VarGen, VPTR};
 use crate::Error;
@@ -21,24 +20,13 @@ use crate::Error::{
 
 #[derive(Debug)]
 pub struct Elaborator {
-    builtins: Builtins,
+    pub builtins: Builtins,
     pub sigma: Sigma,
     gamma: Gamma,
     vg: VarGen,
 }
 
 impl Elaborator {
-    pub fn new(ubiquitous: &mut NameMap) -> Self {
-        let mut sigma = Default::default();
-        let builtins = Builtins::new(&mut sigma, ubiquitous);
-        Self {
-            builtins,
-            sigma,
-            gamma: Default::default(),
-            vg: Default::default(),
-        }
-    }
-
     fn unifier(&mut self, loc: Loc) -> Unifier {
         Unifier::new(&self.builtins, &mut self.sigma, loc)
     }
@@ -786,5 +774,18 @@ impl Elaborator {
             },
             _ => None,
         })
+    }
+}
+
+impl Default for Elaborator {
+    fn default() -> Self {
+        let mut sigma = Default::default();
+        let builtins = Builtins::new(&mut sigma);
+        Self {
+            builtins,
+            sigma,
+            gamma: Default::default(),
+            vg: Default::default(),
+        }
     }
 }
