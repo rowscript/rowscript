@@ -1,3 +1,13 @@
+type RepKind =
+    [ RepKindNumber
+    | RepKindString
+    | RepKindBoolean
+    | RepKindBigint
+    | RepKindUnit
+    | RepKindObject
+    | RepKindEnum
+    ];
+
 interface Reflector for T {
     reflect(t: T): Reflect<T>;
     unreflect(r: Reflect<T>): T;

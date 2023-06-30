@@ -1,10 +1,6 @@
-use crate::theory::abs::data::{FieldMap, Term};
+use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
-use crate::theory::abs::normalize::{
-    VARIANT_REP_KIND_BIGINT, VARIANT_REP_KIND_BOOLEAN, VARIANT_REP_KIND_ENUM,
-    VARIANT_REP_KIND_NUMBER, VARIANT_REP_KIND_OBJECT, VARIANT_REP_KIND_STRING,
-    VARIANT_REP_KIND_UNIT,
-};
+
 use crate::theory::conc::resolve::{NameMap, ResolvedVar, VarKind};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Param, Tele, Var};
@@ -44,7 +40,6 @@ pub struct Builtins {
     pub unionify: Var,
 
     pub reflect: Var,
-    pub rep_kind: Var,
 
     pub number_add: Var,
     pub number_sub: Var,
@@ -56,13 +51,11 @@ impl Builtins {
             ubiquitous: NameMap::default(),
             unionify: Var::new("unionify"),
             reflect: Var::new("Reflect"),
-            rep_kind: Var::new("RepKind"),
             number_add: Var::new("number#__add__"),
             number_sub: Var::new("number#__sub__"),
         };
         ret.insert_unionify(sigma);
         ret.insert_reflect(sigma);
-        ret.insert_rep_kind(sigma);
         ret.insert_number_add(sigma);
         ret.insert_number_sub(sigma);
         ret
@@ -112,28 +105,6 @@ impl Builtins {
                 tele: vec![implicit(t.clone(), Term::Univ)],
                 ret: Box::new(Term::Univ),
                 body: Body::Fn(Term::Reflect(Box::new(Term::Ref(t)))),
-            },
-        )
-    }
-
-    fn insert_rep_kind(&mut self, sigma: &mut Sigma) {
-        use Term::*;
-        self.insert_def(
-            sigma,
-            Def {
-                loc: Default::default(),
-                name: self.rep_kind.clone(),
-                tele: Default::default(),
-                ret: Box::new(Univ),
-                body: Body::Alias(Enum(Box::new(Fields(FieldMap::from([
-                    (VARIANT_REP_KIND_NUMBER.to_string(), Unit),
-                    (VARIANT_REP_KIND_STRING.to_string(), Unit),
-                    (VARIANT_REP_KIND_BOOLEAN.to_string(), Unit),
-                    (VARIANT_REP_KIND_BIGINT.to_string(), Unit),
-                    (VARIANT_REP_KIND_UNIT.to_string(), Unit),
-                    (VARIANT_REP_KIND_OBJECT.to_string(), Unit),
-                    (VARIANT_REP_KIND_ENUM.to_string(), Unit),
-                ]))))),
             },
         )
     }

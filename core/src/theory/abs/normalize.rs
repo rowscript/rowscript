@@ -9,14 +9,6 @@ use crate::theory::{Loc, Param, Var};
 use crate::Error;
 use crate::Error::{ExpectedReflectable, UnresolvedImplementation};
 
-pub const VARIANT_REP_KIND_NUMBER: &str = "RepKindNumber";
-pub const VARIANT_REP_KIND_STRING: &str = "RepKindString";
-pub const VARIANT_REP_KIND_BOOLEAN: &str = "RepKindBoolean";
-pub const VARIANT_REP_KIND_BIGINT: &str = "RepKindBigint";
-pub const VARIANT_REP_KIND_UNIT: &str = "RepKindUnit";
-pub const VARIANT_REP_KIND_OBJECT: &str = "RepKindObject";
-pub const VARIANT_REP_KIND_ENUM: &str = "RepKindEnum";
-
 const PROP_NAME: &str = "name";
 const PROP_KIND: &str = "kind";
 const PROP_VALUE: &str = "value";
@@ -432,7 +424,7 @@ impl<'a> Normalizer<'a> {
     }
 
     fn rep_kind(&self) -> Term {
-        Term::Undef(self.builtins.rep_kind.clone())
+        Term::Undef(self.builtins.ubiquitous.get("RepKind").unwrap().1.clone())
     }
 
     fn reflect_object(&self, fields: Term, has_value: bool) -> Result<Box<Term>, Error> {
@@ -500,9 +492,7 @@ impl<'a> Normalizer<'a> {
     fn reflect_field_type(&self, ty: Term) -> Result<Box<Term>, Error> {
         use Term::*;
         Ok(match ty {
-            Unit | Boolean | String | Number | BigInt => {
-                Box::new(Undef(self.builtins.rep_kind.clone()))
-            }
+            Unit | Boolean | String | Number | BigInt => Box::new(self.rep_kind()),
             a => self.reflect_type(a, false)?,
         })
     }
@@ -510,7 +500,7 @@ impl<'a> Normalizer<'a> {
     fn reflect_simple(&self, ty: Term) -> Box<Term> {
         use Term::*;
         Box::new(Object(Box::new(Fields(FieldMap::from([
-            (PROP_KIND.to_string(), Undef(self.builtins.rep_kind.clone())),
+            (PROP_KIND.to_string(), self.rep_kind()),
             (PROP_VALUE.to_string(), ty),
         ])))))
     }
