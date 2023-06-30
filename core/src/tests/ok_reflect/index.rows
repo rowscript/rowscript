@@ -19,17 +19,17 @@ const x0: Reflect<A> = {
     }
 };
 
-//const x1: Reflect<B> = {
-//    kind: RepKindEnum,
-//    variants: {
-//        caseB1: {
-//            name: "B1",
-//            kind: RepKindUnit
-//        }
-//    },
-//    variant: {
-//        name: "B1",
-//        kind: RepKindString,
-//        value: "hello"
-//    }
-//};
+const x1: Reflect<B> = {
+    kind: RepKindEnum,
+    variants: {
+        caseB0: {
+            name: "B0",
+            kind: RepKindString
+        },
+        caseB1: {
+            name: "B1",
+            kind: RepKindUnit
+        }
+    },
+    value: B0("hello")
+};

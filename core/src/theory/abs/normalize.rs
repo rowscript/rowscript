@@ -21,6 +21,7 @@ const PROP_NAME: &str = "name";
 const PROP_KIND: &str = "kind";
 const PROP_VALUE: &str = "value";
 const PROP_PROPS: &str = "props";
+const PROP_VARIANTS: &str = "variants";
 
 pub struct Normalizer<'a> {
     builtins: &'a Builtins,
@@ -416,7 +417,7 @@ impl<'a> Normalizer<'a> {
         use Term::*;
         Ok(match ty {
             Object(f) => self.reflect_object(*f)?,
-            Enum(_) => todo!(),
+            Enum(f) => self.reflect_enum(*f)?,
 
             Unit => self.simple_reflect_type(Unit),
             Boolean => self.simple_reflect_type(Boolean),
@@ -456,6 +457,36 @@ impl<'a> Normalizer<'a> {
                         .collect(),
                 ))),
             ),
+        ]))))))
+    }
+
+    fn reflect_enum(&self, fields: Term) -> Result<Box<Term>, Error> {
+        use Term::*;
+        let fields = match fields {
+            Fields(fields) => fields,
+            a => return Err(ExpectedReflectable(a, self.loc)),
+        };
+        let ty = Enum(Box::new(Fields(fields.clone())));
+        Ok(Box::new(Object(Box::new(Fields(FieldMap::from([
+            (PROP_KIND.to_string(), Undef(self.builtins.rep_kind.clone())),
+            (
+                PROP_VARIANTS.to_string(),
+                Object(Box::new(Fields(
+                    fields
+                        .into_keys()
+                        .map(|name| {
+                            (
+                                format!("case{name}"),
+                                Object(Box::new(Fields(FieldMap::from([
+                                    (PROP_NAME.to_string(), String),
+                                    (PROP_KIND.to_string(), Undef(self.builtins.rep_kind.clone())),
+                                ])))),
+                            )
+                        })
+                        .collect(),
+                ))),
+            ),
+            (PROP_VALUE.to_string(), ty),
         ]))))))
     }
 
