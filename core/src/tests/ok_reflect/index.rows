@@ -106,3 +106,34 @@ const x3: Reflect<D> = {
         }
     }
 };
+
+const x4: Reflect<E> = {
+    kind: RepKindObject,
+    value: {_a: "hello"},
+    props: {
+        _a: {
+            name: "_a",
+            kind: RepKindString
+        }
+    }
+};
+
+const x5: Reflect<F> = {
+    kind: RepKindEnum,
+    value: _F0,
+    variants: {
+        _caseF0: {
+            name: "_F0",
+            kind: RepKindUnit
+        },
+        _caseF1: {
+            name: "_F1",
+            kind: RepKindUnit
+        }
+    }
+};
+
+const x6: Reflect<G> = {
+    kind: RepKindString,
+    value: "hello"
+};

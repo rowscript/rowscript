@@ -462,6 +462,11 @@ impl<'a> Normalizer<'a> {
         Ok(Box::new(Object(Box::new(Fields(ret)))))
     }
 
+    fn prefix_field(mut name: String, prefix: &str) -> String {
+        name.insert_str(name.find('_').map_or(0, |x| x + 1), prefix);
+        name
+    }
+
     fn reflect_enum(&self, fields: Term, has_value: bool) -> Result<Box<Term>, Error> {
         use Term::*;
         let fields = match fields {
@@ -478,7 +483,7 @@ impl<'a> Normalizer<'a> {
         let mut variants = FieldMap::new();
         for (name, ty) in fields {
             variants.insert(
-                format!("case{name}"),
+                Self::prefix_field(name, "case"),
                 Object(Box::new(Fields(FieldMap::from([
                     (PROP_NAME.to_string(), String),
                     (PROP_KIND.to_string(), *self.reflect_field_type(ty)?),
