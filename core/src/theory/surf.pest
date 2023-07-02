@@ -459,6 +459,8 @@ implements_fn =
 
 const_def = { ("const" ~ fn_id ~ (":" ~ type_expr)? ~ "=")? ~ expr ~ ";" }
 
+reflects_def = { "implements" ~ "Reflector" ~ "for" ~ (tyref | primitive_type) ~ ";" }
+
 def =
  _{ fn_def
   | fn_postulate
@@ -468,6 +470,7 @@ def =
   | interface_def
   | implements_def
   | const_def
+  | reflects_def
   }
 
 import_std =

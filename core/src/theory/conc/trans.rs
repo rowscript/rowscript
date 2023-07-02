@@ -46,6 +46,7 @@ impl Trans {
                 Rule::interface_def => defs.extend(self.interface_def(d)),
                 Rule::implements_def => defs.extend(self.implements_def(d)),
                 Rule::const_def => defs.push(self.const_def(d)),
+                Rule::reflects_def => defs.push(self.reflects_def(d)),
                 Rule::EOI => break,
                 _ => unreachable!(),
             }
@@ -587,6 +588,10 @@ impl Trans {
             }
         }
         unreachable!()
+    }
+
+    fn reflects_def(&self, _r: Pair<Rule>) -> Def<Expr> {
+        todo!()
     }
 
     fn type_expr(&self, t: Pair<Rule>) -> Expr {
