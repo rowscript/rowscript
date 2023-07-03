@@ -381,6 +381,10 @@ impl<'a> Normalizer<'a> {
     fn find_implementation(&mut self, ty: Term, i: Var, f: Var) -> Result<Term, Error> {
         use Body::*;
 
+        if self.is_reflector(&i) {
+            todo!("generate implementations for the Reflector")
+        }
+
         let ims = match &self.sigma.get(&i).unwrap().body {
             Interface { ims, .. } => ims.clone(),
             _ => unreachable!(),
@@ -417,10 +421,12 @@ impl<'a> Normalizer<'a> {
             Number => self.reflect_simple(Number),
             BigInt => self.reflect_simple(BigInt),
 
-            Ref(a) => Box::new(Reflect(Box::new(Ref(a)))),
-
-            a => return Err(ExpectedReflectable(a, self.loc)),
+            a => Box::new(a),
         })
+    }
+
+    fn is_reflector(&self, i: &Var) -> bool {
+        return &self.builtins.ubiquitous.get("Reflector").unwrap().1 == i;
     }
 
     fn rep_kind(&self) -> Term {

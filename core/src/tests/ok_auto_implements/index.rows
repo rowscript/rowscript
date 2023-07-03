@@ -4,6 +4,6 @@ interface Stringer for T {
 
 type A = {a: number};
 
-implements Reflector for A;
-
-function f() { return }
+function f(a: A): Reflect<A> {
+    return reflect(a)
+}
