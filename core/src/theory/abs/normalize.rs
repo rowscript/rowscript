@@ -1,19 +1,14 @@
 use crate::theory::abs::builtin::Builtins;
-use crate::theory::abs::data::{CaseMap, Dir, FieldMap, Term};
+use crate::theory::abs::data::{CaseMap, Dir, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
+use crate::theory::abs::reflect::Reflector;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
-use crate::Error::{ExpectedReflectable, UnresolvedImplementation};
-
-const PROP_NAME: &str = "name";
-const PROP_KIND: &str = "kind";
-const PROP_VALUE: &str = "value";
-const PROP_PROPS: &str = "props";
-const PROP_VARIANTS: &str = "variants";
+use crate::Error::UnresolvedImplementation;
 
 pub struct Normalizer<'a> {
     builtins: &'a Builtins,
@@ -34,6 +29,10 @@ impl<'a> Normalizer<'a> {
 
     fn unifier(&mut self) -> Unifier {
         Unifier::new(self.builtins, self.sigma, self.loc)
+    }
+
+    fn reflector(&self) -> Reflector {
+        Reflector::new(self.builtins, self.loc)
     }
 
     pub fn term(&mut self, tm: Term) -> Result<Term, Error> {
@@ -300,13 +299,13 @@ impl<'a> Normalizer<'a> {
                 let ty = self.term_box(ty)?;
                 match *ty {
                     Ref(_) | MetaRef(_, _, _) => Find(ty, i, f),
-                    ty if self.is_reflector(&i) => *self.implement_reflector(ty),
+                    ty if self.is_reflector(&i) => *self.reflector().generate(ty),
                     ty => self.find_implementation(ty, i, f)?,
                 }
             }
             Reflect(a) => {
                 let ty = *self.term_box(a)?;
-                *self.reflect_type(ty, true)?
+                *self.reflector().reflect(ty, true)?
             }
             tm => tm,
         })
@@ -406,109 +405,7 @@ impl<'a> Normalizer<'a> {
         Err(UnresolvedImplementation(ty, self.loc))
     }
 
-    fn reflect_type(&self, ty: Term, has_value: bool) -> Result<Box<Term>, Error> {
-        use Term::*;
-        Ok(match ty {
-            Object(f) => self.reflect_object(*f, has_value)?,
-            Enum(f) => self.reflect_enum(*f, has_value)?,
-
-            Unit => self.reflect_simple(Unit),
-            Boolean => self.reflect_simple(Boolean),
-            String => self.reflect_simple(String),
-            Number => self.reflect_simple(Number),
-            BigInt => self.reflect_simple(BigInt),
-
-            a => Box::new(a),
-        })
-    }
-
     fn is_reflector(&self, i: &Var) -> bool {
         return &self.builtins.ubiquitous.get("Reflector").unwrap().1 == i;
-    }
-
-    fn rep_kind(&self) -> Term {
-        Term::Undef(self.builtins.ubiquitous.get("RepKind").unwrap().1.clone())
-    }
-
-    fn reflect_object(&self, fields: Term, has_value: bool) -> Result<Box<Term>, Error> {
-        use Term::*;
-        let fields = match fields {
-            Fields(fields) => fields,
-            a => return Err(ExpectedReflectable(a, self.loc)),
-        };
-        let mut ret = FieldMap::from([(PROP_KIND.to_string(), self.rep_kind())]);
-        if has_value {
-            ret.insert(
-                PROP_VALUE.to_string(),
-                Object(Box::new(Fields(fields.clone()))),
-            );
-        }
-        let mut props = FieldMap::new();
-        for (name, ty) in fields {
-            props.insert(
-                name,
-                Object(Box::new(Fields(FieldMap::from([
-                    (PROP_NAME.to_string(), String),
-                    (PROP_KIND.to_string(), *self.reflect_field_type(ty)?),
-                ])))),
-            );
-        }
-        ret.insert(PROP_PROPS.to_string(), Object(Box::new(Fields(props))));
-        Ok(Box::new(Object(Box::new(Fields(ret)))))
-    }
-
-    fn prefix_field(mut name: String, prefix: &str) -> String {
-        name.insert_str(name.find('_').map_or(0, |x| x + 1), prefix);
-        name
-    }
-
-    fn reflect_enum(&self, fields: Term, has_value: bool) -> Result<Box<Term>, Error> {
-        use Term::*;
-        let fields = match fields {
-            Fields(fields) => fields,
-            a => return Err(ExpectedReflectable(a, self.loc)),
-        };
-        let mut ret = FieldMap::from([(PROP_KIND.to_string(), self.rep_kind())]);
-        if has_value {
-            ret.insert(
-                PROP_VALUE.to_string(),
-                Enum(Box::new(Fields(fields.clone()))),
-            );
-        }
-        let mut variants = FieldMap::new();
-        for (name, ty) in fields {
-            variants.insert(
-                Self::prefix_field(name, "case"),
-                Object(Box::new(Fields(FieldMap::from([
-                    (PROP_NAME.to_string(), String),
-                    (PROP_KIND.to_string(), *self.reflect_field_type(ty)?),
-                ])))),
-            );
-        }
-        ret.insert(
-            PROP_VARIANTS.to_string(),
-            Object(Box::new(Fields(variants))),
-        );
-        Ok(Box::new(Object(Box::new(Fields(ret)))))
-    }
-
-    fn reflect_field_type(&self, ty: Term) -> Result<Box<Term>, Error> {
-        use Term::*;
-        Ok(match ty {
-            Unit | Boolean | String | Number | BigInt => Box::new(self.rep_kind()),
-            a => self.reflect_type(a, false)?,
-        })
-    }
-
-    fn reflect_simple(&self, ty: Term) -> Box<Term> {
-        use Term::*;
-        Box::new(Object(Box::new(Fields(FieldMap::from([
-            (PROP_KIND.to_string(), self.rep_kind()),
-            (PROP_VALUE.to_string(), ty),
-        ])))))
-    }
-
-    fn implement_reflector(&self, _ty: Term) -> Box<Term> {
-        todo!("generate implementations for the Reflector")
     }
 }
