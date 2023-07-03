@@ -298,10 +298,11 @@ impl<'a> Normalizer<'a> {
             }
             Find(ty, i, f) => {
                 let ty = self.term_box(ty)?;
-                if !matches!(*ty, Ref(_) | MetaRef(_, _, _)) {
-                    return self.find_implementation(*ty, i, f);
+                match *ty {
+                    Ref(_) | MetaRef(_, _, _) => Find(ty, i, f),
+                    ty if self.is_reflector(&i) => *self.implement_reflector(ty),
+                    ty => self.find_implementation(ty, i, f)?,
                 }
-                Find(ty, i, f)
             }
             Reflect(a) => {
                 let ty = *self.term_box(a)?;
@@ -380,10 +381,6 @@ impl<'a> Normalizer<'a> {
 
     fn find_implementation(&mut self, ty: Term, i: Var, f: Var) -> Result<Term, Error> {
         use Body::*;
-
-        if self.is_reflector(&i) {
-            todo!("generate implementations for the Reflector")
-        }
 
         let ims = match &self.sigma.get(&i).unwrap().body {
             Interface { ims, .. } => ims.clone(),
@@ -509,5 +506,9 @@ impl<'a> Normalizer<'a> {
             (PROP_KIND.to_string(), self.rep_kind()),
             (PROP_VALUE.to_string(), ty),
         ])))))
+    }
+
+    fn implement_reflector(&self, _ty: Term) -> Box<Term> {
+        todo!("generate implementations for the Reflector")
     }
 }
