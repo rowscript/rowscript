@@ -28,13 +28,14 @@ impl<'a> Reflector<'a> {
             Object(f) => self.reflect_object(*f, has_value)?,
             Enum(f) => self.reflect_enum(*f, has_value)?,
 
+            Pi(p, b) => self.reflect_hkt(p, *b, has_value)?,
+
             Unit => self.reflect_simple(Unit),
             Boolean => self.reflect_simple(Boolean),
             String => self.reflect_simple(String),
             Number => self.reflect_simple(Number),
             BigInt => self.reflect_simple(BigInt),
 
-            // TODO: Reflect (higher-)kinded functions.
             a => Box::new(Reflect(Box::new(a))),
         })
     }
@@ -113,6 +114,10 @@ impl<'a> Reflector<'a> {
         })
     }
 
+    fn reflect_hkt(&self, p: Param<Term>, b: Term, has_value: bool) -> Result<Box<Term>, Error> {
+        todo!()
+    }
+
     fn reflect_simple(&self, ty: Term) -> Box<Term> {
         use Term::*;
         Box::new(Object(Box::new(Fields(FieldMap::from([
@@ -121,6 +126,7 @@ impl<'a> Reflector<'a> {
         ])))))
     }
 
+    // TODO: Export any errors?
     pub fn generate(&self, ty: Term) -> Box<Term> {
         use Term::*;
         let tupled = Var::tupled();
@@ -161,6 +167,7 @@ impl<'a> Reflector<'a> {
             Upcast(ty) => self.generate_body(x, *ty),
             Object(f) => self.generate_obj(x, *f),
             Enum(f) => self.generate_variant(x, *f),
+            Lam(p, b) => self.generate_hkt(x, p, *b),
             ty => self.generate_simple(x, ty),
         }
     }
@@ -223,6 +230,10 @@ impl<'a> Reflector<'a> {
         }
         ret.insert(PROP_VARIANTS.to_string(), Obj(Box::new(Fields(variants))));
         Box::new(Obj(Box::new(Fields(ret))))
+    }
+
+    fn generate_hkt(&self, x: Option<Var>, p: Param<Term>, b: Term) -> Box<Term> {
+        todo!()
     }
 
     fn generate_simple(&self, x: Option<Var>, ty: Term) -> Box<Term> {
