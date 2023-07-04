@@ -120,24 +120,76 @@ impl<'a> Reflector<'a> {
     }
 
     pub fn generate(&self, ty: Term) -> Box<Term> {
+        use Term::*;
+        let tupled = Var::tupled();
         let x = Var::new("x");
-        Box::new(Term::Lam(
+        Box::new(Lam(
             Param {
-                var: x.clone(),
+                var: tupled.clone(),
                 info: ParamInfo::Explicit,
-                typ: Box::new(ty.clone()),
+                typ: Box::new(Sigma(
+                    Param {
+                        var: Var::unbound(),
+                        info: ParamInfo::Explicit,
+                        typ: Box::new(ty.clone()),
+                    },
+                    Box::new(Unit),
+                )),
             },
-            self.generate_body(Some(x), ty),
+            Box::new(TupleLet(
+                Param {
+                    var: x.clone(),
+                    info: ParamInfo::Explicit,
+                    typ: Box::new(ty.clone()),
+                },
+                Param {
+                    var: Var::unbound(),
+                    info: ParamInfo::Explicit,
+                    typ: Box::new(Unit),
+                },
+                Box::new(Ref(tupled)),
+                self.generate_body(Some(x), ty),
+            )),
         ))
     }
 
     fn generate_body(&self, x: Option<Var>, ty: Term) -> Box<Term> {
         use Term::*;
         match ty {
-            Object(_f) => todo!(),
+            Object(f) => self.generate_object(x, *f),
             Enum(_f) => todo!(),
             ty => self.generate_simple(x, ty),
         }
+    }
+
+    fn generate_object(&self, x: Option<Var>, fields: Term) -> Box<Term> {
+        use Term::*;
+        let fields = match fields {
+            Fields(fields) => fields,
+            _ => unreachable!(),
+        };
+        let mut ret = FieldMap::from([(
+            PROP_KIND.to_string(),
+            Enum(Box::new(Fields(FieldMap::from([(
+                "RepKindObject".to_string(),
+                TT,
+            )])))),
+        )]);
+        if let Some(x) = x {
+            ret.insert(PROP_VALUE.to_string(), Ref(x));
+        }
+        let mut props = FieldMap::new();
+        for (name, ty) in fields {
+            props.insert(
+                name.clone(),
+                Object(Box::new(Fields(FieldMap::from([
+                    (PROP_NAME.to_string(), Str(name)),
+                    (PROP_KIND.to_string(), *self.generate_body(None, ty)),
+                ])))),
+            );
+        }
+        ret.insert(PROP_PROPS.to_string(), Object(Box::new(Fields(props))));
+        Box::new(Object(Box::new(Fields(ret))))
     }
 
     fn generate_simple(&self, x: Option<Var>, ty: Term) -> Box<Term> {
