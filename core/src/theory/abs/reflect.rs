@@ -1,6 +1,6 @@
 use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::{FieldMap, Term};
-use crate::theory::Loc;
+use crate::theory::{Loc, Param, ParamInfo, Var};
 use crate::Error;
 use crate::Error::ExpectedReflectable;
 
@@ -32,6 +32,7 @@ impl<'a> Reflector<'a> {
             Number => self.reflect_simple(Number),
             BigInt => self.reflect_simple(BigInt),
 
+            // TODO: Reflect (higher-)kinded functions.
             a => Box::new(a),
         })
     }
@@ -118,7 +119,47 @@ impl<'a> Reflector<'a> {
         ])))))
     }
 
-    pub fn generate(&self, _ty: Term) -> Box<Term> {
-        todo!("generate implementations for the Reflector")
+    pub fn generate(&self, ty: Term) -> Box<Term> {
+        let x = Var::new("x");
+        Box::new(Term::Lam(
+            Param {
+                var: x.clone(),
+                info: ParamInfo::Explicit,
+                typ: Box::new(ty.clone()),
+            },
+            self.generate_body(Some(x), ty),
+        ))
+    }
+
+    fn generate_body(&self, x: Option<Var>, ty: Term) -> Box<Term> {
+        use Term::*;
+        match ty {
+            Object(_f) => todo!(),
+            Enum(_f) => todo!(),
+            ty => self.generate_simple(x, ty),
+        }
+    }
+
+    fn generate_simple(&self, x: Option<Var>, ty: Term) -> Box<Term> {
+        use Term::*;
+        let k = Enum(Box::new(Fields(FieldMap::from([(
+            match ty {
+                Unit => "RepKindUnit",
+                Boolean => "RepKindBoolean",
+                String => "RepKindString",
+                Number => "RepKindNumber",
+                BigInt => "RepKindBigint",
+                _ => unreachable!(),
+            }
+            .to_string(),
+            TT,
+        )]))));
+        Box::new(match x {
+            None => k,
+            Some(x) => Object(Box::new(Fields(FieldMap::from([
+                (PROP_KIND.to_string(), k),
+                (PROP_VALUE.to_string(), Ref(x)),
+            ])))),
+        })
     }
 }
