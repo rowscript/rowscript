@@ -32,7 +32,6 @@ mod ok_issue78;
 mod ok_issue93;
 
 mod ok_alias;
-mod ok_auto_implements;
 mod ok_bool;
 mod ok_builtin;
 mod ok_const;
@@ -57,6 +56,7 @@ mod ok_op;
 mod ok_postulate_fn;
 mod ok_postulate_type;
 mod ok_reflect;
+mod ok_reflected;
 mod ok_rev_app;
 mod ok_typeclassopedia;
 mod ok_typeclassopedia_stuck;

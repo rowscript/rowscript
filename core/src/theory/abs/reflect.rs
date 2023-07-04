@@ -33,7 +33,7 @@ impl<'a> Reflector<'a> {
             BigInt => self.reflect_simple(BigInt),
 
             // TODO: Reflect (higher-)kinded functions.
-            a => Box::new(a),
+            a => Box::new(Reflect(Box::new(a))),
         })
     }
 
@@ -170,7 +170,7 @@ impl<'a> Reflector<'a> {
         };
         let mut ret = FieldMap::from([(
             PROP_KIND.to_string(),
-            Enum(Box::new(Fields(FieldMap::from([(
+            Variant(Box::new(Fields(FieldMap::from([(
                 "RepKindObject".to_string(),
                 TT,
             )])))),
@@ -182,19 +182,19 @@ impl<'a> Reflector<'a> {
         for (name, ty) in fields {
             props.insert(
                 name.clone(),
-                Object(Box::new(Fields(FieldMap::from([
+                Obj(Box::new(Fields(FieldMap::from([
                     (PROP_NAME.to_string(), Str(name)),
                     (PROP_KIND.to_string(), *self.generate_body(None, ty)),
                 ])))),
             );
         }
-        ret.insert(PROP_PROPS.to_string(), Object(Box::new(Fields(props))));
-        Box::new(Object(Box::new(Fields(ret))))
+        ret.insert(PROP_PROPS.to_string(), Obj(Box::new(Fields(props))));
+        Box::new(Obj(Box::new(Fields(ret))))
     }
 
     fn generate_simple(&self, x: Option<Var>, ty: Term) -> Box<Term> {
         use Term::*;
-        let k = Enum(Box::new(Fields(FieldMap::from([(
+        let k = Variant(Box::new(Fields(FieldMap::from([(
             match ty {
                 Unit => "RepKindUnit",
                 Boolean => "RepKindBoolean",
@@ -208,7 +208,7 @@ impl<'a> Reflector<'a> {
         )]))));
         Box::new(match x {
             None => k,
-            Some(x) => Object(Box::new(Fields(FieldMap::from([
+            Some(x) => Obj(Box::new(Fields(FieldMap::from([
                 (PROP_KIND.to_string(), k),
                 (PROP_VALUE.to_string(), Ref(x)),
             ])))),

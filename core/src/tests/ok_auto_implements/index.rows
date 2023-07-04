@@ -1,9 +1,0 @@
-interface Stringer for T {
-    toString(x: T): string;
-}
-
-type A = {a: number};
-
-function f(a: A): Reflect<A> {
-    return reflect(a)
-}

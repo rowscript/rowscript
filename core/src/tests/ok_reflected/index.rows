@@ -1,0 +1,3 @@
+type A = {a: number};
+
+const x: Reflect<A> = reflect({a: 42});

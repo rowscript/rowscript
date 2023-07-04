@@ -1,7 +1,6 @@
 use crate::tests::run_ok;
 
 #[test]
-#[ignore]
-fn test_auto_implements() {
+fn test_reflected() {
     run_ok(module_path!())
 }
