@@ -23,6 +23,8 @@ impl<'a> Reflector<'a> {
     pub fn reflect(&self, ty: Term, has_value: bool) -> Result<Box<Term>, Error> {
         use Term::*;
         Ok(match ty {
+            Upcast(ty) => self.reflect(*ty, has_value)?,
+
             Object(f) => self.reflect_object(*f, has_value)?,
             Enum(f) => self.reflect_enum(*f, has_value)?,
 
@@ -156,13 +158,14 @@ impl<'a> Reflector<'a> {
     fn generate_body(&self, x: Option<Var>, ty: Term) -> Box<Term> {
         use Term::*;
         match ty {
-            Object(f) => self.generate_object(x, *f),
-            Enum(_f) => todo!(),
+            Upcast(ty) => self.generate_body(x, *ty),
+            Object(f) => self.generate_obj(x, *f),
+            Enum(f) => self.generate_variant(x, *f),
             ty => self.generate_simple(x, ty),
         }
     }
 
-    fn generate_object(&self, x: Option<Var>, fields: Term) -> Box<Term> {
+    fn generate_obj(&self, x: Option<Var>, fields: Term) -> Box<Term> {
         use Term::*;
         let fields = match fields {
             Fields(fields) => fields,
@@ -189,6 +192,36 @@ impl<'a> Reflector<'a> {
             );
         }
         ret.insert(PROP_PROPS.to_string(), Obj(Box::new(Fields(props))));
+        Box::new(Obj(Box::new(Fields(ret))))
+    }
+
+    fn generate_variant(&self, x: Option<Var>, fields: Term) -> Box<Term> {
+        use Term::*;
+        let fields = match fields {
+            Fields(fields) => fields,
+            _ => unreachable!(),
+        };
+        let mut ret = FieldMap::from([(
+            PROP_KIND.to_string(),
+            Variant(Box::new(Fields(FieldMap::from([(
+                "RepKindEnum".to_string(),
+                TT,
+            )])))),
+        )]);
+        if let Some(x) = x {
+            ret.insert(PROP_VALUE.to_string(), Ref(x));
+        }
+        let mut variants = FieldMap::new();
+        for (name, ty) in fields {
+            variants.insert(
+                Self::prefix_field(name.clone(), "case"),
+                Obj(Box::new(Fields(FieldMap::from([
+                    (PROP_NAME.to_string(), Str(name)),
+                    (PROP_KIND.to_string(), *self.generate_body(None, ty)),
+                ])))),
+            );
+        }
+        ret.insert(PROP_VARIANTS.to_string(), Obj(Box::new(Fields(variants))));
         Box::new(Obj(Box::new(Fields(ret))))
     }
 
