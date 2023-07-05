@@ -1,5 +1,5 @@
 [toolchain]
-channel = "stable-2023-04-20"
+channel = "stable"
 components = ["rustfmt", "clippy", "cargo", "rust-std", "llvm-tools"]
 targets = [
     "x86_64-unknown-linux-gnu",

@@ -6,7 +6,7 @@ type RepKind =
     | RepKindUnit
     | RepKindObject
     | RepKindEnum
-    | RepKindTypeFunction
+    | RepKindGeneric
     ];
 
 interface Reflector for T {

@@ -1,12 +1,4 @@
 type A = {a: string};
-type B = [B0: string | B1];
-type C = [C0: A | C1: B];
-type D = {a: A, b: B};
-
-type E = {_a: string};
-type F = [_F0 | _F1];
-
-type G = string;
 
 const x0: Reflect<A> = {
     kind: RepKindObject,
@@ -18,6 +10,8 @@ const x0: Reflect<A> = {
         }
     }
 };
+
+type B = [B0: string | B1];
 
 const x1: Reflect<B> = {
     kind: RepKindEnum,
@@ -33,6 +27,8 @@ const x1: Reflect<B> = {
         }
     }
 };
+
+type C = [C0: A | C1: B];
 
 const x2: Reflect<C> = {
     kind: RepKindEnum,
@@ -68,6 +64,8 @@ const x2: Reflect<C> = {
         }
     }
 };
+
+type D = {a: A, b: B};
 
 const x3: Reflect<D> = {
     kind: RepKindObject,
@@ -107,6 +105,8 @@ const x3: Reflect<D> = {
     }
 };
 
+type E = {_a: string};
+
 const x4: Reflect<E> = {
     kind: RepKindObject,
     value: {_a: "hello"},
@@ -117,6 +117,8 @@ const x4: Reflect<E> = {
         }
     }
 };
+
+type F = [_F0 | _F1];
 
 const x5: Reflect<F> = {
     kind: RepKindEnum,
@@ -133,7 +135,33 @@ const x5: Reflect<F> = {
     }
 };
 
+type G = string;
+
 const x6: Reflect<G> = {
     kind: RepKindString,
     value: "hello"
 };
+
+type H<A, B> = {a: A, b: B};
+
+//const x7: Reflect<H, number, string> = {
+//    kind: RepKindGeneric,
+//    params: {
+//        paramA: "A",
+//        paramB: "B"
+//    },
+//    body: {
+//        kind: RepKindObject,
+//        props: {
+//            a: {
+//                name: "a",
+//                kind: RepKindNumber
+//            },
+//            b: {
+//                name: "b",
+//                kind: RepKindString
+//            }
+//        }
+//    },
+//    value: {a: 42, b: "hello"}
+//};

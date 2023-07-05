@@ -126,12 +126,11 @@ impl<'a> Reflector<'a> {
         ])))))
     }
 
-    // TODO: Export any errors?
-    pub fn generate(&self, ty: Term) -> Box<Term> {
+    pub fn generate(&self, ty: Term) -> Result<Box<Term>, Error> {
         use Term::*;
         let tupled = Var::tupled();
         let x = Var::new("x");
-        Box::new(Lam(
+        Ok(Box::new(Lam(
             Param {
                 var: tupled.clone(),
                 info: ParamInfo::Explicit,
@@ -156,27 +155,27 @@ impl<'a> Reflector<'a> {
                     typ: Box::new(Unit),
                 },
                 Box::new(Ref(tupled)),
-                self.generate_body(Some(x), ty),
+                self.generate_body(Some(x), ty)?,
             )),
-        ))
+        )))
     }
 
-    fn generate_body(&self, x: Option<Var>, ty: Term) -> Box<Term> {
+    fn generate_body(&self, x: Option<Var>, ty: Term) -> Result<Box<Term>, Error> {
         use Term::*;
         match ty {
             Upcast(ty) => self.generate_body(x, *ty),
             Object(f) => self.generate_obj(x, *f),
             Enum(f) => self.generate_variant(x, *f),
             Lam(p, b) => self.generate_hkt(x, p, *b),
-            ty => self.generate_simple(x, ty),
+            ty => Ok(self.generate_simple(x, ty)),
         }
     }
 
-    fn generate_obj(&self, x: Option<Var>, fields: Term) -> Box<Term> {
+    fn generate_obj(&self, x: Option<Var>, fields: Term) -> Result<Box<Term>, Error> {
         use Term::*;
         let fields = match fields {
             Fields(fields) => fields,
-            _ => unreachable!(),
+            a => return Err(ExpectedReflectable(a, self.loc)),
         };
         let mut ret = FieldMap::from([(
             PROP_KIND.to_string(),
@@ -190,23 +189,17 @@ impl<'a> Reflector<'a> {
         }
         let mut props = FieldMap::new();
         for (name, ty) in fields {
-            props.insert(
-                name.clone(),
-                Obj(Box::new(Fields(FieldMap::from([
-                    (PROP_NAME.to_string(), Str(name)),
-                    (PROP_KIND.to_string(), *self.generate_body(None, ty)),
-                ])))),
-            );
+            props.insert(name.clone(), self.generate_field_info(name, ty)?);
         }
         ret.insert(PROP_PROPS.to_string(), Obj(Box::new(Fields(props))));
-        Box::new(Obj(Box::new(Fields(ret))))
+        Ok(Box::new(Obj(Box::new(Fields(ret)))))
     }
 
-    fn generate_variant(&self, x: Option<Var>, fields: Term) -> Box<Term> {
+    fn generate_variant(&self, x: Option<Var>, fields: Term) -> Result<Box<Term>, Error> {
         use Term::*;
         let fields = match fields {
             Fields(fields) => fields,
-            _ => unreachable!(),
+            a => return Err(ExpectedReflectable(a, self.loc)),
         };
         let mut ret = FieldMap::from([(
             PROP_KIND.to_string(),
@@ -222,17 +215,22 @@ impl<'a> Reflector<'a> {
         for (name, ty) in fields {
             variants.insert(
                 Self::prefix_field(name.clone(), "case"),
-                Obj(Box::new(Fields(FieldMap::from([
-                    (PROP_NAME.to_string(), Str(name)),
-                    (PROP_KIND.to_string(), *self.generate_body(None, ty)),
-                ])))),
+                self.generate_field_info(name, ty)?,
             );
         }
         ret.insert(PROP_VARIANTS.to_string(), Obj(Box::new(Fields(variants))));
-        Box::new(Obj(Box::new(Fields(ret))))
+        Ok(Box::new(Obj(Box::new(Fields(ret)))))
     }
 
-    fn generate_hkt(&self, x: Option<Var>, p: Param<Term>, b: Term) -> Box<Term> {
+    fn generate_field_info(&self, name: String, ty: Term) -> Result<Term, Error> {
+        use Term::*;
+        Ok(Obj(Box::new(Fields(FieldMap::from([
+            (PROP_NAME.to_string(), Str(name)),
+            (PROP_KIND.to_string(), *self.generate_body(None, ty)?),
+        ])))))
+    }
+
+    fn generate_hkt(&self, x: Option<Var>, p: Param<Term>, b: Term) -> Result<Box<Term>, Error> {
         todo!()
     }
 
