@@ -144,24 +144,19 @@ const x6: Reflect<G> = {
 
 type H<A, B> = {a: A, b: B};
 
-//const x7: Reflect<H, number, string> = {
-//    kind: RepKindGeneric,
-//    params: {
-//        paramA: "A",
-//        paramB: "B"
-//    },
-//    body: {
-//        kind: RepKindObject,
-//        props: {
-//            a: {
-//                name: "a",
-//                kind: RepKindNumber
-//            },
-//            b: {
-//                name: "b",
-//                kind: RepKindString
-//            }
-//        }
-//    },
-//    value: {a: 42, b: "hello"}
-//};
+function f7<A, B>(a: H<A, B>): Reflect<H<A, B>> {
+    return {
+        kind: RepKindObject,
+        props: {
+            a: {
+                name: "a",
+                kind: reflect(a.a)
+            },
+            b: {
+                name: "b",
+                kind: reflect(a.b)
+            }
+        },
+        value: a
+    }
+}

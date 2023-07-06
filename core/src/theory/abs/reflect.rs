@@ -20,6 +20,15 @@ impl<'a> Reflector<'a> {
         Self { builtins, loc }
     }
 
+    fn rep_kind(&self) -> Term {
+        Term::Undef(self.builtins.ubiquitous.get("RepKind").unwrap().1.clone())
+    }
+
+    fn prefix_field(mut name: String, prefix: &str) -> String {
+        name.insert_str(name.find('_').map_or(0, |x| x + 1), prefix);
+        name
+    }
+
     pub fn reflect(&self, ty: Term, has_value: bool) -> Result<Box<Term>, Error> {
         use Term::*;
         Ok(match ty {
@@ -28,20 +37,14 @@ impl<'a> Reflector<'a> {
             Object(f) => self.reflect_object(*f, has_value)?,
             Enum(f) => self.reflect_enum(*f, has_value)?,
 
-            Pi(p, b) => self.reflect_hkt(p, *b, has_value)?,
-
-            Unit => self.reflect_simple(Unit),
-            Boolean => self.reflect_simple(Boolean),
-            String => self.reflect_simple(String),
-            Number => self.reflect_simple(Number),
-            BigInt => self.reflect_simple(BigInt),
+            Unit => self.reflect_simple(Unit, has_value),
+            Boolean => self.reflect_simple(Boolean, has_value),
+            String => self.reflect_simple(String, has_value),
+            Number => self.reflect_simple(Number, has_value),
+            BigInt => self.reflect_simple(BigInt, has_value),
 
             a => Box::new(Reflect(Box::new(a))),
         })
-    }
-
-    fn rep_kind(&self) -> Term {
-        Term::Undef(self.builtins.ubiquitous.get("RepKind").unwrap().1.clone())
     }
 
     fn reflect_object(&self, fields: Term, has_value: bool) -> Result<Box<Term>, Error> {
@@ -63,17 +66,12 @@ impl<'a> Reflector<'a> {
                 name,
                 Object(Box::new(Fields(FieldMap::from([
                     (PROP_NAME.to_string(), String),
-                    (PROP_KIND.to_string(), *self.reflect_field_type(ty)?),
+                    (PROP_KIND.to_string(), *self.reflect(ty, false)?),
                 ])))),
             );
         }
         ret.insert(PROP_PROPS.to_string(), Object(Box::new(Fields(props))));
         Ok(Box::new(Object(Box::new(Fields(ret)))))
-    }
-
-    fn prefix_field(mut name: String, prefix: &str) -> String {
-        name.insert_str(name.find('_').map_or(0, |x| x + 1), prefix);
-        name
     }
 
     fn reflect_enum(&self, fields: Term, has_value: bool) -> Result<Box<Term>, Error> {
@@ -95,7 +93,7 @@ impl<'a> Reflector<'a> {
                 Self::prefix_field(name, "case"),
                 Object(Box::new(Fields(FieldMap::from([
                     (PROP_NAME.to_string(), String),
-                    (PROP_KIND.to_string(), *self.reflect_field_type(ty)?),
+                    (PROP_KIND.to_string(), *self.reflect(ty, false)?),
                 ])))),
             );
         }
@@ -106,24 +104,16 @@ impl<'a> Reflector<'a> {
         Ok(Box::new(Object(Box::new(Fields(ret)))))
     }
 
-    fn reflect_field_type(&self, ty: Term) -> Result<Box<Term>, Error> {
+    fn reflect_simple(&self, ty: Term, has_value: bool) -> Box<Term> {
         use Term::*;
-        Ok(match ty {
-            Unit | Boolean | String | Number | BigInt => Box::new(self.rep_kind()),
-            a => self.reflect(a, false)?,
+        let k = self.rep_kind();
+        Box::new(match has_value {
+            false => k,
+            true => Object(Box::new(Fields(FieldMap::from([
+                (PROP_KIND.to_string(), k),
+                (PROP_VALUE.to_string(), ty),
+            ])))),
         })
-    }
-
-    fn reflect_hkt(&self, p: Param<Term>, b: Term, has_value: bool) -> Result<Box<Term>, Error> {
-        todo!()
-    }
-
-    fn reflect_simple(&self, ty: Term) -> Box<Term> {
-        use Term::*;
-        Box::new(Object(Box::new(Fields(FieldMap::from([
-            (PROP_KIND.to_string(), self.rep_kind()),
-            (PROP_VALUE.to_string(), ty),
-        ])))))
     }
 
     pub fn generate(&self, ty: Term) -> Result<Box<Term>, Error> {
@@ -166,7 +156,6 @@ impl<'a> Reflector<'a> {
             Upcast(ty) => self.generate_body(x, *ty),
             Object(f) => self.generate_obj(x, *f),
             Enum(f) => self.generate_variant(x, *f),
-            Lam(p, b) => self.generate_hkt(x, p, *b),
             ty => Ok(self.generate_simple(x, ty)),
         }
     }
@@ -228,10 +217,6 @@ impl<'a> Reflector<'a> {
             (PROP_NAME.to_string(), Str(name)),
             (PROP_KIND.to_string(), *self.generate_body(None, ty)?),
         ])))))
-    }
-
-    fn generate_hkt(&self, x: Option<Var>, p: Param<Term>, b: Term) -> Result<Box<Term>, Error> {
-        todo!()
     }
 
     fn generate_simple(&self, x: Option<Var>, ty: Term) -> Box<Term> {
