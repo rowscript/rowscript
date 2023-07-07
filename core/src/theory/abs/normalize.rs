@@ -299,7 +299,14 @@ impl<'a> Normalizer<'a> {
                 let ty = self.term_box(ty)?;
                 match *ty {
                     Ref(_) | MetaRef(_, _, _) => Find(ty, i, f),
-                    ty if self.is_reflector(&i) => *self.reflector().reflect(ty)?,
+                    ty if self.is_reflector(&i) => {
+                        let r = self.reflector();
+                        *match f.as_str() {
+                            "reflect" => r.reflect(ty)?,
+                            "unreflect" => r.unreflect(ty),
+                            _ => unreachable!(),
+                        }
+                    }
                     ty => self.find_implementation(ty, i, f)?,
                 }
             }

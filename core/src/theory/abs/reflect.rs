@@ -1,5 +1,6 @@
 use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::{FieldMap, Term};
+use crate::theory::conc::data::ArgInfo::UnnamedImplicit;
 use crate::theory::{Loc, Param, ParamInfo, Var};
 use crate::Error;
 use crate::Error::ExpectedReflectable;
@@ -21,7 +22,22 @@ impl<'a> Reflector<'a> {
     }
 
     fn rep_kind(&self) -> Term {
-        Term::Undef(self.builtins.ubiquitous.get("RepKind").unwrap().1.clone())
+        Term::Ref(self.builtins.ubiquitous.get("RepKind").unwrap().1.clone())
+    }
+
+    fn reflected_app(&self, ty: Term) -> Term {
+        use Term::*;
+        App(
+            Box::new(Ref(self
+                .builtins
+                .ubiquitous
+                .get("Reflected")
+                .unwrap()
+                .1
+                .clone())),
+            UnnamedImplicit,
+            Box::new(ty),
+        )
     }
 
     fn prefix_field(mut name: String, prefix: &str) -> String {
@@ -121,18 +137,7 @@ impl<'a> Reflector<'a> {
         let tupled = Var::tupled();
         let x = Var::new("x");
         Ok(Box::new(Lam(
-            Param {
-                var: tupled.clone(),
-                info: ParamInfo::Explicit,
-                typ: Box::new(Sigma(
-                    Param {
-                        var: Var::unbound(),
-                        info: ParamInfo::Explicit,
-                        typ: Box::new(ty.clone()),
-                    },
-                    Box::new(Unit),
-                )),
-            },
+            Self::tupled_param(tupled.clone(), ty.clone()),
             Box::new(TupleLet(
                 Param {
                     var: x.clone(),
@@ -240,5 +245,45 @@ impl<'a> Reflector<'a> {
                 (PROP_VALUE.to_string(), Ref(x)),
             ])))),
         })
+    }
+
+    pub fn unreflect(&self, ty: Term) -> Box<Term> {
+        use Term::*;
+        let ty = self.reflected_app(ty);
+        let tupled = Var::tupled();
+        let x = Var::new("x");
+        Box::new(Lam(
+            Self::tupled_param(tupled.clone(), ty.clone()),
+            Box::new(TupleLet(
+                Param {
+                    var: x.clone(),
+                    info: ParamInfo::Explicit,
+                    typ: Box::new(ty),
+                },
+                Param {
+                    var: Var::unbound(),
+                    info: ParamInfo::Explicit,
+                    typ: Box::new(Unit),
+                },
+                Box::new(Ref(tupled)),
+                Box::new(Access(Box::new(Ref(x)), PROP_VALUE.to_string())),
+            )),
+        ))
+    }
+
+    fn tupled_param(var: Var, ty: Term) -> Param<Term> {
+        use Term::*;
+        Param {
+            var,
+            info: ParamInfo::Explicit,
+            typ: Box::new(Sigma(
+                Param {
+                    var: Var::unbound(),
+                    info: ParamInfo::Explicit,
+                    typ: Box::new(ty),
+                },
+                Box::new(Unit),
+            )),
+        }
     }
 }
