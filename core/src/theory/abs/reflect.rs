@@ -29,25 +29,25 @@ impl<'a> Reflector<'a> {
         name
     }
 
-    pub fn reflect(&self, ty: Term, has_value: bool) -> Result<Box<Term>, Error> {
+    pub fn reflected(&self, ty: Term, has_value: bool) -> Result<Box<Term>, Error> {
         use Term::*;
         Ok(match ty {
-            Upcast(ty) => self.reflect(*ty, has_value)?,
+            Upcast(ty) => self.reflected(*ty, has_value)?,
 
-            Object(f) => self.reflect_object(*f, has_value)?,
-            Enum(f) => self.reflect_enum(*f, has_value)?,
+            Object(f) => self.reflected_object(*f, has_value)?,
+            Enum(f) => self.reflected_enum(*f, has_value)?,
 
-            Unit => self.reflect_simple(Unit, has_value),
-            Boolean => self.reflect_simple(Boolean, has_value),
-            String => self.reflect_simple(String, has_value),
-            Number => self.reflect_simple(Number, has_value),
-            BigInt => self.reflect_simple(BigInt, has_value),
+            Unit => self.reflected_simple(Unit, has_value),
+            Boolean => self.reflected_simple(Boolean, has_value),
+            String => self.reflected_simple(String, has_value),
+            Number => self.reflected_simple(Number, has_value),
+            BigInt => self.reflected_simple(BigInt, has_value),
 
             a => Box::new(Reflected(Box::new(a))),
         })
     }
 
-    fn reflect_object(&self, fields: Term, has_value: bool) -> Result<Box<Term>, Error> {
+    fn reflected_object(&self, fields: Term, has_value: bool) -> Result<Box<Term>, Error> {
         use Term::*;
         let fields = match fields {
             Fields(fields) => fields,
@@ -66,7 +66,7 @@ impl<'a> Reflector<'a> {
                 name,
                 Object(Box::new(Fields(FieldMap::from([
                     (PROP_NAME.to_string(), String),
-                    (PROP_KIND.to_string(), *self.reflect(ty, false)?),
+                    (PROP_KIND.to_string(), *self.reflected(ty, false)?),
                 ])))),
             );
         }
@@ -74,7 +74,7 @@ impl<'a> Reflector<'a> {
         Ok(Box::new(Object(Box::new(Fields(ret)))))
     }
 
-    fn reflect_enum(&self, fields: Term, has_value: bool) -> Result<Box<Term>, Error> {
+    fn reflected_enum(&self, fields: Term, has_value: bool) -> Result<Box<Term>, Error> {
         use Term::*;
         let fields = match fields {
             Fields(fields) => fields,
@@ -93,7 +93,7 @@ impl<'a> Reflector<'a> {
                 Self::prefix_field(name, "case"),
                 Object(Box::new(Fields(FieldMap::from([
                     (PROP_NAME.to_string(), String),
-                    (PROP_KIND.to_string(), *self.reflect(ty, false)?),
+                    (PROP_KIND.to_string(), *self.reflected(ty, false)?),
                 ])))),
             );
         }
@@ -104,7 +104,7 @@ impl<'a> Reflector<'a> {
         Ok(Box::new(Object(Box::new(Fields(ret)))))
     }
 
-    fn reflect_simple(&self, ty: Term, has_value: bool) -> Box<Term> {
+    fn reflected_simple(&self, ty: Term, has_value: bool) -> Box<Term> {
         use Term::*;
         let k = self.rep_kind();
         Box::new(match has_value {
@@ -116,7 +116,7 @@ impl<'a> Reflector<'a> {
         })
     }
 
-    pub fn generate(&self, ty: Term) -> Result<Box<Term>, Error> {
+    pub fn reflect(&self, ty: Term) -> Result<Box<Term>, Error> {
         use Term::*;
         let tupled = Var::tupled();
         let x = Var::new("x");
@@ -145,22 +145,22 @@ impl<'a> Reflector<'a> {
                     typ: Box::new(Unit),
                 },
                 Box::new(Ref(tupled)),
-                self.generate_body(Some(x), ty)?,
+                self.reflect_body(Some(x), ty)?,
             )),
         )))
     }
 
-    fn generate_body(&self, x: Option<Var>, ty: Term) -> Result<Box<Term>, Error> {
+    fn reflect_body(&self, x: Option<Var>, ty: Term) -> Result<Box<Term>, Error> {
         use Term::*;
         match ty {
-            Upcast(ty) => self.generate_body(x, *ty),
-            Object(f) => self.generate_obj(x, *f),
-            Enum(f) => self.generate_variant(x, *f),
-            ty => Ok(self.generate_simple(x, ty)),
+            Upcast(ty) => self.reflect_body(x, *ty),
+            Object(f) => self.reflect_obj(x, *f),
+            Enum(f) => self.reflect_variant(x, *f),
+            ty => Ok(self.reflect_simple(x, ty)),
         }
     }
 
-    fn generate_obj(&self, x: Option<Var>, fields: Term) -> Result<Box<Term>, Error> {
+    fn reflect_obj(&self, x: Option<Var>, fields: Term) -> Result<Box<Term>, Error> {
         use Term::*;
         let fields = match fields {
             Fields(fields) => fields,
@@ -178,13 +178,13 @@ impl<'a> Reflector<'a> {
         }
         let mut props = FieldMap::new();
         for (name, ty) in fields {
-            props.insert(name.clone(), self.generate_field_info(name, ty)?);
+            props.insert(name.clone(), self.reflect_field_info(name, ty)?);
         }
         ret.insert(PROP_PROPS.to_string(), Obj(Box::new(Fields(props))));
         Ok(Box::new(Obj(Box::new(Fields(ret)))))
     }
 
-    fn generate_variant(&self, x: Option<Var>, fields: Term) -> Result<Box<Term>, Error> {
+    fn reflect_variant(&self, x: Option<Var>, fields: Term) -> Result<Box<Term>, Error> {
         use Term::*;
         let fields = match fields {
             Fields(fields) => fields,
@@ -204,22 +204,22 @@ impl<'a> Reflector<'a> {
         for (name, ty) in fields {
             variants.insert(
                 Self::prefix_field(name.clone(), "case"),
-                self.generate_field_info(name, ty)?,
+                self.reflect_field_info(name, ty)?,
             );
         }
         ret.insert(PROP_VARIANTS.to_string(), Obj(Box::new(Fields(variants))));
         Ok(Box::new(Obj(Box::new(Fields(ret)))))
     }
 
-    fn generate_field_info(&self, name: String, ty: Term) -> Result<Term, Error> {
+    fn reflect_field_info(&self, name: String, ty: Term) -> Result<Term, Error> {
         use Term::*;
         Ok(Obj(Box::new(Fields(FieldMap::from([
             (PROP_NAME.to_string(), Str(name)),
-            (PROP_KIND.to_string(), *self.generate_body(None, ty)?),
+            (PROP_KIND.to_string(), *self.reflect_body(None, ty)?),
         ])))))
     }
 
-    fn generate_simple(&self, x: Option<Var>, ty: Term) -> Box<Term> {
+    fn reflect_simple(&self, x: Option<Var>, ty: Term) -> Box<Term> {
         use Term::*;
         let k = Variant(Box::new(Fields(FieldMap::from([(
             match ty {
