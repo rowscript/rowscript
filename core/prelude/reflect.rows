@@ -9,6 +9,6 @@ type RepKind =
     ];
 
 interface Reflector for T {
-    reflect(t: T): Reflect<T>;
-    unreflect(r: Reflect<T>): T;
+    reflect(t: T): Reflected<T>;
+    unreflect(r: Reflected<T>): T;
 }

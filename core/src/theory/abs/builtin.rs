@@ -50,7 +50,7 @@ impl Builtins {
         let mut ret = Self {
             ubiquitous: NameMap::default(),
             unionify: Var::new("unionify"),
-            reflect: Var::new("Reflect"),
+            reflect: Var::new("Reflected"),
             number_add: Var::new("number#__add__"),
             number_sub: Var::new("number#__sub__"),
         };
@@ -104,7 +104,7 @@ impl Builtins {
                 name: self.reflect.clone(),
                 tele: vec![implicit(t.clone(), Term::Univ)],
                 ret: Box::new(Term::Univ),
-                body: Body::Fn(Term::Reflect(Box::new(Term::Ref(t)))),
+                body: Body::Fn(Term::Reflected(Box::new(Term::Ref(t)))),
             },
         )
     }

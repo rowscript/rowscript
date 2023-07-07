@@ -43,7 +43,7 @@ impl<'a> Reflector<'a> {
             Number => self.reflect_simple(Number, has_value),
             BigInt => self.reflect_simple(BigInt, has_value),
 
-            a => Box::new(Reflect(Box::new(a))),
+            a => Box::new(Reflected(Box::new(a))),
         })
     }
 

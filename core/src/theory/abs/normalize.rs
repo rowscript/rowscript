@@ -303,7 +303,7 @@ impl<'a> Normalizer<'a> {
                     ty => self.find_implementation(ty, i, f)?,
                 }
             }
-            Reflect(a) => {
+            Reflected(a) => {
                 let ty = *self.term_box(a)?;
                 *self.reflector().reflect(ty, true)?
             }

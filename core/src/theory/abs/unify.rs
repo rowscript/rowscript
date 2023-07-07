@@ -122,7 +122,7 @@ impl<'a> Unifier<'a> {
             (Variant(a), Variant(b)) => self.unify(a, b),
             (Upcast(a), Enum(b)) => self.upcast(a, b),
             (Enum(a), Upcast(b)) => self.upcast(b, a),
-            (Reflect(a), Reflect(b)) => self.unify(a, b),
+            (Reflected(a), Reflected(b)) => self.unify(a, b),
 
             (Extern(a), Extern(b)) if a == b => Ok(()),
             (Str(a), Str(b)) if a == b => Ok(()),
