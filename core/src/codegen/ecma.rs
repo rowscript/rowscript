@@ -743,7 +743,7 @@ impl Ecma {
                     raw: None,
                 }),
                 type_only: false,
-                asserts: None,
+                with: None,
             })))
         }
         Ok(items)
@@ -774,7 +774,7 @@ impl Ecma {
                     raw: None,
                 }),
                 type_only: false,
-                asserts: None,
+                with: None,
             })));
             props.push(PropOrSpread::Spread(SpreadElement {
                 dot3_token: DUMMY_SP,

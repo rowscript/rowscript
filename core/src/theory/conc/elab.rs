@@ -122,7 +122,7 @@ impl Elaborator {
             self.gamma.remove(&n);
         }
 
-        let mut checked = self.sigma.get_mut(&d.name).unwrap();
+        let checked = self.sigma.get_mut(&d.name).unwrap();
         checked.body = body;
         if let Some(ret) = inferred_ret {
             checked.ret = ret;

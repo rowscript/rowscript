@@ -31,9 +31,9 @@ version = "0.3.0"
 version = "0.1"
 
 [dependencies]
-swc_ecma_parser = { version = "0.137.1", optional = true }
-swc_ecma_ast = { version = "0.107.0", optional = true }
-swc_ecma_codegen = { version = "0.142.1", optional = true }
-swc_atoms = { version = "0.5.3", optional = true }
-swc_common = { version = "0.31.5", features = ["tty-emitter"], optional = true }
+swc_ecma_parser = { version = "0.141.33", optional = true }
+swc_ecma_ast = { version = "0.110.15", optional = true }
+swc_ecma_codegen = { version = "0.146.47", optional = true }
+swc_atoms = { version = "0.6.5", optional = true }
+swc_common = { version = "0.33.12", features = ["tty-emitter"], optional = true }
 num-bigint = { version = "0.4.3", optional = true }
