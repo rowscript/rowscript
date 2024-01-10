@@ -62,6 +62,7 @@ mod ok_typeclassopedia;
 mod ok_typeclassopedia_stuck;
 mod ok_unit;
 mod ok_unreflect;
+mod ok_while;
 
 #[cfg(not(feature = "codegen-ecma"))]
 fn run_target() -> Box<dyn Target> {

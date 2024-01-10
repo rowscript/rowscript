@@ -336,6 +336,12 @@ impl Elaborator {
             }
             Hole(loc) => self.insert_meta(loc, UserMeta),
             InsertedHole(loc) => self.insert_meta(loc, InsertedMeta),
+            While(_, p, b, r) => {
+                let p = self.check(*p, &Term::Boolean)?;
+                let b = self.check(*b, &Term::Unit)?;
+                let (r, ty) = self.infer(*r)?;
+                (Term::While(Box::new(p), Box::new(b), Box::new(r)), ty)
+            }
             Pi(_, p, b) => {
                 let (param_ty, _) = self.infer(*p.typ)?;
                 let param = Param {

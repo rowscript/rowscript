@@ -22,6 +22,7 @@ pub enum Expr {
     InsertedHole(Loc),
 
     Let(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
+    While(Loc, Box<Self>, Box<Self>, Box<Self>),
 
     Univ(Loc),
 
@@ -105,6 +106,7 @@ impl Expr {
             Hole(loc) => loc,
             InsertedHole(loc) => loc,
             Let(loc, _, _, _, _) => loc,
+            While(loc, _, _, _) => loc,
             Univ(loc) => loc,
             Pi(loc, _, _) => loc,
             TupledLam(loc, _, _) => loc,
@@ -219,6 +221,7 @@ impl Display for Expr {
                         format!("let {v} = {a};\n\t{b}")
                     }
                 }
+                While(_, p, b, r) => format!("while ({p}) {{\n\t{b}\n}}\n{r}"),
                 Univ(_) => "type".to_string(),
                 Pi(_, p, b) => format!("{p} -> {b}"),
                 TupledLam(_, vs, b) => format!(

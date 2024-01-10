@@ -25,6 +25,11 @@ impl Renamer {
                 let a = self.term(*a); // not guarded by `p`, rename it first
                 Let(self.param(p), Box::new(a), Box::new(self.term(*b)))
             }
+            While(p, b, r) => While(
+                Box::new(self.term(*p)),
+                Box::new(self.term(*b)),
+                Box::new(self.term(*r)),
+            ),
             Pi(p, c) => Pi(self.param(p), Box::new(self.term(*c))),
             Lam(p, b) => Lam(self.param(p), Box::new(self.term(*b))),
             App(f, i, x) => App(Box::new(self.term(*f)), i, Box::new(self.term(*x))),

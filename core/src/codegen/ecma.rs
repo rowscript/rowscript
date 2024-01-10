@@ -12,7 +12,7 @@ use swc_ecma_ast::{
     ImportNamedSpecifier, ImportSpecifier, ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr,
     MemberProp, Module, ModuleDecl, ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam,
     ParenExpr, Pat, PatOrExpr, Prop, PropName, PropOrSpread, ReturnStmt, SpreadElement, Stmt,
-    Str as JsStr, VarDecl, VarDeclKind, VarDeclarator,
+    Str as JsStr, VarDecl, VarDeclKind, VarDeclarator, WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -220,7 +220,7 @@ impl Ecma {
             params: Self::type_erased_params(def.loc, &def.tele),
             decorators: Default::default(),
             span: def.loc.into(),
-            body: Some(self.block(sigma, def.loc, body)?),
+            body: Some(self.block(sigma, def.loc, body, true)?),
             is_generator: false,
             is_async: false,
             type_params: None,
@@ -383,7 +383,44 @@ impl Ecma {
         }))
     }
 
-    fn block(&mut self, sigma: &Sigma, loc: Loc, body: &Term) -> Result<BlockStmt, Error> {
+    fn iife(loc: Loc, b: BlockStmtOrExpr) -> Expr {
+        Expr::Paren(ParenExpr {
+            span: loc.into(),
+            expr: Box::new(Expr::Call(CallExpr {
+                span: loc.into(),
+                callee: Callee::Expr(Box::from(Expr::Paren(ParenExpr {
+                    span: loc.into(),
+                    expr: Box::new(Expr::Arrow(ArrowExpr {
+                        span: loc.into(),
+                        params: Default::default(),
+                        body: Box::new(b),
+                        is_async: false,
+                        is_generator: false,
+                        type_params: None,
+                        return_type: None,
+                    })),
+                }))),
+                args: Default::default(),
+                type_args: None,
+            })),
+        })
+    }
+
+    fn while_stmt(&mut self, sigma: &Sigma, loc: Loc, p: &Term, b: &Term) -> Result<Stmt, Error> {
+        Ok(Stmt::While(WhileStmt {
+            span: loc.into(),
+            test: Box::new(self.expr(sigma, loc, p)?),
+            body: Box::new(Stmt::Block(self.block(sigma, loc, b, false)?)),
+        }))
+    }
+
+    fn block(
+        &mut self,
+        sigma: &Sigma,
+        loc: Loc,
+        body: &Term,
+        returns: bool,
+    ) -> Result<BlockStmt, Error> {
         fn strip_untupled_lets(mut tm: &Term) -> Term {
             use Term::*;
             loop {
@@ -401,6 +438,7 @@ impl Ecma {
 
         let mut tm = &strip_untupled_lets(body);
         let mut stmts = Vec::default();
+        let span = loc.into();
 
         loop {
             match tm {
@@ -408,24 +446,30 @@ impl Ecma {
                     stmts.push(self.const_decl_stmt(sigma, loc, &p.var, a)?);
                     tm = b
                 }
+                While(p, b, r) => {
+                    stmts.push(self.while_stmt(sigma, loc, p, b)?);
+                    tm = r
+                }
                 TupleLet(_, _, _, _) => unreachable!(),
                 UnitLet(a, b) => {
                     stmts.push(self.unit_stmt(sigma, loc, a)?);
                     tm = b
                 }
                 _ => {
-                    stmts.push(Stmt::Return(ReturnStmt {
-                        span: loc.into(),
-                        arg: Some(Box::new(self.expr(sigma, loc, tm)?)),
-                    }));
+                    let expr = Box::new(self.expr(sigma, loc, tm)?);
+                    stmts.push(if returns {
+                        Stmt::Return(ReturnStmt {
+                            span,
+                            arg: Some(expr),
+                        })
+                    } else {
+                        Stmt::Expr(ExprStmt { span, expr })
+                    });
                     break;
                 }
             }
         }
-        Ok(BlockStmt {
-            span: loc.into(),
-            stmts,
-        })
+        Ok(BlockStmt { span, stmts })
     }
 
     fn expr(&mut self, sigma: &Sigma, loc: Loc, tm: &Term) -> Result<Expr, Error> {
@@ -437,6 +481,19 @@ impl Ecma {
             },
 
             Let(p, a, b) => self.lambda_encoded_let(sigma, loc, Some(&p.var), a, b)?,
+            While(p, b, r) => Self::iife(
+                loc,
+                BlockStmtOrExpr::BlockStmt(BlockStmt {
+                    span: loc.into(),
+                    stmts: vec![
+                        self.while_stmt(sigma, loc, p, b)?,
+                        Stmt::Return(ReturnStmt {
+                            span: loc.into(),
+                            arg: Some(Box::new(self.expr(sigma, loc, r)?)),
+                        }),
+                    ],
+                }),
+            ),
             UnitLet(a, b) => self.lambda_encoded_let(sigma, loc, None, a, b)?,
 
             Ref(r) | Undef(r) => Expr::Ident(Self::ident(loc, r)),
@@ -457,7 +514,7 @@ impl Ecma {
                 Explicit => Expr::Arrow(ArrowExpr {
                     span: loc.into(),
                     params: Self::type_erased_param_pat(loc, p),
-                    body: Box::new(BlockStmtOrExpr::BlockStmt(self.block(sigma, loc, b)?)),
+                    body: Box::new(BlockStmtOrExpr::BlockStmt(self.block(sigma, loc, b, true)?)),
                     is_async: false,
                     is_generator: false,
                     type_params: None,
@@ -627,6 +684,7 @@ impl Ecma {
                                 sigma,
                                 loc,
                                 &tm.clone(),
+                                true,
                             )?)),
                             is_async: false,
                             is_generator: false,

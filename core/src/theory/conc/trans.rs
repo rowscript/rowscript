@@ -148,7 +148,7 @@ impl Trans {
                 Rule::param => untupled.push(Loc::from(p.as_span()), self.param(p)),
                 Rule::type_expr => ret = Box::new(self.type_expr(p)),
                 Rule::fn_body => {
-                    body = Some(self.fn_body(p));
+                    body = Some(self.fn_body(p, false));
                     break;
                 }
                 Rule::pred => preds.push(self.pred(p)),
@@ -297,7 +297,7 @@ impl Trans {
                 }
                 Rule::class_init => {
                     let loc = Loc::from(p.as_span());
-                    init_expr = Some((loc, self.fn_body(p.into_inner().next().unwrap())));
+                    init_expr = Some((loc, self.fn_body(p.into_inner().next().unwrap(), false)));
                 }
                 Rule::class_method => {
                     let mut m =
@@ -752,7 +752,7 @@ impl Trans {
         }
     }
 
-    fn fn_body(&self, b: Pair<Rule>) -> Expr {
+    fn fn_body(&self, b: Pair<Rule>, force_returns_unit: bool) -> Expr {
         use Expr::*;
 
         let p = b.into_inner().next().unwrap();
@@ -766,7 +766,7 @@ impl Trans {
                     id,
                     typ,
                     Box::new(tm),
-                    Box::new(self.fn_body(l.next().unwrap())),
+                    Box::new(self.fn_body(l.next().unwrap(), force_returns_unit)),
                 )
             }
             Rule::fn_body_unit_let => {
@@ -774,7 +774,7 @@ impl Trans {
                 UnitLet(
                     loc,
                     Box::new(self.expr(l.next().unwrap())),
-                    Box::new(self.fn_body(l.next().unwrap())),
+                    Box::new(self.fn_body(l.next().unwrap(), force_returns_unit)),
                 )
             }
             Rule::fn_body_object_assign => {
@@ -790,10 +790,22 @@ impl Trans {
                     Box::new(Unresolved(a_loc, None, a_var.clone())),
                     Box::new(Obj(n_loc, Box::new(Fields(n_loc, fields)))),
                 );
-                let body = self.fn_body(pairs.next().unwrap());
+                let body = self.fn_body(pairs.next().unwrap(), force_returns_unit);
                 Let(loc, a_var, None, Box::new(expr), Box::new(body))
             }
-            Rule::fn_body_ret => p.into_inner().next().map_or(TT(loc), |e| self.expr(e)),
+            Rule::fn_body_while => {
+                let mut pairs = p.into_inner();
+                While(
+                    loc,
+                    Box::new(self.expr(pairs.next().unwrap())),
+                    Box::new(self.fn_body(pairs.next().unwrap(), true)),
+                    Box::new(self.fn_body(pairs.next().unwrap(), false)),
+                )
+            }
+            Rule::expr if force_returns_unit => self.expr(p),
+            Rule::fn_body_ret if !force_returns_unit => {
+                p.into_inner().next().map_or(TT(loc), |e| self.expr(e))
+            }
             _ => unreachable!(),
         }
     }
@@ -953,7 +965,7 @@ impl Trans {
                             let b = p.into_inner().next().unwrap();
                             body = Some(match b.as_rule() {
                                 Rule::expr => self.expr(b),
-                                Rule::fn_body => self.fn_body(b),
+                                Rule::fn_body => self.fn_body(b, false),
                                 _ => unreachable!(),
                             });
                             break;
@@ -1012,6 +1024,15 @@ impl Trans {
                 );
                 let body = self.branch(pairs.next().unwrap());
                 Let(loc, a_var, None, Box::new(expr), Box::new(body))
+            }
+            Rule::branch_while => {
+                let mut pairs = p.into_inner();
+                While(
+                    loc,
+                    Box::new(self.expr(pairs.next().unwrap())),
+                    Box::new(self.branch(pairs.next().unwrap())),
+                    Box::new(self.branch(pairs.next().unwrap())),
+                )
             }
             Rule::expr => self.expr(p),
             _ => unreachable!(),

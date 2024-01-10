@@ -1,0 +1,22 @@
+function log();
+
+function f0() {
+    while (true) {
+        log();
+    }
+    return
+}
+
+function f1() {
+    return if (true) {
+        while (true) {
+            log();
+        }
+        ()
+    } else {
+        ()
+    }
+}
+
+f0();
+f1();
