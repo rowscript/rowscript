@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
-use crate::theory::abs::data::Term::{Lam, Pi};
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::load::ModuleID;
 use crate::theory::{Param, ParamInfo, Syntax, Tele, Var};
@@ -71,6 +70,8 @@ pub enum Term {
     False,
     True,
     If(Box<Self>, Box<Self>, Box<Self>),
+    BoolOr(Box<Self>, Box<Self>),
+    BoolAnd(Box<Self>, Box<Self>),
 
     String,
     Str(String),
@@ -79,6 +80,10 @@ pub enum Term {
     Num(f64),
     NumAdd(Box<Self>, Box<Self>),
     NumSub(Box<Self>, Box<Self>),
+    NumLe(Box<Self>, Box<Self>),
+    NumGe(Box<Self>, Box<Self>),
+    NumLt(Box<Self>, Box<Self>),
+    NumGt(Box<Self>, Box<Self>),
 
     BigInt,
     Big(String),
@@ -120,17 +125,27 @@ pub enum Term {
 
 impl Term {
     pub fn lam(tele: &Tele<Term>, tm: Term) -> Term {
-        tele.iter().rfold(tm, |b, p| Lam(p.clone(), Box::new(b)))
+        tele.iter()
+            .rfold(tm, |b, p| Term::Lam(p.clone(), Box::new(b)))
     }
 
     pub fn pi(tele: &Tele<Term>, tm: Term) -> Term {
-        tele.iter().rfold(tm, |b, p| Pi(p.clone(), Box::new(b)))
+        tele.iter()
+            .rfold(tm, |b, p| Term::Pi(p.clone(), Box::new(b)))
     }
 
     pub fn tele_to_spine(tele: &Tele<Term>) -> Spine {
         tele.iter()
             .map(|p| (p.info, Self::Ref(p.var.clone())))
             .collect()
+    }
+
+    pub fn bool(v: bool) -> Term {
+        if v {
+            Term::True
+        } else {
+            Term::False
+        }
     }
 }
 
@@ -173,12 +188,18 @@ impl Display for Term {
                 False => "false".to_string(),
                 True => "true".to_string(),
                 If(p, t, e) => format!("if {p} {{ {t} }} else {{ {e} }}"),
+                BoolOr(a, b) => format!("{a} || {b}"),
+                BoolAnd(a, b) => format!("{a} && {b}"),
                 String => "string".to_string(),
                 Str(v) => format!("\"{v}\""),
                 Number => "number".to_string(),
                 Num(v) => v.to_string(),
                 NumAdd(a, b) => format!("{a} + {b}"),
                 NumSub(a, b) => format!("{a} - {b}"),
+                NumLe(a, b) => format!("{a} <= {b}"),
+                NumGe(a, b) => format!("{a} >= {b}"),
+                NumLt(a, b) => format!("{a} < {b}"),
+                NumGt(a, b) => format!("{a} > {b}"),
                 BigInt => "bigint".to_string(),
                 Big(v) => v.clone(),
                 Row => "row".to_string(),

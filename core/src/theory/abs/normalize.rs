@@ -135,6 +135,24 @@ impl<'a> Normalizer<'a> {
                     _ => If(p, t, e),
                 }
             }
+            BoolOr(a, b) => {
+                let a = self.term_box(a)?;
+                let b = self.term_box(b)?;
+                match (*a, *b) {
+                    (True, _) => True,
+                    (False, b) => b,
+                    (a, b) => BoolOr(Box::new(a), Box::new(b)),
+                }
+            }
+            BoolAnd(a, b) => {
+                let a = self.term_box(a)?;
+                let b = self.term_box(b)?;
+                match (*a, *b) {
+                    (True, b) => b,
+                    (False, _) => False,
+                    (a, b) => BoolAnd(Box::new(a), Box::new(b)),
+                }
+            }
             NumAdd(a, b) => {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;
@@ -149,6 +167,38 @@ impl<'a> Normalizer<'a> {
                 match (*a, *b) {
                     (Num(a), Num(b)) => Num(a - b),
                     (a, b) => NumSub(Box::new(a), Box::new(b)),
+                }
+            }
+            NumLe(a, b) => {
+                let a = self.term_box(a)?;
+                let b = self.term_box(b)?;
+                match (*a, *b) {
+                    (Num(a), Num(b)) => Term::bool(a <= b),
+                    (a, b) => NumLe(Box::new(a), Box::new(b)),
+                }
+            }
+            NumGe(a, b) => {
+                let a = self.term_box(a)?;
+                let b = self.term_box(b)?;
+                match (*a, *b) {
+                    (Num(a), Num(b)) => Term::bool(a >= b),
+                    (a, b) => NumGe(Box::new(a), Box::new(b)),
+                }
+            }
+            NumLt(a, b) => {
+                let a = self.term_box(a)?;
+                let b = self.term_box(b)?;
+                match (*a, *b) {
+                    (Num(a), Num(b)) => Term::bool(a < b),
+                    (a, b) => NumLt(Box::new(a), Box::new(b)),
+                }
+            }
+            NumGt(a, b) => {
+                let a = self.term_box(a)?;
+                let b = self.term_box(b)?;
+                match (*a, *b) {
+                    (Num(a), Num(b)) => Term::bool(a > b),
+                    (a, b) => NumGt(Box::new(a), Box::new(b)),
                 }
             }
             Fields(mut fields) => {

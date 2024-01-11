@@ -47,8 +47,14 @@ impl Renamer {
                 Box::new(self.term(*t)),
                 Box::new(self.term(*e)),
             ),
+            BoolOr(a, b) => BoolOr(Box::new(self.term(*a)), Box::new(self.term(*b))),
+            BoolAnd(a, b) => BoolAnd(Box::new(self.term(*a)), Box::new(self.term(*b))),
             NumAdd(a, b) => NumAdd(Box::new(self.term(*a)), Box::new(self.term(*b))),
             NumSub(a, b) => NumSub(Box::new(self.term(*a)), Box::new(self.term(*b))),
+            NumLe(a, b) => NumLe(Box::new(self.term(*a)), Box::new(self.term(*b))),
+            NumGe(a, b) => NumGe(Box::new(self.term(*a)), Box::new(self.term(*b))),
+            NumLt(a, b) => NumLt(Box::new(self.term(*a)), Box::new(self.term(*b))),
+            NumGt(a, b) => NumGt(Box::new(self.term(*a)), Box::new(self.term(*b))),
             Fields(fields) => {
                 let mut m = FieldMap::default();
                 for (f, tm) in fields {

@@ -114,6 +114,12 @@ fn_id = { pub_fn_id | priv_fn_id }
 magic_fn_id =
   { "__add__"
   | "__sub__"
+  | "__or__"
+  | "__and__"
+  | "__le__"
+  | "__ge__"
+  | "__lt__"
+  | "__gt__"
   }
 pub_fn_id = _{ pub_camelback_id }
 priv_fn_id = _{ priv_camelback_id }
@@ -151,11 +157,23 @@ idref =
 builtin =
   { numAdd
   | numSub
+  | numLe
+  | numGe
+  | numLt
+  | numGt
   | strAdd
+  | boolAnd
+  | boolOr
   }
 numAdd = { "number#__add__" }
 numSub = { "number#__sub__" }
+numLe = { "number#__le__" }
+numGe = { "number#__ge__" }
+numLt = { "number#__lt__" }
+numGt = { "number#__gt__" }
 strAdd = { "string#__add__" }
+boolAnd = { "boolean#__and__" }
+boolOr = { "boolean#__or__" }
 
 tyref =
   { qualifier ~ tyref
@@ -257,9 +275,21 @@ expr = { primary_expr ~ (infix_op ~ primary_expr)* }
 infix_op =
  _{ infix_add
   | infix_sub
+  | infix_le
+  | infix_ge
+  | infix_lt
+  | infix_gt
+  | infix_and
+  | infix_or
   }
 infix_add = { "+" }
 infix_sub = { "-" }
+infix_le = { "<=" }
+infix_ge = { ">=" }
+infix_lt = { "<" }
+infix_gt = { ">" }
+infix_and = { "&&" }
+infix_or = { "||" }
 primary_expr =
   { string
   | number

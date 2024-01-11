@@ -1,3 +1,63 @@
+interface OrOp for T {
+    __or__(a: T, b: T): T;
+}
+
+implements OrOp for boolean {
+    __or__(a: boolean, b: boolean): boolean {
+        return boolean#__or__(a, b)
+    }
+}
+
+interface AndOp for T {
+    __and__(a: T, b: T): T;
+}
+
+implements AndOp for boolean {
+    __and__(a: boolean, b: boolean): boolean {
+        return boolean#__and__(a, b)
+    }
+}
+
+interface LeOp for T {
+    __le__(a: T, b: T): boolean;
+}
+
+implements LeOp for number {
+    __le__(a: number, b: number): boolean {
+        return number#__le__(a, b)
+    }
+}
+
+interface GeOp for T {
+    __ge__(a: T, b: T): boolean;
+}
+
+implements GeOp for number {
+    __ge__(a: number, b: number): boolean {
+        return number#__ge__(a, b)
+    }
+}
+
+interface LtOp for T {
+    __lt__(a: T, b: T): boolean;
+}
+
+implements LtOp for number {
+    __lt__(a: number, b: number): boolean {
+        return number#__lt__(a, b)
+    }
+}
+
+interface GtOp for T {
+    __gt__(a: T, b: T): boolean;
+}
+
+implements GtOp for number {
+    __gt__(a: number, b: number): boolean {
+        return number#__gt__(a, b)
+    }
+}
+
 interface AddOp for T {
     __add__(a: T, b: T): T;
 }

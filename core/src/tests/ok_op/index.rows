@@ -7,3 +7,5 @@ function f0(): number {
 function f1(): number {
     return rand() - 1
 }
+
+const v0 = true && true || 2 > 1 || 2 >= 1 || 1 < 2 || 1 <= 2;

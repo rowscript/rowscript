@@ -539,6 +539,8 @@ impl Ecma {
                 cons: Box::new(self.expr(sigma, loc, t)?),
                 alt: Box::new(self.expr(sigma, loc, e)?),
             }),
+            BoolOr(a, b) => self.bin_expr(sigma, loc, BinaryOp::LogicalOr, a, b)?,
+            BoolAnd(a, b) => self.bin_expr(sigma, loc, BinaryOp::LogicalAnd, a, b)?,
             Str(s) => Expr::Lit(Lit::Str(JsStr {
                 span: loc.into(),
                 value: s.as_str().into(),

@@ -23,6 +23,12 @@ impl Default for Trans {
     fn default() -> Self {
         Self {
             pratt: PrattParser::new()
+                .op(Op::infix(Rule::infix_or, Assoc::Left))
+                .op(Op::infix(Rule::infix_and, Assoc::Left))
+                .op(Op::infix(Rule::infix_le, Assoc::Left)
+                    | Op::infix(Rule::infix_ge, Assoc::Left)
+                    | Op::infix(Rule::infix_lt, Assoc::Left)
+                    | Op::infix(Rule::infix_gt, Assoc::Left))
                 .op(Op::infix(Rule::infix_add, Assoc::Left)
                     | Op::infix(Rule::infix_sub, Assoc::Left)),
         }
@@ -816,6 +822,12 @@ impl Trans {
             .map_infix(|lhs, op, rhs| {
                 let loc = Loc::from(op.as_span());
                 match op.as_rule() {
+                    Rule::infix_or => Self::infix_app(loc, "__or__", lhs, rhs),
+                    Rule::infix_and => Self::infix_app(loc, "__and__", lhs, rhs),
+                    Rule::infix_le => Self::infix_app(loc, "__le__", lhs, rhs),
+                    Rule::infix_ge => Self::infix_app(loc, "__ge__", lhs, rhs),
+                    Rule::infix_lt => Self::infix_app(loc, "__lt__", lhs, rhs),
+                    Rule::infix_gt => Self::infix_app(loc, "__gt__", lhs, rhs),
                     Rule::infix_add => Self::infix_app(loc, "__add__", lhs, rhs),
                     Rule::infix_sub => Self::infix_app(loc, "__sub__", lhs, rhs),
                     _ => unreachable!(),
