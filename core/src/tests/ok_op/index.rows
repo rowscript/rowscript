@@ -9,3 +9,4 @@ function f1(): number {
 }
 
 const v0 = true && true || 2 > 1 || 2 >= 1 || 1 < 2 || 1 <= 2;
+const v1 = !true;

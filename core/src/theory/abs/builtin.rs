@@ -50,6 +50,7 @@ pub struct Builtins {
 
     pub boolean_or: Var,
     pub boolean_and: Var,
+    pub boolean_not: Var,
 }
 
 impl Builtins {
@@ -66,6 +67,7 @@ impl Builtins {
             number_gt: Var::new("number#__gt__"),
             boolean_or: Var::new("boolean#__or__"),
             boolean_and: Var::new("boolean#__and__"),
+            boolean_not: Var::new("boolean#__not__"),
         };
         ret.insert_unionify(sigma);
         ret.insert_reflect(sigma);
@@ -77,6 +79,7 @@ impl Builtins {
         ret.insert_number_gt(sigma);
         ret.insert_boolean_or(sigma);
         ret.insert_boolean_and(sigma);
+        ret.insert_boolean_not(sigma);
         ret
     }
 
@@ -450,6 +453,28 @@ impl Builtins {
                         explicit(b, Term::Boolean),
                     ],
                 ),
+                ret: Box::new(Term::Boolean),
+                body,
+            },
+        )
+    }
+
+    fn insert_boolean_not(&mut self, sigma: &mut Sigma) {
+        let tupled = Var::tupled();
+        let untupled_a = Var::new("a");
+        let untupled_a_rhs = Var::new("a").untupled_rhs();
+        let body = Body::Fn(Term::TupleLet(
+            explicit(untupled_a.clone(), Term::Boolean),
+            explicit(untupled_a_rhs.clone(), Term::Unit),
+            Box::new(Term::Ref(tupled.clone())),
+            Box::new(Term::BoolNot(Box::new(Term::Ref(untupled_a)))),
+        ));
+        self.insert_def(
+            sigma,
+            Def {
+                loc: Default::default(),
+                name: Var::new("boolean#__not__"),
+                tele: tuple_params(tupled, [explicit(Var::new("a"), Term::Boolean)]),
                 ret: Box::new(Term::Boolean),
                 body,
             },

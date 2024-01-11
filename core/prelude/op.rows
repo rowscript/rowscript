@@ -1,3 +1,13 @@
+interface NotOp for T {
+    __not__(a: T): T;
+}
+
+implements NotOp for boolean {
+    __not__(a: boolean): boolean {
+        return boolean#__not__(a)
+    }
+}
+
 interface OrOp for T {
     __or__(a: T, b: T): T;
 }

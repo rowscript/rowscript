@@ -72,6 +72,7 @@ pub enum Term {
     If(Box<Self>, Box<Self>, Box<Self>),
     BoolOr(Box<Self>, Box<Self>),
     BoolAnd(Box<Self>, Box<Self>),
+    BoolNot(Box<Self>),
 
     String,
     Str(String),
@@ -190,6 +191,7 @@ impl Display for Term {
                 If(p, t, e) => format!("if {p} {{ {t} }} else {{ {e} }}"),
                 BoolOr(a, b) => format!("{a} || {b}"),
                 BoolAnd(a, b) => format!("{a} && {b}"),
+                BoolNot(a) => format!("!{a}"),
                 String => "string".to_string(),
                 Str(v) => format!("\"{v}\""),
                 Number => "number".to_string(),

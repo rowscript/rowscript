@@ -12,7 +12,7 @@ use swc_ecma_ast::{
     ImportNamedSpecifier, ImportSpecifier, ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr,
     MemberProp, Module, ModuleDecl, ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam,
     ParenExpr, Pat, PatOrExpr, Prop, PropName, PropOrSpread, ReturnStmt, SpreadElement, Stmt,
-    Str as JsStr, VarDecl, VarDeclKind, VarDeclarator, WhileStmt,
+    Str as JsStr, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclarator, WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -212,6 +212,20 @@ impl Ecma {
             op,
             left: Box::new(self.expr(sigma, loc, a)?),
             right: Box::new(self.expr(sigma, loc, b)?),
+        }))
+    }
+
+    fn unary_expr(
+        &mut self,
+        sigma: &Sigma,
+        loc: Loc,
+        op: UnaryOp,
+        a: &Term,
+    ) -> Result<Expr, Error> {
+        Ok(Expr::Unary(UnaryExpr {
+            span: loc.into(),
+            op,
+            arg: Box::new(self.expr(sigma, loc, a)?),
         }))
     }
 
@@ -541,6 +555,7 @@ impl Ecma {
             }),
             BoolOr(a, b) => self.bin_expr(sigma, loc, BinaryOp::LogicalOr, a, b)?,
             BoolAnd(a, b) => self.bin_expr(sigma, loc, BinaryOp::LogicalAnd, a, b)?,
+            BoolNot(a) => self.unary_expr(sigma, loc, UnaryOp::Bang, a)?,
             Str(s) => Expr::Lit(Lit::Str(JsStr {
                 span: loc.into(),
                 value: s.as_str().into(),

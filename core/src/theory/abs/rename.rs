@@ -49,6 +49,7 @@ impl Renamer {
             ),
             BoolOr(a, b) => BoolOr(Box::new(self.term(*a)), Box::new(self.term(*b))),
             BoolAnd(a, b) => BoolAnd(Box::new(self.term(*a)), Box::new(self.term(*b))),
+            BoolNot(a) => BoolNot(Box::new(self.term(*a))),
             NumAdd(a, b) => NumAdd(Box::new(self.term(*a)), Box::new(self.term(*b))),
             NumSub(a, b) => NumSub(Box::new(self.term(*a)), Box::new(self.term(*b))),
             NumLe(a, b) => NumLe(Box::new(self.term(*a)), Box::new(self.term(*b))),

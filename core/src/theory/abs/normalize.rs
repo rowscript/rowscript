@@ -153,6 +153,14 @@ impl<'a> Normalizer<'a> {
                     (a, b) => BoolAnd(Box::new(a), Box::new(b)),
                 }
             }
+            BoolNot(a) => {
+                let a = self.term_box(a)?;
+                match *a {
+                    True => False,
+                    False => True,
+                    a => BoolNot(Box::new(a)),
+                }
+            }
             NumAdd(a, b) => {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;

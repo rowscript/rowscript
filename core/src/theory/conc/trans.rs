@@ -30,7 +30,8 @@ impl Default for Trans {
                     | Op::infix(Rule::infix_lt, Assoc::Left)
                     | Op::infix(Rule::infix_gt, Assoc::Left))
                 .op(Op::infix(Rule::infix_add, Assoc::Left)
-                    | Op::infix(Rule::infix_sub, Assoc::Left)),
+                    | Op::infix(Rule::infix_sub, Assoc::Left))
+                .op(Op::prefix(Rule::prefix_not)),
         }
     }
 }
@@ -833,6 +834,13 @@ impl Trans {
                     _ => unreachable!(),
                 }
             })
+            .map_prefix(|op, x| {
+                let loc = Loc::from(op.as_span());
+                match op.as_rule() {
+                    Rule::prefix_not => Self::prefix_app(loc, "__not__", x),
+                    _ => unreachable!(),
+                }
+            })
             .parse(e.into_inner())
     }
 
@@ -847,6 +855,16 @@ impl Trans {
                 Box::new(lhs),
                 Box::new(Tuple(rhs.loc(), Box::new(rhs), Box::new(TT(loc)))),
             )),
+        )
+    }
+
+    fn prefix_app(loc: Loc, r: &'static str, x: Expr) -> Expr {
+        use Expr::*;
+        App(
+            loc,
+            Box::new(Unresolved(loc, None, Var::new(r))),
+            UnnamedExplicit,
+            Box::new(Tuple(x.loc(), Box::new(x), Box::new(TT(loc)))),
         )
     }
 

@@ -120,6 +120,7 @@ magic_fn_id =
   | "__ge__"
   | "__lt__"
   | "__gt__"
+  | "__not__"
   }
 pub_fn_id = _{ pub_camelback_id }
 priv_fn_id = _{ priv_camelback_id }
@@ -164,6 +165,7 @@ builtin =
   | strAdd
   | boolAnd
   | boolOr
+  | boolNot
   }
 numAdd = { "number#__add__" }
 numSub = { "number#__sub__" }
@@ -174,6 +176,7 @@ numGt = { "number#__gt__" }
 strAdd = { "string#__add__" }
 boolAnd = { "boolean#__and__" }
 boolOr = { "boolean#__or__" }
+boolNot = { "boolean#__not__" }
 
 tyref =
   { qualifier ~ tyref
@@ -271,7 +274,11 @@ enum_type_ref = { "[" ~ row_id ~ "]" }
 enum_type_literal = { "[" ~ variant ~ ("|" ~ variant)* ~ "]" }
 type_app = { ("(" ~ type_expr ~ ")" | tyref) ~ implicit_args? }
 
-expr = { primary_expr ~ (infix_op ~ primary_expr)* }
+expr = { prefix_op* ~ primary_expr ~ (infix_op ~ prefix_op* ~ primary_expr)* }
+prefix_op =
+ _{ prefix_not
+  }
+prefix_not = { "!" }
 infix_op =
  _{ infix_add
   | infix_sub
