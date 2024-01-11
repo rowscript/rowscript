@@ -267,7 +267,6 @@ primary_expr =
   | boolean_false
   | boolean_true
   | boolean_if
-  | new_expr
   | method_app
   | rev_app
   | object_literal
@@ -281,6 +280,7 @@ primary_expr =
   | app
   | tt
   | idref
+  | new_expr
   | hole
   | paren_expr
   }
