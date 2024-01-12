@@ -805,7 +805,7 @@ impl Trans {
                 While(
                     loc,
                     Box::new(self.expr(pairs.next().unwrap())),
-                    Box::new(self.fn_body(pairs.next().unwrap(), true)),
+                    Box::new(self.branch(pairs.next().unwrap())),
                     Box::new(self.fn_body(pairs.next().unwrap(), false)),
                 )
             }

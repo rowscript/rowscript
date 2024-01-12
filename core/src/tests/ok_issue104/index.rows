@@ -1,0 +1,14 @@
+function log();
+
+function f0() {
+    let a = {n: 1};
+    while (true) {
+        a.n = 2;
+        while (false) {
+            a.n = 3;
+            log();
+        }
+        log();
+    }
+    return
+}

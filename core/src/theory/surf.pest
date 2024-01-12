@@ -335,10 +335,15 @@ branch =
   | branch_while
   | expr
   }
-branch_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" ~ branch }
-branch_unit_let = { expr ~ ";" ~ branch }
-branch_object_assign = { let_id ~ "." ~ prop_id ~ "=" ~ expr ~ ";" ~ branch }
-branch_while = { "while" ~ "(" ~ expr ~ ")" ~ "{" ~ branch ~ ";" ~ "}" ~ branch }
+let_stmt = _{ "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" }
+unit_let_stmt = _{ expr ~ ";" }
+object_assign_stmt = _{ let_id ~ "." ~ prop_id ~ "=" ~ expr ~ ";" }
+while_stmt_start = _{ "while" ~ "(" ~ expr ~ ")" ~ "{" }
+while_stmt_end = _{ ";" ~ "}" }
+branch_let = { let_stmt ~ branch }
+branch_unit_let = { unit_let_stmt ~ branch }
+branch_object_assign = { object_assign_stmt ~ branch }
+branch_while = { while_stmt_start ~ branch ~ while_stmt_end ~ branch }
 new_expr = { "new" ~ tyref ~ ("<" ~ type_args ~ ">")? ~ args }
 method_app = { ("(" ~ expr ~ ")" | idref) ~ "." ~ prop_id ~ args+ }
 rev_app = { ("(" ~ expr ~ ")" | idref) ~ rev_app_callee+ }
@@ -421,18 +426,10 @@ fn_body =
   | fn_body_while
   | fn_body_ret
   }
-
-fn_body_let = { "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" ~ fn_body }
-fn_body_unit_let = { expr ~ ";" ~ fn_body }
-fn_body_object_assign = { let_id ~ "." ~ prop_id ~ "=" ~ expr ~ ";" ~ fn_body }
-fn_body_while = { "while" ~ "(" ~ expr ~ ")" ~ "{" ~ fn_body_while_body ~ "}" ~ fn_body }
-fn_body_while_body =
-  { fn_body_let
-  | fn_body_unit_let
-  | fn_body_object_assign
-  | fn_body_while
-  | expr ~ ";"
-  }
+fn_body_let = { let_stmt ~ fn_body }
+fn_body_unit_let = { unit_let_stmt ~ fn_body }
+fn_body_object_assign = { object_assign_stmt ~ fn_body }
+fn_body_while = { while_stmt_start ~ branch ~ while_stmt_end ~ fn_body }
 fn_body_ret = { "return" ~ expr? }
 
 fn_postulate =
