@@ -8,7 +8,7 @@ class A {
 
 function f0() {
     let a = new A("John");
-    a.hello()
+    a:hello()
 }
 
 class B<T> {
@@ -19,7 +19,7 @@ class B<T> {
 
 function f1() {
     let a = new B("John");
-    a.hello()
+    a:hello()
 }
 
 f0();

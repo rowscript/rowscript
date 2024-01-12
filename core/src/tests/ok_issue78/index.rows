@@ -7,7 +7,7 @@ class Foo<T> {
 
 function f() {
     let a = new Foo<number>(42);
-    log(a.foo());
+    log(a:foo());
 }
 
 // This should run after vtbl is initialized.

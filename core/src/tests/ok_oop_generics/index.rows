@@ -8,13 +8,13 @@ class Foo<T> {
 
     doStuff() {
         let n = this.data;
-        this.sayHi()
+        this:sayHi()
     }
 }
 
 function f() {
     let a = new Foo("John", 42);
-    a.sayHi()
+    a:sayHi()
 }
 
 function g() {

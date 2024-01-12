@@ -7,10 +7,10 @@ class Bar {
 
 function f0(): string {
     let a = new Foo("John");
-    a.getName()
+    a:getName()
 }
 
 function f1(): number {
     let a = new Bar(42);
-    a.getAge()
+    a:getAge()
 }
