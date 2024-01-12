@@ -567,6 +567,10 @@ impl Ecma {
                 raw: None,
             })),
             NumAdd(a, b) => self.bin_expr(sigma, loc, BinaryOp::Add, a, b)?,
+            NumLe(a, b) => self.bin_expr(sigma, loc, BinaryOp::LtEq, a, b)?,
+            NumGe(a, b) => self.bin_expr(sigma, loc, BinaryOp::GtEq, a, b)?,
+            NumLt(a, b) => self.bin_expr(sigma, loc, BinaryOp::Lt, a, b)?,
+            NumGt(a, b) => self.bin_expr(sigma, loc, BinaryOp::Gt, a, b)?,
             NumSub(a, b) => self.bin_expr(sigma, loc, BinaryOp::Sub, a, b)?,
             Big(v) => Expr::Lit(Lit::BigInt(JsBigInt {
                 span: loc.into(),
