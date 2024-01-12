@@ -1,5 +1,5 @@
 type Promise;
 
 function foo(n: Promise): Promise {
-    return n
+    n
 }

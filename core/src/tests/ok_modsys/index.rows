@@ -11,21 +11,21 @@ import .b;
 from .c import _;
 
 function f0() {
-    return a()
+    a()
 }
 
 function f1(): @rowscript/react::router::Route {
-    return {path: "/home"}
+    {path: "/home"}
 }
 
 function f2() {
-    return ::b::doStuff()
+    ::b::doStuff()
 }
 
 function f3(): string {
-    return node::readFileSync("hello.txt")
+    node::readFileSync("hello.txt")
 }
 
 function f4(): ::b::Foo {
-    return {n: 42}
+    {n: 42}
 }

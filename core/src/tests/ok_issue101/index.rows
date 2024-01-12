@@ -1,7 +1,7 @@
 function newA(): number {
-    return 42
+    42
 }
 
 function f0(): number {
-    return newA()
+    newA()
 }

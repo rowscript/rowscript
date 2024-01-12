@@ -1,7 +1,7 @@
 function f0(): {a: [A | B]} {
-    return {a: [...A]}
+    {a: [...A]}
 }
 
 function f1(): {a: [A | B]} {
-    return {a: A} // it's even stronger!
+    {a: A} // it's even stronger!
 }

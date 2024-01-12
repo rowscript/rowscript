@@ -4,11 +4,10 @@ function f0() {
     while (true) {
         log();
     }
-    return
 }
 
 function f1() {
-    return if (true) {
+    if (true) {
         while (true) {
             log();
         }

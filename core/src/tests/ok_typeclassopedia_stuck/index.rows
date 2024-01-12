@@ -6,7 +6,7 @@ type Foo<T> = {n: T};
 
 implements Functor for Foo {
     map<A, B>(f: (a: A) -> B, x: Foo<A>): Foo<B> {
-        return {n: f(x.n)}
+        {n: f(x.n)}
     }
 }
 
@@ -15,9 +15,9 @@ function numToStr(n: number): string;
 function f0<M: type -> type, A, B>(f: (a: A) -> B, x: M<A>): M<B>
 where Functor<M>
 {
-    return map<M>(f, x)
+    map<M>(f, x)
 }
 
 function f1(): string {
-    return f0<Foo>(numToStr, {n: 42}).n
+    f0<Foo>(numToStr, {n: 42}).n
 }

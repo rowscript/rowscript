@@ -1,15 +1,15 @@
 const a = 42;
 
 function f0(): number {
-    return a
+    a
 }
 
-function f1() { return }
+function f1() {}
 
 f1();
 
 const b: string = "hello";
 
 function f2(): string {
-    return b
+    b
 }

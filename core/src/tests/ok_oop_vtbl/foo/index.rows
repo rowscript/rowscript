@@ -4,6 +4,6 @@ class Foo {
     name: string;
     getName(): string {
         log(this.name);
-        return this.name
+        this.name
     }
 }

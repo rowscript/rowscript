@@ -8,9 +8,9 @@ const x0: Reflected<A> = reflect({a: 42});
 
 function f0(): Reflected<B> {
     let b: B = B1;
-    return reflect(b)
+    reflect(b)
 }
 
 function f1(b: B): Reflected<B> {
-    return reflect(b)
+    reflect(b)
 }

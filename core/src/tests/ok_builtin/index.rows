@@ -1,9 +1,9 @@
 function rand(): number;
 
 function f0(): number {
-    return number#__add__(1, 1)
+    number#__add__(1, 1)
 }
 
 function f1(): number {
-    return number#__add__(rand(), rand())
+    number#__add__(rand(), rand())
 }

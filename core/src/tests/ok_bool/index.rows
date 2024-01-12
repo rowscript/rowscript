@@ -7,9 +7,9 @@ function f(): number {
         let d = c;
         d
     };
-    return a
+    a
 }
 
 function g<T>(): number {
-    return f()
+    f()
 }

@@ -1,23 +1,23 @@
 function f0(a: {n: number}, b: {m: number}): number {
-    return (a...b).m
+    (a...b).m
 }
 
 function f1(): number {
-    return f0({n: 42}, {m: 69})
+    f0({n: 42}, {m: 69})
 }
 
 function g0(a: {n: number, m: number}): {n: number} {
-    return {...a}
+    {...a}
 }
 
 function g1(): {n: number} {
-    return g0({n: 42, m: 69})
+    g0({n: 42, m: 69})
 }
 
 function h0(): {a: {b: number}} {
-    return {a: {...{b: 42, c: "hello"}}}
+    {a: {...{b: 42, c: "hello"}}}
 }
 
 function h1(): {a: {b: number}} {
-    return h0()
+    h0()
 }

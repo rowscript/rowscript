@@ -2,9 +2,9 @@ function inc(n: number): number;
 function numToStr(n: number): string;
 
 function f(a: number): string {
-    return a |> inc() |> numToStr()
+    a |> inc() |> numToStr()
 }
 
 function g(): string {
-    return f(42)
+    f(42)
 }

@@ -10,23 +10,23 @@ interface NatLike for T {
 
 implements NatLike for Foo {
     add(a: Foo, b: Foo): Foo {
-        return {n: numAdd(a.n, b.n)}
+        {n: numAdd(a.n, b.n)}
     }
 
     mul(a: Foo, b: Foo): Foo {
-        return {n: numMul(a.n, b.n)}
+        {n: numMul(a.n, b.n)}
     }
 }
 
 function f0(): number {
-    return add({n: 42}, {n: 69}).n
+    add({n: 42}, {n: 69}).n
 }
 
 function f1(): number {
-    return f0()
+    f0()
 }
 
 interface Default for T { pure(): T; }
-implements Default for Foo { pure(): Foo { return {n: 0} } }
-function g0(): Foo { return pure() }
-function g1(): Foo { return g0() }
+implements Default for Foo { pure(): Foo { {n: 0} } }
+function g0(): Foo { pure() }
+function g1(): Foo { g0() }

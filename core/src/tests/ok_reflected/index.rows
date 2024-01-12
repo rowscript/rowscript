@@ -145,7 +145,7 @@ const x6: Reflected<G> = {
 type H<A, B> = {a: A, b: B};
 
 function f7<A, B>(a: H<A, B>): Reflected<H<A, B>> {
-    return {
+    {
         kind: RepKindObject,
         props: {
             a: {

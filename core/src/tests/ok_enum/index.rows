@@ -3,30 +3,30 @@ type WriteOptions = [None | WritePath: {path: string}];
 function write(opts: WriteOptions);
 
 function f0(): [None | Some: number] {
-    return Some(42)
+    Some(42)
 }
 
 function f1(): [None | Some: number | More: string] {
-    return [...f0()]
+    [...f0()]
 }
 
 function f2(): number {
-    return switch (f0()) {
+    switch (f0()) {
     case None: 69
     case Some(n): n
     }
 }
 
-function f3(): number { return f2() }
+function f3(): number { f2() }
 
 function f4() {
     let a: WriteOptions = WritePath({path: "foo.txt"});
-    return write(unionify(a))
+    write(unionify(a))
 }
 
 function getData(): [Age: number | Name: string];
 function setData(data: [Age: number | Name: string]);
 
 function f5() {
-    return setData(unionify(getData()))
+    setData(unionify(getData()))
 }

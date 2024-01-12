@@ -4,19 +4,19 @@ class Foo<T> {
     name: string;
     data: T;
 
-    sayHi() { return log(this.name) }
+    sayHi() { log(this.name) }
 
     doStuff() {
         let n = this.data;
-        return this.sayHi()
+        this.sayHi()
     }
 }
 
 function f() {
     let a = new Foo("John", 42);
-    return a.sayHi()
+    a.sayHi()
 }
 
 function g() {
-    return f()
+    f()
 }

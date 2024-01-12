@@ -1,9 +1,9 @@
 function f(a: number): number {
-    return a + 1 + 2
+    a + 1 + 2
 }
 
 function g(): number {
-    return f(0)
+    f(0)
 }
 
 const n = g();

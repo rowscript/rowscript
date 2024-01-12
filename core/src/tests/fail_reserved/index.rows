@@ -1,1 +1,1 @@
-function let() { return }
+function let() {}

@@ -1,10 +1,10 @@
 function f0<'A>(a: ['A]): ['A] {
-    return a
+    a
 }
 
 function f1(): [None | Data: number] {
     // Type of expression `Data(42)` should simply be `[Data: number]`, because
     // if there is an inserted implicit lambda for implicit conversion into one
     // with a bigger enumeration type, the elaborator will loop.
-    return [...f0(Data(42))]
+    [...f0(Data(42))]
 }

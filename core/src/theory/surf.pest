@@ -430,7 +430,7 @@ fn_body_let = { let_stmt ~ fn_body }
 fn_body_unit_let = { unit_let_stmt ~ fn_body }
 fn_body_object_assign = { object_assign_stmt ~ fn_body }
 fn_body_while = { while_stmt_start ~ branch ~ while_stmt_end ~ fn_body }
-fn_body_ret = { "return" ~ expr? }
+fn_body_ret = { expr? }
 
 fn_postulate =
   { "function"

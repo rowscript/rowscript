@@ -1,21 +1,18 @@
-function f(): unit {
-    return
-}
+function f(): unit {}
 
 function g() {
     let a = ();
-    return a
+    a
 }
 
 function h() {
     g();
-    return
 }
 
 function log();
 
 function i() {
-    return if (true) {
+    if (true) {
         log();
         f()
     } else {

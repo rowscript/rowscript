@@ -1,11 +1,11 @@
 function rand(): number;
 
 function f0(): number {
-    return 1 + 1
+    1 + 1
 }
 
 function f1(): number {
-    return rand() - 1
+    rand() - 1
 }
 
 const v0 = true && true || 2 > 1 || 2 >= 1 || 1 < 2 || 1 <= 2;

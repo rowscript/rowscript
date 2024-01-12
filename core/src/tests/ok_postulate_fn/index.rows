@@ -3,5 +3,5 @@ function g();
 function h<T>(): T;
 
 function f1(): number {
-    return h<number>()
+    h<number>()
 }

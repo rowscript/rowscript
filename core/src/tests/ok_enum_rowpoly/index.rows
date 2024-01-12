@@ -2,14 +2,13 @@ function f0<'A, 'B, 'C>(a: ['A], b: ['B]): ['C]
 where
     'C = 'A + 'B
 {
-    return [...a]
+    [...a]
 }
 
 function f1(): [A | B] {
-    return f0(A, B)
+    f0(A, B)
 }
 
 function f2() {
     let a = f1();
-    return
 }

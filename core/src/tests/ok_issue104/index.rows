@@ -10,5 +10,4 @@ function f0() {
         }
         log();
     }
-    return
 }

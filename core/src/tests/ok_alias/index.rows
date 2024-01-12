@@ -1,11 +1,11 @@
 type AppID = string;
 
 function f0(): AppID {
-    return "123"
+    "123"
 }
 
 type Option<T> = [None | Some: T];
 
 function f1(): Option<number> {
-    return Some(42)
+    Some(42)
 }

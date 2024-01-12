@@ -6,5 +6,4 @@ function f() {
         let c: number = 69;
         c1
     };
-    return
 }
