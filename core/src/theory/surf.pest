@@ -116,6 +116,8 @@ magic_fn_id =
   | "__sub__"
   | "__or__"
   | "__and__"
+  | "__eq__"
+  | "__neq__"
   | "__le__"
   | "__ge__"
   | "__lt__"
@@ -158,6 +160,8 @@ idref =
 builtin =
   { numAdd
   | numSub
+  | numEq
+  | numNeq
   | numLe
   | numGe
   | numLt
@@ -169,6 +173,8 @@ builtin =
   }
 numAdd = { "number#__add__" }
 numSub = { "number#__sub__" }
+numEq = { "number#__eq__" }
+numNeq = { "number#__neq__" }
 numLe = { "number#__le__" }
 numGe = { "number#__ge__" }
 numLt = { "number#__lt__" }
@@ -282,6 +288,8 @@ prefix_not = { "!" }
 infix_op =
  _{ infix_add
   | infix_sub
+  | infix_eq
+  | infix_neq
   | infix_le
   | infix_ge
   | infix_lt
@@ -291,6 +299,8 @@ infix_op =
   }
 infix_add = { "+" }
 infix_sub = { "-" }
+infix_eq = { "==" }
+infix_neq = { "!=" }
 infix_le = { "<=" }
 infix_ge = { ">=" }
 infix_lt = { "<" }

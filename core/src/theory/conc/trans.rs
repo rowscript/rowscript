@@ -25,7 +25,9 @@ impl Default for Trans {
             pratt: PrattParser::new()
                 .op(Op::infix(Rule::infix_or, Assoc::Left))
                 .op(Op::infix(Rule::infix_and, Assoc::Left))
-                .op(Op::infix(Rule::infix_le, Assoc::Left)
+                .op(Op::infix(Rule::infix_eq, Assoc::Left)
+                    | Op::infix(Rule::infix_neq, Assoc::Left)
+                    | Op::infix(Rule::infix_le, Assoc::Left)
                     | Op::infix(Rule::infix_ge, Assoc::Left)
                     | Op::infix(Rule::infix_lt, Assoc::Left)
                     | Op::infix(Rule::infix_gt, Assoc::Left))
@@ -825,6 +827,8 @@ impl Trans {
                 match op.as_rule() {
                     Rule::infix_or => Self::infix_app(loc, "__or__", lhs, rhs),
                     Rule::infix_and => Self::infix_app(loc, "__and__", lhs, rhs),
+                    Rule::infix_eq => Self::infix_app(loc, "__eq__", lhs, rhs),
+                    Rule::infix_neq => Self::infix_app(loc, "__neq__", lhs, rhs),
                     Rule::infix_le => Self::infix_app(loc, "__le__", lhs, rhs),
                     Rule::infix_ge => Self::infix_app(loc, "__ge__", lhs, rhs),
                     Rule::infix_lt => Self::infix_app(loc, "__lt__", lhs, rhs),

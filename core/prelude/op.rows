@@ -1,3 +1,19 @@
+interface EqOp for T {
+    __eq__(a: T, b: T): boolean;
+}
+
+implements EqOp for number {
+    __eq__(a: number, b: number): boolean { number#__eq__(a, b) }
+}
+
+interface NeqOp for T {
+    __neq__(a: T, b: T): boolean;
+}
+
+implements NeqOp for number {
+    __neq__(a: number, b: number): boolean { number#__neq__(a, b) }
+}
+
 interface NotOp for T {
     __not__(a: T): T;
 }

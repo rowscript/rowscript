@@ -43,6 +43,8 @@ pub struct Builtins {
 
     pub number_add: Var,
     pub number_sub: Var,
+    pub number_eq: Var,
+    pub number_neq: Var,
     pub number_le: Var,
     pub number_ge: Var,
     pub number_lt: Var,
@@ -62,6 +64,8 @@ impl Builtins {
             number_add: Var::new("number#__add__"),
             number_sub: Var::new("number#__sub__"),
             number_le: Var::new("number#__le__"),
+            number_eq: Var::new("number#__eq__"),
+            number_neq: Var::new("number#__neq__"),
             number_ge: Var::new("number#__ge__"),
             number_lt: Var::new("number#__lt__"),
             number_gt: Var::new("number#__gt__"),
@@ -73,6 +77,8 @@ impl Builtins {
         ret.insert_reflect(sigma);
         ret.insert_number_add(sigma);
         ret.insert_number_sub(sigma);
+        ret.insert_number_eq(sigma);
+        ret.insert_number_neq(sigma);
         ret.insert_number_le(sigma);
         ret.insert_number_ge(sigma);
         ret.insert_number_lt(sigma);
@@ -208,6 +214,88 @@ impl Builtins {
                     ],
                 ),
                 ret: Box::new(Term::Number),
+                body,
+            },
+        )
+    }
+
+    fn insert_number_eq(&mut self, sigma: &mut Sigma) {
+        let b = Var::new("b");
+        let tupled = Var::tupled();
+        let untupled_a = Var::new("a");
+        let untupled_a_rhs = Var::new("a").untupled_rhs();
+        let untupled_b = Var::new("b");
+        let body = Body::Fn(Term::TupleLet(
+            explicit(untupled_a.clone(), Term::Number),
+            explicit(
+                untupled_a_rhs.clone(),
+                Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
+            ),
+            Box::new(Term::Ref(tupled.clone())),
+            Box::new(Term::TupleLet(
+                explicit(untupled_b.clone(), Term::Number),
+                explicit(Var::unbound(), Term::Unit),
+                Box::new(Term::Ref(untupled_a_rhs)),
+                Box::new(Term::NumEq(
+                    Box::new(Term::Ref(untupled_a)),
+                    Box::new(Term::Ref(untupled_b)),
+                )),
+            )),
+        ));
+        self.insert_def(
+            sigma,
+            Def {
+                loc: Default::default(),
+                name: Var::new("number#__eq__"),
+                tele: tuple_params(
+                    tupled,
+                    [
+                        explicit(Var::new("a"), Term::Number),
+                        explicit(b, Term::Number),
+                    ],
+                ),
+                ret: Box::new(Term::Boolean),
+                body,
+            },
+        )
+    }
+
+    fn insert_number_neq(&mut self, sigma: &mut Sigma) {
+        let b = Var::new("b");
+        let tupled = Var::tupled();
+        let untupled_a = Var::new("a");
+        let untupled_a_rhs = Var::new("a").untupled_rhs();
+        let untupled_b = Var::new("b");
+        let body = Body::Fn(Term::TupleLet(
+            explicit(untupled_a.clone(), Term::Number),
+            explicit(
+                untupled_a_rhs.clone(),
+                Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
+            ),
+            Box::new(Term::Ref(tupled.clone())),
+            Box::new(Term::TupleLet(
+                explicit(untupled_b.clone(), Term::Number),
+                explicit(Var::unbound(), Term::Unit),
+                Box::new(Term::Ref(untupled_a_rhs)),
+                Box::new(Term::NumNeq(
+                    Box::new(Term::Ref(untupled_a)),
+                    Box::new(Term::Ref(untupled_b)),
+                )),
+            )),
+        ));
+        self.insert_def(
+            sigma,
+            Def {
+                loc: Default::default(),
+                name: Var::new("number#__neq__"),
+                tele: tuple_params(
+                    tupled,
+                    [
+                        explicit(Var::new("a"), Term::Number),
+                        explicit(b, Term::Number),
+                    ],
+                ),
+                ret: Box::new(Term::Boolean),
                 body,
             },
         )

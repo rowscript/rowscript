@@ -177,6 +177,22 @@ impl<'a> Normalizer<'a> {
                     (a, b) => NumSub(Box::new(a), Box::new(b)),
                 }
             }
+            NumEq(a, b) => {
+                let a = self.term_box(a)?;
+                let b = self.term_box(b)?;
+                match (*a, *b) {
+                    (Num(a), Num(b)) => Term::bool(a == b),
+                    (a, b) => NumEq(Box::new(a), Box::new(b)),
+                }
+            }
+            NumNeq(a, b) => {
+                let a = self.term_box(a)?;
+                let b = self.term_box(b)?;
+                match (*a, *b) {
+                    (Num(a), Num(b)) => Term::bool(a != b),
+                    (a, b) => NumNeq(Box::new(a), Box::new(b)),
+                }
+            }
             NumLe(a, b) => {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;
