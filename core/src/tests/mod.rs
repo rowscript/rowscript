@@ -30,7 +30,6 @@ mod fail_resolve;
 mod ok_issue101;
 mod ok_issue104;
 mod ok_issue75;
-mod ok_issue78;
 mod ok_issue93;
 
 mod ok_alias;
@@ -50,10 +49,6 @@ mod ok_num_add;
 mod ok_object;
 mod ok_object_assign;
 mod ok_object_rowpoly;
-mod ok_oop;
-mod ok_oop_generics;
-mod ok_oop_init;
-mod ok_oop_vtbl;
 mod ok_op;
 mod ok_postulate_fn;
 mod ok_postulate_type;

@@ -2,7 +2,7 @@ use crate::maybe_grow;
 use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::Dir::Le;
 use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, Term};
-use crate::theory::abs::def::{gamma_to_tele, Body, ClassBody, ImplementsBody};
+use crate::theory::abs::def::{gamma_to_tele, Body, ImplementsBody};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
@@ -10,12 +10,11 @@ use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Loc, Param, Tele, Var, VarGen, VPTR};
+use crate::theory::{Loc, Param, Tele, Var, VarGen};
 use crate::Error;
 use crate::Error::{
-    ExpectedClass, ExpectedEnum, ExpectedImplementsOf, ExpectedInterface, ExpectedObject,
-    ExpectedPi, ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField,
-    UnresolvedImplicitParam,
+    ExpectedEnum, ExpectedImplementsOf, ExpectedInterface, ExpectedObject, ExpectedPi,
+    ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplicitParam,
 };
 
 #[derive(Debug)]
@@ -92,22 +91,6 @@ impl Elaborator {
                     tm
                 },
             ),
-
-            Class(body) => Class(Box::new(ClassBody {
-                object: self.check(body.object, &ret)?,
-                methods: body.methods,
-                ctor: body.ctor,
-                vptr: body.vptr,
-                vptr_ctor: body.vptr_ctor,
-                vtbl: body.vtbl,
-                vtbl_lookup: body.vtbl_lookup,
-            })),
-            Ctor(f) => Ctor(self.check(f, &ret)?),
-            Method(f) => Method(self.check(f, &ret)?),
-            VptrType(t) => VptrType(self.check(t, &ret)?),
-            VptrCtor(t) => VptrCtor(t),
-            VtblType(t) => VtblType(self.check(t, &ret)?),
-            VtblLookup => VtblLookup,
 
             Interface { fns, ims } => Interface { fns, ims },
             Implements(body) => Implements(self.check_implements_body(&d.name, *body)?),
@@ -604,59 +587,6 @@ impl Elaborator {
                     },
                     en => return Err(ExpectedEnum(en, a_loc)),
                 }
-            }
-            Lookup(loc, o, n, arg) => {
-                let o_loc = o.loc();
-                let f = match self.infer(*o.clone())?.1 {
-                    Term::Object(f) => f,
-                    tm => return Err(ExpectedClass(tm, o_loc)),
-                };
-                let f = match *f {
-                    Term::Fields(f) => f,
-                    tm => return Err(FieldsUnknown(tm, o_loc)),
-                };
-                let vp = match f.get(VPTR) {
-                    Some(vp) => vp,
-                    None => {
-                        return Err(ExpectedClass(
-                            Term::Object(Box::new(Term::Fields(f))),
-                            o_loc,
-                        ));
-                    }
-                };
-                let v = match vp {
-                    Term::Vptr(v, _) => v,
-                    _ => unreachable!(),
-                };
-                let desugared = App(
-                    loc,
-                    Box::new(App(
-                        loc,
-                        Box::new(Access(loc, n)),
-                        UnnamedExplicit,
-                        Box::new(App(
-                            loc,
-                            Box::new(Resolved(loc, v.clone())),
-                            UnnamedExplicit,
-                            Box::new(App(
-                                loc,
-                                Box::new(Access(loc, VPTR.to_string())),
-                                UnnamedExplicit,
-                                o.clone(),
-                            )),
-                        )),
-                    )),
-                    UnnamedExplicit,
-                    Box::new(Tuple(arg.loc(), o, arg)),
-                );
-                self.infer(desugared)?
-            }
-            Vptr(_, r, ts) => {
-                let mut types = Vec::default();
-                for t in ts {
-                    types.push(self.infer(t)?.0);
-                }
-                (Term::Vptr(r, types), Term::Univ)
             }
             Find(_, _, f) => {
                 let ty = self.sigma.get(&f).unwrap().to_type();

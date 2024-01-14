@@ -6,7 +6,7 @@ use pest::pratt_parser::{Assoc, Op, PrattParser};
 
 use crate::theory::abs::data::Dir;
 use crate::theory::abs::def::Def;
-use crate::theory::abs::def::{Body, ClassBody, ImplementsBody};
+use crate::theory::abs::def::{Body, ImplementsBody};
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::conc::load::ImportedPkg::Vendor;
@@ -51,7 +51,6 @@ impl Trans {
                 Rule::fn_postulate => defs.push(self.fn_postulate(d)),
                 Rule::type_postulate => defs.push(self.type_postulate(d)),
                 Rule::type_alias => defs.push(self.type_alias(d)),
-                Rule::class_def => defs.extend(self.class_def(d)),
                 Rule::interface_def => defs.extend(self.interface_def(d)),
                 Rule::implements_def => defs.extend(self.implements_def(d)),
                 Rule::const_def => defs.push(self.const_def(d)),
@@ -274,192 +273,6 @@ impl Trans {
             );
         }
         e
-    }
-
-    fn class_def(&self, c: Pair<Rule>) -> Vec<Def<Expr>> {
-        use Body::*;
-        use Expr::*;
-
-        let loc = Loc::from(c.as_span());
-        let mut pairs = c.into_inner();
-
-        let name = Var::from(pairs.next().unwrap());
-        let vptr_name = name.vptr_type();
-        let vptr_ctor_name = name.vptr_ctor();
-        let ctor_name = name.ctor();
-        let vtbl_name = name.vtbl_type();
-        let vtbl_lookup_name = name.vtbl_lookup();
-
-        let mut tele = Tele::default();
-        let mut members = Vec::default();
-        let mut method_defs = Vec::default();
-        let mut methods = Vec::default();
-
-        let mut vtbl_fields = Vec::default();
-        let mut init_expr = None;
-        for p in pairs {
-            match p.as_rule() {
-                Rule::implicit_id => tele.push(Self::implicit_param(p)),
-                Rule::class_member => {
-                    let loc = Loc::from(p.as_span());
-                    members.push((loc, self.param(p)));
-                }
-                Rule::class_init => {
-                    let loc = Loc::from(p.as_span());
-                    init_expr = Some((loc, self.fn_body(p.into_inner().next().unwrap(), false)));
-                }
-                Rule::class_method => {
-                    let mut m =
-                        self.fn_def(p, Some((Unresolved(loc, None, name.clone()), tele.clone())));
-                    vtbl_fields.push((m.name.to_string(), m.to_type()));
-
-                    let meth_name = m.name.to_string();
-                    let fn_name = name.method(m.name);
-                    m.name = fn_name.clone();
-
-                    m.body = match m.body {
-                        Fn(f) => Method(f),
-                        _ => unreachable!(),
-                    };
-
-                    methods.push((meth_name, fn_name));
-                    method_defs.push(m);
-                }
-                _ => unreachable!(),
-            }
-        }
-
-        let vptr_def = Def {
-            loc,
-            name: vptr_name.clone(),
-            tele: tele.clone(),
-            ret: Box::new(Univ(loc)),
-            body: VptrType(Vptr(
-                loc,
-                vtbl_lookup_name.clone(),
-                tele.iter()
-                    .map(|p| Unresolved(loc, None, p.var.clone()))
-                    .collect(),
-            )),
-        };
-        let vptr_ctor_def = Def {
-            loc,
-            name: vptr_ctor_name.clone(),
-            tele: tele.clone(),
-            ret: Box::new(Self::wrap_implicit_apps(
-                &tele,
-                Unresolved(loc, None, vptr_name.clone()),
-            )),
-            body: VptrCtor(name.to_string()),
-        };
-
-        let mut ctor_untupled = UntupledParams::new(loc);
-        let mut ty_fields = Vec::default();
-        let mut tm_fields = Vec::default();
-        for (loc, m) in members {
-            ty_fields.push((m.var.to_string(), *m.typ.clone()));
-            tm_fields.push((m.var.to_string(), Unresolved(loc, None, m.var.clone())));
-            ctor_untupled.push(loc, m)
-        }
-        ty_fields.push((
-            Var::vptr().to_string(),
-            Self::wrap_implicit_apps(&tele, Unresolved(loc, None, name.vptr_type())),
-        ));
-        tm_fields.push((
-            Var::vptr().to_string(),
-            Self::wrap_implicit_apps(&tele, Unresolved(loc, None, name.vptr_ctor())),
-        ));
-        let object = Object(loc, Box::new(Fields(loc, ty_fields)));
-
-        let untupled_vars = ctor_untupled.unresolved();
-        let untupled_loc = ctor_untupled.0;
-        let tupled_param = Param::from(ctor_untupled);
-        let mut ctor_body_expr = Obj(loc, Box::new(Fields(loc, tm_fields)));
-        if let Some((init_loc, e)) = init_expr {
-            let this = Var::this();
-            ctor_body_expr = Let(
-                loc,
-                this.clone(),
-                None,
-                Box::new(ctor_body_expr),
-                Box::new(UnitLet(
-                    init_loc,
-                    Box::new(e),
-                    Box::new(Unresolved(loc, None, this)),
-                )),
-            )
-        }
-        let ctor_body = Ctor(Expr::wrap_tuple_lets(
-            untupled_loc,
-            &tupled_param.var,
-            untupled_vars,
-            ctor_body_expr,
-        ));
-        let mut ctor_tele = tele.clone();
-        ctor_tele.push(tupled_param);
-        let ctor_def = Def {
-            loc,
-            name: ctor_name.clone(),
-            tele: ctor_tele,
-            ret: Box::new(Unresolved(loc, None, name.clone())),
-            body: ctor_body,
-        };
-
-        let body = Class(Box::new(ClassBody {
-            object,
-            methods,
-            ctor: ctor_name,
-            vptr: vptr_name.clone(),
-            vptr_ctor: vptr_ctor_name,
-            vtbl: vtbl_name.clone(),
-            vtbl_lookup: vtbl_lookup_name.clone(),
-        }));
-
-        let cls_def = Def {
-            loc,
-            name,
-            tele: tele.clone(),
-            ret: Box::new(Univ(loc)),
-            body,
-        };
-
-        let vtbl_def = Def {
-            loc,
-            name: vtbl_name.clone(),
-            tele: tele.clone(),
-            ret: Box::new(Univ(loc)),
-            body: VtblType(Object(loc, Box::new(Fields(loc, vtbl_fields)))),
-        };
-        let mut lookup_tele = tele.clone();
-        lookup_tele.push(Param {
-            var: Var::new("vp"),
-            info: Explicit,
-            typ: Box::new(Self::wrap_implicit_apps(
-                &tele,
-                Unresolved(loc, None, vptr_name),
-            )),
-        });
-        let vtbl_lookup_def = Def {
-            loc,
-            name: vtbl_lookup_name,
-            tele: lookup_tele,
-            ret: Box::new(Self::wrap_implicit_apps(
-                &tele,
-                Unresolved(loc, None, vtbl_name),
-            )),
-            body: VtblLookup,
-        };
-
-        let mut defs = vec![
-            vptr_def,
-            vptr_ctor_def,
-            cls_def,
-            ctor_def,
-            vtbl_def,
-            vtbl_lookup_def,
-        ];
-        defs.extend(method_defs);
-        defs
     }
 
     fn interface_def(&self, i: Pair<Rule>) -> Vec<Def<Expr>> {
@@ -892,25 +705,6 @@ impl Trans {
                     Box::new(self.branch(pairs.next().unwrap())),
                 )
             }
-            Rule::method_app => {
-                let loc = Loc::from(p.as_span());
-                let mut pairs = p.into_inner();
-
-                let o = pairs.next().unwrap();
-                let o = Box::new(match o.as_rule() {
-                    Rule::expr => self.expr(o),
-                    Rule::idref => self.maybe_qualified(o),
-                    _ => unreachable!(),
-                });
-                let n = pairs.next().unwrap().as_str().to_string();
-                let arg = self.tupled_args(pairs.next().unwrap());
-
-                pairs
-                    .map(|arg| (Loc::from(arg.as_span()), self.tupled_args(arg)))
-                    .fold(Lookup(loc, o, n, Box::new(arg)), |a, (loc, x)| {
-                        App(loc, Box::new(a), UnnamedExplicit, Box::new(x))
-                    })
-            }
             Rule::rev_app => {
                 let mut pairs = p.into_inner();
                 let arg = pairs.next().unwrap();
@@ -927,24 +721,6 @@ impl Trans {
                         |(loc, a), p| (Loc::from(p.as_span()), self.app(p, Some((loc, a)))),
                     )
                     .1
-            }
-            Rule::new_expr => {
-                let mut pairs = p.into_inner();
-                let cls = match self.maybe_qualified(pairs.next().unwrap()) {
-                    Unresolved(loc, m, v) => Unresolved(loc, m, v.ctor()),
-                    _ => unreachable!(),
-                };
-                pairs
-                    .map(|arg| {
-                        let loc = Loc::from(arg.as_span());
-                        let (i, e) = match arg.as_rule() {
-                            Rule::type_arg => self.type_arg(arg),
-                            Rule::args => (UnnamedExplicit, self.tupled_args(arg)),
-                            _ => unreachable!(),
-                        };
-                        (loc, i, e)
-                    })
-                    .fold(cls, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
             }
             Rule::object_literal => self.object_literal(p),
             Rule::object_concat => {

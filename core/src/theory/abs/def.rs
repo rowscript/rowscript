@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 
-use crate::theory::abs::data::Term::Vp;
 use crate::theory::abs::data::{MetaKind, Term};
 use crate::theory::abs::rename::rename;
 use crate::theory::conc::data::Expr;
@@ -52,19 +51,6 @@ impl Def<Term> {
             Postulate => Term::Extern(v),
             Alias(t) => self.to_lam_term(t.clone()),
             Const(_, f) => self.to_lam_term(f.clone()),
-
-            Class(body) => self.to_lam_term(body.object.clone()),
-            Ctor(f) => self.to_lam_term(f.clone()),
-            Method(f) => self.to_lam_term(f.clone()),
-            VptrType(t) => self.to_lam_term(t.clone()),
-            VptrCtor(t) => self.to_lam_term(Vp(
-                t.clone(),
-                self.tele.iter().map(|p| Term::Ref(p.var.clone())).collect(),
-            )),
-            VtblType(t) => self.to_lam_term(t.clone()),
-            VtblLookup => self.to_lam_term(Term::Lookup(Box::new(Term::Ref(
-                self.tele.last().unwrap().var.clone(),
-            )))),
 
             Interface { .. } => {
                 let r = Term::Ref(self.tele[0].var.clone());
@@ -132,46 +118,6 @@ impl<T: Syntax> Display for Def<T> {
                         format!("const {} = {f};", self.name)
                     }
                 }
-                Class(body) => format!(
-                    "class {} {} {body}",
-                    self.name,
-                    Param::tele_to_string(&self.tele),
-                ),
-                Ctor(f) => format!(
-                    "constructor {} {}: {} {{\n\t{f}\n}}",
-                    self.name,
-                    Param::tele_to_string(&self.tele),
-                    self.ret,
-                ),
-                Method(f) => format!(
-                    "method {} {}: {} {{\n\t{f}\n}}",
-                    self.name,
-                    Param::tele_to_string(&self.tele),
-                    self.ret,
-                ),
-                VptrType(t) => format!(
-                    "vptr {} {}: {} = {t};",
-                    self.name,
-                    Param::tele_to_string(&self.tele),
-                    self.ret,
-                ),
-                VptrCtor(t) => format!(
-                    "vptr {t} {}: {};",
-                    Param::tele_to_string(&self.tele),
-                    self.ret,
-                ),
-                VtblType(t) => format!(
-                    "vtbl {} {}: {} = {t};",
-                    self.name,
-                    Param::tele_to_string(&self.tele),
-                    self.ret,
-                ),
-                VtblLookup => format!(
-                    "vtbl {} {}: {};",
-                    self.name,
-                    Param::tele_to_string(&self.tele),
-                    self.ret,
-                ),
                 Interface { fns, ims } => format!(
                     "interface {} {}: {} {{\n{}\n{}}}",
                     self.name,
@@ -228,14 +174,6 @@ pub enum Body<T: Syntax> {
     Alias(T),
     Const(bool, T),
 
-    Class(Box<ClassBody<T>>),
-    Ctor(T),
-    Method(T),
-    VptrType(T),
-    VptrCtor(String),
-    VtblType(T),
-    VtblLookup,
-
     Interface { fns: Vec<Var>, ims: Vec<Var> },
     Implements(Box<ImplementsBody<T>>),
     ImplementsFn(T),
@@ -243,45 +181,6 @@ pub enum Body<T: Syntax> {
 
     Undefined,
     Meta(MetaKind, Option<T>),
-}
-
-#[derive(Clone, Debug)]
-pub struct ClassBody<T: Syntax> {
-    pub object: T,
-    pub methods: Vec<(String, Var)>,
-    pub ctor: Var,
-    pub vptr: Var,
-    pub vptr_ctor: Var,
-    pub vtbl: Var,
-    pub vtbl_lookup: Var,
-}
-
-impl<T: Syntax> Display for ClassBody<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{{
-    {}
-    {};
-    {};
-    {};
-    {};
-    {};
-    {};
-}}",
-            self.object,
-            self.methods
-                .iter()
-                .map(|m| m.1.to_string())
-                .collect::<Vec<_>>()
-                .join(";\n    "),
-            self.ctor,
-            self.vptr,
-            self.vptr_ctor,
-            self.vtbl,
-            self.vtbl_lookup,
-        )
-    }
 }
 
 #[derive(Clone, Debug)]

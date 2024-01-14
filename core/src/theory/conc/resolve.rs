@@ -6,7 +6,7 @@ use crate::theory::abs::def::{Body, ImplementsBody};
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::conc::load::{Import, ImportedDefs, Loaded};
-use crate::theory::{Param, RawNameSet, Tele, Var, CTOR, UNBOUND};
+use crate::theory::{Param, RawNameSet, Tele, Var, UNBOUND};
 use crate::Error;
 use crate::Error::UnresolvedVar;
 
@@ -53,15 +53,6 @@ impl<'a> Resolver<'a> {
                 Unqualified(xs) => {
                     for (loc, name) in xs {
                         names.raw(*loc, name.clone())?;
-
-                        let ctor = format!("{name}{CTOR}");
-                        if let Some(ctor_var) = self.loaded.get(module, &ctor) {
-                            self.insert_imported(ctor_var);
-                            self.insert(self.loaded.get(module, name).unwrap());
-                            *name = ctor;
-                            continue;
-                        }
-
                         match self.loaded.get(module, name) {
                             Some(v) => self.insert_imported(v),
                             None => return Err(UnresolvedVar(*loc)),
@@ -116,17 +107,6 @@ impl<'a> Resolver<'a> {
             Postulate => Postulate,
             Alias(t) => Alias(self.expr(t)?),
             Const(anno, f) => Const(anno, self.expr(f)?),
-
-            Class(mut body) => {
-                body.object = self.expr(body.object)?;
-                Class(body)
-            }
-            Ctor(f) => Ctor(self.self_referencing_fn(&d.name, f)?),
-            Method(f) => Method(self.expr(f)?), // FIXME: currently cannot be recursive
-            VptrType(t) => VptrType(self.expr(t)?),
-            VptrCtor(t) => VptrCtor(t),
-            VtblType(t) => VtblType(self.expr(t)?),
-            VtblLookup => VtblLookup,
 
             Interface { fns, ims } => Interface { fns, ims },
             Implements(body) => {
@@ -330,16 +310,6 @@ impl<'a> Resolver<'a> {
                     new.push((n, v, e));
                 }
                 Switch(loc, Box::new(self.expr(*a)?), new)
-            }
-            Lookup(loc, o, n, a) => {
-                Lookup(loc, Box::new(self.expr(*o)?), n, Box::new(self.expr(*a)?))
-            }
-            Vptr(loc, r, ts) => {
-                let mut types = Vec::default();
-                for t in ts {
-                    types.push(self.expr(t)?);
-                }
-                Vptr(loc, r, types)
             }
             Constraint(loc, r) => Constraint(loc, Box::new(self.expr(*r)?)),
             ImplementsOf(loc, a) => ImplementsOf(loc, Box::new(self.expr(*a)?)),

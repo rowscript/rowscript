@@ -66,10 +66,6 @@ pub const UNBOUND: &str = "_";
 pub const TUPLED: &str = "__tupled";
 pub const UNTUPLED_RHS_PREFIX: &str = "__untupled_";
 
-pub const CTOR: &str = "__new";
-pub const VPTR: &str = "__vptr";
-pub const VTBL_LOOKUP: &str = "__vtblLookup";
-
 pub const THIS: &str = "this";
 
 impl Var {
@@ -93,34 +89,6 @@ impl Var {
 
     pub fn untupled_rhs(&self) -> Self {
         Self::new(format!("{UNTUPLED_RHS_PREFIX}{self}"))
-    }
-
-    pub fn method(&self, m: Self) -> Self {
-        Self::new(format!("{self}__{m}"))
-    }
-
-    pub fn ctor(&self) -> Self {
-        Self::new(format!("{self}{CTOR}"))
-    }
-
-    pub fn vptr() -> Self {
-        Self::new(VPTR)
-    }
-
-    pub fn vptr_type(&self) -> Self {
-        Self::new(format!("{self}{VPTR}"))
-    }
-
-    pub fn vptr_ctor(&self) -> Self {
-        Self::new(format!("{self}__vptrNew"))
-    }
-
-    pub fn vtbl_type(&self) -> Self {
-        Self::new(format!("{self}__vtbl"))
-    }
-
-    pub fn vtbl_lookup(&self) -> Self {
-        Self::new(format!("{self}{VTBL_LOOKUP}"))
     }
 
     pub fn implements(&self, im: &Expr) -> Self {

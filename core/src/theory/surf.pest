@@ -314,7 +314,6 @@ primary_expr =
   | boolean_false
   | boolean_true
   | boolean_if
-  | method_app
   | rev_app
   | object_literal
   | object_concat
@@ -327,7 +326,6 @@ primary_expr =
   | app
   | tt
   | idref
-  | new_expr
   | hole
   | paren_expr
   }
@@ -354,8 +352,6 @@ branch_let = { let_stmt ~ branch }
 branch_unit_let = { unit_let_stmt ~ branch }
 branch_object_assign = { object_assign_stmt ~ branch }
 branch_while = { while_stmt_start ~ branch ~ while_stmt_end ~ branch }
-new_expr = { "new" ~ tyref ~ ("<" ~ type_args ~ ">")? ~ args }
-method_app = { ("(" ~ expr ~ ")" | idref) ~ ":" ~ prop_id ~ args+ }
 rev_app = { ("(" ~ expr ~ ")" | idref) ~ rev_app_callee+ }
 rev_app_callee = { "." ~ ("(" ~ expr ~ ")" | idref) ~ implicit_args? ~ args+ }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
@@ -462,22 +458,6 @@ type_alias =
   ~ ";"
   }
 
-class_def =
-  { "class"
-  ~ type_id
-  ~ ("<" ~ implicit_params ~ ">")?
-  ~ "{"
-  ~ class_body
-  ~ "}"
-  }
-class_body =
- _{ class_member+ ~ class_init? ~ class_method*
-  | class_member* ~ class_init? ~ class_method+
-  }
-class_member = { prop_id ~ ":" ~ type_expr ~ ";" }
-class_init = { "init" ~ fn_body_block }
-class_method = { fn_id ~ params ~ (":" ~ type_expr)? ~ fn_body_block }
-
 interface_def =
   { "interface"
   ~ type_id
@@ -520,7 +500,6 @@ def =
   | fn_postulate
   | type_postulate
   | type_alias
-  | class_def
   | interface_def
   | implements_def
   | const_def

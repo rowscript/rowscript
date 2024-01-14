@@ -17,14 +17,14 @@ use swc_ecma_ast::{
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
 
-use crate::codegen::{mangle_hkt, Target};
+use crate::codegen::Target;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::Explicit;
-use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNBOUND, UNTUPLED_RHS_PREFIX, VPTR};
+use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNBOUND, UNTUPLED_RHS_PREFIX};
 use crate::Error::{NonErasable, UnsolvedMeta};
 use crate::{Error, ModuleFile};
 
@@ -144,56 +144,9 @@ impl Ecma {
             }
             break;
         }
-        let callee = match f {
-            Access(l, m) => match l.as_ref() {
-                Lookup(_) => {
-                    // (__x0, __x1) => globalThis.__vtbl[__x0.__vptr].m(__x0, __x1)
-                    let (args, params) = Self::untuple_lazy(loc, x);
-                    let this = args.first().unwrap().clone();
-                    let vp = Expr::Member(MemberExpr {
-                        span: loc.into(),
-                        obj: this.expr,
-                        prop: MemberProp::Ident(Self::special_ident(VPTR)),
-                    });
-                    let vtbl = Expr::Member(MemberExpr {
-                        span: loc.into(),
-                        obj: Box::new(Self::global_vtbl()),
-                        prop: MemberProp::Computed(ComputedPropName {
-                            span: loc.into(),
-                            expr: Box::new(vp),
-                        }),
-                    });
-                    let meth = Expr::Member(MemberExpr {
-                        span: loc.into(),
-                        obj: Box::new(vtbl),
-                        prop: MemberProp::Ident(Self::str_ident(loc, m.as_str())),
-                    });
-                    let call = Expr::Call(CallExpr {
-                        span: loc.into(),
-                        callee: Callee::Expr(Box::new(meth)),
-                        args,
-                        type_args: None,
-                    });
-                    Expr::Paren(ParenExpr {
-                        span: loc.into(),
-                        expr: Box::new(Expr::Arrow(ArrowExpr {
-                            span: loc.into(),
-                            params,
-                            body: Box::new(BlockStmtOrExpr::Expr(Box::new(call))),
-                            is_async: false,
-                            is_generator: false,
-                            type_params: None,
-                            return_type: None,
-                        })),
-                    })
-                }
-                _ => self.expr(sigma, loc, f)?,
-            },
-            _ => self.expr(sigma, loc, f)?,
-        };
         Ok(Expr::Call(CallExpr {
             span: loc.into(),
-            callee: Callee::Expr(Box::new(callee)),
+            callee: Callee::Expr(Box::new(self.expr(sigma, loc, f)?)),
             args: self.untuple_args(sigma, loc, x)?,
             type_args: None,
         }))
@@ -270,34 +223,6 @@ impl Ecma {
                 pat,
             })
             .collect()
-    }
-
-    fn untuple_lazy(loc: Loc, mut tm: &Term) -> (Vec<ExprOrSpread>, Vec<Pat>) {
-        use Term::*;
-        let mut args = Vec::default();
-        let mut params = Vec::default();
-        let mut i = 0;
-        loop {
-            match tm {
-                Tuple(_, b) => {
-                    let id = Ident {
-                        span: loc.into(),
-                        sym: format!("__x{i}").into(),
-                        optional: false,
-                    };
-                    args.push(ExprOrSpread {
-                        spread: None,
-                        expr: Box::new(Expr::Ident(id.clone())),
-                    });
-                    params.push(Pat::Ident(BindingIdent { id, type_ann: None }));
-                    tm = b;
-                    i += 1;
-                }
-                TT => break,
-                _ => unreachable!(),
-            }
-        }
-        (args, params)
     }
 
     fn untuple_args(
@@ -769,17 +694,6 @@ impl Ecma {
                 obj: Box::new(self.expr(sigma, loc, a)?),
                 prop: MemberProp::Ident(Self::special_ident(JS_ENUM_VAL)),
             }),
-            Vp(r, ts) => {
-                if !ts.is_empty() {
-                    let meths = self.vtbl.get(r).unwrap().clone();
-                    self.vtbl.insert(mangle_hkt(loc, r, ts)?, meths);
-                }
-                Expr::Lit(Lit::Str(JsStr {
-                    span: loc.into(),
-                    value: mangle_hkt(loc, r, ts)?.as_str().into(),
-                    raw: None,
-                }))
-            }
             Find(_, _, f) => return Err(NonErasable(Ref(f.clone()), loc)),
 
             _ => unreachable!(),
@@ -894,9 +808,6 @@ impl Ecma {
         for def in defs {
             match match &def.body {
                 Fn(f) => self.func_decl(&mut items, sigma, &def, f),
-                Class(body) => {
-                    self.class_decls(&mut items, sigma, &def.name, &body.ctor, &body.methods)
-                }
                 Postulate => self.postulate_decl(&mut items, &def),
                 Const(_, f) => self.const_decl(&mut items, sigma, &def, f),
                 Undefined => unreachable!(),
@@ -935,44 +846,6 @@ impl Ecma {
                 function: Box::new(self.func(sigma, def, body)?),
             }),
         ));
-        Ok(())
-    }
-
-    fn class_decls(
-        &mut self,
-        items: &mut Vec<ModuleItem>,
-        sigma: &Sigma,
-        name: &Var,
-        ctor: &Var,
-        meths: &Vec<(String, Var)>,
-    ) -> Result<(), Error> {
-        use Body::*;
-
-        for (_, m) in meths {
-            let meth_def = sigma.get(m).unwrap();
-            self.func_decl(
-                items,
-                sigma,
-                meth_def,
-                match &meth_def.body {
-                    Method(f) => f,
-                    _ => unreachable!(),
-                },
-            )?;
-        }
-        self.vtbl.insert(name.to_string(), meths.clone());
-
-        let ctor_def = sigma.get(ctor).unwrap();
-        self.func_decl(
-            items,
-            sigma,
-            ctor_def,
-            match &ctor_def.body {
-                Ctor(f) => f,
-                _ => unreachable!(),
-            },
-        )?;
-
         Ok(())
     }
 

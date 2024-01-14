@@ -348,21 +348,6 @@ impl<'a> Normalizer<'a> {
                 }
             }
             Unionify(a) => Unionify(self.term_box(a)?),
-            Vptr(r, ts) => {
-                let types = ts
-                    .into_iter()
-                    .map(|t| self.term(t))
-                    .collect::<Result<Vec<_>, _>>()?;
-                Vptr(r, types)
-            }
-            Vp(r, ts) => {
-                let types = ts
-                    .into_iter()
-                    .map(|t| self.term(t))
-                    .collect::<Result<Vec<_>, _>>()?;
-                Vp(r, types)
-            }
-            Lookup(a) => Lookup(self.term_box(a)?),
             ImplementsOf(a, i) => {
                 let a = self.term_box(a)?;
                 if !matches!(*a, Ref(_) | MetaRef(_, _, _)) {

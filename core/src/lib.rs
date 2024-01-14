@@ -47,8 +47,6 @@ pub enum Error {
     ExpectedEnum(Term, Loc),
     #[error("fields not known yet, got \"{0}\"")]
     FieldsUnknown(Term, Loc),
-    #[error("expected class type, got \"{0}\"")]
-    ExpectedClass(Term, Loc),
     #[error("not exhaustive, got \"{0}\"")]
     NonExhaustive(Term, Loc),
     #[error("unresolved field \"{0}\" in \"{1}\"")]
@@ -115,7 +113,6 @@ fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
         ExpectedObject(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
         ExpectedEnum(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
         FieldsUnknown(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
-        ExpectedClass(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
         NonExhaustive(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
         UnresolvedField(_, _, loc) => simple_message(&e, loc, CHECKER_FAILED),
         ExpectedInterface(_, loc) => simple_message(&e, loc, CHECKER_FAILED),

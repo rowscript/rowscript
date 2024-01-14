@@ -1,11 +1,8 @@
 use std::fs::{copy, create_dir_all, read_to_string, write};
 use std::path::{Path, PathBuf};
 
-use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Sigma;
 use crate::theory::conc::load::ModuleID;
-use crate::theory::Loc;
-use crate::Error::NonErasable;
 use crate::{print_err, Error, Module, ModuleFile};
 
 #[cfg(feature = "codegen-ecma")]
@@ -76,39 +73,4 @@ impl Codegen {
 
         Ok(())
     }
-}
-
-fn mangle(loc: Loc, tm: &Term) -> Result<String, Error> {
-    use Term::*;
-    Ok(match tm {
-        Ref(_) => return Err(NonErasable(tm.clone(), loc)),
-
-        Pi(p, b) => format!("({}{})", mangle(loc, &p.typ)?, mangle(loc, b)?),
-        Unit => "U".to_string(),
-        Boolean => "T".to_string(),
-        String => "S".to_string(),
-        Number => "N".to_string(),
-        BigInt => "B".to_string(),
-        Fields(fields) => {
-            let mut vals = fields.iter().collect::<Vec<_>>();
-            vals.sort_by_key(|p| p.0);
-            let mut ms = Vec::default();
-            for (name, tm) in vals {
-                ms.push(format!("{name}{}", mangle(loc, tm)?))
-            }
-            ms.join("")
-        }
-        Object(f) => format!("{{{}}}", mangle(loc, f)?),
-        Enum(f) => format!("[{}]", mangle(loc, f)?),
-
-        _ => unreachable!(),
-    })
-}
-
-pub fn mangle_hkt(loc: Loc, n: &str, ts: &Vec<Term>) -> Result<String, Error> {
-    let mut ms = vec![n.to_string()];
-    for t in ts {
-        ms.push(mangle(loc, t)?)
-    }
-    Ok(ms.join(""))
 }
