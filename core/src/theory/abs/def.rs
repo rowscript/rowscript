@@ -143,10 +143,15 @@ impl<T: Syntax> Display for Def<T> {
                     self.ret,
                 ),
 
-                Class(ms) => format!(
-                    "class {} {{\n{}\n}}",
+                Class(ms, meths) => format!(
+                    "class {} {{\n{}\n\n{}\n}}",
                     self.name,
                     ms.iter()
+                        .map(|(_, id, typ)| format!("\t{id}: {typ};\n"))
+                        .collect::<Vec<_>>()
+                        .concat(),
+                    meths
+                        .iter()
                         .map(|m| format!("\t{m};\n"))
                         .collect::<Vec<_>>()
                         .concat()
@@ -197,7 +202,7 @@ pub enum Body<T: Syntax> {
     ImplementsFn(T),
     Findable(Var),
 
-    Class(Vec<Var>),
+    Class(Vec<(Loc, String, T)>, Vec<Var>),
     Method(Var, T),
 
     Undefined,

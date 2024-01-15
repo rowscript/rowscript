@@ -128,8 +128,16 @@ impl<'a> Resolver<'a> {
             ImplementsFn(f) => ImplementsFn(self.expr(f)?), // FIXME: currently cannot be recursive
             Findable(i) => Findable(i),
 
-            Class(_) => todo!(),
-            Method(_, _) => todo!(),
+            Class(ms, meths) => {
+                let mut names = RawNameSet::default();
+                let mut resolved = Vec::default();
+                for (loc, id, typ) in ms {
+                    names.raw(loc, id.clone())?;
+                    resolved.push((loc, id, self.expr(typ)?));
+                }
+                Class(resolved, meths)
+            }
+            Method(t, f) => Method(t, self.expr(f)?),
 
             Undefined => unreachable!(),
             Meta(_, _) => unreachable!(),

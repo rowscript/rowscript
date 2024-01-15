@@ -430,9 +430,16 @@ impl Trans {
             match p.as_rule() {
                 Rule::implicit_id => tele.push(Self::implicit_param(p)),
                 Rule::class_member => {
-                    members.push((Loc::from(p.as_span()), self.param(p)));
+                    let loc = Loc::from(p.as_span());
+                    let mut f = p.into_inner();
+                    members.push((
+                        loc,
+                        f.next().unwrap().as_str().to_string(),
+                        self.type_expr(f.next().unwrap()),
+                    ));
                 }
                 Rule::class_method => {
+                    let loc = Loc::from(p.as_span());
                     let mut m =
                         self.fn_def(p, Some((Unresolved(loc, None, name.clone()), tele.clone())));
                     let method_name = name.method(m.name);
@@ -448,7 +455,15 @@ impl Trans {
             }
         }
 
-        todo!()
+        let mut defs = vec![Def {
+            loc,
+            name,
+            tele,
+            ret: Box::new(Univ(loc)),
+            body: Class(members, method_names),
+        }];
+        defs.extend(methods);
+        defs
     }
 
     fn type_expr(&self, t: Pair<Rule>) -> Expr {

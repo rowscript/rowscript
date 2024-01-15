@@ -97,8 +97,14 @@ impl Elaborator {
             ImplementsFn(f) => ImplementsFn(self.check(f, &ret)?),
             Findable(i) => Findable(i),
 
-            Class(_) => todo!(),
-            Method(_, _) => todo!(),
+            Class(ms, meths) => {
+                let mut checked = Vec::default();
+                for (loc, id, typ) in ms {
+                    checked.push((loc, id, self.check(typ, &Term::Univ)?));
+                }
+                Class(checked, meths)
+            }
+            Method(t, f) => Method(t, self.check(f, &ret)?),
 
             Undefined => unreachable!(),
             Meta(_, _) => unreachable!(),
