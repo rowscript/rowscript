@@ -1,7 +1,8 @@
-const todo = 1;
-//class Foo {
-//    n: number;
-//    update() {
-//        this.n = this.n + 1;
-//    }
-//}
+class Foo {
+    n: number;
+    update() {
+        this.n = this.n + 1;
+    }
+}
+
+function f0() {}

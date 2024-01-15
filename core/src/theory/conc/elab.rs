@@ -100,7 +100,7 @@ impl Elaborator {
             Class(ms, meths) => {
                 let mut checked = Vec::default();
                 for (loc, id, typ) in ms {
-                    checked.push((loc, id, self.check(typ, &Term::Univ)?));
+                    checked.push((loc, id, self.check(typ, &ret)?));
                 }
                 Class(checked, meths)
             }
@@ -473,14 +473,21 @@ impl Elaborator {
                 let y_loc = b.loc();
                 let (x, x_ty) = self.infer(*a)?;
                 let (y, y_ty) = self.infer(*b)?;
+                let (x_ty, x_name) = x_ty.into_inner();
+                let (y_ty, _) = y_ty.into_inner();
                 let ty = match (x_ty, y_ty) {
                     (Term::Object(rx), Term::Object(ry)) => {
-                        Box::new(Term::Object(Box::new(Term::Combine(rx, ry))))
+                        let ty = Term::Object(Box::new(Term::Combine(rx, ry)));
+                        if let Some(n) = x_name {
+                            Term::Named(n, Box::new(ty))
+                        } else {
+                            ty
+                        }
                     }
                     (Term::Object(_), y_ty) => return Err(ExpectedObject(y_ty, y_loc)),
                     (x_ty, _) => return Err(ExpectedObject(x_ty, x_loc)),
                 };
-                (Term::Concat(Box::new(x), Box::new(y)), *ty)
+                (Term::Concat(Box::new(x), Box::new(y)), ty)
             }
             Access(_, n) => {
                 let t = Var::new("T");

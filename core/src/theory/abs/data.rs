@@ -48,6 +48,7 @@ pub enum Term {
     Extern(Var),
     MetaRef(MetaKind, Var, Spine),
     Undef(Var),
+    Named(Var, Box<Self>),
 
     Let(Param<Self>, Box<Self>, Box<Self>),
     While(Box<Self>, Box<Self>, Box<Self>),
@@ -123,27 +124,35 @@ pub enum Term {
 }
 
 impl Term {
-    pub fn lam(tele: &Tele<Term>, tm: Term) -> Term {
+    pub fn lam(tele: &Tele<Self>, tm: Self) -> Self {
         tele.iter()
             .rfold(tm, |b, p| Term::Lam(p.clone(), Box::new(b)))
     }
 
-    pub fn pi(tele: &Tele<Term>, tm: Term) -> Term {
+    pub fn pi(tele: &Tele<Self>, tm: Self) -> Self {
         tele.iter()
             .rfold(tm, |b, p| Term::Pi(p.clone(), Box::new(b)))
     }
 
-    pub fn tele_to_spine(tele: &Tele<Term>) -> Spine {
+    pub fn tele_to_spine(tele: &Tele<Self>) -> Spine {
         tele.iter()
             .map(|p| (p.info, Self::Ref(p.var.clone())))
             .collect()
     }
 
-    pub fn bool(v: bool) -> Term {
+    pub fn bool(v: bool) -> Self {
         if v {
             Term::True
         } else {
             Term::False
+        }
+    }
+
+    pub fn into_inner(self) -> (Self, Option<Var>) {
+        if let Term::Named(n, x) = self {
+            (*x, Some(n))
+        } else {
+            (self, None)
         }
     }
 }
@@ -171,6 +180,7 @@ impl Display for Term {
                     format!("({})", s.join(" "))
                 }
                 Undef(r) => r.to_string(),
+                Named(n, a) => format!("{n}({a})"),
                 Let(p, a, b) => format!("let {p} = {a};\n\t{b}"),
                 While(p, b, r) => format!("while ({p}) {{\n\t{b}}}\n{r}"),
                 Univ => "type".to_string(),

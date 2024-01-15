@@ -71,7 +71,14 @@ impl Def<Term> {
                 self.to_lam_term(f)
             }
 
-            Class { .. } => todo!(),
+            Class(ms, _) => Term::Named(
+                self.name.clone(),
+                Box::new(Term::Object(Box::new(Term::Fields(
+                    ms.iter()
+                        .map(|(_, id, typ)| (id.clone(), typ.clone()))
+                        .collect(),
+                )))),
+            ),
             Method { .. } => todo!(),
 
             Undefined => Term::Undef(v),
