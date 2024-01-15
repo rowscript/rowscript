@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str::FromStr;
@@ -6,13 +5,13 @@ use std::str::FromStr;
 use num_bigint::BigInt as BigIntValue;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
-    ArrowExpr, AssignExpr, AssignOp, BigInt as JsBigInt, BinExpr, BinaryOp, BindingIdent,
-    BlockStmt, BlockStmtOrExpr, Bool, CallExpr, Callee, ComputedPropName, CondExpr, Decl,
-    ExportDecl, Expr, ExprOrSpread, ExprStmt, FnDecl, Function, Ident, ImportDecl,
-    ImportNamedSpecifier, ImportSpecifier, ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr,
-    MemberProp, Module, ModuleDecl, ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam,
-    ParenExpr, Pat, PatOrExpr, Prop, PropName, PropOrSpread, ReturnStmt, SpreadElement, Stmt,
-    Str as JsStr, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclarator, WhileStmt,
+    ArrowExpr, BigInt as JsBigInt, BinExpr, BinaryOp, BindingIdent, BlockStmt, BlockStmtOrExpr,
+    Bool, CallExpr, Callee, ComputedPropName, CondExpr, Decl, ExportDecl, Expr, ExprOrSpread,
+    ExprStmt, FnDecl, Function, Ident, ImportDecl, ImportNamedSpecifier, ImportSpecifier,
+    ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleDecl,
+    ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, Prop, PropName,
+    PropOrSpread, ReturnStmt, SpreadElement, Stmt, Str as JsStr, UnaryExpr, UnaryOp, VarDecl,
+    VarDeclKind, VarDeclarator, WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -43,14 +42,9 @@ const JS_LIB_PREFIX: &str = "__lib__";
 const JS_ESCAPED_THIS: &str = "__this";
 const JS_ENUM_TAG: &str = "__enumT";
 const JS_ENUM_VAL: &str = "__enumV";
-const JS_VTBL: &str = "__vtbl";
-
-type Vtbl = HashMap<String, Vec<(String, Var)>>;
 
 #[derive(Default)]
-pub struct Ecma {
-    vtbl: Vtbl,
-}
+pub struct Ecma {}
 
 impl Ecma {
     fn solution<'a>(sigma: &'a Sigma, m: &'a Var) -> Option<&'a Term> {
@@ -98,18 +92,6 @@ impl Ecma {
 
     fn lib() -> Ident {
         Self::special_ident(JS_LIB)
-    }
-
-    fn global_this() -> Ident {
-        Self::special_ident("globalThis")
-    }
-
-    fn global_vtbl() -> Expr {
-        Expr::Member(MemberExpr {
-            span: DUMMY_SP,
-            obj: Box::new(Expr::Ident(Self::global_this())),
-            prop: MemberProp::Ident(Self::special_ident(JS_VTBL)),
-        })
     }
 
     fn access(&mut self, sigma: &Sigma, loc: Loc, a: &Term, n: &str) -> Result<Expr, Error> {
@@ -903,59 +885,6 @@ impl Ecma {
         });
         Ok(())
     }
-
-    fn vtbl_decl(&self) -> Result<Vec<ModuleItem>, Error> {
-        if self.vtbl.is_empty() {
-            return Ok(Default::default());
-        }
-        let mut items = Vec::default();
-        let mut props = Vec::default();
-        for (cls, meths) in &self.vtbl {
-            let mut meth_props = Vec::default();
-            for (name, m) in meths {
-                meth_props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                    key: PropName::Ident(Self::special_ident(name.as_str())),
-                    value: Box::new(Expr::Ident(Self::special_ident(m.as_str()))),
-                }))))
-            }
-            props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                key: PropName::Str(JsStr {
-                    span: DUMMY_SP,
-                    value: cls.as_str().into(),
-                    raw: None,
-                }),
-                value: Box::new(Expr::Object(ObjectLit {
-                    span: DUMMY_SP,
-                    props: meth_props,
-                })),
-            }))))
-        }
-        items.push(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-            span: DUMMY_SP,
-            expr: Box::new(Expr::Assign(AssignExpr {
-                span: DUMMY_SP,
-                op: AssignOp::Assign,
-                left: PatOrExpr::Expr(Box::new(Self::global_vtbl())),
-                right: Box::new(Expr::Object(ObjectLit {
-                    span: DUMMY_SP,
-                    props: vec![
-                        PropOrSpread::Spread(SpreadElement {
-                            dot3_token: DUMMY_SP,
-                            expr: Box::new(Self::global_vtbl()),
-                        }),
-                        PropOrSpread::Spread(SpreadElement {
-                            dot3_token: DUMMY_SP,
-                            expr: Box::new(Expr::Object(ObjectLit {
-                                span: DUMMY_SP,
-                                props,
-                            })),
-                        }),
-                    ],
-                })),
-            })),
-        })));
-        Ok(items)
-    }
 }
 
 pub const OUT_FILE: &str = "index.mjs";
@@ -994,17 +923,9 @@ impl Target for Ecma {
         includes: &[PathBuf],
         file: ModuleFile,
     ) -> Result<(), Error> {
-        self.vtbl.clear();
-
-        let imports = self.imports(file.imports)?;
-        let includes = self.includes(includes)?;
-        let decls = self.decls(sigma, file.defs)?;
-        let vtbl = self.vtbl_decl()?; // decls add new entries to vtbl
-
-        let mut body = imports;
-        body.extend(includes);
-        body.extend(vtbl); // initialized earlier
-        body.extend(decls);
+        let mut body = self.imports(file.imports)?;
+        body.extend(self.includes(includes)?);
+        body.extend(self.decls(sigma, file.defs)?);
 
         let m = Module {
             span: DUMMY_SP,
