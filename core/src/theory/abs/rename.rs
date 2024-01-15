@@ -65,7 +65,7 @@ impl Renamer {
                 }
                 Fields(m)
             }
-            Combine(a, b) => Combine(Box::new(self.term(*a)), Box::new(self.term(*b))),
+            Combine(i, a, b) => Combine(i, Box::new(self.term(*a)), Box::new(self.term(*b))),
             RowOrd(a, d, b) => RowOrd(Box::new(self.term(*a)), d, Box::new(self.term(*b))),
             RowEq(a, b) => RowEq(Box::new(self.term(*a)), Box::new(self.term(*b))),
             Object(f) => Object(Box::new(self.term(*f))),

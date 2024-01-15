@@ -67,9 +67,9 @@ impl<'a> Unifier<'a> {
                 None => self.unify_err(lhs, rhs),
             },
 
-            (Named(m, _), Named(n, _)) if m == n => Ok(()),
-            (Named(_, a), b) => self.unify(a, b),
-            (a, Named(_, b)) => self.unify(a, b),
+            (Cls(m, _), Cls(n, _)) if m == n => Ok(()),
+            (Cls(_, a), b) => self.unify(a, b),
+            (a, Cls(_, b)) => self.unify(a, b),
 
             (Let(p, a, b), Let(q, x, y)) => {
                 self.unify(&p.typ, &q.typ)?;

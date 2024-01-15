@@ -436,7 +436,7 @@ impl Elaborator {
             Combine(_, a, b) => {
                 let a = self.check(*a, &Term::Row)?;
                 let b = self.check(*b, &Term::Row)?;
-                (Term::Combine(Box::new(a), Box::new(b)), Term::Row)
+                (Term::Combine(false, Box::new(a), Box::new(b)), Term::Row)
             }
             RowOrd(_, a, d, b) => {
                 let a = self.check(*a, &Term::Row)?;
@@ -473,17 +473,19 @@ impl Elaborator {
                 let y_loc = b.loc();
                 let (x, x_ty) = self.infer(*a)?;
                 let (y, y_ty) = self.infer(*b)?;
-                let (x_ty, x_name) = x_ty.into_inner();
-                let (y_ty, _) = y_ty.into_inner();
+                let (x_ty, x_name) = if let Term::Cls(n, t) = x_ty {
+                    (*t, Some(n))
+                } else {
+                    (x_ty, None)
+                };
                 let ty = match (x_ty, y_ty) {
-                    (Term::Object(rx), Term::Object(ry)) => {
-                        let ty = Term::Object(Box::new(Term::Combine(rx, ry)));
-                        if let Some(n) = x_name {
-                            Term::Named(n, Box::new(ty))
-                        } else {
-                            ty
-                        }
-                    }
+                    (Term::Object(rx), Term::Object(ry)) => match x_name {
+                        Some(n) => Term::Cls(
+                            n,
+                            Box::new(Term::Object(Box::new(Term::Combine(true, rx, ry)))),
+                        ),
+                        None => Term::Object(Box::new(Term::Combine(false, rx, ry))),
+                    },
                     (Term::Object(_), y_ty) => return Err(ExpectedObject(y_ty, y_loc)),
                     (x_ty, _) => return Err(ExpectedObject(x_ty, x_loc)),
                 };

@@ -8,7 +8,7 @@ use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
-use crate::Error::UnresolvedImplementation;
+use crate::Error::{FieldsNonExtendable, UnresolvedImplementation};
 
 pub struct Normalizer<'a> {
     builtins: &'a Builtins,
@@ -83,7 +83,7 @@ impl<'a> Normalizer<'a> {
                 ret
             }
             Undef(x) => self.sigma.get(&x).unwrap().to_term(x),
-            Named(n, a) => Named(n, self.term_box(a)?),
+            Cls(n, a) => Cls(n, self.term_box(a)?),
             Let(p, a, b) => {
                 let a = self.term_box(a)?;
                 if let MetaRef(_, _, _) = *a {
@@ -236,16 +236,20 @@ impl<'a> Normalizer<'a> {
                 }
                 Fields(fields)
             }
-            Combine(a, b) => {
+            Combine(inplace, a, b) => {
                 let mut a = self.term_box(a)?;
                 let b = self.term_box(b)?;
                 match (a.as_mut(), b.as_ref()) {
                     (Fields(x), Fields(y)) => {
+                        let l = x.len();
                         // TODO: eliminate clone
                         x.extend(y.iter().map(|(n, tm)| (n.clone(), tm.clone())));
+                        if inplace && x.len() > l {
+                            return Err(FieldsNonExtendable(*b, self.loc));
+                        }
                         *a
                     }
-                    _ => Combine(a, b),
+                    _ => Combine(inplace, a, b),
                 }
             }
             RowOrd(a, d, b) => {

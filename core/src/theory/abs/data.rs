@@ -48,7 +48,6 @@ pub enum Term {
     Extern(Var),
     MetaRef(MetaKind, Var, Spine),
     Undef(Var),
-    Named(Var, Box<Self>),
 
     Let(Param<Self>, Box<Self>, Box<Self>),
     While(Box<Self>, Box<Self>, Box<Self>),
@@ -94,7 +93,7 @@ pub enum Term {
 
     Row,
     Fields(FieldMap),
-    Combine(Box<Self>, Box<Self>),
+    Combine(bool, Box<Self>, Box<Self>),
 
     RowOrd(Box<Self>, Dir, Box<Self>),
     RowSat,
@@ -121,6 +120,8 @@ pub enum Term {
     ImplementsSat,
 
     Reflected(Box<Self>),
+
+    Cls(Var, Box<Self>),
 }
 
 impl Term {
@@ -145,14 +146,6 @@ impl Term {
             Term::True
         } else {
             Term::False
-        }
-    }
-
-    pub fn into_inner(self) -> (Self, Option<Var>) {
-        if let Term::Named(n, x) = self {
-            (*x, Some(n))
-        } else {
-            (self, None)
         }
     }
 }
@@ -180,7 +173,7 @@ impl Display for Term {
                     format!("({})", s.join(" "))
                 }
                 Undef(r) => r.to_string(),
-                Named(n, a) => format!("{n}({a})"),
+                Cls(n, a) => format!("{n}({a})"),
                 Let(p, a, b) => format!("let {p} = {a};\n\t{b}"),
                 While(p, b, r) => format!("while ({p}) {{\n\t{b}}}\n{r}"),
                 Univ => "type".to_string(),
@@ -223,7 +216,13 @@ impl Display for Term {
                         .collect::<Vec<_>>()
                         .join(", ")
                 ),
-                Combine(a, b) => format!("{a} + {b}"),
+                Combine(inplace, a, b) => {
+                    if *inplace {
+                        format!("{a} += {b}")
+                    } else {
+                        format!("{a} + {b}")
+                    }
+                }
                 RowOrd(a, d, b) => format!("{a} {d} {b}"),
                 RowSat => "sat".to_string(),
                 RowEq(a, b) => format!("{a} = {b}"),

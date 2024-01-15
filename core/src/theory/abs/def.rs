@@ -71,7 +71,7 @@ impl Def<Term> {
                 self.to_lam_term(f)
             }
 
-            Class(ms, _) => Term::Named(
+            Class(ms, _) => Term::Cls(
                 self.name.clone(),
                 Box::new(Term::Object(Box::new(Term::Fields(
                     ms.iter()
