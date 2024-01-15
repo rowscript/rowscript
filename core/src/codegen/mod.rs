@@ -64,7 +64,7 @@ impl Codegen {
         let module_dir = module.to_source_path(&self.outdir);
         let module_index_file = module_dir.join(self.target.filename());
         create_dir_all(&module_dir)?;
-        write(&module_index_file, &buf)?;
+        write(module_index_file, &buf)?;
 
         for file in includes {
             let to = module_dir.join(file.file_name().unwrap());

@@ -128,6 +128,9 @@ impl<'a> Resolver<'a> {
             ImplementsFn(f) => ImplementsFn(self.expr(f)?), // FIXME: currently cannot be recursive
             Findable(i) => Findable(i),
 
+            Class(_) => todo!(),
+            Method(_, _) => todo!(),
+
             Undefined => unreachable!(),
             Meta(_, _) => unreachable!(),
         };

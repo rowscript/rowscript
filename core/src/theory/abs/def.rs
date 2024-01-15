@@ -71,6 +71,9 @@ impl Def<Term> {
                 self.to_lam_term(f)
             }
 
+            Class { .. } => todo!(),
+            Method { .. } => todo!(),
+
             Undefined => Term::Undef(v),
             Meta(_, s) => match s {
                 None => unreachable!(),
@@ -140,6 +143,21 @@ impl<T: Syntax> Display for Def<T> {
                     self.ret,
                 ),
 
+                Class(ms) => format!(
+                    "class {} {{\n{}\n}}",
+                    self.name,
+                    ms.iter()
+                        .map(|m| format!("\t{m};\n"))
+                        .collect::<Vec<_>>()
+                        .concat()
+                ),
+                Method(_, f) => format!(
+                    "method {} {}: {} {{\n\t{f}\n}}",
+                    self.name,
+                    Param::tele_to_string(&self.tele),
+                    self.ret,
+                ),
+
                 Undefined => format!(
                     "undefined {} {}: {};",
                     self.name,
@@ -178,6 +196,9 @@ pub enum Body<T: Syntax> {
     Implements(Box<ImplementsBody<T>>),
     ImplementsFn(T),
     Findable(Var),
+
+    Class(Vec<Var>),
+    Method(Var, T),
 
     Undefined,
     Meta(MetaKind, Option<T>),

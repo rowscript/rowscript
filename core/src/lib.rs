@@ -269,9 +269,9 @@ impl Driver {
             .map_err(Box::new)
             .map_err(Error::from)
             .map(|p| self.trans.file(p))?;
-        imports.iter().fold(Ok(()), |r, i| {
-            r.and_then(|_| self.load_module(i.module.clone()))
-        })?;
+        imports
+            .iter()
+            .try_fold((), |_, i| self.load_module(i.module.clone()))?;
         let defs = Resolver::new(&self.elab.builtins, &self.loaded)
             .file(&mut imports, defs)
             .and_then(|d| self.elab.defs(d))?;

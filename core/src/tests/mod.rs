@@ -35,6 +35,7 @@ mod ok_issue93;
 mod ok_alias;
 mod ok_bool;
 mod ok_builtin;
+mod ok_class;
 mod ok_const;
 mod ok_enum;
 mod ok_enum_rowpoly;

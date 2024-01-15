@@ -97,6 +97,9 @@ impl Elaborator {
             ImplementsFn(f) => ImplementsFn(self.check(f, &ret)?),
             Findable(i) => Findable(i),
 
+            Class(_) => todo!(),
+            Method(_, _) => todo!(),
+
             Undefined => unreachable!(),
             Meta(_, _) => unreachable!(),
         };

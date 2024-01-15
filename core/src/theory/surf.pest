@@ -345,7 +345,7 @@ branch =
   }
 let_stmt = _{ "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" }
 unit_let_stmt = _{ expr ~ ";" }
-object_assign_stmt = _{ let_id ~ "." ~ prop_id ~ "=" ~ expr ~ ";" }
+object_assign_stmt = _{ (let_id | this_id) ~ "." ~ prop_id ~ "=" ~ expr ~ ";" }
 while_stmt_start = _{ "while" ~ "(" ~ expr ~ ")" ~ "{" }
 while_stmt_end = _{ ";" ~ "}" }
 branch_let = { let_stmt ~ branch }
@@ -495,6 +495,25 @@ implements_fn =
 
 const_def = { ("const" ~ fn_id ~ (":" ~ type_expr)? ~ "=")? ~ expr ~ ";" }
 
+class_def =
+  { "class"
+  ~ type_id
+  ~ ("<" ~ implicit_params ~ ">")?
+  ~ "{"
+  ~ class_member+
+  ~ class_method+
+  ~ "}"
+  }
+class_member = { prop_id ~ ":" ~ type_expr ~ ";" }
+class_method =
+  { fn_id
+  ~ implicits?
+  ~ params
+  ~ (":" ~ type_expr)?
+  ~ preds?
+  ~ fn_body_block
+  }
+
 def =
  _{ fn_def
   | fn_postulate
@@ -503,6 +522,7 @@ def =
   | interface_def
   | implements_def
   | const_def
+  | class_def
   }
 
 import_std =

@@ -83,6 +83,10 @@ impl Var {
         Self::new(TUPLED)
     }
 
+    pub fn method(&self, m: Self) -> Self {
+        Self::new(format!("{self}__{m}"))
+    }
+
     pub fn this() -> Self {
         Self::new(THIS)
     }

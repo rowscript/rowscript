@@ -54,6 +54,7 @@ impl Trans {
                 Rule::interface_def => defs.extend(self.interface_def(d)),
                 Rule::implements_def => defs.extend(self.implements_def(d)),
                 Rule::const_def => defs.push(self.const_def(d)),
+                Rule::class_def => defs.extend(self.class_def(d)),
                 Rule::EOI => break,
                 _ => unreachable!(),
             }
@@ -409,6 +410,45 @@ impl Trans {
             }
         }
         unreachable!()
+    }
+
+    fn class_def(&self, c: Pair<Rule>) -> Vec<Def<Expr>> {
+        use Body::*;
+        use Expr::*;
+
+        let loc = Loc::from(c.as_span());
+        let mut pairs = c.into_inner();
+
+        let name = Var::from(pairs.next().unwrap());
+
+        let mut tele = Tele::default();
+        let mut members = Vec::default();
+        let mut methods = Vec::default();
+        let mut method_names = Vec::default();
+
+        for p in pairs {
+            match p.as_rule() {
+                Rule::implicit_id => tele.push(Self::implicit_param(p)),
+                Rule::class_member => {
+                    members.push((Loc::from(p.as_span()), self.param(p)));
+                }
+                Rule::class_method => {
+                    let mut m =
+                        self.fn_def(p, Some((Unresolved(loc, None, name.clone()), tele.clone())));
+                    let method_name = name.method(m.name);
+                    m.name = method_name.clone();
+                    m.body = match m.body {
+                        Fn(f) => Method(name.clone(), f),
+                        _ => unreachable!(),
+                    };
+                    methods.push(m);
+                    method_names.push(method_name);
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        todo!()
     }
 
     fn type_expr(&self, t: Pair<Rule>) -> Expr {
