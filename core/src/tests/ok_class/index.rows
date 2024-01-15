@@ -4,5 +4,3 @@ class Foo {
         this.n = this.n + 1;
     }
 }
-
-function f0() {}
