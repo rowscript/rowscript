@@ -87,6 +87,10 @@ impl Var {
         Self::new(format!("{self}__{m}"))
     }
 
+    pub fn ctor(&self) -> Self {
+        Self::new(format!("{self}__new"))
+    }
+
     pub fn this() -> Self {
         Self::new(THIS)
     }

@@ -425,6 +425,8 @@ impl Trans {
         let mut members = Vec::default();
         let mut methods = Vec::default();
         let mut method_names = Vec::default();
+        let mut ctor_body_obj = Vec::default();
+        let mut ctor_params = UntupledParams::new(loc);
 
         for p in pairs {
             match p.as_rule() {
@@ -432,11 +434,18 @@ impl Trans {
                 Rule::class_member => {
                     let loc = Loc::from(p.as_span());
                     let mut f = p.into_inner();
-                    members.push((
+                    let m = Var::from(f.next().unwrap());
+                    let typ = self.type_expr(f.next().unwrap());
+                    members.push((loc, m.to_string(), typ.clone()));
+                    ctor_body_obj.push((m.to_string(), Unresolved(loc, None, m.clone())));
+                    ctor_params.push(
                         loc,
-                        f.next().unwrap().as_str().to_string(),
-                        self.type_expr(f.next().unwrap()),
-                    ));
+                        Param {
+                            var: m,
+                            info: Explicit,
+                            typ: Box::new(typ),
+                        },
+                    );
                 }
                 Rule::class_method => {
                     let loc = Loc::from(p.as_span());
@@ -455,13 +464,34 @@ impl Trans {
             }
         }
 
-        let mut defs = vec![Def {
-            loc,
-            name,
-            tele,
-            ret: Box::new(Univ(loc)),
-            body: Class(members, method_names),
-        }];
+        let ctor_loc = ctor_params.0;
+        let ctor_param_vars = ctor_params.unresolved();
+        let ctor_tupled_params = Param::from(ctor_params);
+        let ctor_body = Fn(Expr::wrap_tuple_lets(
+            ctor_loc,
+            &ctor_tupled_params.var,
+            ctor_param_vars,
+            Obj(loc, Box::new(Fields(loc, ctor_body_obj))),
+        ));
+        let mut ctor_tele = tele.clone();
+        ctor_tele.push(ctor_tupled_params);
+
+        let mut defs = vec![
+            Def {
+                loc,
+                name: name.clone(),
+                tele,
+                ret: Box::new(Univ(loc)),
+                body: Class(members, method_names),
+            },
+            Def {
+                loc,
+                name: name.ctor(),
+                tele: ctor_tele,
+                ret: Box::new(Unresolved(loc, None, name)),
+                body: ctor_body,
+            },
+        ];
         defs.extend(methods);
         defs
     }
@@ -839,6 +869,24 @@ impl Trans {
                     }
                 }
                 TupledLam(loc, vars, Box::new(body.unwrap()))
+            }
+            Rule::new_expr => {
+                let mut pairs = p.into_inner();
+                let cls = match self.maybe_qualified(pairs.next().unwrap()) {
+                    Unresolved(loc, m, v) => Unresolved(loc, m, v.ctor()),
+                    _ => unreachable!(),
+                };
+                pairs
+                    .map(|arg| {
+                        let loc = Loc::from(arg.as_span());
+                        let (i, e) = match arg.as_rule() {
+                            Rule::type_arg => self.type_arg(arg),
+                            Rule::args => (UnnamedExplicit, self.tupled_args(arg)),
+                            _ => unreachable!(),
+                        };
+                        (loc, i, e)
+                    })
+                    .fold(cls, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
             }
             Rule::app => self.app(p, None),
             Rule::tt => TT(loc),
