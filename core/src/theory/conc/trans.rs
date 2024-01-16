@@ -12,11 +12,12 @@ use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::conc::load::ImportedPkg::Vendor;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Loc, Param, Tele, Var};
+use crate::theory::{Loc, Param, Tele, Var, THIS};
 use crate::Rule;
 
 pub struct Trans {
     pratt: PrattParser<Rule>,
+    class: Option<Var>,
 }
 
 impl Default for Trans {
@@ -34,15 +35,17 @@ impl Default for Trans {
                 .op(Op::infix(Rule::infix_add, Assoc::Left)
                     | Op::infix(Rule::infix_sub, Assoc::Left))
                 .op(Op::prefix(Rule::prefix_not)),
+            class: None,
         }
     }
 }
 
 impl Trans {
-    pub fn file(&self, mut f: Pairs<Rule>) -> (Vec<Import>, Vec<Def<Expr>>) {
+    pub fn file(&mut self, mut f: Pairs<Rule>) -> (Vec<Import>, Vec<Def<Expr>>) {
         let mut imports = Vec::default();
         let mut defs = Vec::default();
         for d in f.next().unwrap().into_inner() {
+            self.class = None;
             match d.as_rule() {
                 Rule::import_std | Rule::import_vendor | Rule::import_local => {
                     imports.push(self.import(d))
@@ -412,7 +415,7 @@ impl Trans {
         unreachable!()
     }
 
-    fn class_def(&self, c: Pair<Rule>) -> Vec<Def<Expr>> {
+    fn class_def(&mut self, c: Pair<Rule>) -> Vec<Def<Expr>> {
         use Body::*;
         use Expr::*;
 
@@ -420,6 +423,7 @@ impl Trans {
         let mut pairs = c.into_inner();
 
         let name = Var::from(pairs.next().unwrap());
+        self.class = Some(name.clone());
 
         let mut tele = Tele::default();
         let mut members = Vec::default();
@@ -797,15 +801,22 @@ impl Trans {
                     .fold(
                         (
                             Loc::from(arg.as_span()),
+                            arg.as_str() == THIS,
                             match arg.as_rule() {
                                 Rule::expr => self.expr(arg),
                                 Rule::idref => self.maybe_qualified(arg),
                                 _ => unreachable!(),
                             },
                         ),
-                        |(loc, a), p| (Loc::from(p.as_span()), self.app(p, Some((loc, a)))),
+                        |(loc, is_rev_this, arg), p| {
+                            (
+                                Loc::from(p.as_span()),
+                                false,
+                                self.app(p, Some((loc, arg)), is_rev_this),
+                            )
+                        },
                     )
-                    .1
+                    .2
             }
             Rule::object_literal => self.object_literal(p),
             Rule::object_concat => {
@@ -888,7 +899,7 @@ impl Trans {
                     })
                     .fold(cls, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
             }
-            Rule::app => self.app(p, None),
+            Rule::app => self.app(p, None, false),
             Rule::tt => TT(loc),
             Rule::idref => self.maybe_qualified(p),
             Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),
@@ -952,16 +963,23 @@ impl Trans {
         }
     }
 
-    fn app(&self, a: Pair<Rule>, mut rev_operand: Option<(Loc, Expr)>) -> Expr {
+    fn app(&self, a: Pair<Rule>, mut rev_operand: Option<(Loc, Expr)>, is_rev_this: bool) -> Expr {
         use Expr::*;
 
         let mut pairs = a.into_inner();
         let f = pairs.next().unwrap();
-        let f = match f.as_rule() {
+        let mut f = match f.as_rule() {
             Rule::expr => self.expr(f),
             Rule::idref => self.maybe_qualified(f),
             _ => unreachable!(),
         };
+
+        if is_rev_this {
+            f = match f {
+                Unresolved(loc, m, v) => Unresolved(loc, m, self.class.clone().unwrap().method(v)),
+                _ => unreachable!(),
+            };
+        }
 
         pairs
             .map(|arg| {
@@ -971,8 +989,8 @@ impl Trans {
                     Rule::type_arg => self.type_arg(arg),
                     Rule::args => {
                         let mut args = self.tupled_args(arg);
-                        if let Some((loc, a)) = rev_operand.clone() {
-                            args = Tuple(loc, Box::new(a), Box::new(args));
+                        if let Some((loc, a)) = &rev_operand {
+                            args = Tuple(*loc, Box::new(a.clone()), Box::new(args));
                         }
                         rev_operand = None; // only guarantee first reverse application
                         (UnnamedExplicit, args)
@@ -1105,7 +1123,7 @@ impl Trans {
     fn object_operand(&self, o: Pair<Rule>) -> Expr {
         let p = o.into_inner().next().unwrap();
         match p.as_rule() {
-            Rule::app => self.app(p, None),
+            Rule::app => self.app(p, None, false),
             Rule::object_literal => self.object_literal(p),
             Rule::idref => self.maybe_qualified(p),
             Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),
@@ -1127,7 +1145,7 @@ impl Trans {
     fn enum_operand(&self, o: Pair<Rule>) -> Expr {
         let p = o.into_inner().next().unwrap();
         match p.as_rule() {
-            Rule::app => self.app(p, None),
+            Rule::app => self.app(p, None, false),
             Rule::enum_variant => self.enum_variant(p),
             Rule::idref => self.maybe_qualified(p),
             Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),

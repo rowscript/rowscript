@@ -1,8 +1,15 @@
+function log();
+
 class Foo {
     n: number;
 
     update() {
         this.n = this.n + 1;
+    }
+
+    foo() {
+        this.update();
+        log();
     }
 }
 

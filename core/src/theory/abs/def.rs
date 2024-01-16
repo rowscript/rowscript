@@ -79,7 +79,7 @@ impl Def<Term> {
                         .collect(),
                 )))),
             ),
-            Method { .. } => todo!(),
+            Method(_, f) => self.to_lam_term(f.clone()),
 
             Undefined => Term::Undef(v),
             Meta(_, s) => match s {
