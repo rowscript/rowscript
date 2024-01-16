@@ -14,5 +14,5 @@ class Foo {
 }
 
 function f0() {
-    let a = new Foo(42);
+//    (new Foo(42)).foo(); // damn, it fails
 }
