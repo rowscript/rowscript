@@ -354,7 +354,7 @@ branch_unit_let = { unit_let_stmt ~ branch }
 branch_object_assign = { object_assign_stmt ~ branch }
 branch_while = { while_stmt_start ~ branch ~ while_stmt_end ~ branch }
 new_expr = { "new" ~ tyref ~ ("<" ~ type_args ~ ">")? ~ args }
-rev_app = { ("(" ~ expr ~ ")" | idref) ~ rev_app_callee+ }
+rev_app = { ("(" ~ expr ~ ")" | idref | new_expr) ~ rev_app_callee+ }
 rev_app_callee = { "." ~ ("(" ~ expr ~ ")" | idref) ~ implicit_args? ~ args+ }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
 lambda_params = _{ "()" | param_id | "(" ~ param_id ~ ("," ~ param_id)+ ~ ")" }

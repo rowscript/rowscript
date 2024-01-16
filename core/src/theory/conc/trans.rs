@@ -805,6 +805,7 @@ impl Trans {
                             match arg.as_rule() {
                                 Rule::expr => self.expr(arg),
                                 Rule::idref => self.maybe_qualified(arg),
+                                Rule::new_expr => self.new_expr(arg),
                                 _ => unreachable!(),
                             },
                         ),
@@ -881,24 +882,7 @@ impl Trans {
                 }
                 TupledLam(loc, vars, Box::new(body.unwrap()))
             }
-            Rule::new_expr => {
-                let mut pairs = p.into_inner();
-                let cls = match self.maybe_qualified(pairs.next().unwrap()) {
-                    Unresolved(loc, m, v) => Unresolved(loc, m, v.ctor()),
-                    _ => unreachable!(),
-                };
-                pairs
-                    .map(|arg| {
-                        let loc = Loc::from(arg.as_span());
-                        let (i, e) = match arg.as_rule() {
-                            Rule::type_arg => self.type_arg(arg),
-                            Rule::args => (UnnamedExplicit, self.tupled_args(arg)),
-                            _ => unreachable!(),
-                        };
-                        (loc, i, e)
-                    })
-                    .fold(cls, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
-            }
+            Rule::new_expr => self.new_expr(p),
             Rule::app => self.app(p, None, false),
             Rule::tt => TT(loc),
             Rule::idref => self.maybe_qualified(p),
@@ -906,6 +890,26 @@ impl Trans {
             Rule::hole => Hole(loc),
             _ => unreachable!(),
         }
+    }
+
+    fn new_expr(&self, e: Pair<Rule>) -> Expr {
+        use Expr::*;
+        let mut pairs = e.into_inner();
+        let cls = match self.maybe_qualified(pairs.next().unwrap()) {
+            Unresolved(loc, m, v) => Unresolved(loc, m, v.ctor()),
+            _ => unreachable!(),
+        };
+        pairs
+            .map(|arg| {
+                let loc = Loc::from(arg.as_span());
+                let (i, e) = match arg.as_rule() {
+                    Rule::type_arg => self.type_arg(arg),
+                    Rule::args => (UnnamedExplicit, self.tupled_args(arg)),
+                    _ => unreachable!(),
+                };
+                (loc, i, e)
+            })
+            .fold(cls, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
     }
 
     fn branch(&self, b: Pair<Rule>) -> Expr {
