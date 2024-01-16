@@ -31,6 +31,7 @@ pub enum Expr {
     AnnoLam(Loc, Param<Self>, Box<Self>),
     Lam(Loc, Var, Box<Self>),
     App(Loc, Box<Self>, ArgInfo, Box<Self>),
+    RevApp(Loc, Box<Self>, Box<Self>),
 
     Sigma(Loc, Param<Self>, Box<Self>),
     Tuple(Loc, Box<Self>, Box<Self>),
@@ -110,6 +111,7 @@ impl Expr {
             AnnoLam(loc, _, _) => loc,
             Lam(loc, _, _) => loc,
             App(loc, _, _, _) => loc,
+            RevApp(loc, _, _) => loc,
             Sigma(loc, _, _) => loc,
             Tuple(loc, _, _) => loc,
             TupleLet(loc, _, _, _, _) => loc,
@@ -233,6 +235,7 @@ impl Display for Expr {
                     UnnamedImplicit => format!("({f} {{{x}}})"),
                     NamedImplicit(r) => format!("({f} {{{r} = {x}}})"),
                 },
+                RevApp(_, f, x) => format!("({x}.{f})"),
                 Sigma(_, p, b) => format!("{p} * {b}"),
                 Tuple(_, a, b) => format!("({a}, {b})"),
                 TupleLet(_, x, y, a, b) => format!("let ({x}, {y}) = {a};\n\t{b}"),

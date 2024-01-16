@@ -1,10 +1,10 @@
 function inc(n: number): number;
 function numToStr(n: number): string;
 
-function f(a: number): string {
-    a.inc().numToStr()
-}
+//function f(a: number): string {
+//    a.inc().numToStr()
+//}
 
-function g(): string {
-    f(42)
-}
+//function g(): string {
+//    f(42)
+//}
