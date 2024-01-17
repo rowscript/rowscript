@@ -1,4 +1,8 @@
-function log();
+function log(m: string);
+
+function foo() {
+    log("foo");
+}
 
 class Foo {
     n: number;
@@ -9,7 +13,7 @@ class Foo {
 
     foo() {
         this.update();
-        log();
+        log("Foo::foo");
     }
 }
 
