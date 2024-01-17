@@ -15,6 +15,7 @@ use crate::Error;
 use crate::Error::{
     ExpectedEnum, ExpectedImplementsOf, ExpectedInterface, ExpectedObject, ExpectedPi,
     ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplicitParam,
+    UnresolvedVar,
 };
 
 #[derive(Debug)]
@@ -385,13 +386,36 @@ impl Elaborator {
                 }
             }
             RevApp(loc, f, x) => match self.infer(*x.clone())?.1 {
-                Term::Cls(t, _) => {
-                    let meths = match &self.sigma.get(&t).unwrap().body {
-                        Body::Class(_, meths) => meths,
-                        _ => unreachable!(),
-                    };
-                    todo!()
-                }
+                Term::Sigma(p, _) => match *p.typ {
+                    Term::Cls(t, _) => {
+                        let meths = match &self.sigma.get(&t).unwrap().body {
+                            Body::Class(_, meths) => meths,
+                            _ => unreachable!(),
+                        };
+                        match *f {
+                            Resolved(f_loc, f) => self.infer(App(
+                                loc,
+                                Box::new(match meths.get(f.as_str()) {
+                                    Some(v) => Resolved(f_loc, v.clone()),
+                                    None => Resolved(f_loc, f),
+                                }),
+                                UnnamedExplicit,
+                                x,
+                            ))?,
+                            Unresolved(f_loc, _, f) => match meths.get(f.as_str()) {
+                                Some(v) => self.infer(App(
+                                    loc,
+                                    Box::new(Resolved(f_loc, v.clone())),
+                                    UnnamedExplicit,
+                                    x,
+                                ))?,
+                                None => return Err(UnresolvedVar(f_loc)),
+                            },
+                            _ => unreachable!(),
+                        }
+                    }
+                    _ => self.infer(App(loc, f, UnnamedExplicit, x))?,
+                },
                 _ => self.infer(App(loc, f, UnnamedExplicit, x))?,
             },
             Sigma(_, p, b) => {
