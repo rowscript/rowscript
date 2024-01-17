@@ -8,3 +8,7 @@ function f(a: number): string {
 function g(): string {
     f(42)
 }
+
+function h<T>(a: T);
+
+(42).h();
