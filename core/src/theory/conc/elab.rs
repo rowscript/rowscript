@@ -384,6 +384,16 @@ impl Elaborator {
                     ty => return Err(ExpectedPi(ty, f_loc)),
                 }
             }
+            RevApp(loc, f, x) => match self.infer(*x.clone())?.1 {
+                Term::Cls(t, _) => {
+                    let meths = match &self.sigma.get(&t).unwrap().body {
+                        Body::Class(_, meths) => meths,
+                        _ => unreachable!(),
+                    };
+                    todo!()
+                }
+                _ => self.infer(App(loc, f, UnnamedExplicit, x))?,
+            },
             Sigma(_, p, b) => {
                 let (param_ty, _) = self.infer(*p.typ)?;
                 let param = Param {

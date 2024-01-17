@@ -424,7 +424,7 @@ impl Trans {
         let mut tele = Tele::default();
         let mut members = Vec::default();
         let mut methods = Vec::default();
-        let mut method_names = Vec::default();
+        let mut method_names = HashMap::default();
         let mut ctor_body_obj = Vec::default();
         let mut ctor_params = UntupledParams::new(loc);
 
@@ -451,14 +451,15 @@ impl Trans {
                     let loc = Loc::from(p.as_span());
                     let mut m =
                         self.fn_def(p, Some((Unresolved(loc, None, name.clone()), tele.clone())));
-                    let method_name = name.method(m.name);
-                    m.name = method_name.clone();
+                    let method_name = m.name.to_string();
+                    let method_var = name.method(m.name);
+                    m.name = method_var.clone();
                     m.body = match m.body {
                         Fn(f) => Method(name.clone(), f),
                         _ => unreachable!(),
                     };
                     methods.push(m);
-                    method_names.push(method_name);
+                    method_names.insert(method_name, method_var);
                 }
                 _ => unreachable!(),
             }

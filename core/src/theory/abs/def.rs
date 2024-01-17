@@ -159,7 +159,7 @@ impl<T: Syntax> Display for Def<T> {
                         .concat(),
                     meths
                         .iter()
-                        .map(|m| format!("\t{m};\n"))
+                        .map(|(_, m)| format!("\t{m};\n"))
                         .collect::<Vec<_>>()
                         .concat()
                 ),
@@ -209,7 +209,7 @@ pub enum Body<T: Syntax> {
     ImplementsFn(T),
     Findable(Var),
 
-    Class(Vec<(Loc, String, T)>, Vec<Var>),
+    Class(Vec<(Loc, String, T)>, HashMap<String, Var>),
     Method(Var, T),
 
     Undefined,

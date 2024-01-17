@@ -265,6 +265,13 @@ impl<'a> Resolver<'a> {
                 Lam(loc, x, b)
             }
             App(loc, f, i, x) => App(loc, Box::new(self.expr(*f)?), i, Box::new(self.expr(*x)?)),
+            RevApp(loc, f, x) => {
+                let unresolved = f.clone();
+                match self.expr(*f) {
+                    Ok(f) => RevApp(loc, Box::new(f), Box::new(self.expr(*x)?)),
+                    Err(_) => RevApp(loc, unresolved, Box::new(self.expr(*x)?)),
+                }
+            }
             Sigma(loc, p, b) => {
                 let b = Box::new(self.bodied(&[&p.var], *b)?);
                 Sigma(loc, self.param(p)?, b)
