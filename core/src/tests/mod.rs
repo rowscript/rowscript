@@ -27,6 +27,7 @@ mod fail_parse;
 mod fail_reserved;
 mod fail_resolve;
 
+mod fail_issue114;
 mod ok_issue101;
 mod ok_issue104;
 mod ok_issue75;

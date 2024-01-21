@@ -385,39 +385,35 @@ impl Elaborator {
                     ty => return Err(ExpectedPi(ty, f_loc)),
                 }
             }
-            RevApp(loc, f, x) => match self.infer(*x.clone())?.1 {
-                Term::Sigma(p, _) => match *p.typ {
-                    Term::Cls(t, _) => {
+            RevApp(loc, f, x) => {
+                if let Term::Sigma(p, _) = self.infer(*x.clone())?.1 {
+                    if let Term::Cls(t, _) = *p.typ {
                         let meths = match &self.sigma.get(&t).unwrap().body {
                             Body::Class(_, meths) => meths,
                             _ => unreachable!(),
                         };
-                        match *f {
-                            Resolved(f_loc, f) => self.infer(App(
-                                loc,
-                                Box::new(match meths.get(f.as_str()) {
-                                    Some(v) => Resolved(f_loc, v.clone()),
-                                    None => Resolved(f_loc, f),
-                                }),
-                                UnnamedExplicit,
-                                x,
-                            ))?,
-                            Unresolved(f_loc, _, f) => match meths.get(f.as_str()) {
-                                Some(v) => self.infer(App(
-                                    loc,
-                                    Box::new(Resolved(f_loc, v.clone())),
-                                    UnnamedExplicit,
-                                    x,
-                                ))?,
-                                None => return Err(UnresolvedVar(f_loc)),
-                            },
+                        let (f_loc, f_var, globally_found) = match *f {
+                            Resolved(f_loc, v) => (f_loc, v, true),
+                            Unresolved(f_loc, _, v) => (f_loc, v, false),
                             _ => unreachable!(),
-                        }
+                        };
+                        return self.infer(App(
+                            loc,
+                            Box::new(match meths.get(f_var.as_str()) {
+                                Some(v) => Resolved(f_loc, v.clone()),
+                                None if globally_found => Resolved(f_loc, f_var),
+                                _ => return Err(UnresolvedVar(f_loc)),
+                            }),
+                            UnnamedExplicit,
+                            x,
+                        ));
                     }
-                    _ => self.infer(App(loc, f, UnnamedExplicit, x))?,
-                },
-                _ => self.infer(App(loc, f, UnnamedExplicit, x))?,
-            },
+                }
+                if let Unresolved(f_loc, _, _) = *f {
+                    return Err(UnresolvedVar(f_loc));
+                }
+                self.infer(App(loc, f, UnnamedExplicit, x))?
+            }
             Sigma(_, p, b) => {
                 let (param_ty, _) = self.infer(*p.typ)?;
                 let param = Param {
