@@ -1,0 +1,4 @@
+class Outside {
+    s: string;
+    outside(): string { "outside" }
+}

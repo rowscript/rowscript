@@ -1,3 +1,5 @@
+import .outside;
+
 function log(m: string);
 
 function foo() {
@@ -17,6 +19,8 @@ class Foo {
     }
 }
 
-function f0() {
-    new Foo(42).foo();
+new Foo(42).foo();
+
+function f() {
+    log(new ::outside::Outside("hello").outside());
 }
