@@ -1,0 +1,15 @@
+function log();
+
+class Foo {
+    n: number;
+
+    update() { log() }
+}
+
+interface Updater for T {
+    update();
+}
+
+function doSomething<U>(updater: U) where Updater<U> {
+//    updater.update();
+}
