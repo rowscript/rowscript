@@ -7,9 +7,9 @@ class Foo {
 }
 
 interface Updater for T {
-    update();
+    update(a: T);
 }
 
 function doSomething<U>(updater: U) where Updater<U> {
-//    updater.update();
+    updater.update();
 }
