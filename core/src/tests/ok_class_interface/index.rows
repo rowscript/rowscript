@@ -1,9 +1,9 @@
-function log();
+function log(n: number);
 
 class Foo {
     n: number;
 
-    update() { log() }
+    update() { log(this.n) }
 }
 
 interface Updater for T {
@@ -13,3 +13,5 @@ interface Updater for T {
 function doSomething<U>(updater: U) where Updater<U> {
     updater.update();
 }
+
+//doSomething(new Foo(42));

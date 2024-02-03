@@ -16,7 +16,7 @@ use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::load::{prelude_path, Import, Loaded, ModuleID};
 use crate::theory::conc::resolve::{ResolvedVar, Resolver, VarKind};
 use crate::theory::conc::trans::Trans;
-use crate::theory::Loc;
+use crate::theory::{Loc, Var};
 
 pub mod codegen;
 #[cfg(test)]
@@ -57,6 +57,8 @@ pub enum Error {
     ExpectedInterface(Term, Loc),
     #[error("expected type alias, got \"{0}\"")]
     ExpectedAlias(Term, Loc),
+    #[error("unsatisfied constraint \"{0}\", got \"{1}\"")]
+    UnsatisfiedConstraint(Var, Term, Loc),
     #[error("unresolved implementation, got \"{0}\"")]
     UnresolvedImplementation(Term, Loc),
     #[error("expected constraint, got \"{0}\"")]
@@ -120,6 +122,7 @@ fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
         UnresolvedField(_, _, loc) => simple_message(&e, loc, CHECKER_FAILED),
         ExpectedInterface(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
         ExpectedAlias(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
+        UnsatisfiedConstraint(_, _, loc) => simple_message(&e, loc, CHECKER_FAILED),
         UnresolvedImplementation(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
         ExpectedImplementsOf(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
         ExpectedReflectable(_, loc) => simple_message(&e, loc, CHECKER_FAILED),

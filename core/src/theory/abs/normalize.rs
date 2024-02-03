@@ -8,7 +8,7 @@ use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
-use crate::Error::{FieldsNonExtendable, UnresolvedImplementation};
+use crate::Error::{FieldsNonExtendable, UnresolvedImplementation, UnsatisfiedConstraint};
 
 pub struct Normalizer<'a> {
     builtins: &'a Builtins,
@@ -447,7 +447,7 @@ impl<'a> Normalizer<'a> {
                 Err(_) => continue,
             }
         }
-        Err(UnresolvedImplementation(x.clone(), self.loc))
+        Err(UnsatisfiedConstraint(i.clone(), x.clone(), self.loc))
     }
 
     fn find_implementation(&mut self, ty: Term, i: Var, f: Var) -> Result<Term, Error> {
