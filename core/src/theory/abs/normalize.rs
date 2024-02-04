@@ -8,7 +8,9 @@ use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
-use crate::Error::{FieldsNonExtendable, UnresolvedImplementation, UnsatisfiedConstraint};
+use crate::Error::{
+    ClassMethodNotImplemented, FieldsNonExtendable, UnresolvedImplementation, UnsatisfiedConstraint,
+};
 
 pub struct Normalizer<'a> {
     builtins: &'a Builtins,
@@ -433,10 +435,11 @@ impl<'a> Normalizer<'a> {
     fn check_constraint(&mut self, x: &Term, i: &Var) -> Result<(), Error> {
         use Body::*;
 
-        let ims = match &self.sigma.get(i).unwrap().body {
-            Interface { ims, .. } => ims.clone(),
+        let (fns, ims) = match &self.sigma.get(i).unwrap().body {
+            Interface { fns, ims } => (fns.clone(), ims.clone()),
             _ => unreachable!(),
         };
+
         for im in ims {
             let y = match &self.sigma.get(&im).unwrap().body {
                 Implements(body) => body.implementor_type(self.sigma)?,
@@ -447,7 +450,30 @@ impl<'a> Normalizer<'a> {
                 Err(_) => continue,
             }
         }
-        Err(UnsatisfiedConstraint(i.clone(), x.clone(), self.loc))
+
+        let meths = match x {
+            Term::Cls(c, _) => match &self.sigma.get(c).unwrap().body {
+                Class(_, meths) => meths.clone(),
+                _ => unreachable!(),
+            },
+            _ => return Err(UnsatisfiedConstraint(i.clone(), x.clone(), self.loc)),
+        };
+        for f in fns {
+            let m_ty = match meths.get(f.as_str()) {
+                Some(m) => self.sigma.get(m).unwrap().to_type(),
+                None => return Err(ClassMethodNotImplemented(f, i.clone(), x.clone(), self.loc)),
+            };
+            let f_ty = match self.sigma.get(&f).unwrap().to_type() {
+                Term::Pi(p, body) => self.with(&[(&p.var, x)], *body)?,
+                _ => unreachable!(),
+            };
+            match self.unifier().unify(&m_ty, &f_ty) {
+                Ok(_) => continue,
+                Err(_) => return Err(ClassMethodNotImplemented(f, i.clone(), x.clone(), self.loc)),
+            }
+        }
+
+        Ok(())
     }
 
     fn find_implementation(&mut self, ty: Term, i: Var, f: Var) -> Result<Term, Error> {

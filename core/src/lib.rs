@@ -59,6 +59,8 @@ pub enum Error {
     ExpectedAlias(Term, Loc),
     #[error("unsatisfied constraint \"{0}\", got \"{1}\"")]
     UnsatisfiedConstraint(Var, Term, Loc),
+    #[error("class method \"{0}\" from \"{1}\" not implemented, got \"{2}\"")]
+    ClassMethodNotImplemented(Var, Var, Term, Loc),
     #[error("unresolved implementation, got \"{0}\"")]
     UnresolvedImplementation(Term, Loc),
     #[error("expected constraint, got \"{0}\"")]
@@ -123,6 +125,7 @@ fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
         ExpectedInterface(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
         ExpectedAlias(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
         UnsatisfiedConstraint(_, _, loc) => simple_message(&e, loc, CHECKER_FAILED),
+        ClassMethodNotImplemented(_, _, _, loc) => simple_message(&e, loc, CHECKER_FAILED),
         UnresolvedImplementation(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
         ExpectedImplementsOf(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
         ExpectedReflectable(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
