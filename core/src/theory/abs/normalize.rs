@@ -500,7 +500,14 @@ impl<'a> Normalizer<'a> {
             return Ok(self.sigma.get(&im_fn).unwrap().to_term(im_fn));
         }
 
-        Err(UnresolvedImplementation(ty, self.loc))
+        let meth = match ty {
+            Term::Cls(c, _) => match &self.sigma.get(&c).unwrap().body {
+                Class(_, meths) => meths.get(f.as_str()).unwrap(),
+                _ => unreachable!(),
+            },
+            ty => return Err(UnresolvedImplementation(ty, self.loc)),
+        };
+        Ok(self.sigma.get(meth).unwrap().to_term(meth.clone()))
     }
 
     fn is_reflector(&self, i: &Var) -> bool {

@@ -14,4 +14,4 @@ function doSomething<U>(updater: U) where Updater<U> {
     updater.update();
 }
 
-//doSomething(new Foo(42));
+doSomething(new Foo(42));
