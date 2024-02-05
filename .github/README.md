@@ -8,11 +8,44 @@ RowScript
 
 ![Build](https://github.com/rowscript/rowscript/actions/workflows/build.yml/badge.svg)
 
-RowScript is a robustly-typed functional language that compiles to efficient and reliable JavaScript.
+[RowScript] is a robustly-typed functional language that compiles to efficient and reliable JavaScript.
 
-This repository contains many components of RowScript, visit our [website] for more information.
+What if you have a language to have all these for a better frontend development experience?
 
-[website]: https://rowscript-lang.org
+| Features            | In RowScript |
+|---------------------|--------------|
+| Haskell's typeclass | `interface`  |
+| Rust's `impl`       | `class`      |
+| Go's interface      | `interface`  |
+
+And luckily, the overall syntax would be in the style of TypeScript!
+
+## Example
+
+```ts
+import console;
+
+class Person {
+    name: string;
+
+    dial() {
+        console::log(this.name)
+    }
+}
+
+interface Phonebook for T {
+    dial(a: T);
+}
+
+function dialPerson<P>(person: P) where Phonebook<P> {
+    person.dial();
+}
+
+dialPerson(new Person("John Doe"));
+
+```
+
+[RowScript]: https://rowscript.github.io
 
 ## Installation
 
