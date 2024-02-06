@@ -37,6 +37,7 @@ mod ok_alias;
 mod ok_bool;
 mod ok_builtin;
 mod ok_class;
+mod ok_class_generics;
 mod ok_class_interface;
 mod ok_const;
 mod ok_enum;

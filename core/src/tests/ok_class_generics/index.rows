@@ -1,0 +1,16 @@
+function log<T>(n: T);
+
+class Foo<T> {
+    n: T;
+    update() { log(this.n) }
+}
+
+interface Updater for U<T> {
+    update<T>(a: U<T>);
+}
+
+function doSomething<U: type -> type, T>(updater: U<T>) where Updater<U> {
+    updater.update();
+}
+
+doSomething<Foo>(new Foo(42));

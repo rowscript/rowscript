@@ -434,6 +434,7 @@ impl<'a> Normalizer<'a> {
 
     fn check_constraint(&mut self, x: &Term, i: &Var) -> Result<(), Error> {
         use Body::*;
+        use Term::*;
 
         let (fns, ims) = match &self.sigma.get(i).unwrap().body {
             Interface { fns, ims } => (fns.clone(), ims.clone()),
@@ -451,12 +452,9 @@ impl<'a> Normalizer<'a> {
             }
         }
 
-        let meths = match x {
-            Term::Cls(c, _) => match &self.sigma.get(c).unwrap().body {
-                Class(_, meths) => meths.clone(),
-                _ => unreachable!(),
-            },
-            _ => return Err(UnsatisfiedConstraint(i.clone(), x.clone(), self.loc)),
+        let meths = match x.class_methods(self.sigma) {
+            Some(meths) => meths,
+            None => return Err(UnsatisfiedConstraint(i.clone(), x.clone(), self.loc)),
         };
         for f in fns {
             let m_ty = match meths.get(f.as_str()) {
@@ -464,7 +462,7 @@ impl<'a> Normalizer<'a> {
                 None => return Err(ClassMethodNotImplemented(f, i.clone(), x.clone(), self.loc)),
             };
             let f_ty = match self.sigma.get(&f).unwrap().to_type() {
-                Term::Pi(p, body) => self.with(&[(&p.var, x)], *body)?,
+                Pi(p, body) => self.with(&[(&p.var, x)], *body)?,
                 _ => unreachable!(),
             };
             match self.unifier().unify(&m_ty, &f_ty) {
@@ -500,14 +498,11 @@ impl<'a> Normalizer<'a> {
             return Ok(self.sigma.get(&im_fn).unwrap().to_term(im_fn));
         }
 
-        let meth = match ty {
-            Term::Cls(c, _) => match &self.sigma.get(&c).unwrap().body {
-                Class(_, meths) => meths.get(f.as_str()).unwrap(),
-                _ => unreachable!(),
-            },
-            ty => return Err(UnresolvedImplementation(ty, self.loc)),
+        let meth = match ty.class_methods(self.sigma) {
+            Some(meths) => meths.get(f.as_str()).unwrap().clone(),
+            None => return Err(UnresolvedImplementation(ty, self.loc)),
         };
-        Ok(self.sigma.get(meth).unwrap().to_term(meth.clone()))
+        Ok(self.sigma.get(&meth).unwrap().to_term(meth))
     }
 
     fn is_reflector(&self, i: &Var) -> bool {

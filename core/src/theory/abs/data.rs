@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
+use crate::theory::abs::def::{Body, Sigma};
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::load::ModuleID;
 use crate::theory::{Param, ParamInfo, Syntax, Tele, Var};
@@ -146,6 +147,26 @@ impl Term {
             Term::True
         } else {
             Term::False
+        }
+    }
+
+    pub fn class_methods(&self, sigma: &Sigma) -> Option<HashMap<String, Var>> {
+        use Body::*;
+        use Term::*;
+
+        let mut x = self;
+        loop {
+            match x {
+                Cls(c, _) => match &sigma.get(c).unwrap().body {
+                    Class(_, meths) => return Some(meths.clone()),
+                    _ => unreachable!(),
+                },
+                Lam(_, body) => {
+                    x = body.as_ref();
+                    continue;
+                }
+                _ => return None,
+            };
         }
     }
 }
