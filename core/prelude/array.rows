@@ -1,0 +1,6 @@
+type NativeArray<T>;
+
+class Array<T> {
+    a: NativeArray<T>;
+    todo() {}
+}

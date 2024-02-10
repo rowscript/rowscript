@@ -220,16 +220,22 @@ impl Trans {
     fn type_postulate(&self, t: Pair<Rule>) -> Def<Expr> {
         use Body::*;
         use Expr::*;
-
         let loc = Loc::from(t.as_span());
-        let name = Var::from(t.into_inner().next().unwrap());
-        let ret = Box::new(Univ(loc));
-
+        let mut pairs = t.into_inner();
+        let name = Var::from(pairs.next().unwrap());
+        let mut tele = Tele::default();
+        for p in pairs {
+            match p.as_rule() {
+                Rule::row_id => tele.push(Self::row_param(p)),
+                Rule::implicit_id => tele.push(Self::implicit_param(p)),
+                _ => unreachable!(),
+            }
+        }
         Def {
             loc,
             name,
-            tele: Default::default(),
-            ret,
+            tele,
+            ret: Box::new(Univ(loc)),
             body: Postulate,
         }
     }

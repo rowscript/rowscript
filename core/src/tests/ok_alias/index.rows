@@ -9,3 +9,5 @@ type Option<T> = [None | Some: T];
 function f1(): Option<number> {
     Some(42)
 }
+
+type Person<T>;

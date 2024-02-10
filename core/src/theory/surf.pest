@@ -449,7 +449,7 @@ fn_postulate =
   ~ ";"
   }
 
-type_postulate = { "type" ~ type_id ~ ";" }
+type_postulate = { "type" ~ type_id ~ implicits? ~ ";" }
 
 type_alias =
   { "type"
