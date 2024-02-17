@@ -7,6 +7,7 @@ use ariadne::{Color, Label, Report, ReportKind, Source};
 use pest::error::InputLocation;
 use pest::Parser;
 use pest_derive::Parser;
+use theory::{ResolvedVar, VarKind};
 use thiserror::Error;
 
 use crate::codegen::{Codegen, Target};
@@ -14,7 +15,7 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::load::{prelude_path, Import, Loaded, ModuleID};
-use crate::theory::conc::resolve::{ResolvedVar, Resolver, VarKind};
+use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans::Trans;
 use crate::theory::{Loc, Var};
 
@@ -281,12 +282,12 @@ impl Driver {
         imports
             .iter()
             .try_fold((), |_, i| self.load_module(i.module.clone()))?;
-        let defs = Resolver::new(&self.elab.builtins, &self.loaded)
+        let defs = Resolver::new(&self.elab.ubiquitous, &self.loaded)
             .file(&mut imports, defs)
             .and_then(|d| self.elab.defs(d))?;
         for d in &defs {
             if is_ubiquitous {
-                self.elab.builtins.ubiquitous.insert(
+                self.elab.ubiquitous.insert(
                     d.name.to_string(),
                     ResolvedVar(VarKind::InModule, d.name.clone()),
                 );

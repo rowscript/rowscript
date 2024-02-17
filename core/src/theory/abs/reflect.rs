@@ -1,6 +1,6 @@
-use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::{FieldMap, Term};
 use crate::theory::conc::data::ArgInfo::UnnamedImplicit;
+use crate::theory::NameMap;
 use crate::theory::{Loc, Param, ParamInfo, Var};
 use crate::Error;
 use crate::Error::ExpectedReflectable;
@@ -12,29 +12,23 @@ const PROP_PROPS: &str = "props";
 const PROP_VARIANTS: &str = "variants";
 
 pub struct Reflector<'a> {
-    builtins: &'a Builtins,
+    ubiquitous: &'a NameMap,
     loc: Loc,
 }
 
 impl<'a> Reflector<'a> {
-    pub fn new(builtins: &'a Builtins, loc: Loc) -> Self {
-        Self { builtins, loc }
+    pub fn new(ubiquitous: &'a NameMap, loc: Loc) -> Self {
+        Self { ubiquitous, loc }
     }
 
     fn rep_kind(&self) -> Term {
-        Term::Ref(self.builtins.ubiquitous.get("RepKind").unwrap().1.clone())
+        Term::Ref(self.ubiquitous.get("RepKind").unwrap().1.clone())
     }
 
     fn reflected_app(&self, ty: Term) -> Term {
         use Term::*;
         App(
-            Box::new(Ref(self
-                .builtins
-                .ubiquitous
-                .get("Reflected")
-                .unwrap()
-                .1
-                .clone())),
+            Box::new(Ref(self.ubiquitous.get("Reflected").unwrap().1.clone())),
             UnnamedImplicit,
             Box::new(ty),
         )

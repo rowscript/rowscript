@@ -1,36 +1,24 @@
 use std::collections::HashMap;
 
-use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, ImplementsBody};
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::conc::load::{Import, ImportedDefs, Loaded};
-use crate::theory::{Param, RawNameSet, Tele, Var, UNBOUND};
+use crate::theory::{NameMap, Param, RawNameSet, ResolvedVar, Tele, Var, VarKind, UNBOUND};
 use crate::Error;
 use crate::Error::UnresolvedVar;
 
-pub type NameMap = HashMap<String, ResolvedVar>;
-
-#[derive(Debug, Copy, Clone)]
-pub enum VarKind {
-    InModule,
-    Imported,
-}
-
-#[derive(Debug, Clone)]
-pub struct ResolvedVar(pub VarKind, pub Var);
-
 pub struct Resolver<'a> {
-    builtins: &'a Builtins,
+    ubiquitous: &'a NameMap,
     loaded: &'a Loaded,
     names: NameMap,
 }
 
 impl<'a> Resolver<'a> {
-    pub fn new(builtins: &'a Builtins, loaded: &'a Loaded) -> Self {
+    pub fn new(ubiquitous: &'a NameMap, loaded: &'a Loaded) -> Self {
         Self {
-            builtins,
+            ubiquitous,
             loaded,
             names: Default::default(),
         }
@@ -156,9 +144,7 @@ impl<'a> Resolver<'a> {
 
     fn get(&self, v: &Var) -> Option<&ResolvedVar> {
         let k = v.as_str();
-        self.names
-            .get(k)
-            .or_else(|| self.builtins.ubiquitous.get(k))
+        self.names.get(k).or_else(|| self.ubiquitous.get(k))
     }
 
     fn insert(&mut self, v: &Var) -> Option<ResolvedVar> {

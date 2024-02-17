@@ -1,22 +1,22 @@
-use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::{FieldMap, Term};
 use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Sigma;
 use crate::theory::abs::normalize::Normalizer;
+use crate::theory::NameMap;
 use crate::theory::{Loc, Var};
 use crate::Error::{NonRowSat, NonUnifiable};
 use crate::{maybe_grow, Error};
 
 pub struct Unifier<'a> {
-    builtins: &'a Builtins,
+    ubiquitous: &'a NameMap,
     sigma: &'a mut Sigma,
     loc: Loc,
 }
 
 impl<'a> Unifier<'a> {
-    pub fn new(builtins: &'a Builtins, sigma: &'a mut Sigma, loc: Loc) -> Self {
+    pub fn new(ubiquitous: &'a NameMap, sigma: &'a mut Sigma, loc: Loc) -> Self {
         Self {
-            builtins,
+            ubiquitous,
             sigma,
             loc,
         }
@@ -27,7 +27,7 @@ impl<'a> Unifier<'a> {
     }
 
     fn nf(&mut self) -> Normalizer {
-        Normalizer::new(self.builtins, self.sigma, self.loc)
+        Normalizer::new(self.ubiquitous, self.sigma, self.loc)
     }
 
     pub fn unify(&mut self, lhs: &Term, rhs: &Term) -> Result<(), Error> {

@@ -1,4 +1,3 @@
-use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::{CaseMap, Dir, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::reflect::Reflector;
@@ -6,6 +5,7 @@ use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
+use crate::theory::NameMap;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
 use crate::Error::{
@@ -13,16 +13,16 @@ use crate::Error::{
 };
 
 pub struct Normalizer<'a> {
-    builtins: &'a Builtins,
+    ubiquitous: &'a NameMap,
     sigma: &'a mut Sigma,
     rho: Rho,
     loc: Loc,
 }
 
 impl<'a> Normalizer<'a> {
-    pub fn new(builtins: &'a Builtins, sigma: &'a mut Sigma, loc: Loc) -> Self {
+    pub fn new(ubiquitous: &'a NameMap, sigma: &'a mut Sigma, loc: Loc) -> Self {
         Self {
-            builtins,
+            ubiquitous,
             sigma,
             rho: Default::default(),
             loc,
@@ -30,11 +30,11 @@ impl<'a> Normalizer<'a> {
     }
 
     fn unifier(&mut self) -> Unifier {
-        Unifier::new(self.builtins, self.sigma, self.loc)
+        Unifier::new(self.ubiquitous, self.sigma, self.loc)
     }
 
     fn reflector(&self) -> Reflector {
-        Reflector::new(self.builtins, self.loc)
+        Reflector::new(self.ubiquitous, self.loc)
     }
 
     pub fn term(&mut self, tm: Term) -> Result<Term, Error> {
@@ -506,6 +506,6 @@ impl<'a> Normalizer<'a> {
     }
 
     fn is_reflector(&self, i: &Var) -> bool {
-        return &self.builtins.ubiquitous.get("Reflector").unwrap().1 == i;
+        return &self.ubiquitous.get("Reflector").unwrap().1 == i;
     }
 }

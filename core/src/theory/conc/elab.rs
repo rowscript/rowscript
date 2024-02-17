@@ -1,5 +1,5 @@
 use crate::maybe_grow;
-use crate::theory::abs::builtin::Builtins;
+use crate::theory::abs::builtin::setup;
 use crate::theory::abs::data::Dir::Le;
 use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, Term};
 use crate::theory::abs::def::{gamma_to_tele, Body, ImplementsBody};
@@ -10,7 +10,7 @@ use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Loc, Param, Tele, Var, VarGen};
+use crate::theory::{Loc, NameMap, Param, Tele, Var, VarGen};
 use crate::Error;
 use crate::Error::{
     ExpectedEnum, ExpectedImplementsOf, ExpectedInterface, ExpectedObject, ExpectedPi,
@@ -20,7 +20,7 @@ use crate::Error::{
 
 #[derive(Debug)]
 pub struct Elaborator {
-    pub builtins: Builtins,
+    pub ubiquitous: NameMap,
     pub sigma: Sigma,
     gamma: Gamma,
     vg: VarGen,
@@ -28,11 +28,11 @@ pub struct Elaborator {
 
 impl Elaborator {
     fn unifier(&mut self, loc: Loc) -> Unifier {
-        Unifier::new(&self.builtins, &mut self.sigma, loc)
+        Unifier::new(&self.ubiquitous, &mut self.sigma, loc)
     }
 
     fn nf(&mut self, loc: Loc) -> Normalizer {
-        Normalizer::new(&self.builtins, &mut self.sigma, loc)
+        Normalizer::new(&self.ubiquitous, &mut self.sigma, loc)
     }
 
     pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<Vec<Def<Term>>, Error> {
@@ -763,10 +763,9 @@ impl Elaborator {
 
 impl Default for Elaborator {
     fn default() -> Self {
-        let mut sigma = Default::default();
-        let builtins = Builtins::new(&mut sigma);
+        let (ubiquitous, sigma) = setup();
         Self {
-            builtins,
+            ubiquitous,
             sigma,
             gamma: Default::default(),
             vg: Default::default(),

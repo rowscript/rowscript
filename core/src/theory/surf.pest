@@ -170,6 +170,9 @@ builtin =
   | boolAnd
   | boolOr
   | boolNot
+  | arrayLength
+  | arrayPush
+  | arrayForEach
   }
 numAdd = { "number#__add__" }
 numSub = { "number#__sub__" }
@@ -183,6 +186,9 @@ strAdd = { "string#__add__" }
 boolAnd = { "boolean#__and__" }
 boolOr = { "boolean#__or__" }
 boolNot = { "boolean#__not__" }
+arrayLength = { "array#length" }
+arrayPush = { "array#push" }
+arrayForEach = { "array#forEach" }
 
 tyref =
   { qualifier ~ tyref

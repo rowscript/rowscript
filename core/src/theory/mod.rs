@@ -1,5 +1,5 @@
 use pest::iterators::Pair;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
@@ -198,3 +198,14 @@ impl<T: Syntax> Display for Param<T> {
         )
     }
 }
+
+#[derive(Debug, Copy, Clone)]
+pub enum VarKind {
+    InModule,
+    Imported,
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedVar(pub VarKind, pub Var);
+
+pub type NameMap = HashMap<String, ResolvedVar>;
