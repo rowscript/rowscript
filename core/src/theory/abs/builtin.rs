@@ -35,22 +35,22 @@ fn tuple_params<const N: usize>(var: Var, tele: [Param<Term>; N]) -> Tele<Term> 
 pub fn setup() -> (NameMap, Sigma) {
     let mut m = NameMap::default();
     let mut sigma = Sigma::default();
-    insert_unionify(&mut m, &mut sigma);
-    insert_reflect(&mut m, &mut sigma);
-    insert_number_add(&mut m, &mut sigma);
-    insert_number_sub(&mut m, &mut sigma);
-    insert_number_eq(&mut m, &mut sigma);
-    insert_number_neq(&mut m, &mut sigma);
-    insert_number_le(&mut m, &mut sigma);
-    insert_number_ge(&mut m, &mut sigma);
-    insert_number_lt(&mut m, &mut sigma);
-    insert_number_gt(&mut m, &mut sigma);
-    insert_boolean_or(&mut m, &mut sigma);
-    insert_boolean_and(&mut m, &mut sigma);
-    insert_boolean_not(&mut m, &mut sigma);
-    // insert_array_length(&mut m, &mut sigma);
-    // insert_array_push(&mut m, &mut sigma);
-    // insert_array_foreach(&mut m, &mut sigma);
+    insert_def(&mut m, &mut sigma, unionify());
+    insert_def(&mut m, &mut sigma, reflect());
+    insert_def(&mut m, &mut sigma, number_add());
+    insert_def(&mut m, &mut sigma, number_sub());
+    insert_def(&mut m, &mut sigma, number_eq());
+    insert_def(&mut m, &mut sigma, number_neq());
+    insert_def(&mut m, &mut sigma, number_le());
+    insert_def(&mut m, &mut sigma, number_ge());
+    insert_def(&mut m, &mut sigma, number_lt());
+    insert_def(&mut m, &mut sigma, number_gt());
+    insert_def(&mut m, &mut sigma, boolean_or());
+    insert_def(&mut m, &mut sigma, boolean_and());
+    insert_def(&mut m, &mut sigma, boolean_not());
+    // insert_def(&mut m, &mut sigma, array_length());
+    // insert_def(&mut m, &mut sigma, array_push());
+    // insert_def(&mut m, &mut sigma, array_foreach());
     (m, sigma)
 }
 
@@ -62,7 +62,7 @@ fn insert_def(ubiquitous: &mut NameMap, sigma: &mut Sigma, def: Def<Term>) {
     sigma.insert(def.name.clone(), def);
 }
 
-fn insert_unionify(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
+fn unionify() -> Def<Term> {
     let r = Var::new("'R");
     let a_ty = Term::Enum(Box::new(Term::Ref(r.clone())));
     let tupled = Var::tupled();
@@ -76,35 +76,27 @@ fn insert_unionify(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
         Box::new(Term::Unionify(Box::new(Term::Ref(untupled_a)))),
     ));
     tele.extend(tupled_tele);
-    insert_def(
-        ubiquitous,
-        sigma,
-        Def {
-            loc: Default::default(),
-            name: Var::new("unionify"),
-            tele,
-            ret: Box::new(a_ty),
-            body,
-        },
-    )
+    Def {
+        loc: Default::default(),
+        name: Var::new("unionify"),
+        tele,
+        ret: Box::new(a_ty),
+        body,
+    }
 }
 
-fn insert_reflect(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
+fn reflect() -> Def<Term> {
     let t = Var::new("T");
-    insert_def(
-        ubiquitous,
-        sigma,
-        Def {
-            loc: Default::default(),
-            name: Var::new("Reflected"),
-            tele: vec![implicit(t.clone(), Term::Univ)],
-            ret: Box::new(Term::Univ),
-            body: Body::Fn(Term::Reflected(Box::new(Term::Ref(t)))),
-        },
-    )
+    Def {
+        loc: Default::default(),
+        name: Var::new("Reflected"),
+        tele: vec![implicit(t.clone(), Term::Univ)],
+        ret: Box::new(Term::Univ),
+        body: Body::Fn(Term::Reflected(Box::new(Term::Ref(t)))),
+    }
 }
 
-fn insert_number_add(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
+fn number_add() -> Def<Term> {
     let b = Var::new("b");
     let tupled = Var::tupled();
     let untupled_a = Var::new("a");
@@ -127,26 +119,22 @@ fn insert_number_add(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
             )),
         )),
     ));
-    insert_def(
-        ubiquitous,
-        sigma,
-        Def {
-            loc: Default::default(),
-            name: Var::new("number#__add__"),
-            tele: tuple_params(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            ),
-            ret: Box::new(Term::Number),
-            body,
-        },
-    )
+    Def {
+        loc: Default::default(),
+        name: Var::new("number#__add__"),
+        tele: tuple_params(
+            tupled,
+            [
+                explicit(Var::new("a"), Term::Number),
+                explicit(b, Term::Number),
+            ],
+        ),
+        ret: Box::new(Term::Number),
+        body,
+    }
 }
 
-fn insert_number_sub(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
+fn number_sub() -> Def<Term> {
     let b = Var::new("b");
     let tupled = Var::tupled();
     let untupled_a = Var::new("a");
@@ -169,26 +157,22 @@ fn insert_number_sub(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
             )),
         )),
     ));
-    insert_def(
-        ubiquitous,
-        sigma,
-        Def {
-            loc: Default::default(),
-            name: Var::new("number#__sub__"),
-            tele: tuple_params(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            ),
-            ret: Box::new(Term::Number),
-            body,
-        },
-    )
+    Def {
+        loc: Default::default(),
+        name: Var::new("number#__sub__"),
+        tele: tuple_params(
+            tupled,
+            [
+                explicit(Var::new("a"), Term::Number),
+                explicit(b, Term::Number),
+            ],
+        ),
+        ret: Box::new(Term::Number),
+        body,
+    }
 }
 
-fn insert_number_eq(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
+fn number_eq() -> Def<Term> {
     let b = Var::new("b");
     let tupled = Var::tupled();
     let untupled_a = Var::new("a");
@@ -211,26 +195,22 @@ fn insert_number_eq(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
             )),
         )),
     ));
-    insert_def(
-        ubiquitous,
-        sigma,
-        Def {
-            loc: Default::default(),
-            name: Var::new("number#__eq__"),
-            tele: tuple_params(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            ),
-            ret: Box::new(Term::Boolean),
-            body,
-        },
-    )
+    Def {
+        loc: Default::default(),
+        name: Var::new("number#__eq__"),
+        tele: tuple_params(
+            tupled,
+            [
+                explicit(Var::new("a"), Term::Number),
+                explicit(b, Term::Number),
+            ],
+        ),
+        ret: Box::new(Term::Boolean),
+        body,
+    }
 }
 
-fn insert_number_neq(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
+fn number_neq() -> Def<Term> {
     let b = Var::new("b");
     let tupled = Var::tupled();
     let untupled_a = Var::new("a");
@@ -253,26 +233,22 @@ fn insert_number_neq(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
             )),
         )),
     ));
-    insert_def(
-        ubiquitous,
-        sigma,
-        Def {
-            loc: Default::default(),
-            name: Var::new("number#__neq__"),
-            tele: tuple_params(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            ),
-            ret: Box::new(Term::Boolean),
-            body,
-        },
-    )
+    Def {
+        loc: Default::default(),
+        name: Var::new("number#__neq__"),
+        tele: tuple_params(
+            tupled,
+            [
+                explicit(Var::new("a"), Term::Number),
+                explicit(b, Term::Number),
+            ],
+        ),
+        ret: Box::new(Term::Boolean),
+        body,
+    }
 }
 
-fn insert_number_le(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
+fn number_le() -> Def<Term> {
     let b = Var::new("b");
     let tupled = Var::tupled();
     let untupled_a = Var::new("a");
@@ -295,26 +271,22 @@ fn insert_number_le(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
             )),
         )),
     ));
-    insert_def(
-        ubiquitous,
-        sigma,
-        Def {
-            loc: Default::default(),
-            name: Var::new("number#__le__"),
-            tele: tuple_params(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            ),
-            ret: Box::new(Term::Boolean),
-            body,
-        },
-    )
+    Def {
+        loc: Default::default(),
+        name: Var::new("number#__le__"),
+        tele: tuple_params(
+            tupled,
+            [
+                explicit(Var::new("a"), Term::Number),
+                explicit(b, Term::Number),
+            ],
+        ),
+        ret: Box::new(Term::Boolean),
+        body,
+    }
 }
 
-fn insert_number_ge(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
+fn number_ge() -> Def<Term> {
     let b = Var::new("b");
     let tupled = Var::tupled();
     let untupled_a = Var::new("a");
@@ -337,26 +309,22 @@ fn insert_number_ge(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
             )),
         )),
     ));
-    insert_def(
-        ubiquitous,
-        sigma,
-        Def {
-            loc: Default::default(),
-            name: Var::new("number#__ge__"),
-            tele: tuple_params(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            ),
-            ret: Box::new(Term::Boolean),
-            body,
-        },
-    )
+    Def {
+        loc: Default::default(),
+        name: Var::new("number#__ge__"),
+        tele: tuple_params(
+            tupled,
+            [
+                explicit(Var::new("a"), Term::Number),
+                explicit(b, Term::Number),
+            ],
+        ),
+        ret: Box::new(Term::Boolean),
+        body,
+    }
 }
 
-fn insert_number_lt(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
+fn number_lt() -> Def<Term> {
     let b = Var::new("b");
     let tupled = Var::tupled();
     let untupled_a = Var::new("a");
@@ -379,26 +347,22 @@ fn insert_number_lt(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
             )),
         )),
     ));
-    insert_def(
-        ubiquitous,
-        sigma,
-        Def {
-            loc: Default::default(),
-            name: Var::new("number#__lt__"),
-            tele: tuple_params(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            ),
-            ret: Box::new(Term::Boolean),
-            body,
-        },
-    )
+    Def {
+        loc: Default::default(),
+        name: Var::new("number#__lt__"),
+        tele: tuple_params(
+            tupled,
+            [
+                explicit(Var::new("a"), Term::Number),
+                explicit(b, Term::Number),
+            ],
+        ),
+        ret: Box::new(Term::Boolean),
+        body,
+    }
 }
 
-fn insert_number_gt(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
+fn number_gt() -> Def<Term> {
     let b = Var::new("b");
     let tupled = Var::tupled();
     let untupled_a = Var::new("a");
@@ -421,26 +385,22 @@ fn insert_number_gt(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
             )),
         )),
     ));
-    insert_def(
-        ubiquitous,
-        sigma,
-        Def {
-            loc: Default::default(),
-            name: Var::new("number#__gt__"),
-            tele: tuple_params(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            ),
-            ret: Box::new(Term::Boolean),
-            body,
-        },
-    )
+    Def {
+        loc: Default::default(),
+        name: Var::new("number#__gt__"),
+        tele: tuple_params(
+            tupled,
+            [
+                explicit(Var::new("a"), Term::Number),
+                explicit(b, Term::Number),
+            ],
+        ),
+        ret: Box::new(Term::Boolean),
+        body,
+    }
 }
 
-fn insert_boolean_or(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
+fn boolean_or() -> Def<Term> {
     let b = Var::new("b");
     let tupled = Var::tupled();
     let untupled_a = Var::new("a");
@@ -463,26 +423,22 @@ fn insert_boolean_or(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
             )),
         )),
     ));
-    insert_def(
-        ubiquitous,
-        sigma,
-        Def {
-            loc: Default::default(),
-            name: Var::new("boolean#__or__"),
-            tele: tuple_params(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Boolean),
-                    explicit(b, Term::Boolean),
-                ],
-            ),
-            ret: Box::new(Term::Boolean),
-            body,
-        },
-    )
+    Def {
+        loc: Default::default(),
+        name: Var::new("boolean#__or__"),
+        tele: tuple_params(
+            tupled,
+            [
+                explicit(Var::new("a"), Term::Boolean),
+                explicit(b, Term::Boolean),
+            ],
+        ),
+        ret: Box::new(Term::Boolean),
+        body,
+    }
 }
 
-fn insert_boolean_and(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
+fn boolean_and() -> Def<Term> {
     let b = Var::new("b");
     let tupled = Var::tupled();
     let untupled_a = Var::new("a");
@@ -505,26 +461,22 @@ fn insert_boolean_and(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
             )),
         )),
     ));
-    insert_def(
-        ubiquitous,
-        sigma,
-        Def {
-            loc: Default::default(),
-            name: Var::new("boolean#__and__"),
-            tele: tuple_params(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Boolean),
-                    explicit(b, Term::Boolean),
-                ],
-            ),
-            ret: Box::new(Term::Boolean),
-            body,
-        },
-    )
+    Def {
+        loc: Default::default(),
+        name: Var::new("boolean#__and__"),
+        tele: tuple_params(
+            tupled,
+            [
+                explicit(Var::new("a"), Term::Boolean),
+                explicit(b, Term::Boolean),
+            ],
+        ),
+        ret: Box::new(Term::Boolean),
+        body,
+    }
 }
 
-fn insert_boolean_not(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
+fn boolean_not() -> Def<Term> {
     let tupled = Var::tupled();
     let untupled_a = Var::new("a");
     let untupled_a_rhs = Var::new("a").untupled_rhs();
@@ -534,15 +486,11 @@ fn insert_boolean_not(ubiquitous: &mut NameMap, sigma: &mut Sigma) {
         Box::new(Term::Ref(tupled.clone())),
         Box::new(Term::BoolNot(Box::new(Term::Ref(untupled_a)))),
     ));
-    insert_def(
-        ubiquitous,
-        sigma,
-        Def {
-            loc: Default::default(),
-            name: Var::new("boolean#__not__"),
-            tele: tuple_params(tupled, [explicit(Var::new("a"), Term::Boolean)]),
-            ret: Box::new(Term::Boolean),
-            body,
-        },
-    )
+    Def {
+        loc: Default::default(),
+        name: Var::new("boolean#__not__"),
+        tele: tuple_params(tupled, [explicit(Var::new("a"), Term::Boolean)]),
+        ret: Box::new(Term::Boolean),
+        body,
+    }
 }
