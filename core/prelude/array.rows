@@ -1,9 +1,9 @@
-type NativeArray<T>;
-
 class Array<T> {
-    a: NativeArray<T>;
-    todo() {}
-//    length(): number { array#length(this.a) }
-//    push(v: T): number { array#push(this.a, v) }
-//    forEach(f: (v: T) -> unit) { array#forEach(this.a, f) }
+    a: NativeArray;
+
+    length(): number { array#length(this.a) }
+
+    push(v: T): number { array#push(this.a, v) }
+
+    forEach(f: (v: T) -> unit) { array#forEach(this.a, f) }
 }

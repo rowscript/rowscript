@@ -92,6 +92,10 @@ pub enum Term {
     BigInt,
     Big(String),
 
+    ArrLength(Box<Self>),
+    ArrPush(Box<Self>, Box<Self>),
+    ArrForeach(Box<Self>, Box<Self>),
+
     Row,
     Fields(FieldMap),
     Combine(bool, Box<Self>, Box<Self>),
@@ -228,6 +232,9 @@ impl Display for Term {
                 NumGt(a, b) => format!("{a} > {b}"),
                 BigInt => "bigint".to_string(),
                 Big(v) => v.clone(),
+                ArrLength(a) => format!("{a}.length"),
+                ArrPush(a, v) => format!("{a}.push({v})"),
+                ArrForeach(a, f) => format!("{a}.forEach({f})"),
                 Row => "row".to_string(),
                 Fields(fields) => format!(
                     "({})",
