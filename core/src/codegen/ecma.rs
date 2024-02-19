@@ -137,7 +137,6 @@ impl Ecma {
     ) -> Result<Expr, Error> {
         use Term::*;
         if !matches!(i, UnnamedExplicit) {
-            println!("{f} {x}");
             unreachable!()
         }
         loop {
