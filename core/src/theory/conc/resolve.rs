@@ -284,6 +284,13 @@ impl<'a> Resolver<'a> {
                 Box::new(self.expr(*t)?),
                 Box::new(self.expr(*e)?),
             ),
+            Arr(loc, xs) => {
+                let mut resolved = Vec::default();
+                for x in xs {
+                    resolved.push(self.expr(x)?);
+                }
+                Arr(loc, resolved)
+            }
             Fields(loc, fields) => {
                 let mut names = RawNameSet::default();
                 let mut resolved = Vec::default();

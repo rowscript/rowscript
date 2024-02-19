@@ -1,5 +1,5 @@
 class Array<T> {
-    a: NativeArray;
+    a: NativeArray<T>;
 
     length(): number { array#length(this.a) }
 

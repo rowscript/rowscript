@@ -92,6 +92,8 @@ pub enum Term {
     BigInt,
     Big(String),
 
+    Array(Box<Self>),
+    Arr(Vec<Self>),
     ArrLength(Box<Self>),
     ArrPush(Box<Self>, Box<Self>),
     ArrForeach(Box<Self>, Box<Self>),
@@ -232,6 +234,14 @@ impl Display for Term {
                 NumGt(a, b) => format!("{a} > {b}"),
                 BigInt => "bigint".to_string(),
                 Big(v) => v.clone(),
+                Array(t) => format!("array<{t}>"),
+                Arr(xs) => format!(
+                    "[{}]",
+                    xs.iter()
+                        .map(|x| x.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
                 ArrLength(a) => format!("{a}.length"),
                 ArrPush(a, v) => format!("{a}.push({v})"),
                 ArrForeach(a, f) => format!("{a}.forEach({f})"),

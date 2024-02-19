@@ -1,0 +1,12 @@
+function log(n: number);
+
+function f0() {
+    let a = [];
+    let m = a.push(42);
+    let n = a.push(69);
+    let f: (n: number) -> unit = (n) => log(n);
+    a.forEach(f);
+    log(a.length());
+}
+
+f0();

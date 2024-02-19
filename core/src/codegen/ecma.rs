@@ -5,13 +5,13 @@ use std::str::FromStr;
 use num_bigint::BigInt as BigIntValue;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
-    ArrowExpr, BigInt as JsBigInt, BinExpr, BinaryOp, BindingIdent, BlockStmt, BlockStmtOrExpr,
-    Bool, CallExpr, Callee, ComputedPropName, CondExpr, Decl, ExportDecl, Expr, ExprOrSpread,
-    ExprStmt, FnDecl, Function, Ident, ImportDecl, ImportNamedSpecifier, ImportSpecifier,
-    ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleDecl,
-    ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, Prop, PropName,
-    PropOrSpread, ReturnStmt, SpreadElement, Stmt, Str as JsStr, UnaryExpr, UnaryOp, VarDecl,
-    VarDeclKind, VarDeclarator, WhileStmt,
+    ArrayLit, ArrowExpr, BigInt as JsBigInt, BinExpr, BinaryOp, BindingIdent, BlockStmt,
+    BlockStmtOrExpr, Bool, CallExpr, Callee, ComputedPropName, CondExpr, Decl, ExportDecl, Expr,
+    ExprOrSpread, ExprStmt, FnDecl, Function, Ident, ImportDecl, ImportNamedSpecifier,
+    ImportSpecifier, ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, Module,
+    ModuleDecl, ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, Prop,
+    PropName, PropOrSpread, ReturnStmt, SpreadElement, Stmt, Str as JsStr, UnaryExpr, UnaryOp,
+    VarDecl, VarDeclKind, VarDeclarator, WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -105,6 +105,28 @@ impl Ecma {
         }))
     }
 
+    fn prototype<const N: usize>(
+        &mut self,
+        sigma: &Sigma,
+        loc: Loc,
+        a: &Term,
+        m: &str,
+        args: [Expr; N],
+    ) -> Result<Expr, Error> {
+        Ok(Expr::Call(CallExpr {
+            span: loc.into(),
+            callee: Callee::Expr(Box::new(self.access(sigma, loc, a, m)?)),
+            args: args
+                .into_iter()
+                .map(|e| ExprOrSpread {
+                    spread: None,
+                    expr: Box::new(e),
+                })
+                .collect(),
+            type_args: None,
+        }))
+    }
+
     fn app(
         &mut self,
         sigma: &Sigma,
@@ -115,6 +137,7 @@ impl Ecma {
     ) -> Result<Expr, Error> {
         use Term::*;
         if !matches!(i, UnnamedExplicit) {
+            println!("{f} {x}");
             unreachable!()
         }
         loop {
@@ -486,6 +509,28 @@ impl Ecma {
                 value: Box::new(BigIntValue::from_str(v).unwrap()),
                 raw: None,
             })),
+            Arr(xs) => {
+                let mut elems = Vec::default();
+                for x in xs {
+                    elems.push(Some(ExprOrSpread {
+                        spread: None,
+                        expr: Box::new(self.expr(sigma, loc, x)?),
+                    }));
+                }
+                Expr::Array(ArrayLit {
+                    span: loc.into(),
+                    elems,
+                })
+            }
+            ArrLength(a) => self.access(sigma, loc, a, "length")?,
+            ArrPush(a, v) => {
+                let v = self.expr(sigma, loc, v)?;
+                self.prototype(sigma, loc, a, "push", [v])?
+            }
+            ArrForeach(a, f) => {
+                let f = self.expr(sigma, loc, f)?;
+                self.prototype(sigma, loc, a, "forEach", [f])?
+            }
             Obj(f) => match f.as_ref() {
                 Fields(fields) => {
                     let mut props = Vec::default();

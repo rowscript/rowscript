@@ -456,6 +456,33 @@ impl Elaborator {
                 let a = self.check(*a, &Term::Sigma(p.clone(), q.typ.clone()))?;
                 (Term::TupleLet(p, q, Box::new(a), Box::new(b)), b_ty)
             }
+            Arr(_, xs) => {
+                let mut v_ty = None;
+                let mut checked = Vec::default();
+                for (i, x) in xs.into_iter().enumerate() {
+                    if i > 0 {
+                        checked.push(self.check(x, v_ty.as_ref().unwrap())?);
+                        continue;
+                    }
+                    let (x_tm, x_ty) = self.infer(x)?;
+                    v_ty = Some(x_ty);
+                    checked.push(x_tm);
+                }
+                if checked.is_empty() {
+                    let t = Var::new("T");
+                    let p = Param {
+                        var: t.clone(),
+                        info: Implicit,
+                        typ: Box::new(Term::Unit),
+                    };
+                    (
+                        Term::Lam(p.clone(), Box::new(Term::Arr(checked))),
+                        Term::Pi(p, Box::new(Term::Array(Box::new(Term::Ref(t))))),
+                    )
+                } else {
+                    (Term::Arr(checked), Term::Array(Box::new(v_ty.unwrap())))
+                }
+            }
             Fields(_, fields) => {
                 let mut inferred = FieldMap::default();
                 for (f, e) in fields {

@@ -34,6 +34,7 @@ mod ok_issue75;
 mod ok_issue93;
 
 mod ok_alias;
+mod ok_array;
 mod ok_bool;
 mod ok_builtin;
 mod ok_class;

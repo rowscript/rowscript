@@ -2,7 +2,7 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::VarKind;
-use crate::theory::{NameMap, Param, ResolvedVar, Tele, Var};
+use crate::theory::{NameMap, Param, ResolvedVar, Var};
 
 fn implicit(var: Var, typ: Term) -> Param<Term> {
     Param {
@@ -20,16 +20,16 @@ fn explicit(var: Var, typ: Term) -> Param<Term> {
     }
 }
 
-fn tuple_params<const N: usize>(var: Var, tele: [Param<Term>; N]) -> Tele<Term> {
+fn tuple_param<const N: usize>(var: Var, tele: [Param<Term>; N]) -> Param<Term> {
     let mut ty = Term::Unit;
     for x in tele.into_iter().rev() {
         ty = Term::Sigma(x, Box::new(ty));
     }
-    vec![Param {
+    Param {
         var,
         info: Explicit,
         typ: Box::new(ty),
-    }]
+    }
 }
 
 pub fn setup() -> (NameMap, Sigma) {
@@ -53,12 +53,10 @@ pub fn setup() -> (NameMap, Sigma) {
     insert_def(&mut m, &mut sigma, boolean_and());
     insert_def(&mut m, &mut sigma, boolean_not());
 
-    let array = array();
-    let array_ref = Term::Ref(array.name.clone());
-    insert_def(&mut m, &mut sigma, array);
-    insert_def(&mut m, &mut sigma, array_length(array_ref.clone()));
-    insert_def(&mut m, &mut sigma, array_push(array_ref.clone()));
-    insert_def(&mut m, &mut sigma, array_foreach(array_ref));
+    insert_def(&mut m, &mut sigma, array());
+    insert_def(&mut m, &mut sigma, array_length());
+    insert_def(&mut m, &mut sigma, array_push());
+    insert_def(&mut m, &mut sigma, array_foreach());
 
     (m, sigma)
 }
@@ -75,8 +73,10 @@ fn unionify() -> Def<Term> {
     let r = Var::new("'R");
     let a_ty = Term::Enum(Box::new(Term::Ref(r.clone())));
     let tupled = Var::tupled();
-    let mut tele = vec![implicit(r, Term::Row)];
-    let tupled_tele = tuple_params(tupled.clone(), [explicit(Var::new("a"), a_ty.clone())]);
+    let tele = vec![
+        implicit(r, Term::Row),
+        tuple_param(tupled.clone(), [explicit(Var::new("a"), a_ty.clone())]),
+    ];
     let a = Var::new("a");
     let body = Body::Fn(Term::TupleLet(
         explicit(a.clone(), a_ty.clone()),
@@ -84,7 +84,6 @@ fn unionify() -> Def<Term> {
         Box::new(Term::Ref(tupled)),
         Box::new(Term::Unionify(Box::new(Term::Ref(a)))),
     ));
-    tele.extend(tupled_tele);
     Def {
         loc: Default::default(),
         name: Var::new("unionify"),
@@ -130,13 +129,13 @@ fn number_add() -> Def<Term> {
     Def {
         loc: Default::default(),
         name: Var::new("number#__add__"),
-        tele: tuple_params(
+        tele: vec![tuple_param(
             tupled,
             [
                 explicit(Var::new("a"), Term::Number),
                 explicit(b, Term::Number),
             ],
-        ),
+        )],
         ret: Box::new(Term::Number),
         body,
     }
@@ -167,13 +166,13 @@ fn number_sub() -> Def<Term> {
     Def {
         loc: Default::default(),
         name: Var::new("number#__sub__"),
-        tele: tuple_params(
+        tele: vec![tuple_param(
             tupled,
             [
                 explicit(Var::new("a"), Term::Number),
                 explicit(b, Term::Number),
             ],
-        ),
+        )],
         ret: Box::new(Term::Number),
         body,
     }
@@ -204,13 +203,13 @@ fn number_eq() -> Def<Term> {
     Def {
         loc: Default::default(),
         name: Var::new("number#__eq__"),
-        tele: tuple_params(
+        tele: vec![tuple_param(
             tupled,
             [
                 explicit(Var::new("a"), Term::Number),
                 explicit(b, Term::Number),
             ],
-        ),
+        )],
         ret: Box::new(Term::Boolean),
         body,
     }
@@ -241,13 +240,13 @@ fn number_neq() -> Def<Term> {
     Def {
         loc: Default::default(),
         name: Var::new("number#__neq__"),
-        tele: tuple_params(
+        tele: vec![tuple_param(
             tupled,
             [
                 explicit(Var::new("a"), Term::Number),
                 explicit(b, Term::Number),
             ],
-        ),
+        )],
         ret: Box::new(Term::Boolean),
         body,
     }
@@ -278,13 +277,13 @@ fn number_le() -> Def<Term> {
     Def {
         loc: Default::default(),
         name: Var::new("number#__le__"),
-        tele: tuple_params(
+        tele: vec![tuple_param(
             tupled,
             [
                 explicit(Var::new("a"), Term::Number),
                 explicit(b, Term::Number),
             ],
-        ),
+        )],
         ret: Box::new(Term::Boolean),
         body,
     }
@@ -315,13 +314,13 @@ fn number_ge() -> Def<Term> {
     Def {
         loc: Default::default(),
         name: Var::new("number#__ge__"),
-        tele: tuple_params(
+        tele: vec![tuple_param(
             tupled,
             [
                 explicit(Var::new("a"), Term::Number),
                 explicit(b, Term::Number),
             ],
-        ),
+        )],
         ret: Box::new(Term::Boolean),
         body,
     }
@@ -352,13 +351,13 @@ fn number_lt() -> Def<Term> {
     Def {
         loc: Default::default(),
         name: Var::new("number#__lt__"),
-        tele: tuple_params(
+        tele: vec![tuple_param(
             tupled,
             [
                 explicit(Var::new("a"), Term::Number),
                 explicit(b, Term::Number),
             ],
-        ),
+        )],
         ret: Box::new(Term::Boolean),
         body,
     }
@@ -389,13 +388,13 @@ fn number_gt() -> Def<Term> {
     Def {
         loc: Default::default(),
         name: Var::new("number#__gt__"),
-        tele: tuple_params(
+        tele: vec![tuple_param(
             tupled,
             [
                 explicit(Var::new("a"), Term::Number),
                 explicit(b, Term::Number),
             ],
-        ),
+        )],
         ret: Box::new(Term::Boolean),
         body,
     }
@@ -426,13 +425,13 @@ fn boolean_or() -> Def<Term> {
     Def {
         loc: Default::default(),
         name: Var::new("boolean#__or__"),
-        tele: tuple_params(
+        tele: vec![tuple_param(
             tupled,
             [
                 explicit(Var::new("a"), Term::Boolean),
                 explicit(b, Term::Boolean),
             ],
-        ),
+        )],
         ret: Box::new(Term::Boolean),
         body,
     }
@@ -463,13 +462,13 @@ fn boolean_and() -> Def<Term> {
     Def {
         loc: Default::default(),
         name: Var::new("boolean#__and__"),
-        tele: tuple_params(
+        tele: vec![tuple_param(
             tupled,
             [
                 explicit(Var::new("a"), Term::Boolean),
                 explicit(b, Term::Boolean),
             ],
-        ),
+        )],
         ret: Box::new(Term::Boolean),
         body,
     }
@@ -487,134 +486,122 @@ fn boolean_not() -> Def<Term> {
     Def {
         loc: Default::default(),
         name: Var::new("boolean#__not__"),
-        tele: tuple_params(tupled, [explicit(a, Term::Boolean)]),
+        tele: vec![tuple_param(tupled, [explicit(a, Term::Boolean)])],
         ret: Box::new(Term::Boolean),
         body,
     }
 }
 
 fn array() -> Def<Term> {
+    let t = Var::new("T");
     Def {
         loc: Default::default(),
         name: Var::new("NativeArray"),
-        tele: Default::default(),
+        tele: vec![implicit(t.clone(), Term::Univ)],
         ret: Box::new(Term::Univ),
-        body: Body::Postulate,
+        body: Body::Fn(Term::Array(Box::new(Term::Ref(t.clone())))),
     }
 }
 
-fn array_length(arr_typ: Term) -> Def<Term> {
+fn array_length() -> Def<Term> {
+    let t = Var::new("T");
     let tupled = Var::tupled();
     let a = Var::new("a");
+    let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
     let a_rhs = Var::new("a").untupled_rhs();
-    let body = Body::Fn(Term::TupleLet(
-        explicit(a.clone(), arr_typ.clone()),
-        explicit(a_rhs.clone(), Term::Unit),
-        Box::new(Term::Ref(tupled.clone())),
-        Box::new(Term::ArrLength(Box::new(Term::Ref(a.clone())))),
-    ));
     Def {
         loc: Default::default(),
         name: Var::new("array#length"),
-        tele: tuple_params(tupled, [explicit(a, arr_typ)]),
+        tele: vec![
+            implicit(t, Term::Univ),
+            tuple_param(tupled.clone(), [explicit(a.clone(), a_ty.clone())]),
+        ],
         ret: Box::new(Term::Number),
-        body,
+        body: Body::Fn(Term::TupleLet(
+            explicit(a.clone(), a_ty.clone()),
+            explicit(a_rhs.clone(), Term::Unit),
+            Box::new(Term::Ref(tupled)),
+            Box::new(Term::ArrLength(Box::new(Term::Ref(a.clone())))),
+        )),
     }
 }
 
-fn array_push(arr_typ: Term) -> Def<Term> {
+fn array_push() -> Def<Term> {
+    let t = Var::new("T");
+    let tupled = Var::tupled();
     let a = Var::new("a");
+    let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
     let a_rhs = a.untupled_rhs();
     let v = Var::new("v");
-    let t = Var::new("T");
     let v_ty = Term::Ref(t.clone());
-    let tupled = Var::tupled();
-
-    let mut tele = vec![implicit(t, Term::Univ)];
-    let tupled_tele = tuple_params(
-        tupled.clone(),
-        [
-            explicit(a.clone(), arr_typ.clone()),
-            explicit(v.clone(), v_ty.clone()),
-        ],
-    );
-    tele.extend(tupled_tele);
-
-    let body = Body::Fn(Term::TupleLet(
-        explicit(a.clone(), arr_typ),
-        explicit(
-            a_rhs.clone(),
-            Term::Sigma(explicit(v.clone(), v_ty.clone()), Box::new(Term::Unit)),
-        ),
-        Box::new(Term::Ref(tupled.clone())),
-        Box::new(Term::TupleLet(
-            explicit(v.clone(), v_ty),
-            explicit(Var::unbound(), Term::Unit),
-            Box::new(Term::Ref(a_rhs)),
-            Box::new(Term::ArrPush(
-                Box::new(Term::Ref(a)),
-                Box::new(Term::Ref(v)),
-            )),
-        )),
-    ));
-
+    let params = [
+        explicit(a.clone(), a_ty.clone()),
+        explicit(v.clone(), v_ty.clone()),
+    ];
     Def {
         loc: Default::default(),
         name: Var::new("array#push"),
-        tele,
+        tele: vec![implicit(t, Term::Univ), tuple_param(tupled.clone(), params)],
         ret: Box::new(Term::Number),
-        body,
+        body: Body::Fn(Term::TupleLet(
+            explicit(a.clone(), a_ty),
+            explicit(
+                a_rhs.clone(),
+                Term::Sigma(explicit(v.clone(), v_ty.clone()), Box::new(Term::Unit)),
+            ),
+            Box::new(Term::Ref(tupled)),
+            Box::new(Term::TupleLet(
+                explicit(v.clone(), v_ty),
+                explicit(Var::unbound(), Term::Unit),
+                Box::new(Term::Ref(a_rhs)),
+                Box::new(Term::ArrPush(
+                    Box::new(Term::Ref(a)),
+                    Box::new(Term::Ref(v)),
+                )),
+            )),
+        )),
     }
 }
 
-fn array_foreach(arr_typ: Term) -> Def<Term> {
+fn array_foreach() -> Def<Term> {
+    let t = Var::new("T");
+    let tupled = Var::tupled();
     let a = Var::new("a");
+    let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
     let a_rhs = a.untupled_rhs();
     let f = Var::new("f");
-    let t = Var::new("T");
     let f_ty = Term::Pi(
-        Param {
-            var: Var::new("v"),
-            info: Explicit,
-            typ: Box::new(Term::Ref(t.clone())),
-        },
+        tuple_param(
+            Var::unbound(),
+            [explicit(Var::new("v"), Term::Ref(t.clone()))],
+        ),
         Box::new(Term::Unit),
     );
-    let tupled = Var::tupled();
-
-    let mut tele = vec![implicit(t, Term::Univ)];
-    let tupled_tele = tuple_params(
-        tupled.clone(),
-        [
-            explicit(a.clone(), arr_typ.clone()),
-            explicit(f.clone(), f_ty.clone()),
-        ],
-    );
-    tele.extend(tupled_tele);
-
-    let body = Body::Fn(Term::TupleLet(
-        explicit(a.clone(), arr_typ),
-        explicit(
-            a_rhs.clone(),
-            Term::Sigma(explicit(f.clone(), f_ty.clone()), Box::new(Term::Unit)),
-        ),
-        Box::new(Term::Ref(tupled.clone())),
-        Box::new(Term::TupleLet(
-            explicit(f.clone(), f_ty),
-            explicit(Var::unbound(), Term::Unit),
-            Box::new(Term::Ref(a_rhs)),
-            Box::new(Term::ArrForeach(
-                Box::new(Term::Ref(a)),
-                Box::new(Term::Ref(f)),
-            )),
-        )),
-    ));
-
+    let params = [
+        explicit(a.clone(), a_ty.clone()),
+        explicit(f.clone(), f_ty.clone()),
+    ];
     Def {
         loc: Default::default(),
         name: Var::new("array#forEach"),
-        tele,
+        tele: vec![implicit(t, Term::Univ), tuple_param(tupled.clone(), params)],
         ret: Box::new(Term::Unit),
-        body,
+        body: Body::Fn(Term::TupleLet(
+            explicit(a.clone(), a_ty),
+            explicit(
+                a_rhs.clone(),
+                Term::Sigma(explicit(f.clone(), f_ty.clone()), Box::new(Term::Unit)),
+            ),
+            Box::new(Term::Ref(tupled)),
+            Box::new(Term::TupleLet(
+                explicit(f.clone(), f_ty),
+                explicit(Var::unbound(), Term::Unit),
+                Box::new(Term::Ref(a_rhs)),
+                Box::new(Term::ArrForeach(
+                    Box::new(Term::Ref(a)),
+                    Box::new(Term::Ref(f)),
+                )),
+            )),
+        )),
     }
 }

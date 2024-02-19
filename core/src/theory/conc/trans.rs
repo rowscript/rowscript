@@ -878,6 +878,16 @@ impl Trans {
                 }
                 TupledLam(loc, vars, Box::new(body.unwrap()))
             }
+            Rule::array_expr => App(
+                loc,
+                Box::new(Unresolved(loc, None, Var::new("Array").ctor())),
+                UnnamedExplicit,
+                Box::new(Tuple(
+                    loc,
+                    Box::new(Arr(loc, p.into_inner().map(|e| self.expr(e)).collect())),
+                    Box::new(TT(loc)),
+                )),
+            ),
             Rule::new_expr => self.new_expr(p),
             Rule::app => self.app(p, None),
             Rule::tt => TT(loc),
