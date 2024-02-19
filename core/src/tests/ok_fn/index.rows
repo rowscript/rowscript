@@ -1,5 +1,5 @@
 function f(): () -> unit {
-    let id: (n: number) -> number = n => n;
+    let id: (n: number) -> number = (n) => n;
     let a: number = id(42);
     () => ()
 }
