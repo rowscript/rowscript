@@ -9,7 +9,7 @@ jobs:
   linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install cross-compilation tools
         run: |
           sudo apt-get update -y
@@ -31,7 +31,7 @@ jobs:
   win32:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build x64
         run: cargo build --release --verbose
       - name: Build arm64
@@ -47,7 +47,7 @@ jobs:
   darwin:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build x64
         run: cargo build --release --verbose
       - name: Build arm64
