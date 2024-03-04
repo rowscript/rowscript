@@ -49,6 +49,7 @@ pub enum Term {
     Extern(Var),
     MetaRef(MetaKind, Var, Spine),
     Undef(Var),
+    Stuck(Box<Self>),
 
     Let(Param<Self>, Box<Self>, Box<Self>),
     While(Box<Self>, Box<Self>, Box<Self>),
@@ -200,6 +201,7 @@ impl Display for Term {
                     format!("({})", s.join(" "))
                 }
                 Undef(r) => r.to_string(),
+                Stuck(a) => format!("Stuck({a})"),
                 Cls(n, a) => format!("{n}({a})"),
                 Let(p, a, b) => format!("let {p} = {a};\n\t{b}"),
                 While(p, b, r) => format!("while ({p}) {{\n\t{b}}}\n{r}"),

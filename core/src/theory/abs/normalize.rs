@@ -85,6 +85,7 @@ impl<'a> Normalizer<'a> {
                 ret
             }
             Undef(x) => self.sigma.get(&x).unwrap().to_term(x),
+            Stuck(a) => Stuck(self.term_box(a)?),
             Cls(n, a) => Cls(n, self.term_box(a)?),
             Let(p, a, b) => {
                 let a = self.term_box(a)?;
