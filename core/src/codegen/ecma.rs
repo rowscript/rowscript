@@ -422,6 +422,7 @@ impl Ecma {
                 None => return Err(UnsolvedMeta(MetaRef(k.clone(), r.clone(), sp.clone()), loc)),
                 Some(_) => unreachable!(),
             },
+            Stuck(a) => self.expr(sigma, loc, a)?,
 
             Let(p, a, b) => self.lambda_encoded_let(sigma, loc, Some(&p.var), a, b)?,
             While(p, b, r) => Self::iife(

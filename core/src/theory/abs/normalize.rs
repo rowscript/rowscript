@@ -89,7 +89,7 @@ impl<'a> Normalizer<'a> {
             Cls(n, a) => Cls(n, self.term_box(a)?),
             Let(p, a, b) => {
                 let a = self.term_box(a)?;
-                if let MetaRef(_, _, _) = *a {
+                if a.is_stuck() {
                     Let(p, a, self.term_box(b)?)
                 } else {
                     self.rho.insert(p.var, a);
@@ -237,9 +237,9 @@ impl<'a> Normalizer<'a> {
                 }
                 Arr(ret)
             }
-            ArrLength(a) => ArrLength(self.term_box(a)?),
-            ArrPush(a, v) => ArrPush(self.term_box(a)?, self.term_box(v)?),
-            ArrForeach(a, f) => ArrForeach(self.term_box(a)?, self.term_box(f)?),
+            ArrLength(a) => Stuck(Box::new(ArrLength(self.term_box(a)?))),
+            ArrPush(a, v) => Stuck(Box::new(ArrPush(self.term_box(a)?, self.term_box(v)?))),
+            ArrForeach(a, f) => Stuck(Box::new(ArrForeach(self.term_box(a)?, self.term_box(f)?))),
             Fields(mut fields) => {
                 for tm in fields.values_mut() {
                     // FIXME: not unwind-safe, refactor `Self::term` to accept a `&mut Term`

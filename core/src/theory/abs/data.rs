@@ -176,6 +176,10 @@ impl Term {
             };
         }
     }
+
+    pub fn is_stuck(&self) -> bool {
+        matches!(&self, Self::MetaRef(..) | Self::Stuck(..))
+    }
 }
 
 impl Syntax for Term {}
