@@ -10,7 +10,7 @@ use swc_ecma_ast::{
     ExprOrSpread, ExprStmt, FnDecl, Function, Ident, ImportDecl, ImportNamedSpecifier,
     ImportSpecifier, ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, Module,
     ModuleDecl, ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, Prop,
-    PropName, PropOrSpread, ReturnStmt, SpreadElement, Stmt, Str as JsStr, UnaryExpr, UnaryOp,
+    PropName, PropOrSpread, ReturnStmt, SpreadElement, Stmt, Str as JsStr, Str, UnaryExpr, UnaryOp,
     VarDecl, VarDeclKind, VarDeclarator, WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
@@ -86,12 +86,51 @@ impl Ecma {
         })
     }
 
-    fn undefined() -> Ident {
-        Self::special_ident("undefined")
+    fn str_ident_pat(loc: Loc, s: &str) -> Pat {
+        Pat::Ident(BindingIdent {
+            id: Self::str_ident(loc, s),
+            type_ann: None,
+        })
+    }
+
+    fn undefined() -> Expr {
+        Expr::Ident(Self::special_ident("undefined"))
     }
 
     fn lib() -> Ident {
         Self::special_ident(JS_LIB)
+    }
+
+    fn js_str(loc: Loc, s: &str) -> Str {
+        Str {
+            span: loc.into(),
+            value: s.into(),
+            raw: None,
+        }
+    }
+
+    fn variant(loc: Loc, tag: &str, v: Expr) -> Expr {
+        Expr::Object(ObjectLit {
+            span: loc.into(),
+            props: vec![
+                PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                    key: PropName::Str(Self::js_str(loc, JS_ENUM_TAG)),
+                    value: Box::new(Expr::Lit(Lit::Str(Self::js_str(loc, tag)))),
+                }))),
+                PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                    key: PropName::Str(Self::js_str(loc, JS_ENUM_VAL)),
+                    value: Box::new(v),
+                }))),
+            ],
+        })
+    }
+
+    fn some(loc: Loc, v: Expr) -> Expr {
+        Self::variant(loc, "Some", v)
+    }
+
+    fn none(loc: Loc, v: Expr) -> Expr {
+        Self::variant(loc, "None", v)
     }
 
     fn access(&mut self, sigma: &Sigma, loc: Loc, a: &Term, n: &str) -> Result<Expr, Error> {
@@ -125,6 +164,40 @@ impl Ecma {
                 .collect(),
             type_args: None,
         }))
+    }
+
+    fn optionify(loc: Loc, e: Expr) -> Expr {
+        // ((x) => x === undefined ? None : Some(x))(e)
+        Expr::Call(CallExpr {
+            span: loc.into(),
+            callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
+                span: loc.into(),
+                expr: Box::new(Expr::Arrow(ArrowExpr {
+                    span: loc.into(),
+                    params: vec![Self::str_ident_pat(loc, "x")],
+                    body: Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Cond(CondExpr {
+                        span: loc.into(),
+                        test: Box::new(Expr::Bin(BinExpr {
+                            span: loc.into(),
+                            op: BinaryOp::EqEqEq,
+                            left: Box::new(Expr::Ident(Self::str_ident(loc, "x"))),
+                            right: Box::new(Self::undefined()),
+                        })),
+                        cons: Box::new(Self::none(loc, Self::undefined())),
+                        alt: Box::new(Self::some(loc, Expr::Ident(Self::str_ident(loc, "x")))),
+                    })))),
+                    is_async: false,
+                    is_generator: false,
+                    type_params: None,
+                    return_type: None,
+                })),
+            }))),
+            args: vec![ExprOrSpread {
+                spread: None,
+                expr: Box::new(e),
+            }],
+            type_args: None,
+        })
     }
 
     fn app(
@@ -470,7 +543,7 @@ impl Ecma {
             },
 
             App(f, i, x) => self.app(sigma, loc, f, i, x)?,
-            TT => Expr::Ident(Self::undefined()),
+            TT => Self::undefined(),
             False => Expr::Lit(Lit::Bool(Bool {
                 span: loc.into(),
                 value: false,
@@ -532,6 +605,11 @@ impl Ecma {
             ArrForeach(a, f) => {
                 let f = self.expr(sigma, loc, f)?;
                 self.prototype(sigma, loc, a, "forEach", [f])?
+            }
+            ArrAt(a, i) => {
+                let i = self.expr(sigma, loc, i)?;
+                let ret = self.prototype(sigma, loc, a, "at", [i])?;
+                Self::optionify(loc, ret)
             }
             Obj(f) => match f.as_ref() {
                 Fields(fields) => {

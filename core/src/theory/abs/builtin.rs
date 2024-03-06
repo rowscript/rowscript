@@ -32,6 +32,14 @@ fn tuple_param<const N: usize>(var: Var, tele: [Param<Term>; N]) -> Param<Term> 
     }
 }
 
+fn option_type(t: Term) -> Term {
+    Term::Enum(Box::new(Term::Fields(
+        [("Some".to_string(), t), ("None".to_string(), Term::Unit)]
+            .into_iter()
+            .collect(),
+    )))
+}
+
 pub fn setup() -> (NameMap, Sigma) {
     let mut m = NameMap::default();
     let mut sigma = Sigma::default();
@@ -57,6 +65,7 @@ pub fn setup() -> (NameMap, Sigma) {
     insert_def(&mut m, &mut sigma, array_length());
     insert_def(&mut m, &mut sigma, array_push());
     insert_def(&mut m, &mut sigma, array_foreach());
+    insert_def(&mut m, &mut sigma, array_at());
 
     (m, sigma)
 }
@@ -601,6 +610,43 @@ fn array_foreach() -> Def<Term> {
                     Box::new(Term::Ref(a)),
                     Box::new(Term::Ref(f)),
                 )),
+            )),
+        )),
+    }
+}
+
+fn array_at() -> Def<Term> {
+    let t = Var::new("T");
+    let tupled = Var::tupled();
+    let a = Var::new("a");
+    let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
+    let a_rhs = a.untupled_rhs();
+    let i = Var::new("v");
+    let i_ty = Term::Number;
+    let params = [
+        explicit(a.clone(), a_ty.clone()),
+        explicit(i.clone(), i_ty.clone()),
+    ];
+    Def {
+        loc: Default::default(),
+        name: Var::new("array#at"),
+        tele: vec![
+            implicit(t.clone(), Term::Univ),
+            tuple_param(tupled.clone(), params),
+        ],
+        ret: Box::new(option_type(Term::Ref(t))),
+        body: Body::Fn(Term::TupleLet(
+            explicit(a.clone(), a_ty),
+            explicit(
+                a_rhs.clone(),
+                Term::Sigma(explicit(i.clone(), i_ty.clone()), Box::new(Term::Unit)),
+            ),
+            Box::new(Term::Ref(tupled)),
+            Box::new(Term::TupleLet(
+                explicit(i.clone(), i_ty),
+                explicit(Var::unbound(), Term::Unit),
+                Box::new(Term::Ref(a_rhs)),
+                Box::new(Term::ArrAt(Box::new(Term::Ref(a)), Box::new(Term::Ref(i)))),
             )),
         )),
     }

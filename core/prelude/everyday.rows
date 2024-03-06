@@ -1,3 +1,5 @@
+type Option<T> = [None | Some: T];
+
 class Array<T> {
     a: NativeArray<T>;
 
@@ -6,4 +8,6 @@ class Array<T> {
     push(v: T): number { array#push(this.a, v) }
 
     forEach(f: (v: T) -> unit) { array#forEach(this.a, f) }
+
+    at(i: number): Option<T> { array#at(this.a, i) }
 }

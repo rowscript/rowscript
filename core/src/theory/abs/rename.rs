@@ -63,6 +63,7 @@ impl Renamer {
             ArrLength(a) => ArrLength(Box::new(self.term(*a))),
             ArrPush(a, v) => ArrPush(Box::new(self.term(*a)), Box::new(self.term(*v))),
             ArrForeach(a, f) => ArrForeach(Box::new(self.term(*a)), Box::new(self.term(*f))),
+            ArrAt(a, i) => ArrAt(Box::new(self.term(*a)), Box::new(self.term(*i))),
             Fields(fields) => {
                 let mut m = FieldMap::default();
                 for (f, tm) in fields {

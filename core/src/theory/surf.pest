@@ -173,6 +173,7 @@ builtin =
   | arrayLength
   | arrayPush
   | arrayForEach
+  | arrayAt
   }
 numAdd = { "number#__add__" }
 numSub = { "number#__sub__" }
@@ -189,6 +190,7 @@ boolNot = { "boolean#__not__" }
 arrayLength = { "array#length" }
 arrayPush = { "array#push" }
 arrayForEach = { "array#forEach" }
+arrayAt = { "array#at" }
 
 tyref =
   { qualifier ~ tyref

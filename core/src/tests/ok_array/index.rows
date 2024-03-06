@@ -10,3 +10,10 @@ function f0() {
 }
 
 f0();
+
+function f1(): Option<number> {
+    let a = [1];
+    a.at(0)
+}
+
+const n1 = f1();

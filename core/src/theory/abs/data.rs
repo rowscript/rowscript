@@ -97,6 +97,7 @@ pub enum Term {
     ArrLength(Box<Self>),
     ArrPush(Box<Self>, Box<Self>),
     ArrForeach(Box<Self>, Box<Self>),
+    ArrAt(Box<Self>, Box<Self>),
 
     Row,
     Fields(FieldMap),
@@ -245,6 +246,7 @@ impl Display for Term {
                 ArrLength(a) => format!("{a}.length"),
                 ArrPush(a, v) => format!("{a}.push({v})"),
                 ArrForeach(a, f) => format!("{a}.forEach({f})"),
+                ArrAt(a, i) => format!("{a}.at({i})"),
                 Row => "row".to_string(),
                 Fields(fields) => format!(
                     "({})",

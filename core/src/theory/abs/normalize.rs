@@ -241,6 +241,7 @@ impl<'a> Normalizer<'a> {
             ArrLength(a) => ArrLength(self.term_box(a)?),
             ArrPush(a, v) => ArrPush(self.term_box(a)?, self.term_box(v)?),
             ArrForeach(a, f) => ArrForeach(self.term_box(a)?, self.term_box(f)?),
+            ArrAt(a, i) => ArrAt(self.term_box(a)?, self.term_box(i)?),
             Fields(mut fields) => {
                 for tm in fields.values_mut() {
                     // FIXME: not unwind-safe, refactor `Self::term` to accept a `&mut Term`
