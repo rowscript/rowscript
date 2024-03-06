@@ -17,3 +17,10 @@ function f1(): Option<number> {
 }
 
 const n1 = f1();
+
+function f2(): Option<number> {
+    let a = [2];
+    a[0]
+}
+
+const n2 = f2();

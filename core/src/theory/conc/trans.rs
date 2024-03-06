@@ -815,6 +815,48 @@ impl Trans {
                     )
                     .1
             }
+            Rule::array_expr => App(
+                loc,
+                Box::new(Unresolved(loc, None, Var::new("Array").ctor())),
+                UnnamedExplicit,
+                Box::new(Tuple(
+                    loc,
+                    Box::new(Arr(loc, p.into_inner().map(|e| self.expr(e)).collect())),
+                    Box::new(TT(loc)),
+                )),
+            ),
+            Rule::array_index => {
+                let mut pairs = p.into_inner();
+                let x = pairs.next().unwrap();
+                let x_loc = Loc::from(x.as_span());
+                let x = match x.as_rule() {
+                    Rule::expr => self.expr(x),
+                    Rule::idref => self.maybe_qualified(x),
+                    _ => unreachable!(),
+                };
+                let at = Box::new(Unresolved(
+                    loc,
+                    None,
+                    Var::new("Array").method(Var::new("at")),
+                ));
+                pairs
+                    .fold((x_loc, x), |(loc, x), p| {
+                        (
+                            Loc::from(p.as_span()),
+                            App(
+                                loc,
+                                at.clone(),
+                                UnnamedExplicit,
+                                Box::new(Tuple(
+                                    loc,
+                                    Box::new(x),
+                                    Box::new(Tuple(loc, Box::new(self.expr(p)), Box::new(TT(loc)))),
+                                )),
+                            ),
+                        )
+                    })
+                    .1
+            }
             Rule::object_literal => self.object_literal(p),
             Rule::object_concat => {
                 let mut pairs = p.into_inner();
@@ -878,16 +920,7 @@ impl Trans {
                 }
                 TupledLam(loc, vars, Box::new(body.unwrap()))
             }
-            Rule::array_expr => App(
-                loc,
-                Box::new(Unresolved(loc, None, Var::new("Array").ctor())),
-                UnnamedExplicit,
-                Box::new(Tuple(
-                    loc,
-                    Box::new(Arr(loc, p.into_inner().map(|e| self.expr(e)).collect())),
-                    Box::new(TT(loc)),
-                )),
-            ),
+
             Rule::new_expr => self.new_expr(p),
             Rule::app => self.app(p, None),
             Rule::tt => TT(loc),

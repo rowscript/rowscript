@@ -323,6 +323,8 @@ primary_expr =
   | boolean_true
   | boolean_if
   | rev_app
+  | array_expr
+  | array_index
   | object_literal
   | object_concat
   | object_access
@@ -334,7 +336,6 @@ primary_expr =
   | app
   | tt
   | idref
-  | array_expr
   | new_expr
   | hole
   | paren_expr
@@ -346,6 +347,10 @@ boolean_if =
   ~ "{" ~ branch ~ "}"
   ~ "else" ~ "{" ~ branch ~ "}"
   }
+rev_app = { ("(" ~ expr ~ ")" | idref | new_expr) ~ rev_app_caller+ }
+rev_app_caller = { "." ~ idref ~ implicit_args? ~ args+ }
+array_expr = { "[]" | "[" ~ expr ~ ("," ~ expr)* ~ "]" }
+array_index = { ("(" ~ expr ~ ")" | idref) ~ ("[" ~ expr ~ "]")+ }
 branch =
   { branch_let
   | branch_unit_let
@@ -353,19 +358,16 @@ branch =
   | branch_while
   | expr
   }
+branch_let = { let_stmt ~ branch }
+branch_unit_let = { unit_let_stmt ~ branch }
+branch_object_assign = { object_assign_stmt ~ branch }
+branch_while = { while_stmt_start ~ branch ~ while_stmt_end ~ branch }
 let_stmt = _{ "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" }
 unit_let_stmt = _{ expr ~ ";" }
 object_assign_stmt = _{ (let_id | this_id) ~ "." ~ prop_id ~ "=" ~ expr ~ ";" }
 while_stmt_start = _{ "while" ~ "(" ~ expr ~ ")" ~ "{" }
 while_stmt_end = _{ ";" ~ "}" }
-branch_let = { let_stmt ~ branch }
-branch_unit_let = { unit_let_stmt ~ branch }
-branch_object_assign = { object_assign_stmt ~ branch }
-branch_while = { while_stmt_start ~ branch ~ while_stmt_end ~ branch }
-array_expr = { "[]" | "[" ~ expr ~ ("," ~ expr)* ~ "]" }
 new_expr = { "new" ~ tyref ~ ("<" ~ type_args ~ ">")? ~ args }
-rev_app = { ("(" ~ expr ~ ")" | idref | new_expr) ~ rev_app_caller+ }
-rev_app_caller = { "." ~ idref ~ implicit_args? ~ args+ }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
 lambda_params = _{ "()" | "(" ~ param_id ~ ("," ~ param_id)* ~ ")" }
 lambda_body = { expr | fn_body_block }
