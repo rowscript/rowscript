@@ -1,5 +1,6 @@
 use crate::theory::abs::data::{CaseMap, Dir, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
+use crate::theory::abs::effect::has_side_effect;
 use crate::theory::abs::reflect::Reflector;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
@@ -85,11 +86,10 @@ impl<'a> Normalizer<'a> {
                 ret
             }
             Undef(x) => self.sigma.get(&x).unwrap().to_term(x),
-            Stuck(a) => Stuck(self.term_box(a)?),
             Cls(n, a) => Cls(n, self.term_box(a)?),
             Let(p, a, b) => {
                 let a = self.term_box(a)?;
-                if a.is_stuck() {
+                if has_side_effect(a.as_ref()) {
                     Let(p, a, self.term_box(b)?)
                 } else {
                     self.rho.insert(p.var, a);
@@ -102,11 +102,12 @@ impl<'a> Normalizer<'a> {
             App(f, ai, x) => {
                 let f = self.term_box(f)?;
                 let x = self.term_box(x)?;
-                if let Lam(p, b) = *f {
-                    self.rho.insert(p.var, x);
-                    self.term(*b)?
-                } else {
-                    App(f, ai, x)
+                match *f {
+                    Lam(p, b) if !has_side_effect(x.as_ref()) => {
+                        self.rho.insert(p.var, x);
+                        self.term(*b)?
+                    }
+                    f => App(Box::new(f), ai, x),
                 }
             }
             Sigma(p, b) => Sigma(self.param(p)?, self.term_box(b)?),
@@ -237,9 +238,9 @@ impl<'a> Normalizer<'a> {
                 }
                 Arr(ret)
             }
-            ArrLength(a) => Stuck(Box::new(ArrLength(self.term_box(a)?))),
-            ArrPush(a, v) => Stuck(Box::new(ArrPush(self.term_box(a)?, self.term_box(v)?))),
-            ArrForeach(a, f) => Stuck(Box::new(ArrForeach(self.term_box(a)?, self.term_box(f)?))),
+            ArrLength(a) => ArrLength(self.term_box(a)?),
+            ArrPush(a, v) => ArrPush(self.term_box(a)?, self.term_box(v)?),
+            ArrForeach(a, f) => ArrForeach(self.term_box(a)?, self.term_box(f)?),
             Fields(mut fields) => {
                 for tm in fields.values_mut() {
                     // FIXME: not unwind-safe, refactor `Self::term` to accept a `&mut Term`

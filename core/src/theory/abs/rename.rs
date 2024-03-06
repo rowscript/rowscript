@@ -21,7 +21,6 @@ impl Renamer {
                 r,
                 sp.into_iter().map(|(i, tm)| (i, self.term(tm))).collect(),
             ),
-            Stuck(a) => Stuck(Box::new(self.term(*a))),
             Let(p, a, b) => {
                 let a = self.term(*a); // not guarded by `p`, rename it first
                 Let(self.param(p), Box::new(a), Box::new(self.term(*b)))

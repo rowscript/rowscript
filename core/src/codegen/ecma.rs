@@ -150,7 +150,10 @@ impl Ecma {
         }
         Ok(Expr::Call(CallExpr {
             span: loc.into(),
-            callee: Callee::Expr(Box::new(self.expr(sigma, loc, f)?)),
+            callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
+                span: loc.into(),
+                expr: Box::new(self.expr(sigma, loc, f)?),
+            }))),
             args: self.untuple_args(sigma, loc, x)?,
             type_args: None,
         }))
@@ -422,7 +425,6 @@ impl Ecma {
                 None => return Err(UnsolvedMeta(MetaRef(k.clone(), r.clone(), sp.clone()), loc)),
                 Some(_) => unreachable!(),
             },
-            Stuck(a) => self.expr(sigma, loc, a)?,
 
             Let(p, a, b) => self.lambda_encoded_let(sigma, loc, Some(&p.var), a, b)?,
             While(p, b, r) => Self::iife(

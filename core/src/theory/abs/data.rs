@@ -49,7 +49,6 @@ pub enum Term {
     Extern(Var),
     MetaRef(MetaKind, Var, Spine),
     Undef(Var),
-    Stuck(Box<Self>),
 
     Let(Param<Self>, Box<Self>, Box<Self>),
     While(Box<Self>, Box<Self>, Box<Self>),
@@ -176,10 +175,6 @@ impl Term {
             };
         }
     }
-
-    pub fn is_stuck(&self) -> bool {
-        matches!(&self, Self::MetaRef(..) | Self::Stuck(..))
-    }
 }
 
 impl Syntax for Term {}
@@ -205,7 +200,6 @@ impl Display for Term {
                     format!("({})", s.join(" "))
                 }
                 Undef(r) => r.to_string(),
-                Stuck(a) => format!("Stuck({a})"),
                 Cls(n, a) => format!("{n}({a})"),
                 Let(p, a, b) => format!("let {p} = {a};\n\t{b}"),
                 While(p, b, r) => format!("while ({p}) {{\n\t{b}}}\n{r}"),
