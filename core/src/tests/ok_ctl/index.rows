@@ -23,7 +23,8 @@ f1();
 
 function f2(): number {
 //    if (true) {
-//        42;
+//        let n = 42;
+//        ();
 //    }
     69
 }

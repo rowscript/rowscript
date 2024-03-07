@@ -513,6 +513,7 @@ impl Ecma {
                     ],
                 }),
             ),
+            Guard(..) => todo!(),
             UnitLet(a, b) => self.lambda_encoded_let(sigma, loc, None, a, b)?,
 
             Ref(r) | Undef(r) => Expr::Ident(Self::ident(loc, r)),

@@ -97,6 +97,7 @@ impl<'a> Normalizer<'a> {
                 }
             }
             While(p, b, r) => While(self.term_box(p)?, self.term_box(b)?, self.term_box(r)?),
+            Guard(p, b, r) => Guard(self.term_box(p)?, self.term_box(b)?, self.term_box(r)?),
             Pi(p, b) => Pi(self.param(p)?, self.term_box(b)?),
             Lam(p, b) => Lam(self.param(p)?, self.term_box(b)?),
             App(f, ai, x) => {

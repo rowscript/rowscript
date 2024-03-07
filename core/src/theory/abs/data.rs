@@ -52,6 +52,7 @@ pub enum Term {
 
     Let(Param<Self>, Box<Self>, Box<Self>),
     While(Box<Self>, Box<Self>, Box<Self>),
+    Guard(Box<Self>, Box<Self>, Box<Self>),
 
     Univ,
 
@@ -205,6 +206,7 @@ impl Display for Term {
                 Cls(n, a) => format!("{n}({a})"),
                 Let(p, a, b) => format!("let {p} = {a};\n\t{b}"),
                 While(p, b, r) => format!("while ({p}) {{\n\t{b}}}\n{r}"),
+                Guard(p, b, r) => format!("if ({p}) {{\n\t{b}}}\n{r}"),
                 Univ => "type".to_string(),
                 Pi(p, b) => format!("{p} -> {b}"),
                 Lam(p, b) => format!("{p} => {b}"),
