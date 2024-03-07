@@ -209,3 +209,28 @@ pub enum VarKind {
 pub struct ResolvedVar(pub VarKind, pub Var);
 
 pub type NameMap = HashMap<String, ResolvedVar>;
+
+#[derive(Debug, Clone)]
+pub enum Ctl {
+    Fallthrough,
+    Return,
+    Break,
+    Continue,
+}
+
+impl Display for Ctl {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::Fallthrough => "fallthrough",
+            Self::Return => "return",
+            Self::Break => "break",
+            Self::Continue => "continue",
+        })
+    }
+}
+
+impl Default for Ctl {
+    fn default() -> Self {
+        Self::Fallthrough
+    }
+}

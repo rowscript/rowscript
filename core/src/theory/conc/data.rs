@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::data::Dir;
 use crate::theory::conc::load::ModuleID;
-use crate::theory::{Loc, Param, Syntax, Tele, Var};
+use crate::theory::{Ctl, Loc, Param, Syntax, Tele, Var};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ArgInfo {
@@ -23,6 +23,7 @@ pub enum Expr {
 
     Let(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
     While(Loc, Box<Self>, Box<Self>, Box<Self>),
+    Ctl(Loc, Ctl, Box<Self>),
 
     Univ(Loc),
 
@@ -99,56 +100,57 @@ impl Expr {
     pub fn loc(&self) -> Loc {
         use Expr::*;
         *match self {
-            Unresolved(loc, _, _) => loc,
-            Resolved(loc, _) => loc,
-            Imported(loc, _) => loc,
-            Qualified(loc, _, _) => loc,
+            Unresolved(loc, ..) => loc,
+            Resolved(loc, ..) => loc,
+            Imported(loc, ..) => loc,
+            Qualified(loc, ..) => loc,
             Hole(loc) => loc,
             InsertedHole(loc) => loc,
-            Let(loc, _, _, _, _) => loc,
-            While(loc, _, _, _) => loc,
+            Let(loc, ..) => loc,
+            While(loc, ..) => loc,
+            Ctl(loc, ..) => loc,
             Univ(loc) => loc,
-            Pi(loc, _, _) => loc,
-            TupledLam(loc, _, _) => loc,
-            AnnoLam(loc, _, _) => loc,
-            Lam(loc, _, _) => loc,
-            App(loc, _, _, _) => loc,
-            RevApp(loc, _, _) => loc,
-            Sigma(loc, _, _) => loc,
-            Tuple(loc, _, _) => loc,
-            TupleLet(loc, _, _, _, _) => loc,
-            AnnoTupleLet(loc, _, _, _, _) => loc,
+            Pi(loc, ..) => loc,
+            TupledLam(loc, ..) => loc,
+            AnnoLam(loc, ..) => loc,
+            Lam(loc, ..) => loc,
+            App(loc, ..) => loc,
+            RevApp(loc, ..) => loc,
+            Sigma(loc, ..) => loc,
+            Tuple(loc, ..) => loc,
+            TupleLet(loc, ..) => loc,
+            AnnoTupleLet(loc, ..) => loc,
             Unit(loc) => loc,
             TT(loc) => loc,
-            UnitLet(loc, _, _) => loc,
+            UnitLet(loc, ..) => loc,
             Boolean(loc) => loc,
             False(loc) => loc,
             True(loc) => loc,
-            If(loc, _, _, _) => loc,
+            If(loc, ..) => loc,
             String(loc) => loc,
-            Str(loc, _) => loc,
+            Str(loc, ..) => loc,
             Number(loc) => loc,
-            Num(loc, _) => loc,
+            Num(loc, ..) => loc,
             BigInt(loc) => loc,
-            Big(loc, _) => loc,
-            Arr(loc, _) => loc,
+            Big(loc, ..) => loc,
+            Arr(loc, ..) => loc,
             Row(loc) => loc,
-            Fields(loc, _) => loc,
-            Combine(loc, _, _) => loc,
-            RowOrd(loc, _, _, _) => loc,
-            RowEq(loc, _, _) => loc,
-            Object(loc, _) => loc,
-            Obj(loc, _) => loc,
-            Concat(loc, _, _) => loc,
-            Access(loc, _) => loc,
-            Downcast(loc, _) => loc,
-            Enum(loc, _) => loc,
-            Variant(loc, _, _) => loc,
-            Upcast(loc, _) => loc,
-            Switch(loc, _, _) => loc,
-            Constraint(loc, _) => loc,
-            Find(loc, _, _) => loc,
-            ImplementsOf(loc, _) => loc,
+            Fields(loc, ..) => loc,
+            Combine(loc, ..) => loc,
+            RowOrd(loc, ..) => loc,
+            RowEq(loc, ..) => loc,
+            Object(loc, ..) => loc,
+            Obj(loc, ..) => loc,
+            Concat(loc, ..) => loc,
+            Access(loc, ..) => loc,
+            Downcast(loc, ..) => loc,
+            Enum(loc, ..) => loc,
+            Variant(loc, ..) => loc,
+            Upcast(loc, ..) => loc,
+            Switch(loc, ..) => loc,
+            Constraint(loc, ..) => loc,
+            Find(loc, ..) => loc,
+            ImplementsOf(loc, ..) => loc,
         }
     }
 
@@ -222,6 +224,7 @@ impl Display for Expr {
                     }
                 }
                 While(_, p, b, r) => format!("while ({p}) {{\n\t{b}\n}}\n{r}"),
+                Ctl(_, c, a) => format!("{c} {a}"),
                 Univ(_) => "type".to_string(),
                 Pi(_, p, b) => format!("{p} -> {b}"),
                 TupledLam(_, vs, b) => format!(
