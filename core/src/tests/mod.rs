@@ -41,6 +41,7 @@ mod ok_class;
 mod ok_class_generics;
 mod ok_class_interface;
 mod ok_const;
+mod ok_ctl;
 mod ok_enum;
 mod ok_enum_rowpoly;
 mod ok_fn;
@@ -64,7 +65,6 @@ mod ok_typeclassopedia;
 mod ok_typeclassopedia_stuck;
 mod ok_unit;
 mod ok_unreflect;
-mod ok_while;
 
 #[cfg(not(feature = "codegen-ecma"))]
 fn run_target() -> Box<dyn Target> {

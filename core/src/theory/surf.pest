@@ -203,6 +203,9 @@ importable = { pub_fn_id | pub_type_id }
 
 hole = { "?" }
 univ = { "type" }
+ctl_return = { "return" }
+ctl_continue = { "continue" }
+ctl_break = { "break" }
 
 string = { "\"" ~ unquoted_string_part ~ "\"" }
 unquoted_string_part = @{ (unescaped_string_fragment | escaped_string_fragment)* }
@@ -359,19 +362,21 @@ branch =
   | branch_object_assign
   | branch_array_assign
   | branch_while
-  | expr
+  | branch_if
+  | ctl_expr
   }
 branch_let = { let_stmt ~ branch }
 branch_unit_let = { unit_let_stmt ~ branch }
 branch_object_assign = { object_assign_stmt ~ branch }
 branch_array_assign = { array_assign_stmt ~ branch }
 branch_while = { while_stmt_start ~ branch ~ while_stmt_end ~ branch }
-let_stmt = _{ "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" }
-unit_let_stmt = _{ expr ~ ";" }
-object_assign_stmt = _{ (let_id | this_id) ~ "." ~ prop_id ~ "=" ~ expr ~ ";" }
-array_assign_stmt = _{ let_id ~ "[" ~ expr ~ "]" ~ "=" ~ expr ~ ";" }
-while_stmt_start = _{ "while" ~ "(" ~ expr ~ ")" ~ "{" }
-while_stmt_end = _{ ";" ~ "}" }
+branch_if = { if_stmt_start ~ branch ~ if_stmt_end ~ branch }
+ctl_expr =
+ _{ expr
+  | ctl_return ~ expr
+  | ctl_continue
+  | ctl_break
+  }
 new_expr = { "new" ~ tyref ~ ("<" ~ type_args ~ ">")? ~ args }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
 lambda_params = _{ "()" | "(" ~ param_id ~ ("," ~ param_id)* ~ ")" }
@@ -409,6 +414,15 @@ enum_operand =
 enum_switch = { "switch" ~ paren_expr ~ "{" ~ enum_case+ ~ "}" }
 enum_case = { "case" ~ variant_id ~ ("(" ~ param_id ~ ")")? ~ ":" ~ expr }
 paren_expr = { "(" ~ expr ~ ")" }
+
+let_stmt = _{ "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" }
+unit_let_stmt = _{ expr ~ ";" }
+object_assign_stmt = _{ (let_id | this_id) ~ "." ~ prop_id ~ "=" ~ expr ~ ";" }
+array_assign_stmt = _{ let_id ~ "[" ~ expr ~ "]" ~ "=" ~ expr ~ ";" }
+while_stmt_start = _{ "while" ~ "(" ~ expr ~ ")" ~ "{" }
+while_stmt_end = _{ ";" ~ "}" }
+if_stmt_start = _{ "if" ~ "(" ~ expr ~ ")" ~ "{" }
+if_stmt_end = _{ ";" ~ "}" }
 
 preds = _{ "where" ~ pred ~ ("," ~ pred)* }
 pred =
@@ -450,6 +464,7 @@ fn_body =
   | fn_body_object_assign
   | fn_body_array_assign
   | fn_body_while
+  | fn_body_if
   | fn_body_ret
   }
 fn_body_let = { let_stmt ~ fn_body }
@@ -457,6 +472,7 @@ fn_body_unit_let = { unit_let_stmt ~ fn_body }
 fn_body_object_assign = { object_assign_stmt ~ fn_body }
 fn_body_array_assign = { array_assign_stmt ~ fn_body }
 fn_body_while = { while_stmt_start ~ branch ~ while_stmt_end ~ fn_body }
+fn_body_if = { if_stmt_start ~ branch ~ if_stmt_end ~ fn_body }
 fn_body_ret = { expr? }
 
 fn_postulate =

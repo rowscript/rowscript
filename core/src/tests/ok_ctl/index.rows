@@ -6,6 +6,8 @@ function f0() {
     }
 }
 
+f0();
+
 function f1() {
     if (true) {
         while (true) {
@@ -17,5 +19,11 @@ function f1() {
     }
 }
 
-f0();
 f1();
+
+function f2(): number {
+//    if (true) {
+//        42;
+//    }
+    69
+}

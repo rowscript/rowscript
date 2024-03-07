@@ -23,7 +23,8 @@ pub enum Expr {
 
     Let(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
     While(Loc, Box<Self>, Box<Self>, Box<Self>),
-    Ctl(Loc, Ctl, Box<Self>),
+    CtlIf(Loc, Box<Self>, Box<Self>, Box<Self>),
+    CtlOp(Loc, Ctl, Box<Self>),
 
     Univ(Loc),
 
@@ -108,7 +109,8 @@ impl Expr {
             InsertedHole(loc) => loc,
             Let(loc, ..) => loc,
             While(loc, ..) => loc,
-            Ctl(loc, ..) => loc,
+            CtlIf(loc, ..) => loc,
+            CtlOp(loc, ..) => loc,
             Univ(loc) => loc,
             Pi(loc, ..) => loc,
             TupledLam(loc, ..) => loc,
@@ -224,7 +226,8 @@ impl Display for Expr {
                     }
                 }
                 While(_, p, b, r) => format!("while ({p}) {{\n\t{b}\n}}\n{r}"),
-                Ctl(_, c, a) => format!("{c} {a}"),
+                CtlIf(_, p, b, r) => format!("if ({p}) {{\n\t{b}\n}}\n{r}"),
+                CtlOp(_, c, a) => format!("{c} {a}"),
                 Univ(_) => "type".to_string(),
                 Pi(_, p, b) => format!("{p} -> {b}"),
                 TupledLam(_, vs, b) => format!(
