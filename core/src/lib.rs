@@ -7,7 +7,6 @@ use ariadne::{Color, Label, Report, ReportKind, Source};
 use pest::error::InputLocation;
 use pest::Parser;
 use pest_derive::Parser;
-use theory::{ResolvedVar, VarKind};
 use thiserror::Error;
 
 use crate::codegen::{Codegen, Target};
@@ -18,6 +17,7 @@ use crate::theory::conc::load::{prelude_path, Import, Loaded, ModuleID};
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans::Trans;
 use crate::theory::{Loc, Var};
+use crate::theory::{ResolvedVar, VarKind};
 
 pub mod codegen;
 #[cfg(test)]

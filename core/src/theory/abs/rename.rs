@@ -1,6 +1,6 @@
-use crate::maybe_grow;
 use std::collections::HashMap;
 
+use crate::maybe_grow;
 use crate::theory::abs::data::{CaseMap, FieldMap, Term};
 use crate::theory::{Param, Var};
 

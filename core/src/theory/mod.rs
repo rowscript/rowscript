@@ -1,9 +1,9 @@
-use pest::iterators::Pair;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
+use pest::iterators::Pair;
 use pest::Span;
 
 use crate::theory::conc::data::{ArgInfo, Expr};
