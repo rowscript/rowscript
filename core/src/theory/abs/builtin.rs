@@ -66,6 +66,7 @@ pub fn setup() -> (NameMap, Sigma) {
     insert_def(&mut m, &mut sigma, array_push());
     insert_def(&mut m, &mut sigma, array_foreach());
     insert_def(&mut m, &mut sigma, array_at());
+    insert_def(&mut m, &mut sigma, array_insert());
 
     (m, sigma)
 }
@@ -621,7 +622,7 @@ fn array_at() -> Def<Term> {
     let a = Var::new("a");
     let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
     let a_rhs = a.untupled_rhs();
-    let i = Var::new("v");
+    let i = Var::new("i");
     let i_ty = Term::Number;
     let params = [
         explicit(a.clone(), a_ty.clone()),
@@ -647,6 +648,65 @@ fn array_at() -> Def<Term> {
                 explicit(Var::unbound(), Term::Unit),
                 Box::new(Term::Ref(a_rhs)),
                 Box::new(Term::ArrAt(Box::new(Term::Ref(a)), Box::new(Term::Ref(i)))),
+            )),
+        )),
+    }
+}
+
+fn array_insert() -> Def<Term> {
+    let t = Var::new("T");
+    let tupled = Var::tupled();
+    let a = Var::new("a");
+    let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
+    let a_rhs = a.untupled_rhs();
+    let i = Var::new("i");
+    let i_ty = Term::Number;
+    let i_rhs = i.untupled_rhs();
+    let v = Var::new("v");
+    let v_ty = Term::Ref(t.clone());
+    let params = [
+        explicit(a.clone(), a_ty.clone()),
+        explicit(i.clone(), i_ty.clone()),
+        explicit(v.clone(), v_ty.clone()),
+    ];
+    Def {
+        loc: Default::default(),
+        name: Var::new("array#insert"),
+        tele: vec![
+            implicit(t.clone(), Term::Univ),
+            tuple_param(tupled.clone(), params),
+        ],
+        ret: Box::new(Term::Unit),
+        body: Body::Fn(Term::TupleLet(
+            explicit(a.clone(), a_ty),
+            explicit(
+                a_rhs.clone(),
+                Term::Sigma(
+                    explicit(i.clone(), i_ty.clone()),
+                    Box::new(Term::Sigma(
+                        explicit(v.clone(), v_ty.clone()),
+                        Box::new(Term::Unit),
+                    )),
+                ),
+            ),
+            Box::new(Term::Ref(tupled)),
+            Box::new(Term::TupleLet(
+                explicit(i.clone(), i_ty),
+                explicit(
+                    i_rhs.clone(),
+                    Term::Sigma(explicit(v.clone(), v_ty.clone()), Box::new(Term::Unit)),
+                ),
+                Box::new(Term::Ref(a_rhs)),
+                Box::new(Term::TupleLet(
+                    explicit(v.clone(), v_ty),
+                    explicit(Var::unbound(), Term::Unit),
+                    Box::new(Term::Ref(i_rhs)),
+                    Box::new(Term::ArrInsert(
+                        Box::new(Term::Ref(a)),
+                        Box::new(Term::Ref(i)),
+                        Box::new(Term::Ref(v)),
+                    )),
+                )),
             )),
         )),
     }

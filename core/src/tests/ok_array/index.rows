@@ -13,13 +13,14 @@ f0();
 
 function f1(): Option<number> {
     let a = [1];
-    a.at(0)
+    a[0]
 }
 
 const n1 = f1();
 
 function f2(): Option<number> {
-    let a = [2];
+    let a = [1];
+    a[0] = 2;
     a[0]
 }
 

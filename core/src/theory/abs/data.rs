@@ -98,6 +98,7 @@ pub enum Term {
     ArrPush(Box<Self>, Box<Self>),
     ArrForeach(Box<Self>, Box<Self>),
     ArrAt(Box<Self>, Box<Self>),
+    ArrInsert(Box<Self>, Box<Self>, Box<Self>),
 
     Row,
     Fields(FieldMap),
@@ -247,6 +248,7 @@ impl Display for Term {
                 ArrPush(a, v) => format!("{a}.push({v})"),
                 ArrForeach(a, f) => format!("{a}.forEach({f})"),
                 ArrAt(a, i) => format!("{a}.at({i})"),
+                ArrInsert(a, i, v) => format!("{a}.insert({i}, {v})"),
                 Row => "row".to_string(),
                 Fields(fields) => format!(
                     "({})",

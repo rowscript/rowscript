@@ -174,6 +174,7 @@ builtin =
   | arrayPush
   | arrayForEach
   | arrayAt
+  | arrayInsert
   }
 numAdd = { "number#__add__" }
 numSub = { "number#__sub__" }
@@ -191,6 +192,7 @@ arrayLength = { "array#length" }
 arrayPush = { "array#push" }
 arrayForEach = { "array#forEach" }
 arrayAt = { "array#at" }
+arrayInsert = { "array#insert" }
 
 tyref =
   { qualifier ~ tyref
@@ -350,21 +352,24 @@ boolean_if =
 rev_app = { ("(" ~ expr ~ ")" | idref | new_expr) ~ rev_app_caller+ }
 rev_app_caller = { "." ~ idref ~ implicit_args? ~ args+ }
 array_expr = { "[]" | "[" ~ expr ~ ("," ~ expr)* ~ "]" }
-array_index = { ("(" ~ expr ~ ")" | idref) ~ ("[" ~ expr ~ "]")+ }
+array_index = { ("(" ~ expr ~ ")" | idref) ~ "[" ~ expr ~ "]" }
 branch =
   { branch_let
   | branch_unit_let
   | branch_object_assign
+  | branch_array_assign
   | branch_while
   | expr
   }
 branch_let = { let_stmt ~ branch }
 branch_unit_let = { unit_let_stmt ~ branch }
 branch_object_assign = { object_assign_stmt ~ branch }
+branch_array_assign = { array_assign_stmt ~ branch }
 branch_while = { while_stmt_start ~ branch ~ while_stmt_end ~ branch }
 let_stmt = _{ "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" }
 unit_let_stmt = _{ expr ~ ";" }
 object_assign_stmt = _{ (let_id | this_id) ~ "." ~ prop_id ~ "=" ~ expr ~ ";" }
+array_assign_stmt = _{ let_id ~ "[" ~ expr ~ "]" ~ "=" ~ expr ~ ";" }
 while_stmt_start = _{ "while" ~ "(" ~ expr ~ ")" ~ "{" }
 while_stmt_end = _{ ";" ~ "}" }
 new_expr = { "new" ~ tyref ~ ("<" ~ type_args ~ ">")? ~ args }
@@ -443,12 +448,14 @@ fn_body =
   { fn_body_let
   | fn_body_unit_let
   | fn_body_object_assign
+  | fn_body_array_assign
   | fn_body_while
   | fn_body_ret
   }
 fn_body_let = { let_stmt ~ fn_body }
 fn_body_unit_let = { unit_let_stmt ~ fn_body }
 fn_body_object_assign = { object_assign_stmt ~ fn_body }
+fn_body_array_assign = { array_assign_stmt ~ fn_body }
 fn_body_while = { while_stmt_start ~ branch ~ while_stmt_end ~ fn_body }
 fn_body_ret = { expr? }
 

@@ -5,13 +5,13 @@ use std::str::FromStr;
 use num_bigint::BigInt as BigIntValue;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
-    ArrayLit, ArrowExpr, BigInt as JsBigInt, BinExpr, BinaryOp, BindingIdent, BlockStmt,
-    BlockStmtOrExpr, Bool, CallExpr, Callee, ComputedPropName, CondExpr, Decl, ExportDecl, Expr,
-    ExprOrSpread, ExprStmt, FnDecl, Function, Ident, ImportDecl, ImportNamedSpecifier,
-    ImportSpecifier, ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, Module,
-    ModuleDecl, ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, Prop,
-    PropName, PropOrSpread, ReturnStmt, SpreadElement, Stmt, Str as JsStr, Str, UnaryExpr, UnaryOp,
-    VarDecl, VarDeclKind, VarDeclarator, WhileStmt,
+    ArrayLit, ArrowExpr, AssignExpr, AssignOp, BigInt as JsBigInt, BinExpr, BinaryOp, BindingIdent,
+    BlockStmt, BlockStmtOrExpr, Bool, CallExpr, Callee, ComputedPropName, CondExpr, Decl,
+    ExportDecl, Expr, ExprOrSpread, ExprStmt, FnDecl, Function, Ident, ImportDecl,
+    ImportNamedSpecifier, ImportSpecifier, ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr,
+    MemberProp, Module, ModuleDecl, ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam,
+    ParenExpr, Pat, PatOrExpr, Prop, PropName, PropOrSpread, ReturnStmt, SpreadElement, Stmt,
+    Str as JsStr, Str, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclarator, WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -611,6 +611,27 @@ impl Ecma {
                 let ret = self.prototype(sigma, loc, a, "at", [i])?;
                 Self::optionify(loc, ret)
             }
+            // void (a[i] = v)
+            ArrInsert(a, i, v) => Expr::Unary(UnaryExpr {
+                span: loc.into(),
+                op: UnaryOp::Void,
+                arg: Box::new(Expr::Paren(ParenExpr {
+                    span: loc.into(),
+                    expr: Box::new(Expr::Assign(AssignExpr {
+                        span: loc.into(),
+                        op: AssignOp::Assign,
+                        left: PatOrExpr::Expr(Box::new(Expr::Member(MemberExpr {
+                            span: loc.into(),
+                            obj: Box::new(self.expr(sigma, loc, a)?),
+                            prop: MemberProp::Computed(ComputedPropName {
+                                span: loc.into(),
+                                expr: Box::new(self.expr(sigma, loc, i)?),
+                            }),
+                        }))),
+                        right: Box::new(self.expr(sigma, loc, v)?),
+                    })),
+                })),
+            }),
             Obj(f) => match f.as_ref() {
                 Fields(fields) => {
                     let mut props = Vec::default();

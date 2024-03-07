@@ -8,6 +8,7 @@ use crate::theory::abs::data::Dir;
 use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, ImplementsBody};
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
+use crate::theory::conc::data::Expr::{App, Tuple, Unresolved, TT};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::conc::load::ImportedPkg::Vendor;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
@@ -157,7 +158,7 @@ impl Trans {
                 Rule::param => untupled.push(Loc::from(p.as_span()), self.param(p)),
                 Rule::type_expr => ret = Box::new(self.type_expr(p)),
                 Rule::fn_body => {
-                    body = Some(self.fn_body(p, false));
+                    body = Some(self.fn_body(p));
                     break;
                 }
                 Rule::pred => preds.push(self.pred(p)),
@@ -666,7 +667,7 @@ impl Trans {
         }
     }
 
-    fn fn_body(&self, b: Pair<Rule>, force_returns_unit: bool) -> Expr {
+    fn fn_body(&self, b: Pair<Rule>) -> Expr {
         use Expr::*;
 
         let p = b.into_inner().next().unwrap();
@@ -680,7 +681,7 @@ impl Trans {
                     id,
                     typ,
                     Box::new(tm),
-                    Box::new(self.fn_body(l.next().unwrap(), force_returns_unit)),
+                    Box::new(self.fn_body(l.next().unwrap())),
                 )
             }
             Rule::fn_body_unit_let => {
@@ -688,7 +689,7 @@ impl Trans {
                 UnitLet(
                     loc,
                     Box::new(self.expr(l.next().unwrap())),
-                    Box::new(self.fn_body(l.next().unwrap(), force_returns_unit)),
+                    Box::new(self.fn_body(l.next().unwrap())),
                 )
             }
             Rule::fn_body_object_assign => {
@@ -704,8 +705,17 @@ impl Trans {
                     Box::new(Unresolved(a_loc, None, a_var.clone())),
                     Box::new(Obj(n_loc, Box::new(Fields(n_loc, fields)))),
                 );
-                let body = self.fn_body(pairs.next().unwrap(), force_returns_unit);
+                let body = self.fn_body(pairs.next().unwrap());
                 Let(loc, a_var, None, Box::new(expr), Box::new(body))
+            }
+            Rule::fn_body_array_assign => {
+                let mut pairs = p.into_inner();
+                let a = self.maybe_qualified(pairs.next().unwrap());
+                let i = self.expr(pairs.next().unwrap());
+                let v = self.expr(pairs.next().unwrap());
+                let body = self.fn_body(pairs.next().unwrap());
+                let insert = Self::builtin_method(i.loc(), "Array", "insert");
+                UnitLet(loc, Box::new(Self::call3(insert, a, i, v)), Box::new(body))
             }
             Rule::fn_body_while => {
                 let mut pairs = p.into_inner();
@@ -713,13 +723,10 @@ impl Trans {
                     loc,
                     Box::new(self.expr(pairs.next().unwrap())),
                     Box::new(self.branch(pairs.next().unwrap())),
-                    Box::new(self.fn_body(pairs.next().unwrap(), false)),
+                    Box::new(self.fn_body(pairs.next().unwrap())),
                 )
             }
-            Rule::expr if force_returns_unit => self.expr(p),
-            Rule::fn_body_ret if !force_returns_unit => {
-                p.into_inner().next().map_or(TT(loc), |e| self.expr(e))
-            }
+            Rule::fn_body_ret => p.into_inner().next().map_or(TT(loc), |e| self.expr(e)),
             _ => unreachable!(),
         }
     }
@@ -828,34 +835,23 @@ impl Trans {
             Rule::array_index => {
                 let mut pairs = p.into_inner();
                 let x = pairs.next().unwrap();
-                let x_loc = Loc::from(x.as_span());
                 let x = match x.as_rule() {
                     Rule::expr => self.expr(x),
                     Rule::idref => self.maybe_qualified(x),
                     _ => unreachable!(),
                 };
-                let at = Box::new(Unresolved(
+                let at = Self::builtin_method(loc, "Array", "at");
+                let i = self.expr(pairs.next().unwrap());
+                App(
                     loc,
-                    None,
-                    Var::new("Array").method(Var::new("at")),
-                ));
-                pairs
-                    .fold((x_loc, x), |(loc, x), p| {
-                        (
-                            Loc::from(p.as_span()),
-                            App(
-                                loc,
-                                at.clone(),
-                                UnnamedExplicit,
-                                Box::new(Tuple(
-                                    loc,
-                                    Box::new(x),
-                                    Box::new(Tuple(loc, Box::new(self.expr(p)), Box::new(TT(loc)))),
-                                )),
-                            ),
-                        )
-                    })
-                    .1
+                    Box::new(at),
+                    UnnamedExplicit,
+                    Box::new(Tuple(
+                        loc,
+                        Box::new(x),
+                        Box::new(Tuple(loc, Box::new(i), Box::new(TT(loc)))),
+                    )),
+                )
             }
             Rule::object_literal => self.object_literal(p),
             Rule::object_concat => {
@@ -910,7 +906,7 @@ impl Trans {
                             let b = p.into_inner().next().unwrap();
                             body = Some(match b.as_rule() {
                                 Rule::expr => self.expr(b),
-                                Rule::fn_body => self.fn_body(b, false),
+                                Rule::fn_body => self.fn_body(b),
                                 _ => unreachable!(),
                             });
                             break;
@@ -991,6 +987,15 @@ impl Trans {
                 );
                 let body = self.branch(pairs.next().unwrap());
                 Let(loc, a_var, None, Box::new(expr), Box::new(body))
+            }
+            Rule::branch_array_assign => {
+                let mut pairs = p.into_inner();
+                let a = self.maybe_qualified(pairs.next().unwrap());
+                let i = self.expr(pairs.next().unwrap());
+                let v = self.expr(pairs.next().unwrap());
+                let body = self.branch(pairs.next().unwrap());
+                let insert = Self::builtin_method(i.loc(), "Array", "insert");
+                UnitLet(loc, Box::new(Self::call3(insert, a, i, v)), Box::new(body))
             }
             Rule::branch_while => {
                 let mut pairs = p.into_inner();
@@ -1221,6 +1226,28 @@ impl Trans {
             _ => unreachable!(),
         };
         (id, typ, tm)
+    }
+
+    fn builtin_method(loc: Loc, typ: &str, meth: &str) -> Expr {
+        Unresolved(loc, None, Var::new(typ).method(Var::new(meth)))
+    }
+
+    fn call3(f: Expr, a0: Expr, a1: Expr, a2: Expr) -> Expr {
+        let tt = Box::new(TT(a2.loc()));
+        App(
+            f.loc(),
+            Box::new(f),
+            UnnamedExplicit,
+            Box::new(Tuple(
+                a0.loc(),
+                Box::new(a0),
+                Box::new(Tuple(
+                    a1.loc(),
+                    Box::new(a1),
+                    Box::new(Tuple(a2.loc(), Box::new(a2), tt)),
+                )),
+            )),
+        )
     }
 }
 

@@ -10,4 +10,6 @@ class Array<T> {
     forEach(f: (v: T) -> unit) { array#forEach(this.a, f) }
 
     at(i: number): Option<T> { array#at(this.a, i) }
+
+    insert(i: number, v: T) { array#insert(this.a, i, v) }
 }
