@@ -8,7 +8,6 @@ use crate::theory::abs::data::Dir;
 use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, ImplementsBody};
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
-use crate::theory::conc::data::Expr::{App, Tuple, Unresolved, TT};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::conc::load::ImportedPkg::Vendor;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
@@ -726,6 +725,15 @@ impl Trans {
                     Box::new(self.fn_body(pairs.next().unwrap())),
                 )
             }
+            Rule::fn_body_if => {
+                let mut pairs = p.into_inner();
+                Guard(
+                    loc,
+                    Box::new(self.expr(pairs.next().unwrap())),
+                    Box::new(self.branch(pairs.next().unwrap())),
+                    Box::new(self.fn_body(pairs.next().unwrap())),
+                )
+            }
             Rule::fn_body_ret => p.into_inner().next().map_or(TT(loc), |e| self.expr(e)),
             _ => unreachable!(),
         }
@@ -1006,7 +1014,21 @@ impl Trans {
                     Box::new(self.branch(pairs.next().unwrap())),
                 )
             }
-            Rule::expr => self.expr(p),
+            Rule::ctl => self.ctl(p),
+            _ => unreachable!(),
+        }
+    }
+
+    fn ctl(&self, c: Pair<Rule>) -> Expr {
+        use Expr::*;
+        let loc = Loc::from(c.as_span());
+        let mut pairs = c.into_inner();
+        let c = pairs.next().unwrap();
+        match c.as_rule() {
+            Rule::ctl_return => Return(loc, Box::new(self.expr(pairs.next().unwrap()))),
+            Rule::ctl_continue => Continue(loc),
+            Rule::ctl_break => Break(loc),
+            Rule::expr => self.expr(c),
             _ => unreachable!(),
         }
     }
@@ -1229,10 +1251,11 @@ impl Trans {
     }
 
     fn builtin_method(loc: Loc, typ: &str, meth: &str) -> Expr {
-        Unresolved(loc, None, Var::new(typ).method(Var::new(meth)))
+        Expr::Unresolved(loc, None, Var::new(typ).method(Var::new(meth)))
     }
 
     fn call3(f: Expr, a0: Expr, a1: Expr, a2: Expr) -> Expr {
+        use Expr::*;
         let tt = Box::new(TT(a2.loc()));
         App(
             f.loc(),

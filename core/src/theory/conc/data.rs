@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::data::Dir;
 use crate::theory::conc::load::ModuleID;
-use crate::theory::{Ctl, Loc, Param, Syntax, Tele, Var};
+use crate::theory::{Loc, Param, Syntax, Tele, Var};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ArgInfo {
@@ -23,8 +23,10 @@ pub enum Expr {
 
     Let(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
     While(Loc, Box<Self>, Box<Self>, Box<Self>),
-    CtlIf(Loc, Box<Self>, Box<Self>, Box<Self>),
-    CtlOp(Loc, Ctl, Box<Self>),
+    Guard(Loc, Box<Self>, Box<Self>, Box<Self>),
+    Return(Loc, Box<Self>),
+    Continue(Loc),
+    Break(Loc),
 
     Univ(Loc),
 
@@ -109,8 +111,10 @@ impl Expr {
             InsertedHole(loc) => loc,
             Let(loc, ..) => loc,
             While(loc, ..) => loc,
-            CtlIf(loc, ..) => loc,
-            CtlOp(loc, ..) => loc,
+            Guard(loc, ..) => loc,
+            Return(loc, ..) => loc,
+            Continue(loc) => loc,
+            Break(loc) => loc,
             Univ(loc) => loc,
             Pi(loc, ..) => loc,
             TupledLam(loc, ..) => loc,
@@ -226,8 +230,10 @@ impl Display for Expr {
                     }
                 }
                 While(_, p, b, r) => format!("while ({p}) {{\n\t{b}\n}}\n{r}"),
-                CtlIf(_, p, b, r) => format!("if ({p}) {{\n\t{b}\n}}\n{r}"),
-                CtlOp(_, c, a) => format!("{c} {a}"),
+                Guard(_, p, b, r) => format!("if ({p}) {{\n\t{b}\n}}\n{r}"),
+                Return(_, a) => format!("return {a}"),
+                Continue(_) => "continue".to_string(),
+                Break(_) => "break".to_string(),
                 Univ(_) => "type".to_string(),
                 Pi(_, p, b) => format!("{p} -> {b}"),
                 TupledLam(_, vs, b) => format!(

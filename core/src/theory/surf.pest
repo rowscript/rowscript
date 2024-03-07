@@ -363,7 +363,7 @@ branch =
   | branch_array_assign
   | branch_while
   | branch_if
-  | ctl_expr
+  | ctl
   }
 branch_let = { let_stmt ~ branch }
 branch_unit_let = { unit_let_stmt ~ branch }
@@ -371,8 +371,8 @@ branch_object_assign = { object_assign_stmt ~ branch }
 branch_array_assign = { array_assign_stmt ~ branch }
 branch_while = { while_stmt_start ~ branch ~ while_stmt_end ~ branch }
 branch_if = { if_stmt_start ~ branch ~ if_stmt_end ~ branch }
-ctl_expr =
- _{ expr
+ctl =
+  { expr
   | ctl_return ~ expr
   | ctl_continue
   | ctl_break

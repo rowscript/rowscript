@@ -335,6 +335,7 @@ impl Elaborator {
                 let (r, ty) = self.infer(*r)?;
                 (Term::While(Box::new(p), Box::new(b), Box::new(r)), ty)
             }
+            Guard(..) => todo!(),
             Pi(_, p, b) => {
                 let (param_ty, _) = self.infer(*p.typ)?;
                 let param = Param {
