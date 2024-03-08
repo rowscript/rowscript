@@ -238,6 +238,7 @@ impl<'a> Resolver<'a> {
                 Box::new(self.expr(*b)?),
                 Box::new(self.expr(*r)?),
             ),
+            Return(loc, a) => Return(loc, Box::new(self.expr(*a)?)),
             Pi(loc, p, b) => {
                 let b = self.bodied(&[&p.var], *b)?;
                 Pi(loc, self.param(p)?, Box::new(b))

@@ -486,6 +486,13 @@ impl Ecma {
                     stmts.push(self.guard_stmt(sigma, loc, p, b)?);
                     tm = r
                 }
+                Return(a) => {
+                    stmts.push(Stmt::Return(ReturnStmt {
+                        span,
+                        arg: Some(Box::new(self.expr(sigma, loc, a)?)),
+                    }));
+                    tm = &TT
+                }
                 Continue => {
                     stmts.push(Stmt::Continue(ContinueStmt { span, label: None }));
                     tm = &TT
@@ -500,6 +507,11 @@ impl Ecma {
                     tm = b
                 }
                 _ => {
+                    if matches!(tm, TT) && !returns {
+                        // Remove the unnecessary tailing blank statement.
+                        break;
+                    }
+
                     let expr = Box::new(self.expr(sigma, loc, tm)?);
                     stmts.push(if returns {
                         Stmt::Return(ReturnStmt {

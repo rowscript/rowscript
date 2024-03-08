@@ -24,6 +24,7 @@ pub struct Elaborator {
     pub sigma: Sigma,
     gamma: Gamma,
     vg: VarGen,
+    checking_ret: Option<Term>,
 }
 
 impl Elaborator {
@@ -66,6 +67,7 @@ impl Elaborator {
         }
 
         let ret = self.check(*d.ret, &Term::Univ)?;
+        self.checking_ret = Some(ret.clone());
         self.sigma.insert(
             d.name.clone(),
             Def {
@@ -120,6 +122,7 @@ impl Elaborator {
         if let Some(ret) = inferred_ret {
             checked.ret = ret;
         }
+        self.checking_ret = None;
 
         Ok(checked.clone())
     }
@@ -340,6 +343,10 @@ impl Elaborator {
                 let b = self.check(*b, &Term::Unit)?;
                 let (r, ty) = self.infer(*r)?;
                 (Term::Guard(Box::new(p), Box::new(b), Box::new(r)), ty)
+            }
+            Return(_, a) => {
+                let a = self.check(*a, &self.checking_ret.clone().unwrap())?;
+                (Term::Return(Box::new(a)), Term::Unit)
             }
             Continue(_) => (Term::Continue, Term::Unit),
             Break(_) => (Term::Break, Term::Unit),
@@ -804,6 +811,7 @@ impl Default for Elaborator {
             sigma,
             gamma: Default::default(),
             vg: Default::default(),
+            checking_ret: None,
         }
     }
 }

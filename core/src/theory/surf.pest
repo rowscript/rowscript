@@ -205,7 +205,6 @@ importable = { pub_fn_id | pub_type_id }
 
 hole = { "?" }
 univ = { "type" }
-ctl_return = { "return" }
 ctl_continue = { "continue" }
 ctl_break = { "break" }
 
@@ -400,6 +399,7 @@ branch =
   | branch_while
   | branch_if
   | expr
+  | ctl_return
   }
 branch_let = { let_stmt ~ branch }
 branch_unit_let = { unit_let_stmt ~ branch }
@@ -407,6 +407,7 @@ branch_object_assign = { object_assign_stmt ~ branch }
 branch_array_assign = { array_assign_stmt ~ branch }
 branch_while = { while_stmt_start ~ loop_branch ~ while_stmt_end ~ branch }
 branch_if = { if_stmt_start ~ branch ~ if_stmt_end ~ branch }
+ctl_return =  { "return" ~ expr? }
 loop_branch =
   { loop_branch_let
   | loop_branch_unit_let
@@ -415,6 +416,7 @@ loop_branch =
   | loop_branch_while
   | loop_branch_if
   | expr
+  | ctl_return
   | ctl_continue
   | ctl_break
   }

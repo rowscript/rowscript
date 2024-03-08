@@ -1,17 +1,20 @@
 function log();
 
 function f0() {
+    if (false) {
+        return;
+    }
     while (true) {
         let a = 42;
         if (a == 69) {
             log();
-            continue;
+            return;
         }
         if (a == 42) {
             log();
-            continue;
+            break;
         }
-        break;
+        continue;
     }
 }
 

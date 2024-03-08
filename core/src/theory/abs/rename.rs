@@ -35,6 +35,7 @@ impl Renamer {
                 Box::new(self.term(*b)),
                 Box::new(self.term(*r)),
             ),
+            Return(a) => Return(Box::new(self.term(*a))),
             Pi(p, c) => Pi(self.param(p), Box::new(self.term(*c))),
             Lam(p, b) => Lam(self.param(p), Box::new(self.term(*b))),
             App(f, i, x) => App(Box::new(self.term(*f)), i, Box::new(self.term(*x))),
