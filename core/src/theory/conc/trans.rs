@@ -1014,21 +1014,9 @@ impl Trans {
                     Box::new(self.branch(pairs.next().unwrap())),
                 )
             }
-            Rule::ctl => self.ctl(p),
-            _ => unreachable!(),
-        }
-    }
-
-    fn ctl(&self, c: Pair<Rule>) -> Expr {
-        use Expr::*;
-        let loc = Loc::from(c.as_span());
-        let mut pairs = c.into_inner();
-        let c = pairs.next().unwrap();
-        match c.as_rule() {
-            Rule::ctl_return => Return(loc, Box::new(self.expr(pairs.next().unwrap()))),
+            Rule::expr => self.expr(p),
             Rule::ctl_continue => Continue(loc),
             Rule::ctl_break => Break(loc),
-            Rule::expr => self.expr(c),
             _ => unreachable!(),
         }
     }

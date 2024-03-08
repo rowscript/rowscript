@@ -24,7 +24,6 @@ pub enum Expr {
     Let(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
     While(Loc, Box<Self>, Box<Self>, Box<Self>),
     Guard(Loc, Box<Self>, Box<Self>, Box<Self>),
-    Return(Loc, Box<Self>),
     Continue(Loc),
     Break(Loc),
 
@@ -112,7 +111,6 @@ impl Expr {
             Let(loc, ..) => loc,
             While(loc, ..) => loc,
             Guard(loc, ..) => loc,
-            Return(loc, ..) => loc,
             Continue(loc) => loc,
             Break(loc) => loc,
             Univ(loc) => loc,
@@ -231,7 +229,6 @@ impl Display for Expr {
                 }
                 While(_, p, b, r) => format!("while ({p}) {{\n\t{b}\n}}\n{r}"),
                 Guard(_, p, b, r) => format!("if ({p}) {{\n\t{b}\n}}\n{r}"),
-                Return(_, a) => format!("return {a}"),
                 Continue(_) => "continue".to_string(),
                 Break(_) => "break".to_string(),
                 Univ(_) => "type".to_string(),
