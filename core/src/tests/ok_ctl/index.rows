@@ -2,26 +2,17 @@ function log();
 
 function f0() {
     while (true) {
-        log();
-    }
-}
-
-f0();
-
-function f1() {
-    while (true) {
         let a = 42;
         if (a == 69) {
             log();
             continue;
         }
-        if (a == 88) {
+        if (a == 42) {
             log();
             continue;
         }
         break;
     }
-    log()
 }
 
-f1();
+f0();

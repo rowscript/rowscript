@@ -1,5 +1,5 @@
 use crate::maybe_grow;
-use crate::theory::abs::builtin::setup;
+use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::Dir::Le;
 use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, Term};
 use crate::theory::abs::def::{gamma_to_tele, Body, ImplementsBody};
@@ -798,7 +798,7 @@ impl Elaborator {
 
 impl Default for Elaborator {
     fn default() -> Self {
-        let (ubiquitous, sigma) = setup();
+        let Builtins { ubiquitous, sigma } = Builtins::new();
         Self {
             ubiquitous,
             sigma,

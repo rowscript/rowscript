@@ -40,43 +40,44 @@ fn option_type(t: Term) -> Term {
     )))
 }
 
-pub fn setup() -> (NameMap, Sigma) {
-    let mut m = NameMap::default();
-    let mut sigma = Sigma::default();
-
-    insert_def(&mut m, &mut sigma, unionify());
-
-    insert_def(&mut m, &mut sigma, reflect());
-
-    insert_def(&mut m, &mut sigma, number_add());
-    insert_def(&mut m, &mut sigma, number_sub());
-    insert_def(&mut m, &mut sigma, number_eq());
-    insert_def(&mut m, &mut sigma, number_neq());
-    insert_def(&mut m, &mut sigma, number_le());
-    insert_def(&mut m, &mut sigma, number_ge());
-    insert_def(&mut m, &mut sigma, number_lt());
-    insert_def(&mut m, &mut sigma, number_gt());
-
-    insert_def(&mut m, &mut sigma, boolean_or());
-    insert_def(&mut m, &mut sigma, boolean_and());
-    insert_def(&mut m, &mut sigma, boolean_not());
-
-    insert_def(&mut m, &mut sigma, array());
-    insert_def(&mut m, &mut sigma, array_length());
-    insert_def(&mut m, &mut sigma, array_push());
-    insert_def(&mut m, &mut sigma, array_foreach());
-    insert_def(&mut m, &mut sigma, array_at());
-    insert_def(&mut m, &mut sigma, array_insert());
-
-    (m, sigma)
+#[derive(Default)]
+pub struct Builtins {
+    pub ubiquitous: NameMap,
+    pub sigma: Sigma,
 }
 
-fn insert_def(ubiquitous: &mut NameMap, sigma: &mut Sigma, def: Def<Term>) {
-    ubiquitous.insert(
-        def.name.to_string(),
-        ResolvedVar(VarKind::InModule, def.name.clone()),
-    );
-    sigma.insert(def.name.clone(), def);
+impl Builtins {
+    pub fn new() -> Self {
+        Self::default()
+            .insert(unionify())
+            .insert(reflect())
+            .insert(number_add())
+            .insert(number_sub())
+            .insert(number_eq())
+            .insert(number_neq())
+            .insert(number_le())
+            .insert(number_ge())
+            .insert(number_lt())
+            .insert(number_gt())
+            .insert(boolean_or())
+            .insert(boolean_and())
+            .insert(boolean_not())
+            .insert(array())
+            .insert(array_length())
+            .insert(array_push())
+            .insert(array_foreach())
+            .insert(array_at())
+            .insert(array_insert())
+    }
+
+    fn insert(mut self, def: Def<Term>) -> Self {
+        self.ubiquitous.insert(
+            def.name.to_string(),
+            ResolvedVar(VarKind::InModule, def.name.clone()),
+        );
+        self.sigma.insert(def.name.clone(), def);
+        self
+    }
 }
 
 fn unionify() -> Def<Term> {
