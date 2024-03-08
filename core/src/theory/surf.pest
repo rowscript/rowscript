@@ -170,6 +170,7 @@ builtin =
   | boolAnd
   | boolOr
   | boolNot
+  | arrayIterNext
   | arrayLength
   | arrayPush
   | arrayForEach
@@ -188,6 +189,7 @@ strAdd = { "string#__add__" }
 boolAnd = { "boolean#__and__" }
 boolOr = { "boolean#__or__" }
 boolNot = { "boolean#__not__" }
+arrayIterNext = { "arrayIter#next" }
 arrayLength = { "array#length" }
 arrayPush = { "array#push" }
 arrayForEach = { "array#forEach" }

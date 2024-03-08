@@ -231,6 +231,7 @@ impl<'a> Normalizer<'a> {
                     (a, b) => NumGt(Box::new(a), Box::new(b)),
                 }
             }
+            ArrayIterator(t) => ArrayIterator(self.term_box(t)?),
             Array(t) => Array(self.term_box(t)?),
             Arr(xs) => {
                 let mut ret = Vec::default();

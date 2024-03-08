@@ -62,6 +62,7 @@ impl Builtins {
             .insert(boolean_or())
             .insert(boolean_and())
             .insert(boolean_not())
+            .insert(array_iterator())
             .insert(array())
             .insert(array_length())
             .insert(array_push())
@@ -500,6 +501,17 @@ fn boolean_not() -> Def<Term> {
         tele: vec![tuple_param(tupled, [explicit(a, Term::Boolean)])],
         ret: Box::new(Term::Boolean),
         body,
+    }
+}
+
+fn array_iterator() -> Def<Term> {
+    let t = Var::new("T");
+    Def {
+        loc: Default::default(),
+        name: Var::new("NativeArrayIterator"),
+        tele: vec![implicit(t.clone(), Term::Univ)],
+        ret: Box::new(Term::Univ),
+        body: Body::Fn(Term::ArrayIterator(Box::new(Term::Ref(t.clone())))),
     }
 }
 

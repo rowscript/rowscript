@@ -1,15 +1,41 @@
 type Option<T> = [None | Some: T];
 
+//interface Iterator for I<T> {
+//    next<T>(it: I<T>): Option<T>;
+//}
+
+//interface Iterable for T {
+//    iter(): I where Iterator<I>
+//}
+
+//class ArrayIterator<T> {
+//    it: NativeArrayIterator<T>;
+//
+//    next(): Option<T> {
+//        arrayIter#next(this.it)
+//    }
+//}
+
 class Array<T> {
     a: NativeArray<T>;
 
-    length(): number { array#length(this.a) }
+    length(): number {
+        array#length(this.a)
+    }
 
-    push(v: T): number { array#push(this.a, v) }
+    push(v: T): number {
+        array#push(this.a, v)
+    }
 
-    forEach(f: (v: T) -> unit) { array#forEach(this.a, f) }
+    forEach(f: (v: T) -> unit) {
+        array#forEach(this.a, f)
+    }
 
-    at(i: number): Option<T> { array#at(this.a, i) }
+    at(i: number): Option<T> {
+        array#at(this.a, i)
+    }
 
-    insert(i: number, v: T) { array#insert(this.a, i, v) }
+    insert(i: number, v: T) {
+        array#insert(this.a, i, v)
+    }
 }
