@@ -232,6 +232,12 @@ impl<'a> Resolver<'a> {
                 Box::new(self.expr(*b)?),
                 Box::new(self.expr(*r)?),
             ),
+            Guard(loc, p, b, r) => Guard(
+                loc,
+                Box::new(self.expr(*p)?),
+                Box::new(self.expr(*b)?),
+                Box::new(self.expr(*r)?),
+            ),
             Pi(loc, p, b) => {
                 let b = self.bodied(&[&p.var], *b)?;
                 Pi(loc, self.param(p)?, Box::new(b))

@@ -4,10 +4,4 @@ function f0(): number {
     a.n
 }
 
-function f1(): number {
-    let a = {n: 1};
-    if (true) { a.m = 2; a.m } else { 3 }
-}
-
 const a = f0();
-const b = f1();

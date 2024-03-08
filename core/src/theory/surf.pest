@@ -347,32 +347,11 @@ primary_expr =
   }
 boolean_false = { "false" }
 boolean_true = { "true" }
-boolean_if =
-  { "if" ~ "(" ~ expr ~ ")"
-  ~ "{" ~ branch ~ "}"
-  ~ "else" ~ "{" ~ branch ~ "}"
-  }
+boolean_if = { "if" ~ "(" ~ expr ~ ")" ~ "{" ~ expr ~ "}" ~ "else" ~ "{" ~ expr ~ "}" }
 rev_app = { ("(" ~ expr ~ ")" | idref | new_expr) ~ rev_app_caller+ }
 rev_app_caller = { "." ~ idref ~ implicit_args? ~ args+ }
 array_expr = { "[]" | "[" ~ expr ~ ("," ~ expr)* ~ "]" }
 array_index = { ("(" ~ expr ~ ")" | idref) ~ "[" ~ expr ~ "]" }
-branch =
-  { branch_let
-  | branch_unit_let
-  | branch_object_assign
-  | branch_array_assign
-  | branch_while
-  | branch_if
-  | expr
-  | ctl_continue
-  | ctl_break
-  }
-branch_let = { let_stmt ~ branch }
-branch_unit_let = { unit_let_stmt ~ branch }
-branch_object_assign = { object_assign_stmt ~ branch }
-branch_array_assign = { array_assign_stmt ~ branch }
-branch_while = { while_stmt_start ~ branch ~ while_stmt_end ~ branch }
-branch_if = { if_stmt_start ~ branch ~ if_stmt_end ~ branch }
 new_expr = { "new" ~ tyref ~ ("<" ~ type_args ~ ">")? ~ args }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
 lambda_params = _{ "()" | "(" ~ param_id ~ ("," ~ param_id)* ~ ")" }
@@ -410,6 +389,39 @@ enum_operand =
 enum_switch = { "switch" ~ paren_expr ~ "{" ~ enum_case+ ~ "}" }
 enum_case = { "case" ~ variant_id ~ ("(" ~ param_id ~ ")")? ~ ":" ~ expr }
 paren_expr = { "(" ~ expr ~ ")" }
+
+branch =
+  { branch_let
+  | branch_unit_let
+  | branch_object_assign
+  | branch_array_assign
+  | branch_while
+  | branch_if
+  | expr
+  }
+branch_let = { let_stmt ~ branch }
+branch_unit_let = { unit_let_stmt ~ branch }
+branch_object_assign = { object_assign_stmt ~ branch }
+branch_array_assign = { array_assign_stmt ~ branch }
+branch_while = { while_stmt_start ~ loop_branch ~ while_stmt_end ~ branch }
+branch_if = { if_stmt_start ~ branch ~ if_stmt_end ~ branch }
+loop_branch =
+  { loop_branch_let
+  | loop_branch_unit_let
+  | loop_branch_object_assign
+  | loop_branch_array_assign
+  | loop_branch_while
+  | loop_branch_if
+  | expr
+  | ctl_continue
+  | ctl_break
+  }
+loop_branch_let = { let_stmt ~ loop_branch }
+loop_branch_unit_let = { unit_let_stmt ~ loop_branch }
+loop_branch_object_assign = { object_assign_stmt ~ loop_branch }
+loop_branch_array_assign = { array_assign_stmt ~ loop_branch }
+loop_branch_while = { while_stmt_start ~ loop_branch ~ while_stmt_end ~ loop_branch }
+loop_branch_if = { if_stmt_start ~ loop_branch ~ if_stmt_end ~ loop_branch }
 
 let_stmt = _{ "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" }
 unit_let_stmt = _{ expr ~ ";" }
@@ -467,7 +479,7 @@ fn_body_let = { let_stmt ~ fn_body }
 fn_body_unit_let = { unit_let_stmt ~ fn_body }
 fn_body_object_assign = { object_assign_stmt ~ fn_body }
 fn_body_array_assign = { array_assign_stmt ~ fn_body }
-fn_body_while = { while_stmt_start ~ branch ~ while_stmt_end ~ fn_body }
+fn_body_while = { while_stmt_start ~ loop_branch ~ while_stmt_end ~ fn_body }
 fn_body_if = { if_stmt_start ~ branch ~ if_stmt_end ~ fn_body }
 fn_body_ret = { expr? }
 

@@ -6,8 +6,8 @@ use crate::Error;
 fn test_resolve() {
     match run_err(module_path!()) {
         Error::UnresolvedVar(Loc { line, col, .. }) => {
-            assert_eq!(line, 7);
-            assert_eq!(col, 9);
+            assert_eq!(line, 3);
+            assert_eq!(col, 5);
         }
         _ => assert!(false),
     }

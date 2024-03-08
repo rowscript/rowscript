@@ -1,9 +1,4 @@
-function f() {
-    let a: number = if (true) {
-        let b = 42;
-        b
-    } else {
-        let c: number = 69;
-        c1
-    };
+function f(): number {
+    let a = 42;
+    b
 }

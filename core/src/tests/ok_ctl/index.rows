@@ -9,22 +9,19 @@ function f0() {
 f0();
 
 function f1() {
-    if (true) {
-        while (true) {
+    while (true) {
+        let a = 42;
+        if (a == 69) {
             log();
+            continue;
         }
-        ()
-    } else {
-        ()
+        if (a == 88) {
+            log();
+            continue;
+        }
+        break;
     }
+    log()
 }
 
 f1();
-
-function f2(): number {
-//    if (true) {
-//        let n = 42;
-//        ();
-//    }
-    69
-}

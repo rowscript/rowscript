@@ -10,12 +10,3 @@ function h() {
 }
 
 function log();
-
-function i() {
-    if (true) {
-        log();
-        f()
-    } else {
-        g()
-    }
-}

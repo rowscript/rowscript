@@ -341,6 +341,8 @@ impl Elaborator {
                 let (r, ty) = self.infer(*r)?;
                 (Term::Guard(Box::new(p), Box::new(b), Box::new(r)), ty)
             }
+            Continue(_) => (Term::Continue, Term::Unit),
+            Break(_) => (Term::Break, Term::Unit),
             Pi(_, p, b) => {
                 let (param_ty, _) = self.infer(*p.typ)?;
                 let param = Param {

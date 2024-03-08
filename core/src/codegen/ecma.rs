@@ -6,12 +6,13 @@ use num_bigint::BigInt as BigIntValue;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
     ArrayLit, ArrowExpr, AssignExpr, AssignOp, BigInt as JsBigInt, BinExpr, BinaryOp, BindingIdent,
-    BlockStmt, BlockStmtOrExpr, Bool, CallExpr, Callee, ComputedPropName, CondExpr, Decl,
-    ExportDecl, Expr, ExprOrSpread, ExprStmt, FnDecl, Function, Ident, ImportDecl,
-    ImportNamedSpecifier, ImportSpecifier, ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr,
-    MemberProp, Module, ModuleDecl, ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam,
-    ParenExpr, Pat, PatOrExpr, Prop, PropName, PropOrSpread, ReturnStmt, SpreadElement, Stmt,
-    Str as JsStr, Str, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclarator, WhileStmt,
+    BlockStmt, BlockStmtOrExpr, Bool, BreakStmt, CallExpr, Callee, ComputedPropName, CondExpr,
+    ContinueStmt, Decl, ExportDecl, Expr, ExprOrSpread, ExprStmt, FnDecl, Function, Ident, IfStmt,
+    ImportDecl, ImportNamedSpecifier, ImportSpecifier, ImportStarAsSpecifier, KeyValueProp, Lit,
+    MemberExpr, MemberProp, Module, ModuleDecl, ModuleItem, Number as JsNumber, ObjectLit,
+    Param as JsParam, ParenExpr, Pat, PatOrExpr, Prop, PropName, PropOrSpread, ReturnStmt,
+    SpreadElement, Stmt, Str as JsStr, Str, UnaryExpr, UnaryOp, VarDecl, VarDeclKind,
+    VarDeclarator, WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -402,25 +403,28 @@ impl Ecma {
         }))
     }
 
-    fn iife(loc: Loc, b: BlockStmtOrExpr) -> Expr {
-        Expr::Paren(ParenExpr {
+    fn iife_stmt(loc: Loc, b: BlockStmt) -> Stmt {
+        Stmt::Expr(ExprStmt {
             span: loc.into(),
-            expr: Box::new(Expr::Call(CallExpr {
+            expr: Box::new(Expr::Paren(ParenExpr {
                 span: loc.into(),
-                callee: Callee::Expr(Box::from(Expr::Paren(ParenExpr {
+                expr: Box::new(Expr::Call(CallExpr {
                     span: loc.into(),
-                    expr: Box::new(Expr::Arrow(ArrowExpr {
+                    callee: Callee::Expr(Box::from(Expr::Paren(ParenExpr {
                         span: loc.into(),
-                        params: Default::default(),
-                        body: Box::new(b),
-                        is_async: false,
-                        is_generator: false,
-                        type_params: None,
-                        return_type: None,
-                    })),
-                }))),
-                args: Default::default(),
-                type_args: None,
+                        expr: Box::new(Expr::Arrow(ArrowExpr {
+                            span: loc.into(),
+                            params: Default::default(),
+                            body: Box::new(BlockStmtOrExpr::BlockStmt(b)),
+                            is_async: false,
+                            is_generator: false,
+                            type_params: None,
+                            return_type: None,
+                        })),
+                    }))),
+                    args: Default::default(),
+                    type_args: None,
+                })),
             })),
         })
     }
@@ -430,6 +434,15 @@ impl Ecma {
             span: loc.into(),
             test: Box::new(self.expr(sigma, loc, p)?),
             body: Box::new(Stmt::Block(self.block(sigma, loc, b, false)?)),
+        }))
+    }
+
+    fn guard_stmt(&mut self, sigma: &Sigma, loc: Loc, p: &Term, b: &Term) -> Result<Stmt, Error> {
+        Ok(Stmt::If(IfStmt {
+            span: loc.into(),
+            test: Box::new(self.expr(sigma, loc, p)?),
+            cons: Box::new(Stmt::Block(self.block(sigma, loc, b, false)?)),
+            alt: None,
         }))
     }
 
@@ -469,6 +482,18 @@ impl Ecma {
                     stmts.push(self.while_stmt(sigma, loc, p, b)?);
                     tm = r
                 }
+                Guard(p, b, r) => {
+                    stmts.push(self.guard_stmt(sigma, loc, p, b)?);
+                    tm = r
+                }
+                Continue => {
+                    stmts.push(Stmt::Continue(ContinueStmt { span, label: None }));
+                    tm = &TT
+                }
+                Break => {
+                    stmts.push(Stmt::Break(BreakStmt { span, label: None }));
+                    tm = &TT
+                }
                 TupleLet(_, _, _, _) => unreachable!(),
                 UnitLet(a, b) => {
                     stmts.push(self.unit_stmt(sigma, loc, a)?);
@@ -500,20 +525,6 @@ impl Ecma {
             },
 
             Let(p, a, b) => self.lambda_encoded_let(sigma, loc, Some(&p.var), a, b)?,
-            While(p, b, r) => Self::iife(
-                loc,
-                BlockStmtOrExpr::BlockStmt(BlockStmt {
-                    span: loc.into(),
-                    stmts: vec![
-                        self.while_stmt(sigma, loc, p, b)?,
-                        Stmt::Return(ReturnStmt {
-                            span: loc.into(),
-                            arg: Some(Box::new(self.expr(sigma, loc, r)?)),
-                        }),
-                    ],
-                }),
-            ),
-            Guard(..) => todo!(),
             UnitLet(a, b) => self.lambda_encoded_let(sigma, loc, None, a, b)?,
 
             Ref(r) | Undef(r) => Expr::Ident(Self::ident(loc, r)),
@@ -1012,10 +1023,10 @@ impl Ecma {
         f: &Term,
     ) -> Result<(), Error> {
         items.push(match def.name.as_str() {
-            UNBOUND => ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-                span: def.loc.into(),
-                expr: Box::new(self.expr(sigma, def.loc, f)?),
-            })),
+            UNBOUND => ModuleItem::Stmt(Self::iife_stmt(
+                def.loc,
+                self.block(sigma, def.loc, f, false)?,
+            )),
             _ => Self::try_export_decl(
                 def,
                 Decl::Var(Box::new(VarDecl {

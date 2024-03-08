@@ -1,11 +1,8 @@
 function f(): number {
     let a: number = if (true) {
-        let b = 42;
-        b
+        42
     } else {
-        let c: number = 69;
-        let d = c;
-        d
+        69
     };
     a
 }

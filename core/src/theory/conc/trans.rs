@@ -721,7 +721,7 @@ impl Trans {
                 While(
                     loc,
                     Box::new(self.expr(pairs.next().unwrap())),
-                    Box::new(self.branch(pairs.next().unwrap())),
+                    Box::new(self.branch(pairs.next().unwrap(), true)),
                     Box::new(self.fn_body(pairs.next().unwrap())),
                 )
             }
@@ -730,7 +730,7 @@ impl Trans {
                 Guard(
                     loc,
                     Box::new(self.expr(pairs.next().unwrap())),
-                    Box::new(self.branch(pairs.next().unwrap())),
+                    Box::new(self.branch(pairs.next().unwrap(), false)),
                     Box::new(self.fn_body(pairs.next().unwrap())),
                 )
             }
@@ -808,8 +808,8 @@ impl Trans {
                 If(
                     loc,
                     Box::new(self.expr(pairs.next().unwrap())),
-                    Box::new(self.branch(pairs.next().unwrap())),
-                    Box::new(self.branch(pairs.next().unwrap())),
+                    Box::new(self.expr(pairs.next().unwrap())),
+                    Box::new(self.expr(pairs.next().unwrap())),
                 )
             }
             Rule::rev_app => {
@@ -955,13 +955,13 @@ impl Trans {
             .fold(cls, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
     }
 
-    fn branch(&self, b: Pair<Rule>) -> Expr {
+    fn branch(&self, b: Pair<Rule>, inside_loop: bool) -> Expr {
         use Expr::*;
 
         let p = b.into_inner().next().unwrap();
         let loc = Loc::from(p.as_span());
         match p.as_rule() {
-            Rule::branch_let => {
+            Rule::branch_let | Rule::loop_branch_let => {
                 let mut l = p.into_inner();
                 let (id, typ, tm) = self.partial_let(&mut l);
                 Let(
@@ -969,18 +969,18 @@ impl Trans {
                     id,
                     typ,
                     Box::new(tm),
-                    Box::new(self.branch(l.next().unwrap())),
+                    Box::new(self.branch(l.next().unwrap(), inside_loop)),
                 )
             }
-            Rule::branch_unit_let => {
+            Rule::branch_unit_let | Rule::loop_branch_unit_let => {
                 let mut l = p.into_inner();
                 UnitLet(
                     loc,
                     Box::new(self.expr(l.next().unwrap())),
-                    Box::new(self.branch(l.next().unwrap())),
+                    Box::new(self.branch(l.next().unwrap(), inside_loop)),
                 )
             }
-            Rule::branch_object_assign => {
+            Rule::branch_object_assign | Rule::loop_branch_object_assign => {
                 let mut pairs = p.into_inner();
                 let a = pairs.next().unwrap();
                 let a_loc = Loc::from(a.as_span());
@@ -993,30 +993,39 @@ impl Trans {
                     Box::new(Unresolved(a_loc, None, a_var.clone())),
                     Box::new(Obj(n_loc, Box::new(Fields(n_loc, fields)))),
                 );
-                let body = self.branch(pairs.next().unwrap());
+                let body = self.branch(pairs.next().unwrap(), inside_loop);
                 Let(loc, a_var, None, Box::new(expr), Box::new(body))
             }
-            Rule::branch_array_assign => {
+            Rule::branch_array_assign | Rule::loop_branch_array_assign => {
                 let mut pairs = p.into_inner();
                 let a = self.maybe_qualified(pairs.next().unwrap());
                 let i = self.expr(pairs.next().unwrap());
                 let v = self.expr(pairs.next().unwrap());
-                let body = self.branch(pairs.next().unwrap());
+                let body = self.branch(pairs.next().unwrap(), inside_loop);
                 let insert = Self::builtin_method(i.loc(), "Array", "insert");
                 UnitLet(loc, Box::new(Self::call3(insert, a, i, v)), Box::new(body))
             }
-            Rule::branch_while => {
+            Rule::branch_while | Rule::loop_branch_while => {
                 let mut pairs = p.into_inner();
                 While(
                     loc,
                     Box::new(self.expr(pairs.next().unwrap())),
-                    Box::new(self.branch(pairs.next().unwrap())),
-                    Box::new(self.branch(pairs.next().unwrap())),
+                    Box::new(self.branch(pairs.next().unwrap(), true)),
+                    Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
+                )
+            }
+            Rule::branch_if | Rule::loop_branch_if => {
+                let mut pairs = p.into_inner();
+                Guard(
+                    loc,
+                    Box::new(self.expr(pairs.next().unwrap())),
+                    Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
+                    Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
                 )
             }
             Rule::expr => self.expr(p),
-            Rule::ctl_continue => Continue(loc),
-            Rule::ctl_break => Break(loc),
+            Rule::ctl_continue if inside_loop => Continue(loc),
+            Rule::ctl_break if inside_loop => Break(loc),
             _ => unreachable!(),
         }
     }
