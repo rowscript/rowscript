@@ -63,6 +63,7 @@ impl Builtins {
             .insert(boolean_and())
             .insert(boolean_not())
             .insert(array_iterator())
+            .insert(array_iterator_next())
             .insert(array())
             .insert(array_length())
             .insert(array_push())
@@ -512,6 +513,29 @@ fn array_iterator() -> Def<Term> {
         tele: vec![implicit(t.clone(), Term::Univ)],
         ret: Box::new(Term::Univ),
         body: Body::Fn(Term::ArrayIterator(Box::new(Term::Ref(t.clone())))),
+    }
+}
+
+fn array_iterator_next() -> Def<Term> {
+    let t = Var::new("T");
+    let tupled = Var::tupled();
+    let a = Var::new("a");
+    let a_ty = Term::ArrayIterator(Box::new(Term::Ref(t.clone())));
+    let a_rhs = Var::new("a").untupled_rhs();
+    Def {
+        loc: Default::default(),
+        name: Var::new("arrayIter#next"),
+        tele: vec![
+            implicit(t.clone(), Term::Univ),
+            tuple_param(tupled.clone(), [explicit(a.clone(), a_ty.clone())]),
+        ],
+        ret: Box::new(option_type(Term::Ref(t))),
+        body: Body::Fn(Term::TupleLet(
+            explicit(a.clone(), a_ty.clone()),
+            explicit(a_rhs.clone(), Term::Unit),
+            Box::new(Term::Ref(tupled)),
+            Box::new(Term::ArrIterNext(Box::new(Term::Ref(a.clone())))),
+        )),
     }
 }
 

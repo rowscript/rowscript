@@ -1,20 +1,20 @@
 type Option<T> = [None | Some: T];
 
-//interface Iterator for I<T> {
-//    next<T>(it: I<T>): Option<T>;
-//}
-
 //interface Iterable for T {
 //    iter(): I where Iterator<I>
 //}
 
-//class ArrayIterator<T> {
-//    it: NativeArrayIterator<T>;
-//
-//    next(): Option<T> {
-//        arrayIter#next(this.it)
-//    }
-//}
+interface Iterator for I<T> {
+    next<T>(it: I<T>): Option<T>;
+}
+
+class ArrayIterator<T> {
+    it: NativeArrayIterator<T>;
+
+    next(): Option<T> {
+        arrayIter#next(this.it)
+    }
+}
 
 class Array<T> {
     a: NativeArray<T>;

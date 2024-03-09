@@ -117,6 +117,7 @@ impl<'a> Unifier<'a> {
                 self.unify(b, y)?;
                 self.unify(c, z)
             }
+            (ArrayIterator(a), ArrayIterator(b)) => self.unify(a, b),
             (Array(a), Array(b)) => self.unify(a, b),
             (Fields(a), Fields(b)) => self.fields_eq(a, b),
             (Object(a), Object(b)) => self.unify(a, b),
