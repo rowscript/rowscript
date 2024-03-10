@@ -490,9 +490,10 @@ fn_body_ret = { expr? }
 fn_postulate =
   { "function"
   ~ fn_id
-  ~ ("<" ~ implicit_params ~ ">")?
+  ~ implicits?
   ~ params
   ~ (":" ~ type_expr)?
+  ~ preds?
   ~ ";"
   }
 
@@ -522,6 +523,7 @@ interface_fn =
   ~ implicits?
   ~ params
   ~ (":" ~ type_expr)?
+  ~ preds?
   ~ ";"
   }
 

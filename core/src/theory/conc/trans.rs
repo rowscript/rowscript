@@ -196,17 +196,22 @@ impl Trans {
 
         let mut tele = Tele::default();
         let mut untupled = UntupledParams::new(loc);
+        let mut preds = Tele::default();
         let mut ret = Box::new(Unit(loc));
 
         for p in pairs {
             match p.as_rule() {
+                Rule::row_id => tele.push(Self::row_param(p)),
                 Rule::implicit_id => tele.push(Self::implicit_param(p)),
+                Rule::hkt_param => tele.push(Self::hkt_param(p)),
                 Rule::param => untupled.push(Loc::from(p.as_span()), self.param(p)),
                 Rule::type_expr => ret = Box::new(self.type_expr(p)),
+                Rule::pred => preds.push(self.pred(p)),
                 _ => unreachable!(),
             }
         }
         tele.push(Param::from(untupled));
+        tele.extend(preds);
 
         Def {
             loc,

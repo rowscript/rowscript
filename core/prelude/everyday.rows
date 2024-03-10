@@ -1,7 +1,7 @@
 type Option<T> = [None | Some: T];
 
 //interface Iterable for T {
-//    iter(): I where Iterator<I>
+//    iter<I>(t: T): I where Iterator<I>;
 //}
 
 interface Iterator for I<T> {

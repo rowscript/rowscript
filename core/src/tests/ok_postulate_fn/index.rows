@@ -1,7 +1,8 @@
-function f(a: number): number;
-function g();
-function h<T>(): T;
+function f0(a: number): number;
+function f1();
 
-function f1(): number {
-    h<number>()
-}
+function f2<T>(): T;
+const a2: number = f2<number>();
+
+function f3<'R>(a: {'R}) where (n: number) <: 'R;
+f3({n: 42, m: 69});
