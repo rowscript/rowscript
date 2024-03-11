@@ -245,7 +245,7 @@ impl<'a> Resolver<'a> {
             }
             TupledLam(loc, vars, b) => {
                 let x = Var::tupled();
-                let wrapped = Box::new(Expr::wrap_tuple_lets(loc, &x, vars, *b));
+                let wrapped = Box::new(Expr::wrap_tuple_locals(loc, &x, vars, *b));
                 let desugared = Lam(loc, x.clone(), wrapped);
                 self.bodied(&[&x], desugared)?
             }

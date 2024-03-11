@@ -167,7 +167,7 @@ impl Trans {
         let untupled_vars = untupled.unresolved();
         let untupled_loc = untupled.0;
         let tupled_param = Param::from(untupled);
-        let body = Fn(Expr::wrap_tuple_lets(
+        let body = Fn(Expr::wrap_tuple_locals(
             untupled_loc,
             &tupled_param.var,
             untupled_vars,
@@ -476,7 +476,7 @@ impl Trans {
         let ctor_loc = ctor_params.0;
         let ctor_param_vars = ctor_params.unresolved();
         let ctor_tupled_params = Param::from(ctor_params);
-        let ctor_body = Fn(Expr::wrap_tuple_lets(
+        let ctor_body = Fn(Expr::wrap_tuple_locals(
             ctor_loc,
             &ctor_tupled_params.var,
             ctor_param_vars,
@@ -674,9 +674,9 @@ impl Trans {
         let p = b.into_inner().next().unwrap();
         let loc = Loc::from(p.as_span());
         match p.as_rule() {
-            Rule::fn_body_let => {
+            Rule::fn_body_const => {
                 let mut l = p.into_inner();
-                let (id, typ, tm) = self.partial_let(&mut l);
+                let (id, typ, tm) = self.partial_local(&mut l);
                 Let(
                     loc,
                     id,
@@ -685,7 +685,7 @@ impl Trans {
                     Box::new(self.fn_body(l.next().unwrap())),
                 )
             }
-            Rule::fn_body_unit_let => {
+            Rule::fn_body_unit_const => {
                 let mut l = p.into_inner();
                 UnitLet(
                     loc,
@@ -963,9 +963,9 @@ impl Trans {
         let p = b.into_inner().next().unwrap();
         let loc = Loc::from(p.as_span());
         match p.as_rule() {
-            Rule::branch_let | Rule::loop_branch_let => {
+            Rule::branch_const | Rule::loop_branch_const => {
                 let mut l = p.into_inner();
-                let (id, typ, tm) = self.partial_let(&mut l);
+                let (id, typ, tm) = self.partial_local(&mut l);
                 Let(
                     loc,
                     id,
@@ -974,7 +974,7 @@ impl Trans {
                     Box::new(self.branch(l.next().unwrap(), inside_loop)),
                 )
             }
-            Rule::branch_unit_let | Rule::loop_branch_unit_let => {
+            Rule::branch_unit_const | Rule::loop_branch_unit_const => {
                 let mut l = p.into_inner();
                 UnitLet(
                     loc,
@@ -1238,7 +1238,7 @@ impl Trans {
             .rfold(TT(loc), |a, (loc, x)| Tuple(loc, Box::new(x), Box::new(a)))
     }
 
-    fn partial_let(&self, pairs: &mut Pairs<Rule>) -> (Var, Option<Box<Expr>>, Expr) {
+    fn partial_local(&self, pairs: &mut Pairs<Rule>) -> (Var, Option<Box<Expr>>, Expr) {
         let id = Var::from(pairs.next().unwrap());
         let mut typ = None;
         let type_or_expr = pairs.next().unwrap();

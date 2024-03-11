@@ -160,7 +160,7 @@ impl Expr {
         }
     }
 
-    pub fn wrap_tuple_lets(loc: Loc, x: &Var, vars: Vec<Self>, b: Self) -> Self {
+    pub fn wrap_tuple_locals(loc: Loc, x: &Var, vars: Vec<Self>, b: Self) -> Self {
         use Expr::*;
 
         let mut untupled_vars = Vec::default();
