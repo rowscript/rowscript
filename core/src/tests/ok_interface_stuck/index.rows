@@ -2,8 +2,8 @@ function numAdd(a: number, b: number): number;
 
 type Foo = {n: number};
 
-interface NatLike for T {
-    add(a: T, b: T): T;
+interface NatLike {
+    add(a: NatLike, b: NatLike): NatLike;
 }
 
 implements NatLike for Foo {

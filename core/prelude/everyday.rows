@@ -1,7 +1,7 @@
 type Option<T> = [None | Some: T];
 
-interface Iterator for I<T> {
-    next<T>(it: I<T>): Option<T>;
+interface Iterator<I> {
+    next<T>(it: Iterator<T>): Option<T>;
 }
 
 class ArrayIterator<T> {
@@ -12,8 +12,8 @@ class ArrayIterator<T> {
     }
 }
 
-interface Iterable for I<T> {
-    iter<T>(a: I<T>): Iterator<I>;
+interface Iterable<I> {
+    iter<T>(a: Iterable<T>): Iterator<Iterable>;
 }
 
 class Array<T> {

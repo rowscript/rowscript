@@ -33,8 +33,8 @@ class Person {
     }
 }
 
-interface Phonebook for T {
-    dial(a: T);
+interface Phonebook {
+    dial(a: Phonebook);
 }
 
 function dialPerson<P>(person: P) where Phonebook<P> {

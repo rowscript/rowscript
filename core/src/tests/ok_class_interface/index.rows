@@ -6,8 +6,8 @@ class Foo {
     update() { log(this.n) }
 }
 
-interface Updater for T {
-    update(a: T);
+interface Updater {
+    update(a: Updater);
 }
 
 function doSomething<U>(updater: U) where Updater<U> {

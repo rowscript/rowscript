@@ -1,5 +1,5 @@
-interface Functor for F<T> {
-    map<A, B>(f: (a: A) -> B, x: F<A>): F<B>;
+interface Functor<T> {
+    map<A, B>(f: (a: A) -> B, x: Functor<A>): Functor<B>;
 }
 
 type Foo<T> = {n: T};

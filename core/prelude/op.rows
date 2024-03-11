@@ -1,85 +1,85 @@
-interface EqOp for T {
-    __eq__(a: T, b: T): boolean;
+interface EqOp {
+    __eq__(a: EqOp, b: EqOp): boolean;
 }
 
 implements EqOp for number {
     __eq__(a: number, b: number): boolean { number#__eq__(a, b) }
 }
 
-interface NeqOp for T {
-    __neq__(a: T, b: T): boolean;
+interface NeqOp {
+    __neq__(a: NeqOp, b: NeqOp): boolean;
 }
 
 implements NeqOp for number {
     __neq__(a: number, b: number): boolean { number#__neq__(a, b) }
 }
 
-interface NotOp for T {
-    __not__(a: T): T;
+interface NotOp {
+    __not__(a: NotOp): NotOp;
 }
 
 implements NotOp for boolean {
     __not__(a: boolean): boolean { boolean#__not__(a) }
 }
 
-interface OrOp for T {
-    __or__(a: T, b: T): T;
+interface OrOp {
+    __or__(a: OrOp, b: OrOp): OrOp;
 }
 
 implements OrOp for boolean {
     __or__(a: boolean, b: boolean): boolean { boolean#__or__(a, b) }
 }
 
-interface AndOp for T {
-    __and__(a: T, b: T): T;
+interface AndOp {
+    __and__(a: AndOp, b: AndOp): AndOp;
 }
 
 implements AndOp for boolean {
     __and__(a: boolean, b: boolean): boolean { boolean#__and__(a, b) }
 }
 
-interface LeOp for T {
-    __le__(a: T, b: T): boolean;
+interface LeOp {
+    __le__(a: LeOp, b: LeOp): boolean;
 }
 
 implements LeOp for number {
     __le__(a: number, b: number): boolean { number#__le__(a, b) }
 }
 
-interface GeOp for T {
-    __ge__(a: T, b: T): boolean;
+interface GeOp {
+    __ge__(a: GeOp, b: GeOp): boolean;
 }
 
 implements GeOp for number {
     __ge__(a: number, b: number): boolean { number#__ge__(a, b) }
 }
 
-interface LtOp for T {
-    __lt__(a: T, b: T): boolean;
+interface LtOp {
+    __lt__(a: LtOp, b: LtOp): boolean;
 }
 
 implements LtOp for number {
     __lt__(a: number, b: number): boolean { number#__lt__(a, b) }
 }
 
-interface GtOp for T {
-    __gt__(a: T, b: T): boolean;
+interface GtOp {
+    __gt__(a: GtOp, b: GtOp): boolean;
 }
 
 implements GtOp for number {
     __gt__(a: number, b: number): boolean { number#__gt__(a, b) }
 }
 
-interface AddOp for T {
-    __add__(a: T, b: T): T;
+interface AddOp {
+    __add__(a: AddOp, b: AddOp): AddOp;
 }
 
 implements AddOp for number {
     __add__(a: number, b: number): number { number#__add__(a, b) }
 }
 
-interface SubOp for T {
-    __sub__(a: T, b: T): T;
+interface SubOp {
+    __sub__(a: SubOp, b: SubOp): SubOp;
 }
 
 implements SubOp for number {

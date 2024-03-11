@@ -513,8 +513,6 @@ type_alias =
 interface_def =
   { "interface"
   ~ type_id
-  ~ "for"
-  ~ implicit_id
   ~ implicits?
   ~ "{"
   ~ interface_fn+

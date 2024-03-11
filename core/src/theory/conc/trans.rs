@@ -299,12 +299,9 @@ impl Trans {
         let mut pairs = i.into_inner();
 
         let name_pair = pairs.next().unwrap();
+        let name_loc = Loc::from(name_pair.as_span());
         let ret = Box::new(Univ(Loc::from(name_pair.as_span())));
         let name = Var::from(name_pair);
-
-        let alias_pair = pairs.next().unwrap();
-        let alias_loc = Loc::from(alias_pair.as_span());
-        let alias = Var::from(alias_pair);
 
         let mut im_tele = Tele::default();
         let mut fn_defs = Vec::default();
@@ -316,9 +313,9 @@ impl Trans {
                 Rule::interface_fn => {
                     let mut d = self.fn_postulate(p);
                     let mut tele = vec![Param {
-                        var: alias.clone(),
+                        var: name.clone(),
                         info: Implicit,
-                        typ: Box::new(alias_type(alias_loc, &im_tele)),
+                        typ: Box::new(alias_type(name_loc, &im_tele)),
                     }];
                     tele.extend(d.tele);
                     d.tele = tele;
@@ -333,11 +330,11 @@ impl Trans {
 
         let mut defs = vec![Def {
             loc,
-            name,
+            name: name.clone(),
             tele: vec![Param {
-                var: alias,
+                var: name,
                 info: Implicit,
-                typ: Box::new(alias_type(alias_loc, &im_tele)),
+                typ: Box::new(alias_type(name_loc, &im_tele)),
             }],
             ret,
             body: Interface {
