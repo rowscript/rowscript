@@ -1,0 +1,10 @@
+function f(): number {
+//    if (true) {
+//        let a = 42;
+//        a = 69;
+//        return a;
+//    }
+    0
+}
+
+const n = f();

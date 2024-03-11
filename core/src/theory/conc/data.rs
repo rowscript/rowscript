@@ -22,6 +22,8 @@ pub enum Expr {
     InsertedHole(Loc),
 
     Local(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
+    WorSet(Loc, Var, Option<Box<Self>>, Box<Self>),
+    WorUpdate(Loc, Var, Box<Self>),
     While(Loc, Box<Self>, Box<Self>, Box<Self>),
     Guard(Loc, Box<Self>, Box<Self>, Box<Self>),
     Return(Loc, Box<Self>),
@@ -110,11 +112,13 @@ impl Expr {
             Hole(loc) => loc,
             InsertedHole(loc) => loc,
             Local(loc, ..) => loc,
+            WorSet(loc, ..) => loc,
             While(loc, ..) => loc,
             Guard(loc, ..) => loc,
             Return(loc, ..) => loc,
             Continue(loc) => loc,
             Break(loc) => loc,
+            WorUpdate(loc, ..) => loc,
             Univ(loc) => loc,
             Pi(loc, ..) => loc,
             TupledLam(loc, ..) => loc,
@@ -229,6 +233,14 @@ impl Display for Expr {
                         format!("const {v} = {a};\n\t{b}")
                     }
                 }
+                WorSet(_, v, typ, a) => {
+                    if let Some(ty) = typ {
+                        format!("worldSet({v}, {ty}, {a})")
+                    } else {
+                        format!("worldSet({v}, {a})")
+                    }
+                }
+                WorUpdate(_, a, v) => format!("worldUpdate({a}, {v})"),
                 While(_, p, b, r) => format!("while ({p}) {{\n\t{b}\n}}\n{r}"),
                 Guard(_, p, b, r) => format!("if ({p}) {{\n\t{b}\n}}\n{r}"),
                 Return(_, a) => format!("return {a}"),

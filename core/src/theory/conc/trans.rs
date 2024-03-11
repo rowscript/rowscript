@@ -685,6 +685,15 @@ impl Trans {
                     Box::new(self.fn_body(l.next().unwrap())),
                 )
             }
+            Rule::fn_body_let => {
+                let mut l = p.into_inner();
+                let (id, typ, tm) = self.partial_local(&mut l);
+                UnitLocal(
+                    loc,
+                    Box::new(WorSet(loc, id, typ, Box::new(tm))),
+                    Box::new(self.fn_body(l.next().unwrap())),
+                )
+            }
             Rule::fn_body_unit_const => {
                 let mut l = p.into_inner();
                 UnitLocal(
@@ -717,6 +726,19 @@ impl Trans {
                 let body = self.fn_body(pairs.next().unwrap());
                 let insert = Self::builtin_method(i.loc(), "Array", "insert");
                 UnitLocal(loc, Box::new(Self::call3(insert, a, i, v)), Box::new(body))
+            }
+            Rule::fn_body_local_assign => {
+                let mut pairs = p.into_inner();
+                let a = pairs.next().unwrap();
+                let a_loc = Loc::from(a.as_span());
+                let a = Var::from(a);
+                let v = self.expr(pairs.next().unwrap());
+                let body = self.fn_body(pairs.next().unwrap());
+                UnitLocal(
+                    loc,
+                    Box::new(WorUpdate(a_loc, a, Box::new(v))),
+                    Box::new(body),
+                )
             }
             Rule::fn_body_while => {
                 let mut pairs = p.into_inner();
@@ -974,6 +996,15 @@ impl Trans {
                     Box::new(self.branch(l.next().unwrap(), inside_loop)),
                 )
             }
+            Rule::branch_let | Rule::loop_branch_let => {
+                let mut l = p.into_inner();
+                let (id, typ, tm) = self.partial_local(&mut l);
+                UnitLocal(
+                    loc,
+                    Box::new(WorSet(loc, id, typ, Box::new(tm))),
+                    Box::new(self.branch(l.next().unwrap(), inside_loop)),
+                )
+            }
             Rule::branch_unit_const | Rule::loop_branch_unit_const => {
                 let mut l = p.into_inner();
                 UnitLocal(
@@ -1006,6 +1037,19 @@ impl Trans {
                 let body = self.branch(pairs.next().unwrap(), inside_loop);
                 let insert = Self::builtin_method(i.loc(), "Array", "insert");
                 UnitLocal(loc, Box::new(Self::call3(insert, a, i, v)), Box::new(body))
+            }
+            Rule::branch_local_assign | Rule::loop_branch_local_assign => {
+                let mut pairs = p.into_inner();
+                let a = pairs.next().unwrap();
+                let a_loc = Loc::from(a.as_span());
+                let a = Var::from(a);
+                let v = self.expr(pairs.next().unwrap());
+                let body = self.branch(pairs.next().unwrap(), inside_loop);
+                UnitLocal(
+                    loc,
+                    Box::new(WorUpdate(a_loc, a, Box::new(v))),
+                    Box::new(body),
+                )
             }
             Rule::branch_while | Rule::loop_branch_while => {
                 let mut pairs = p.into_inner();
