@@ -21,9 +21,9 @@ impl Renamer {
                 r,
                 sp.into_iter().map(|(i, tm)| (i, self.term(tm))).collect(),
             ),
-            Let(p, a, b) => {
+            Local(p, a, b) => {
                 let a = self.term(*a); // not guarded by `p`, rename it first
-                Let(self.param(p), Box::new(a), Box::new(self.term(*b)))
+                Local(self.param(p), Box::new(a), Box::new(self.term(*b)))
             }
             While(p, b, r) => While(
                 Box::new(self.term(*p)),
@@ -41,13 +41,13 @@ impl Renamer {
             App(f, i, x) => App(Box::new(self.term(*f)), i, Box::new(self.term(*x))),
             Sigma(p, c) => Sigma(self.param(p), Box::new(self.term(*c))),
             Tuple(a, b) => Tuple(Box::new(self.term(*a)), Box::new(self.term(*b))),
-            TupleLet(x, y, a, b) => TupleLet(
+            TupleLocal(x, y, a, b) => TupleLocal(
                 self.param(x),
                 self.param(y),
                 Box::new(self.term(*a)),
                 Box::new(self.term(*b)),
             ),
-            UnitLet(a, b) => UnitLet(Box::new(self.term(*a)), Box::new(self.term(*b))),
+            UnitLocal(a, b) => UnitLocal(Box::new(self.term(*a)), Box::new(self.term(*b))),
             If(p, t, e) => If(
                 Box::new(self.term(*p)),
                 Box::new(self.term(*t)),

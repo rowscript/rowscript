@@ -97,7 +97,7 @@ impl Builtins {
             tuple_param(tupled.clone(), [explicit(Var::new("a"), a_ty.clone())]),
         ];
         let a = Var::new("a");
-        let body = Body::Fn(Term::TupleLet(
+        let body = Body::Fn(Term::TupleLocal(
             explicit(a.clone(), a_ty.clone()),
             explicit(Var::unbound(), Term::Unit),
             Box::new(Term::Ref(tupled)),
@@ -128,14 +128,14 @@ impl Builtins {
         let untupled_a = Var::new("a");
         let untupled_a_rhs = untupled_a.untupled_rhs();
         let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLet(
+        let body = Body::Fn(Term::TupleLocal(
             explicit(untupled_a.clone(), Term::Number),
             explicit(
                 untupled_a_rhs.clone(),
                 Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
             ),
             Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLet(
+            Box::new(Term::TupleLocal(
                 explicit(b.clone(), Term::Number),
                 explicit(Var::unbound(), Term::Unit),
                 Box::new(Term::Ref(untupled_a_rhs)),
@@ -165,14 +165,14 @@ impl Builtins {
         let untupled_a = Var::new("a");
         let untupled_a_rhs = untupled_a.untupled_rhs();
         let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLet(
+        let body = Body::Fn(Term::TupleLocal(
             explicit(untupled_a.clone(), Term::Number),
             explicit(
                 untupled_a_rhs.clone(),
                 Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
             ),
             Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLet(
+            Box::new(Term::TupleLocal(
                 explicit(b.clone(), Term::Number),
                 explicit(Var::unbound(), Term::Unit),
                 Box::new(Term::Ref(untupled_a_rhs)),
@@ -202,14 +202,14 @@ impl Builtins {
         let a = Var::new("a");
         let a_rhs = a.untupled_rhs();
         let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLet(
+        let body = Body::Fn(Term::TupleLocal(
             explicit(a.clone(), Term::Number),
             explicit(
                 a_rhs.clone(),
                 Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
             ),
             Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLet(
+            Box::new(Term::TupleLocal(
                 explicit(b.clone(), Term::Number),
                 explicit(Var::unbound(), Term::Unit),
                 Box::new(Term::Ref(a_rhs)),
@@ -239,14 +239,14 @@ impl Builtins {
         let a = Var::new("a");
         let a_rhs = a.untupled_rhs();
         let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLet(
+        let body = Body::Fn(Term::TupleLocal(
             explicit(a.clone(), Term::Number),
             explicit(
                 a_rhs.clone(),
                 Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
             ),
             Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLet(
+            Box::new(Term::TupleLocal(
                 explicit(b.clone(), Term::Number),
                 explicit(Var::unbound(), Term::Unit),
                 Box::new(Term::Ref(a_rhs)),
@@ -276,14 +276,14 @@ impl Builtins {
         let a = Var::new("a");
         let a_rhs = a.untupled_rhs();
         let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLet(
+        let body = Body::Fn(Term::TupleLocal(
             explicit(a.clone(), Term::Number),
             explicit(
                 a_rhs.clone(),
                 Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
             ),
             Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLet(
+            Box::new(Term::TupleLocal(
                 explicit(b.clone(), Term::Number),
                 explicit(Var::unbound(), Term::Unit),
                 Box::new(Term::Ref(a_rhs)),
@@ -313,14 +313,14 @@ impl Builtins {
         let a = Var::new("a");
         let a_rhs = a.untupled_rhs();
         let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLet(
+        let body = Body::Fn(Term::TupleLocal(
             explicit(a.clone(), Term::Number),
             explicit(
                 a_rhs.clone(),
                 Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
             ),
             Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLet(
+            Box::new(Term::TupleLocal(
                 explicit(b.clone(), Term::Number),
                 explicit(Var::unbound(), Term::Unit),
                 Box::new(Term::Ref(a_rhs)),
@@ -350,14 +350,14 @@ impl Builtins {
         let a = Var::new("a");
         let a_rhs = a.untupled_rhs();
         let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLet(
+        let body = Body::Fn(Term::TupleLocal(
             explicit(a.clone(), Term::Number),
             explicit(
                 a_rhs.clone(),
                 Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
             ),
             Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLet(
+            Box::new(Term::TupleLocal(
                 explicit(b.clone(), Term::Number),
                 explicit(Var::unbound(), Term::Unit),
                 Box::new(Term::Ref(a_rhs)),
@@ -387,14 +387,14 @@ impl Builtins {
         let a = Var::new("a");
         let a_rhs = a.untupled_rhs();
         let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLet(
+        let body = Body::Fn(Term::TupleLocal(
             explicit(a.clone(), Term::Number),
             explicit(
                 a_rhs.clone(),
                 Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
             ),
             Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLet(
+            Box::new(Term::TupleLocal(
                 explicit(b.clone(), Term::Number),
                 explicit(Var::unbound(), Term::Unit),
                 Box::new(Term::Ref(a_rhs)),
@@ -424,14 +424,14 @@ impl Builtins {
         let a = Var::new("a");
         let a_rhs = a.untupled_rhs();
         let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLet(
+        let body = Body::Fn(Term::TupleLocal(
             explicit(a.clone(), Term::Boolean),
             explicit(
                 a_rhs.clone(),
                 Term::Sigma(explicit(b.clone(), Term::Boolean), Box::new(Term::Unit)),
             ),
             Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLet(
+            Box::new(Term::TupleLocal(
                 explicit(b.clone(), Term::Boolean),
                 explicit(Var::unbound(), Term::Unit),
                 Box::new(Term::Ref(a_rhs)),
@@ -461,14 +461,14 @@ impl Builtins {
         let a = Var::new("a");
         let a_rhs = a.untupled_rhs();
         let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLet(
+        let body = Body::Fn(Term::TupleLocal(
             explicit(a.clone(), Term::Boolean),
             explicit(
                 a_rhs.clone(),
                 Term::Sigma(explicit(b.clone(), Term::Boolean), Box::new(Term::Unit)),
             ),
             Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLet(
+            Box::new(Term::TupleLocal(
                 explicit(b.clone(), Term::Boolean),
                 explicit(Var::unbound(), Term::Unit),
                 Box::new(Term::Ref(a_rhs)),
@@ -496,7 +496,7 @@ impl Builtins {
     fn boolean_not(self) -> Self {
         let tupled = Var::tupled();
         let a = Var::new("a");
-        let body = Body::Fn(Term::TupleLet(
+        let body = Body::Fn(Term::TupleLocal(
             explicit(a.clone(), Term::Boolean),
             explicit(a.untupled_rhs(), Term::Unit),
             Box::new(Term::Ref(tupled.clone())),
@@ -536,7 +536,7 @@ impl Builtins {
                 tuple_param(tupled.clone(), [explicit(a.clone(), a_ty.clone())]),
             ],
             ret: Box::new(option_type(Term::Ref(t))),
-            body: Body::Fn(Term::TupleLet(
+            body: Body::Fn(Term::TupleLocal(
                 explicit(a.clone(), a_ty.clone()),
                 explicit(a_rhs.clone(), Term::Unit),
                 Box::new(Term::Ref(tupled)),
@@ -570,7 +570,7 @@ impl Builtins {
                 tuple_param(tupled.clone(), [explicit(a.clone(), a_ty.clone())]),
             ],
             ret: Box::new(Term::Number),
-            body: Body::Fn(Term::TupleLet(
+            body: Body::Fn(Term::TupleLocal(
                 explicit(a.clone(), a_ty.clone()),
                 explicit(a_rhs.clone(), Term::Unit),
                 Box::new(Term::Ref(tupled)),
@@ -596,14 +596,14 @@ impl Builtins {
             name: Var::new("array#push"),
             tele: vec![implicit(t, Term::Univ), tuple_param(tupled.clone(), params)],
             ret: Box::new(Term::Number),
-            body: Body::Fn(Term::TupleLet(
+            body: Body::Fn(Term::TupleLocal(
                 explicit(a.clone(), a_ty),
                 explicit(
                     a_rhs.clone(),
                     Term::Sigma(explicit(v.clone(), v_ty.clone()), Box::new(Term::Unit)),
                 ),
                 Box::new(Term::Ref(tupled)),
-                Box::new(Term::TupleLet(
+                Box::new(Term::TupleLocal(
                     explicit(v.clone(), v_ty),
                     explicit(Var::unbound(), Term::Unit),
                     Box::new(Term::Ref(a_rhs)),
@@ -639,14 +639,14 @@ impl Builtins {
             name: Var::new("array#forEach"),
             tele: vec![implicit(t, Term::Univ), tuple_param(tupled.clone(), params)],
             ret: Box::new(Term::Unit),
-            body: Body::Fn(Term::TupleLet(
+            body: Body::Fn(Term::TupleLocal(
                 explicit(a.clone(), a_ty),
                 explicit(
                     a_rhs.clone(),
                     Term::Sigma(explicit(f.clone(), f_ty.clone()), Box::new(Term::Unit)),
                 ),
                 Box::new(Term::Ref(tupled)),
-                Box::new(Term::TupleLet(
+                Box::new(Term::TupleLocal(
                     explicit(f.clone(), f_ty),
                     explicit(Var::unbound(), Term::Unit),
                     Box::new(Term::Ref(a_rhs)),
@@ -679,14 +679,14 @@ impl Builtins {
                 tuple_param(tupled.clone(), params),
             ],
             ret: Box::new(option_type(Term::Ref(t))),
-            body: Body::Fn(Term::TupleLet(
+            body: Body::Fn(Term::TupleLocal(
                 explicit(a.clone(), a_ty),
                 explicit(
                     a_rhs.clone(),
                     Term::Sigma(explicit(i.clone(), i_ty.clone()), Box::new(Term::Unit)),
                 ),
                 Box::new(Term::Ref(tupled)),
-                Box::new(Term::TupleLet(
+                Box::new(Term::TupleLocal(
                     explicit(i.clone(), i_ty),
                     explicit(Var::unbound(), Term::Unit),
                     Box::new(Term::Ref(a_rhs)),
@@ -720,7 +720,7 @@ impl Builtins {
                 tuple_param(tupled.clone(), params),
             ],
             ret: Box::new(Term::Unit),
-            body: Body::Fn(Term::TupleLet(
+            body: Body::Fn(Term::TupleLocal(
                 explicit(a.clone(), a_ty),
                 explicit(
                     a_rhs.clone(),
@@ -733,14 +733,14 @@ impl Builtins {
                     ),
                 ),
                 Box::new(Term::Ref(tupled)),
-                Box::new(Term::TupleLet(
+                Box::new(Term::TupleLocal(
                     explicit(i.clone(), i_ty),
                     explicit(
                         i_rhs.clone(),
                         Term::Sigma(explicit(v.clone(), v_ty.clone()), Box::new(Term::Unit)),
                     ),
                     Box::new(Term::Ref(a_rhs)),
-                    Box::new(Term::TupleLet(
+                    Box::new(Term::TupleLocal(
                         explicit(v.clone(), v_ty),
                         explicit(Var::unbound(), Term::Unit),
                         Box::new(Term::Ref(i_rhs)),
@@ -775,7 +775,7 @@ impl Builtins {
                 tuple_param(tupled.clone(), [explicit(a.clone(), a_ty.clone())]),
             ],
             ret,
-            body: Body::Fn(Term::TupleLet(
+            body: Body::Fn(Term::TupleLocal(
                 explicit(a.clone(), a_ty.clone()),
                 explicit(a_rhs.clone(), Term::Unit),
                 Box::new(Term::Ref(tupled)),

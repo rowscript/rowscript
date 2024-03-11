@@ -677,7 +677,7 @@ impl Trans {
             Rule::fn_body_const => {
                 let mut l = p.into_inner();
                 let (id, typ, tm) = self.partial_local(&mut l);
-                Let(
+                Local(
                     loc,
                     id,
                     typ,
@@ -687,7 +687,7 @@ impl Trans {
             }
             Rule::fn_body_unit_const => {
                 let mut l = p.into_inner();
-                UnitLet(
+                UnitLocal(
                     loc,
                     Box::new(self.expr(l.next().unwrap())),
                     Box::new(self.fn_body(l.next().unwrap())),
@@ -707,7 +707,7 @@ impl Trans {
                     Box::new(Obj(n_loc, Box::new(Fields(n_loc, fields)))),
                 );
                 let body = self.fn_body(pairs.next().unwrap());
-                Let(loc, a_var, None, Box::new(expr), Box::new(body))
+                Local(loc, a_var, None, Box::new(expr), Box::new(body))
             }
             Rule::fn_body_array_assign => {
                 let mut pairs = p.into_inner();
@@ -716,7 +716,7 @@ impl Trans {
                 let v = self.expr(pairs.next().unwrap());
                 let body = self.fn_body(pairs.next().unwrap());
                 let insert = Self::builtin_method(i.loc(), "Array", "insert");
-                UnitLet(loc, Box::new(Self::call3(insert, a, i, v)), Box::new(body))
+                UnitLocal(loc, Box::new(Self::call3(insert, a, i, v)), Box::new(body))
             }
             Rule::fn_body_while => {
                 let mut pairs = p.into_inner();
@@ -966,7 +966,7 @@ impl Trans {
             Rule::branch_const | Rule::loop_branch_const => {
                 let mut l = p.into_inner();
                 let (id, typ, tm) = self.partial_local(&mut l);
-                Let(
+                Local(
                     loc,
                     id,
                     typ,
@@ -976,7 +976,7 @@ impl Trans {
             }
             Rule::branch_unit_const | Rule::loop_branch_unit_const => {
                 let mut l = p.into_inner();
-                UnitLet(
+                UnitLocal(
                     loc,
                     Box::new(self.expr(l.next().unwrap())),
                     Box::new(self.branch(l.next().unwrap(), inside_loop)),
@@ -996,7 +996,7 @@ impl Trans {
                     Box::new(Obj(n_loc, Box::new(Fields(n_loc, fields)))),
                 );
                 let body = self.branch(pairs.next().unwrap(), inside_loop);
-                Let(loc, a_var, None, Box::new(expr), Box::new(body))
+                Local(loc, a_var, None, Box::new(expr), Box::new(body))
             }
             Rule::branch_array_assign | Rule::loop_branch_array_assign => {
                 let mut pairs = p.into_inner();
@@ -1005,7 +1005,7 @@ impl Trans {
                 let v = self.expr(pairs.next().unwrap());
                 let body = self.branch(pairs.next().unwrap(), inside_loop);
                 let insert = Self::builtin_method(i.loc(), "Array", "insert");
-                UnitLet(loc, Box::new(Self::call3(insert, a, i, v)), Box::new(body))
+                UnitLocal(loc, Box::new(Self::call3(insert, a, i, v)), Box::new(body))
             }
             Rule::branch_while | Rule::loop_branch_while => {
                 let mut pairs = p.into_inner();

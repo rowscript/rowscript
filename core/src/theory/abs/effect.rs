@@ -3,14 +3,14 @@ use crate::theory::abs::data::Term;
 pub fn has_side_effect(tm: &Term) -> bool {
     use Term::*;
     match tm {
-        Let(_, a, b) => has_side_effect(a) || has_side_effect(b),
+        Local(_, a, b) => has_side_effect(a) || has_side_effect(b),
         While(p, b, r) => has_side_effect(p) || has_side_effect(b) || has_side_effect(r),
         Guard(p, b, r) => has_side_effect(p) || has_side_effect(b) || has_side_effect(r),
         Lam(_, b) => has_side_effect(b),
         App(f, _, x) => has_side_effect(f) || has_side_effect(x),
         Tuple(a, b) => has_side_effect(a) || has_side_effect(b),
-        TupleLet(_, _, a, b) => has_side_effect(a) || has_side_effect(b),
-        UnitLet(a, b) => has_side_effect(a) || has_side_effect(b),
+        TupleLocal(_, _, a, b) => has_side_effect(a) || has_side_effect(b),
+        UnitLocal(a, b) => has_side_effect(a) || has_side_effect(b),
         If(p, a, b) => has_side_effect(p) || has_side_effect(a) || has_side_effect(b),
         BoolOr(a, b) => has_side_effect(a) || has_side_effect(b),
         BoolAnd(a, b) => has_side_effect(a) || has_side_effect(b),

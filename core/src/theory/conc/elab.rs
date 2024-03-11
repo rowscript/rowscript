@@ -185,7 +185,7 @@ impl Elaborator {
     fn check_impl(&mut self, e: Expr, ty: &Term) -> Result<Term, Error> {
         use Expr::*;
         Ok(match e {
-            Let(_, var, maybe_typ, a, b) => {
+            Local(_, var, maybe_typ, a, b) => {
                 let (tm, typ) = if let Some(t) = maybe_typ {
                     let checked_ty = self.check(*t, &Term::Univ)?;
                     (self.check(*a, &checked_ty)?, checked_ty)
@@ -198,7 +198,7 @@ impl Elaborator {
                     typ: Box::new(typ),
                 };
                 let body = self.guarded_check(&[&param], *b, ty)?;
-                Term::Let(param, Box::new(tm), Box::new(body))
+                Term::Local(param, Box::new(tm), Box::new(body))
             }
             Lam(loc, var, body) => {
                 let pi = self.nf(loc).term(ty.clone())?;
@@ -230,7 +230,7 @@ impl Elaborator {
                     ty => return Err(ExpectedSigma(ty, loc)),
                 }
             }
-            TupleLet(_, x, y, a, b) => {
+            TupleLocal(_, x, y, a, b) => {
                 let a_loc = a.loc();
                 let (a, a_ty) = self.infer(*a)?;
                 let sig = self.nf(a_loc).term(a_ty)?;
@@ -247,12 +247,12 @@ impl Elaborator {
                             typ,
                         };
                         let b = self.guarded_check(&[&x, &y], *b, ty)?;
-                        Term::TupleLet(x, y, Box::new(a), Box::new(b))
+                        Term::TupleLocal(x, y, Box::new(a), Box::new(b))
                     }
                     ty => return Err(ExpectedSigma(ty, a_loc)),
                 }
             }
-            UnitLet(_, a, b) => Term::UnitLet(
+            UnitLocal(_, a, b) => Term::UnitLocal(
                 Box::new(self.check(*a, &Term::Unit)?),
                 Box::new(self.check(*b, ty)?),
             ),
@@ -454,7 +454,7 @@ impl Elaborator {
                     ),
                 )
             }
-            AnnoTupleLet(_, p, q, a, b) => {
+            AnnoTupleLocal(_, p, q, a, b) => {
                 let p_ty = self.check(*p.typ, &Term::Univ)?;
                 let p = Param {
                     var: p.var,
@@ -469,7 +469,7 @@ impl Elaborator {
                 };
                 let (b, b_ty) = self.guarded_infer(&[&p, &q], *b)?;
                 let a = self.check(*a, &Term::Sigma(p.clone(), q.typ.clone()))?;
-                (Term::TupleLet(p, q, Box::new(a), Box::new(b)), b_ty)
+                (Term::TupleLocal(p, q, Box::new(a), Box::new(b)), b_ty)
             }
             Arr(_, xs) => {
                 let mut v_ty = None;

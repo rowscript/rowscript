@@ -74,7 +74,7 @@ impl<'a> Unifier<'a> {
             (Cls(_, a), b) => self.unify(a, b),
             (a, Cls(_, b)) => self.unify(a, b),
 
-            (Let(p, a, b), Let(q, x, y)) => {
+            (Local(p, a, b), Local(q, x, y)) => {
                 self.unify(&p.typ, &q.typ)?;
                 self.unify(a, x)?;
                 self.unify(b, y)
@@ -105,13 +105,13 @@ impl<'a> Unifier<'a> {
                 self.unify(a, x)?;
                 self.unify(b, y)
             }
-            (TupleLet(p, q, a, b), TupleLet(r, s, x, y)) => {
+            (TupleLocal(p, q, a, b), TupleLocal(r, s, x, y)) => {
                 let rho = &[(&r.var, &Ref(p.var.clone())), (&s.var, &Ref(q.var.clone()))];
                 let y = self.nf().with(rho, *y.clone())?;
                 self.unify(a, x)?;
                 self.unify(b, &y)
             }
-            (UnitLet(a, b), UnitLet(x, y)) => {
+            (UnitLocal(a, b), UnitLocal(x, y)) => {
                 self.unify(a, x)?;
                 self.unify(b, y)
             }

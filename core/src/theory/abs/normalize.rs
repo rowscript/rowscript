@@ -87,10 +87,10 @@ impl<'a> Normalizer<'a> {
             }
             Undef(x) => self.sigma.get(&x).unwrap().to_term(x),
             Cls(n, a) => Cls(n, self.term_box(a)?),
-            Let(p, a, b) => {
+            Local(p, a, b) => {
                 let a = self.term_box(a)?;
                 if has_side_effect(a.as_ref()) {
-                    Let(p, a, self.term_box(b)?)
+                    Local(p, a, self.term_box(b)?)
                 } else {
                     self.rho.insert(p.var, a);
                     self.term(*b)?
@@ -114,22 +114,22 @@ impl<'a> Normalizer<'a> {
             }
             Sigma(p, b) => Sigma(self.param(p)?, self.term_box(b)?),
             Tuple(a, b) => Tuple(self.term_box(a)?, self.term_box(b)?),
-            TupleLet(p, q, a, b) => {
+            TupleLocal(p, q, a, b) => {
                 let a = self.term_box(a)?;
                 if let Tuple(x, y) = *a {
                     self.rho.insert(p.var, x);
                     self.rho.insert(q.var, y);
                     self.term(*b)?
                 } else {
-                    TupleLet(p, q, a, self.term_box(b)?)
+                    TupleLocal(p, q, a, self.term_box(b)?)
                 }
             }
-            UnitLet(a, b) => {
+            UnitLocal(a, b) => {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;
                 match *a {
                     TT => *b,
-                    _ => UnitLet(a, b),
+                    _ => UnitLocal(a, b),
                 }
             }
             If(p, t, e) => {

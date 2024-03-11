@@ -50,7 +50,7 @@ pub enum Term {
     MetaRef(MetaKind, Var, Spine),
     Undef(Var),
 
-    Let(Param<Self>, Box<Self>, Box<Self>),
+    Local(Param<Self>, Box<Self>, Box<Self>),
     While(Box<Self>, Box<Self>, Box<Self>),
     Guard(Box<Self>, Box<Self>, Box<Self>),
     Return(Box<Self>),
@@ -65,11 +65,11 @@ pub enum Term {
 
     Sigma(Param<Self>, Box<Self>),
     Tuple(Box<Self>, Box<Self>),
-    TupleLet(Param<Self>, Param<Self>, Box<Self>, Box<Self>),
+    TupleLocal(Param<Self>, Param<Self>, Box<Self>, Box<Self>),
 
     Unit,
     TT,
-    UnitLet(Box<Self>, Box<Self>),
+    UnitLocal(Box<Self>, Box<Self>),
 
     Boolean,
     False,
@@ -210,7 +210,7 @@ impl Display for Term {
                 }
                 Undef(r) => r.to_string(),
                 Cls(n, a) => format!("{n}({a})"),
-                Let(p, a, b) => format!("let {p} = {a};\n\t{b}"),
+                Local(p, a, b) => format!("const {p} = {a};\n\t{b}"),
                 While(p, b, r) => format!("while ({p}) {{\n\t{b}}}\n{r}"),
                 Guard(p, b, r) => format!("if ({p}) {{\n\t{b}}}\n{r}"),
                 Return(a) => format!("return {a}"),
@@ -222,10 +222,10 @@ impl Display for Term {
                 App(f, _, x) => format!("({f} {x})"),
                 Sigma(p, b) => format!("{p} * {b}"),
                 Tuple(a, b) => format!("({a}, {b})"),
-                TupleLet(p, q, a, b) => format!("let ({p}, {q}) = {a};\n\t{b}"),
+                TupleLocal(p, q, a, b) => format!("const ({p}, {q}) = {a};\n\t{b}"),
                 Unit => "unit".to_string(),
                 TT => "()".to_string(),
-                UnitLet(a, b) => format!("let _ = {a};\n\t{b}"),
+                UnitLocal(a, b) => format!("{a};\n\t{b}"),
                 Boolean => "boolean".to_string(),
                 False => "false".to_string(),
                 True => "true".to_string(),

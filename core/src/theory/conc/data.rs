@@ -21,7 +21,7 @@ pub enum Expr {
     Hole(Loc),
     InsertedHole(Loc),
 
-    Let(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
+    Local(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
     While(Loc, Box<Self>, Box<Self>, Box<Self>),
     Guard(Loc, Box<Self>, Box<Self>, Box<Self>),
     Return(Loc, Box<Self>),
@@ -39,12 +39,12 @@ pub enum Expr {
 
     Sigma(Loc, Param<Self>, Box<Self>),
     Tuple(Loc, Box<Self>, Box<Self>),
-    TupleLet(Loc, Var, Var, Box<Self>, Box<Self>),
-    AnnoTupleLet(Loc, Param<Self>, Param<Self>, Box<Self>, Box<Self>),
+    TupleLocal(Loc, Var, Var, Box<Self>, Box<Self>),
+    AnnoTupleLocal(Loc, Param<Self>, Param<Self>, Box<Self>, Box<Self>),
 
     Unit(Loc),
     TT(Loc),
-    UnitLet(Loc, Box<Self>, Box<Self>),
+    UnitLocal(Loc, Box<Self>, Box<Self>),
 
     Boolean(Loc),
     False(Loc),
@@ -109,7 +109,7 @@ impl Expr {
             Qualified(loc, ..) => loc,
             Hole(loc) => loc,
             InsertedHole(loc) => loc,
-            Let(loc, ..) => loc,
+            Local(loc, ..) => loc,
             While(loc, ..) => loc,
             Guard(loc, ..) => loc,
             Return(loc, ..) => loc,
@@ -124,11 +124,11 @@ impl Expr {
             RevApp(loc, ..) => loc,
             Sigma(loc, ..) => loc,
             Tuple(loc, ..) => loc,
-            TupleLet(loc, ..) => loc,
-            AnnoTupleLet(loc, ..) => loc,
+            TupleLocal(loc, ..) => loc,
+            AnnoTupleLocal(loc, ..) => loc,
             Unit(loc) => loc,
             TT(loc) => loc,
-            UnitLet(loc, ..) => loc,
+            UnitLocal(loc, ..) => loc,
             Boolean(loc) => loc,
             False(loc) => loc,
             True(loc) => loc,
@@ -179,7 +179,7 @@ impl Expr {
                 _ => unreachable!(),
             };
             let tm = untupled_vars.get(i + 1).unwrap();
-            wrapped = TupleLet(
+            wrapped = TupleLocal(
                 loc,
                 lhs,
                 rhs.clone(),
@@ -222,11 +222,11 @@ impl Display for Expr {
                 Qualified(_, m, r) => format!("{m}::{r}"),
                 Hole(_) => "?".to_string(),
                 InsertedHole(_) => "?i".to_string(),
-                Let(_, v, typ, a, b) => {
+                Local(_, v, typ, a, b) => {
                     if let Some(ty) = typ {
-                        format!("let {v}: {ty} = {a};\n\t{b}")
+                        format!("const {v}: {ty} = {a};\n\t{b}")
                     } else {
-                        format!("let {v} = {a};\n\t{b}")
+                        format!("const {v} = {a};\n\t{b}")
                     }
                 }
                 While(_, p, b, r) => format!("while ({p}) {{\n\t{b}\n}}\n{r}"),
@@ -253,11 +253,11 @@ impl Display for Expr {
                 RevApp(_, f, x) => format!("({x}.{f})"),
                 Sigma(_, p, b) => format!("{p} * {b}"),
                 Tuple(_, a, b) => format!("({a}, {b})"),
-                TupleLet(_, x, y, a, b) => format!("let ({x}, {y}) = {a};\n\t{b}"),
-                AnnoTupleLet(_, p, q, a, b) => format!("let {p}, {q} = {a};\n\t{b}"),
+                TupleLocal(_, x, y, a, b) => format!("const ({x}, {y}) = {a};\n\t{b}"),
+                AnnoTupleLocal(_, p, q, a, b) => format!("const {p}, {q} = {a};\n\t{b}"),
                 Unit(_) => "unit".to_string(),
                 TT(_) => "()".to_string(),
-                UnitLet(_, a, b) => format!("let _ = {a};\n\t{b}"),
+                UnitLocal(_, a, b) => format!("{a};\n\t{b}"),
                 Boolean(_) => "boolean".to_string(),
                 False(_) => "false".to_string(),
                 True(_) => "true".to_string(),

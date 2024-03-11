@@ -212,9 +212,9 @@ impl<'a> Resolver<'a> {
                     None => return Err(UnresolvedVar(loc)),
                 },
             },
-            Let(loc, x, typ, a, b) => {
+            Local(loc, x, typ, a, b) => {
                 let b = self.bodied(&[&x], *b)?;
-                Let(
+                Local(
                     loc,
                     x,
                     if let Some(ty) = typ {
@@ -270,13 +270,13 @@ impl<'a> Resolver<'a> {
                 Sigma(loc, self.param(p)?, b)
             }
             Tuple(loc, a, b) => Tuple(loc, Box::new(self.expr(*a)?), Box::new(self.expr(*b)?)),
-            TupleLet(loc, x, y, a, b) => {
+            TupleLocal(loc, x, y, a, b) => {
                 let b = Box::new(self.bodied(&[&x, &y], *b)?);
-                TupleLet(loc, x, y, Box::new(self.expr(*a)?), b)
+                TupleLocal(loc, x, y, Box::new(self.expr(*a)?), b)
             }
-            AnnoTupleLet(loc, p, q, a, b) => {
+            AnnoTupleLocal(loc, p, q, a, b) => {
                 let b = Box::new(self.bodied(&[&p.var, &q.var], *b)?);
-                AnnoTupleLet(
+                AnnoTupleLocal(
                     loc,
                     self.param(p)?,
                     self.param(q)?,
@@ -284,7 +284,9 @@ impl<'a> Resolver<'a> {
                     b,
                 )
             }
-            UnitLet(loc, a, b) => UnitLet(loc, Box::new(self.expr(*a)?), Box::new(self.expr(*b)?)),
+            UnitLocal(loc, a, b) => {
+                UnitLocal(loc, Box::new(self.expr(*a)?), Box::new(self.expr(*b)?))
+            }
             If(loc, p, t, e) => If(
                 loc,
                 Box::new(self.expr(*p)?),

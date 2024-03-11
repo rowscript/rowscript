@@ -481,7 +481,7 @@ impl Ecma {
             use Term::*;
             loop {
                 match tm {
-                    TupleLet(_, q, _, b) if q.var.as_str().starts_with(UNTUPLED_RHS_PREFIX) => {
+                    TupleLocal(_, q, _, b) if q.var.as_str().starts_with(UNTUPLED_RHS_PREFIX) => {
                         tm = b
                     }
                     _ => break,
@@ -498,7 +498,7 @@ impl Ecma {
 
         loop {
             match tm {
-                Let(p, a, b) => {
+                Local(p, a, b) => {
                     stmts.push(self.const_decl_stmt(sigma, loc, &p.var, a)?);
                     tm = b
                 }
@@ -525,8 +525,8 @@ impl Ecma {
                     stmts.push(Stmt::Break(BreakStmt { span, label: None }));
                     tm = &TT
                 }
-                TupleLet(_, _, _, _) => unreachable!(),
-                UnitLet(a, b) => {
+                TupleLocal(_, _, _, _) => unreachable!(),
+                UnitLocal(a, b) => {
                     stmts.push(self.unit_stmt(sigma, loc, a)?);
                     tm = b
                 }
@@ -560,8 +560,8 @@ impl Ecma {
                 Some(_) => unreachable!(),
             },
 
-            Let(p, a, b) => self.lambda_encoded_let(sigma, loc, Some(&p.var), a, b)?,
-            UnitLet(a, b) => self.lambda_encoded_let(sigma, loc, None, a, b)?,
+            Local(p, a, b) => self.lambda_encoded_let(sigma, loc, Some(&p.var), a, b)?,
+            UnitLocal(a, b) => self.lambda_encoded_let(sigma, loc, None, a, b)?,
 
             Ref(r) | Undef(r) => Expr::Ident(Self::ident(loc, r)),
             Extern(r) => Expr::Member(MemberExpr {
