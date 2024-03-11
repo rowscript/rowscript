@@ -1,4 +1,4 @@
 function f(): number {
-    let a = 42;
+    const a = 42;
     b
 }

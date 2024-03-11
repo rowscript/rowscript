@@ -10,5 +10,5 @@ function f1(): [A | B] {
 }
 
 function f2() {
-    let a = f1();
+    const a = f1();
 }

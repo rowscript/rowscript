@@ -1,5 +1,5 @@
 function f(): number {
-    let a: number = if (true) {
+    const a: number = if (true) {
         42
     } else {
         69

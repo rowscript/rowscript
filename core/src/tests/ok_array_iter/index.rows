@@ -3,13 +3,13 @@ function log<T>(v: T);
 function f1<I: type -> type, T: type>(it: I<T>)
 where Iterator<I>
 {
-    let n = it.next();
+    const n = it.next();
     log(n);
 }
 
 function f0() {
-    let a = [42];
-    let it = a.iter();
+    const a = [42];
+    const it = a.iter();
     f1<ArrayIterator, number>(it);
 }
 

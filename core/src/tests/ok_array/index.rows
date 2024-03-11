@@ -1,10 +1,10 @@
 function log(n: number);
 
 function f0() {
-    let a = [];
-    let m = a.push(42);
-    let n = a.push(69);
-    let f: (n: number) -> unit = (n) => log(n);
+    const a = [];
+    const m = a.push(42);
+    const n = a.push(69);
+    const f: (n: number) -> unit = (n) => log(n);
     a.forEach(f);
     log(a.length());
 }
@@ -12,14 +12,14 @@ function f0() {
 f0();
 
 function f1(): Option<number> {
-    let a = [1];
+    const a = [1];
     a[0]
 }
 
 const n1 = f1();
 
 function f2(): Option<number> {
-    let a = [1];
+    const a = [1];
     a[0] = 2;
     a[0]
 }

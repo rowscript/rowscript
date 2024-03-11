@@ -1,7 +1,7 @@
 function log();
 
 function f0() {
-    let a = {n: 1};
+    const a = {n: 1};
     while (true) {
         a.n = 2;
         while (false) {

@@ -6,5 +6,5 @@ where
 }
 
 function g() {
-    let n: number = f({m: 42}, {n: 69});
+    const n: number = f({m: 42}, {n: 69});
 }

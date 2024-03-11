@@ -429,7 +429,7 @@ loop_branch_array_assign = { array_assign_stmt ~ loop_branch }
 loop_branch_while = { while_stmt_start ~ loop_branch ~ while_stmt_end ~ loop_branch }
 loop_branch_if = { if_stmt_start ~ loop_branch ~ if_stmt_end ~ loop_branch }
 
-const_stmt = _{ "let" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" }
+const_stmt = _{ "const" ~ param_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" }
 unit_const_stmt = _{ expr ~ ";" }
 object_assign_stmt = _{ (local_id | this_id) ~ "." ~ prop_id ~ "=" ~ expr ~ ";" }
 array_assign_stmt = _{ local_id ~ "[" ~ expr ~ "]" ~ "=" ~ expr ~ ";" }

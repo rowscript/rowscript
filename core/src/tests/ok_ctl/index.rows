@@ -5,7 +5,7 @@ function f0() {
         return;
     }
     while (true) {
-        let a = 42;
+        const a = 42;
         if (a == 69) {
             log();
             return;

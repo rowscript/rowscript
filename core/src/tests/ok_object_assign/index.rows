@@ -1,5 +1,5 @@
 function f0(): number {
-    let a = {n: 42};
+    const a = {n: 42};
     a.n = 69;
     a.n
 }

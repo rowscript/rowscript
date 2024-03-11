@@ -20,7 +20,7 @@ function f2(): number {
 function f3(): number { f2() }
 
 function f4() {
-    let a: WriteOptions = WritePath({path: "foo.txt"});
+    const a: WriteOptions = WritePath({path: "foo.txt"});
     write(unionify(a))
 }
 

@@ -7,7 +7,7 @@ const x0: Reflected<A> = reflect({a: 42});
 //const x1: Reflected<B> = reflect(B1);
 
 function f0(): Reflected<B> {
-    let b: B = B1;
+    const b: B = B1;
     reflect(b)
 }
 
