@@ -97,6 +97,7 @@ pub enum Term {
     Big(String),
 
     ArrayIterator(Box<Self>),
+    ArrIter(Box<Self>),
     ArrIterNext(Box<Self>),
     Array(Box<Self>),
     Arr(Vec<Self>),
@@ -247,7 +248,8 @@ impl Display for Term {
                 BigInt => "bigint".to_string(),
                 Big(v) => v.clone(),
                 ArrayIterator(t) => format!("NativeArrayIterator<{t}>"),
-                ArrIterNext(a) => format!("{a}.next()"),
+                ArrIter(a) => format!("{a}.iter()"),
+                ArrIterNext(it) => format!("{it}.next()"),
                 Array(t) => format!("NativeArray<{t}>"),
                 Arr(xs) => format!(
                     "[{}]",

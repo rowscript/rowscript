@@ -12,8 +12,8 @@ class ArrayIterator<T> {
     }
 }
 
-interface Iterable for T {
-    iter<I: type -> type>(t: T): I where Iterator<I>;
+interface Iterable for I<T> {
+    iter<T>(a: I<T>): Iterator<I>;
 }
 
 class Array<T> {
@@ -37,5 +37,9 @@ class Array<T> {
 
     insert(i: number, v: T) {
         array#insert(this.a, i, v)
+    }
+
+    iter(): ArrayIterator<T> {
+        new ArrayIterator(array#iter(this.a))
     }
 }

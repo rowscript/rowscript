@@ -176,6 +176,7 @@ builtin =
   | arrayForEach
   | arrayAt
   | arrayInsert
+  | arrayIter
   }
 numAdd = { "number#__add__" }
 numSub = { "number#__sub__" }
@@ -195,6 +196,7 @@ arrayPush = { "array#push" }
 arrayForEach = { "array#forEach" }
 arrayAt = { "array#at" }
 arrayInsert = { "array#insert" }
+arrayIter = { "array#iter" }
 
 tyref =
   { qualifier ~ tyref

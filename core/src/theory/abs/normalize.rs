@@ -233,7 +233,8 @@ impl<'a> Normalizer<'a> {
                 }
             }
             ArrayIterator(t) => ArrayIterator(self.term_box(t)?),
-            ArrIterNext(a) => ArrIterNext(self.term_box(a)?),
+            ArrIter(a) => ArrIter(self.term_box(a)?),
+            ArrIterNext(it) => ArrIterNext(self.term_box(it)?),
             Array(t) => Array(self.term_box(t)?),
             Arr(xs) => {
                 let mut ret = Vec::default();

@@ -67,6 +67,9 @@ impl<'a> Unifier<'a> {
                 None => self.unify_err(lhs, rhs),
             },
 
+            (ImplementsOf(a, _), b) => self.unify(a, b),
+            (a, ImplementsOf(b, _)) => self.unify(a, b),
+
             (Cls(m, _), Cls(n, _)) if m == n => Ok(()),
             (Cls(_, a), b) => self.unify(a, b),
             (a, Cls(_, b)) => self.unify(a, b),

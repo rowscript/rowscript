@@ -167,6 +167,30 @@ impl Ecma {
         }))
     }
 
+    fn well_known_symbol(
+        &mut self,
+        sigma: &Sigma,
+        loc: Loc,
+        v: &Term,
+        sym: &str,
+    ) -> Result<Expr, Error> {
+        Ok(Expr::Member(MemberExpr {
+            span: loc.into(),
+            obj: Box::new(Expr::Paren(ParenExpr {
+                span: loc.into(),
+                expr: Box::new(self.expr(sigma, loc, v)?),
+            })),
+            prop: MemberProp::Computed(ComputedPropName {
+                span: loc.into(),
+                expr: Box::new(Expr::Member(MemberExpr {
+                    span: loc.into(),
+                    obj: Box::new(Expr::Ident(Self::special_ident("Symbol"))),
+                    prop: MemberProp::Ident(Self::special_ident(sym)),
+                })),
+            }),
+        }))
+    }
+
     fn optionify(loc: Loc, e: Expr) -> Expr {
         // ((x) => x === undefined ? None : Some(x))(e)
         Expr::Call(CallExpr {
@@ -608,6 +632,13 @@ impl Ecma {
                 value: Box::new(BigIntValue::from_str(v).unwrap()),
                 raw: None,
             })),
+            ArrIter(a) => Expr::Call(CallExpr {
+                span: loc.into(),
+                callee: Callee::Expr(Box::new(self.well_known_symbol(sigma, loc, a, "iterator")?)),
+                args: Default::default(),
+                type_args: None,
+            }),
+            ArrIterNext(it) => self.prototype(sigma, loc, it, "next", [])?,
             Arr(xs) => {
                 let mut elems = Vec::default();
                 for x in xs {
