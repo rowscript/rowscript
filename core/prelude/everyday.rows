@@ -13,7 +13,7 @@ class ArrayIterator<T> {
 }
 
 interface Iterable<I> {
-    iter<T>(a: Iterable<T>): Iterator<Iterable>;
+    iter<It: type -> type, T>(a: Iterable<T>): It<T> where Iterator<It>;
 }
 
 class Array<T> {

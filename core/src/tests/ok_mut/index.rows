@@ -1,4 +1,4 @@
-function f(): number {
+function f0(): number {
     if (true) {
         let a = 42;
         a = 69;
@@ -7,4 +7,13 @@ function f(): number {
     0
 }
 
-const n = f();
+const n0 = f0();
+
+function f1(): number {
+    let a = 42;
+    let f: () -> unit = () => { a = 69; };
+    f();
+    a
+}
+
+const n1 = f1();
