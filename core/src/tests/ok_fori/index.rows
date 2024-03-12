@@ -1,0 +1,9 @@
+function log<T>(m: T);
+
+function f0() {
+//    for (let i = 0; i < 10; i += 1) {
+//        log("hello");
+//    }
+}
+
+f0();

@@ -5,14 +5,14 @@ use std::str::FromStr;
 use num_bigint::BigInt as BigIntValue;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
-    ArrayLit, ArrowExpr, AssignExpr, AssignOp, BigInt as JsBigInt, BinExpr, BinaryOp, BindingIdent,
-    BlockStmt, BlockStmtOrExpr, Bool, BreakStmt, CallExpr, Callee, ComputedPropName, CondExpr,
-    ContinueStmt, Decl, ExportDecl, Expr, ExprOrSpread, ExprStmt, FnDecl, Function, Ident, IfStmt,
-    ImportDecl, ImportNamedSpecifier, ImportSpecifier, ImportStarAsSpecifier, KeyValueProp, Lit,
-    MemberExpr, MemberProp, Module, ModuleDecl, ModuleItem, Number as JsNumber, ObjectLit,
-    Param as JsParam, ParenExpr, Pat, PatOrExpr, Prop, PropName, PropOrSpread, ReturnStmt,
-    SpreadElement, Stmt, Str as JsStr, Str, UnaryExpr, UnaryOp, VarDecl, VarDeclKind,
-    VarDeclarator, WhileStmt,
+    ArrayLit, ArrowExpr, AssignExpr, AssignOp, AssignTarget, BigInt as JsBigInt, BinExpr, BinaryOp,
+    BindingIdent, BlockStmt, BlockStmtOrExpr, Bool, BreakStmt, CallExpr, Callee, ComputedPropName,
+    CondExpr, ContinueStmt, Decl, ExportDecl, Expr, ExprOrSpread, ExprStmt, FnDecl, Function,
+    Ident, IfStmt, ImportDecl, ImportNamedSpecifier, ImportSpecifier, ImportStarAsSpecifier,
+    KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleDecl, ModuleItem, Number as JsNumber,
+    ObjectLit, Param as JsParam, ParenExpr, Pat, Prop, PropName, PropOrSpread, ReturnStmt,
+    SimpleAssignTarget, SpreadElement, Stmt, Str as JsStr, Str, UnaryExpr, UnaryOp, VarDecl,
+    VarDeclKind, VarDeclarator, WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -432,7 +432,10 @@ impl Ecma {
             expr: Box::new(Expr::Assign(AssignExpr {
                 span: loc.into(),
                 op: AssignOp::Assign,
-                left: PatOrExpr::Pat(Box::new(Self::ident_pat(loc, v))),
+                left: AssignTarget::Simple(SimpleAssignTarget::Ident(BindingIdent {
+                    id: Self::ident(loc, v),
+                    type_ann: None,
+                })),
                 right: Box::new(self.expr(sigma, loc, tm)?),
             })),
         }))
@@ -694,14 +697,14 @@ impl Ecma {
                     expr: Box::new(Expr::Assign(AssignExpr {
                         span: loc.into(),
                         op: AssignOp::Assign,
-                        left: PatOrExpr::Expr(Box::new(Expr::Member(MemberExpr {
+                        left: AssignTarget::Simple(SimpleAssignTarget::Member(MemberExpr {
                             span: loc.into(),
                             obj: Box::new(self.expr(sigma, loc, a)?),
                             prop: MemberProp::Computed(ComputedPropName {
                                 span: loc.into(),
                                 expr: Box::new(self.expr(sigma, loc, i)?),
                             }),
-                        }))),
+                        })),
                         right: Box::new(self.expr(sigma, loc, v)?),
                     })),
                 })),
@@ -945,6 +948,7 @@ impl Ecma {
                 }),
                 type_only: false,
                 with: None,
+                phase: Default::default(),
             })))
         }
         Ok(items)
@@ -976,6 +980,7 @@ impl Ecma {
                 }),
                 type_only: false,
                 with: None,
+                phase: Default::default(),
             })));
             props.push(PropOrSpread::Spread(SpreadElement {
                 dot3_token: DUMMY_SP,

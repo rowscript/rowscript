@@ -15,25 +15,24 @@ codegen-ecma = [
 ]
 
 [dependencies.pest]
-version = "2.4.1"
-features = ["fast-line-col"]
+version = "2.7.8"
 
 [dependencies.pest_derive]
-version = "2.4.1"
+version = "2.7.8"
 
 [dependencies.thiserror]
-version = "1.0.37"
+version = "1.0.58"
 
 [dependencies.ariadne]
 version = "0.4.0"
 
 [dependencies.stacker]
-version = "0.1"
+version = "0.1.15"
 
 [dependencies]
-swc_ecma_parser = { version = "0.141.33", optional = true }
-swc_ecma_ast = { version = "0.110.15", optional = true }
-swc_ecma_codegen = { version = "0.146.47", optional = true }
+swc_ecma_parser = { version = "0.143.8", optional = true }
+swc_ecma_ast = { version = "0.112.5", optional = true }
+swc_ecma_codegen = { version = "0.148.10", optional = true }
 swc_atoms = { version = "0.6.5", optional = true }
-swc_common = { version = "0.33.12", features = ["tty-emitter"], optional = true }
-num-bigint = { version = "0.4.3", optional = true }
+swc_common = { version = "0.33.19", features = ["tty-emitter"], optional = true }
+num-bigint = { version = "0.4.4", optional = true }
