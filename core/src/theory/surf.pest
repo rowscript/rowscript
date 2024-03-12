@@ -401,6 +401,7 @@ branch =
   | branch_array_assign
   | branch_local_assign
   | branch_while
+  | branch_fori
   | branch_if
   | expr
   | ctl_return
@@ -411,8 +412,9 @@ branch_unit_const = { unit_const_stmt ~ branch }
 branch_object_assign = { object_assign_stmt ~ branch }
 branch_array_assign = { array_assign_stmt ~ branch }
 branch_local_assign = { local_assign_stmt ~ branch }
-branch_while = { while_stmt_start ~ loop_branch ~ while_stmt_end ~ branch }
-branch_if = { if_stmt_start ~ branch ~ if_stmt_end ~ branch }
+branch_while = { while_stmt_start ~ loop_branch ~ branch_stmt_end ~ branch }
+branch_fori = { fori_stmt_start ~ loop_branch ~ branch_stmt_end ~ branch }
+branch_if = { if_stmt_start ~ branch ~ branch_stmt_end ~ branch }
 ctl_return =  { "return" ~ expr? }
 loop_branch =
   { loop_branch_const
@@ -434,8 +436,9 @@ loop_branch_unit_const = { unit_const_stmt ~ loop_branch }
 loop_branch_object_assign = { object_assign_stmt ~ loop_branch }
 loop_branch_array_assign = { array_assign_stmt ~ loop_branch }
 loop_branch_local_assign = { local_assign_stmt ~ loop_branch }
-loop_branch_while = { while_stmt_start ~ loop_branch ~ while_stmt_end ~ loop_branch }
-loop_branch_if = { if_stmt_start ~ loop_branch ~ if_stmt_end ~ loop_branch }
+loop_branch_while = { while_stmt_start ~ loop_branch ~ branch_stmt_end ~ loop_branch }
+loop_branch_fori = { fori_stmt_start ~ loop_branch ~ branch_stmt_end ~ loop_branch }
+loop_branch_if = { if_stmt_start ~ loop_branch ~ branch_stmt_end ~ loop_branch }
 
 const_stmt = _{ "const" ~ local_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" }
 let_stmt = _{ "let" ~ local_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" }
@@ -444,9 +447,9 @@ object_assign_stmt = _{ (local_id | this_id) ~ "." ~ prop_id ~ "=" ~ expr ~ ";" 
 array_assign_stmt = _{ local_id ~ "[" ~ expr ~ "]" ~ "=" ~ expr ~ ";" }
 local_assign_stmt = _{ local_id ~ "=" ~ expr ~ ";" }
 while_stmt_start = _{ "while" ~ "(" ~ expr ~ ")" ~ "{" }
-while_stmt_end = _{ ";" ~ "}" }
+fori_stmt_start = _{ "for" ~ "(" ~ expr ~ ")" ~ "{" } // TODO
 if_stmt_start = _{ "if" ~ "(" ~ expr ~ ")" ~ "{" }
-if_stmt_end = _{ ";" ~ "}" }
+branch_stmt_end = _{ ";" ~ "}" }
 
 preds = _{ "where" ~ pred ~ ("," ~ pred)* }
 pred =
@@ -499,8 +502,9 @@ fn_body_unit_const = { unit_const_stmt ~ fn_body }
 fn_body_object_assign = { object_assign_stmt ~ fn_body }
 fn_body_array_assign = { array_assign_stmt ~ fn_body }
 fn_body_local_assign = { local_assign_stmt ~ fn_body }
-fn_body_while = { while_stmt_start ~ loop_branch ~ while_stmt_end ~ fn_body }
-fn_body_if = { if_stmt_start ~ branch ~ if_stmt_end ~ fn_body }
+fn_body_while = { while_stmt_start ~ loop_branch ~ branch_stmt_end ~ fn_body }
+fn_body_fori = { fori_stmt_start ~ loop_branch ~ branch_stmt_end ~ fn_body }
+fn_body_if = { if_stmt_start ~ branch ~ branch_stmt_end ~ fn_body }
 fn_body_ret = { expr? }
 
 fn_postulate =
