@@ -96,6 +96,7 @@ impl<'a> Normalizer<'a> {
                     self.term(*b)?
                 }
             }
+            LocalSet(p, a, b) => LocalSet(p, self.term_box(a)?, self.term_box(b)?),
             While(p, b, r) => While(self.term_box(p)?, self.term_box(b)?, self.term_box(r)?),
             Guard(p, b, r) => Guard(self.term_box(p)?, self.term_box(b)?, self.term_box(r)?),
             Return(a) => Return(self.term_box(a)?),

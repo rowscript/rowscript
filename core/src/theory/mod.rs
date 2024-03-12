@@ -66,6 +66,8 @@ pub const UNBOUND: &str = "_";
 pub const TUPLED: &str = "__tupled";
 pub const UNTUPLED_RHS_PREFIX: &str = "__untupled_";
 
+pub const LOCALS: &str = "__locals_";
+
 pub const THIS: &str = "this";
 
 impl Var {
@@ -97,6 +99,10 @@ impl Var {
 
     pub fn untupled_rhs(&self) -> Self {
         Self::new(format!("{UNTUPLED_RHS_PREFIX}{self}"))
+    }
+
+    pub fn local(&self) -> Self {
+        Self::new(format!("{LOCALS}{self}"))
     }
 
     pub fn implements(&self, im: &Expr) -> Self {

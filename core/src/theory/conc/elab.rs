@@ -178,6 +178,15 @@ impl Elaborator {
         Ok(ret)
     }
 
+    fn check_anno(&mut self, a: Expr, maybe_typ: Option<Box<Expr>>) -> Result<(Term, Term), Error> {
+        Ok(if let Some(t) = maybe_typ {
+            let checked_ty = self.check(*t, &Term::Univ)?;
+            (self.check(a, &checked_ty)?, checked_ty)
+        } else {
+            self.infer(a)?
+        })
+    }
+
     fn check(&mut self, e: Expr, ty: &Term) -> Result<Term, Error> {
         maybe_grow(move || self.check_impl(e, ty))
     }
@@ -186,12 +195,7 @@ impl Elaborator {
         use Expr::*;
         Ok(match e {
             Local(_, var, maybe_typ, a, b) => {
-                let (tm, typ) = if let Some(t) = maybe_typ {
-                    let checked_ty = self.check(*t, &Term::Univ)?;
-                    (self.check(*a, &checked_ty)?, checked_ty)
-                } else {
-                    self.infer(*a)?
-                };
+                let (tm, typ) = self.check_anno(*a, maybe_typ)?;
                 let param = Param {
                     var,
                     info: Explicit,
@@ -199,6 +203,16 @@ impl Elaborator {
                 };
                 let body = self.guarded_check(&[&param], *b, ty)?;
                 Term::Local(param, Box::new(tm), Box::new(body))
+            }
+            LocalSet(_, var, maybe_typ, a, b) => {
+                let (tm, typ) = self.check_anno(*a, maybe_typ)?;
+                let param = Param {
+                    var,
+                    info: Explicit,
+                    typ: Box::new(typ),
+                };
+                let body = self.guarded_check(&[&param], *b, ty)?;
+                Term::LocalSet(param, Box::new(tm), Box::new(body))
             }
             Lam(loc, var, body) => {
                 let pi = self.nf(loc).term(ty.clone())?;
@@ -332,6 +346,12 @@ impl Elaborator {
             }
             Hole(loc) => self.insert_meta(loc, UserMeta),
             InsertedHole(loc) => self.insert_meta(loc, InsertedMeta),
+            LocalUpdate(_, v, a, b) => {
+                let a_ty = self.gamma.get(&v).unwrap().clone();
+                let a = self.check(*a, &a_ty)?;
+                let (b, ty) = self.infer(*b)?;
+                (Term::LocalUpdate(v, Box::new(a), Box::new(b)), ty)
+            }
             While(_, p, b, r) => {
                 let p = self.check(*p, &Term::Boolean)?;
                 let b = self.check(*b, &Term::Unit)?;

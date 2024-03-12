@@ -51,6 +51,8 @@ pub enum Term {
     Undef(Var),
 
     Local(Param<Self>, Box<Self>, Box<Self>),
+    LocalSet(Param<Self>, Box<Self>, Box<Self>),
+    LocalUpdate(Var, Box<Self>, Box<Self>),
     While(Box<Self>, Box<Self>, Box<Self>),
     Guard(Box<Self>, Box<Self>, Box<Self>),
     Return(Box<Self>),
@@ -211,6 +213,8 @@ impl Display for Term {
                 Undef(r) => r.to_string(),
                 Cls(n, a) => format!("{n}({a})"),
                 Local(p, a, b) => format!("const {p} = {a};\n\t{b}"),
+                LocalSet(p, a, b) => format!("let {p} = {a};\n\t{b}"),
+                LocalUpdate(v, a, b) => format!("{v} = {a};\n\t{b}"),
                 While(p, b, r) => format!("while ({p}) {{\n\t{b}}}\n{r}"),
                 Guard(p, b, r) => format!("if ({p}) {{\n\t{b}}}\n{r}"),
                 Return(a) => format!("return {a}"),

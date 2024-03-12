@@ -1,9 +1,9 @@
 function f(): number {
-//    if (true) {
-//        let a = 42;
-//        a = 69;
-//        return a;
-//    }
+    if (true) {
+        let a = 42;
+        a = 69;
+        return a;
+    }
     0
 }
 

@@ -400,7 +400,7 @@ impl Ecma {
         }))
     }
 
-    fn const_decl_stmt(
+    fn local_decl_stmt(
         &mut self,
         sigma: &Sigma,
         loc: Loc,
@@ -420,6 +420,24 @@ impl Ecma {
         }))))
     }
 
+    fn local_update_stmt(
+        &mut self,
+        sigma: &Sigma,
+        loc: Loc,
+        v: &Var,
+        tm: &Term,
+    ) -> Result<Stmt, Error> {
+        Ok(Stmt::Expr(ExprStmt {
+            span: loc.into(),
+            expr: Box::new(Expr::Assign(AssignExpr {
+                span: loc.into(),
+                op: AssignOp::Assign,
+                left: PatOrExpr::Pat(Box::new(Self::ident_pat(loc, v))),
+                right: Box::new(self.expr(sigma, loc, tm)?),
+            })),
+        }))
+    }
+
     fn unit_stmt(&mut self, sigma: &Sigma, loc: Loc, tm: &Term) -> Result<Stmt, Error> {
         Ok(Stmt::Expr(ExprStmt {
             span: loc.into(),
@@ -427,28 +445,25 @@ impl Ecma {
         }))
     }
 
-    fn iife_stmt(loc: Loc, b: BlockStmt) -> Stmt {
-        Stmt::Expr(ExprStmt {
+    fn iife(loc: Loc, b: BlockStmt) -> Expr {
+        Expr::Paren(ParenExpr {
             span: loc.into(),
-            expr: Box::new(Expr::Paren(ParenExpr {
+            expr: Box::new(Expr::Call(CallExpr {
                 span: loc.into(),
-                expr: Box::new(Expr::Call(CallExpr {
+                callee: Callee::Expr(Box::from(Expr::Paren(ParenExpr {
                     span: loc.into(),
-                    callee: Callee::Expr(Box::from(Expr::Paren(ParenExpr {
+                    expr: Box::new(Expr::Arrow(ArrowExpr {
                         span: loc.into(),
-                        expr: Box::new(Expr::Arrow(ArrowExpr {
-                            span: loc.into(),
-                            params: Default::default(),
-                            body: Box::new(BlockStmtOrExpr::BlockStmt(b)),
-                            is_async: false,
-                            is_generator: false,
-                            type_params: None,
-                            return_type: None,
-                        })),
-                    }))),
-                    args: Default::default(),
-                    type_args: None,
-                })),
+                        params: Default::default(),
+                        body: Box::new(BlockStmtOrExpr::BlockStmt(b)),
+                        is_async: false,
+                        is_generator: false,
+                        type_params: None,
+                        return_type: None,
+                    })),
+                }))),
+                args: Default::default(),
+                type_args: None,
             })),
         })
     }
@@ -498,9 +513,13 @@ impl Ecma {
 
         loop {
             match tm {
-                Local(p, a, b) => {
-                    stmts.push(self.const_decl_stmt(sigma, loc, &p.var, a)?);
+                Local(p, a, b) | LocalSet(p, a, b) => {
+                    stmts.push(self.local_decl_stmt(sigma, loc, &p.var, a)?);
                     tm = b
+                }
+                LocalUpdate(v, a, b) => {
+                    stmts.push(self.local_update_stmt(sigma, loc, v, a)?);
+                    tm = b;
                 }
                 While(p, b, r) => {
                     stmts.push(self.while_stmt(sigma, loc, p, b)?);
@@ -879,7 +898,11 @@ impl Ecma {
             }),
             Find(_, _, f) => return Err(NonErasable(Ref(f.clone()), loc)),
 
-            _ => unreachable!(),
+            // _ => unreachable!(),
+            e => {
+                dbg!(e);
+                unreachable!()
+            }
         })
     }
 
@@ -1066,10 +1089,10 @@ impl Ecma {
         f: &Term,
     ) -> Result<(), Error> {
         items.push(match def.name.as_str() {
-            UNBOUND => ModuleItem::Stmt(Self::iife_stmt(
-                def.loc,
-                self.block(sigma, def.loc, f, false)?,
-            )),
+            UNBOUND => ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+                span: def.loc.into(),
+                expr: Box::new(Self::iife(def.loc, self.block(sigma, def.loc, f, false)?)),
+            })),
             _ => Self::try_export_decl(
                 def,
                 Decl::Var(Box::new(VarDecl {
@@ -1079,7 +1102,10 @@ impl Ecma {
                     decls: vec![VarDeclarator {
                         span: def.loc.into(),
                         name: Self::ident_pat(def.loc, &def.name),
-                        init: Some(Box::new(self.expr(sigma, def.loc, f)?)),
+                        init: Some(Box::new(Self::iife(
+                            def.loc,
+                            self.block(sigma, def.loc, f, true)?,
+                        ))),
                         definite: false,
                     }],
                 })),

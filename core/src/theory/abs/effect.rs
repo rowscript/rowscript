@@ -51,9 +51,9 @@ pub fn has_side_effect(tm: &Term) -> bool {
         }
         Find(a, _, _) => has_side_effect(a),
 
-        Extern(..) | MetaRef(..) | Return(..) | Continue | Break | ArrIter(..)
-        | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..) | ArrForeach(..) | ArrAt(..)
-        | ArrInsert(..) | Unionify(..) => true,
+        Extern(..) | MetaRef(..) | LocalSet(..) | LocalUpdate(..) | Return(..) | Continue
+        | Break | ArrIter(..) | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..)
+        | ArrForeach(..) | ArrAt(..) | ArrInsert(..) | Unionify(..) => true,
 
         Ref(..) | Qualified(..) | Univ | Pi(..) | Sigma(..) | Unit | TT | Boolean | False
         | True | String | Str(..) | Number | Num(..) | BigInt | Big(..) | ArrayIterator(..)

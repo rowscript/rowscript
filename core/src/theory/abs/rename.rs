@@ -25,6 +25,13 @@ impl Renamer {
                 let a = self.term(*a); // not guarded by `p`, rename it first
                 Local(self.param(p), Box::new(a), Box::new(self.term(*b)))
             }
+            LocalSet(p, a, b) => {
+                let a = self.term(*a);
+                LocalSet(self.param(p), Box::new(a), Box::new(self.term(*b)))
+            }
+            LocalUpdate(v, a, b) => {
+                LocalUpdate(v, Box::new(self.term(*a)), Box::new(self.term(*b)))
+            }
             While(p, b, r) => While(
                 Box::new(self.term(*p)),
                 Box::new(self.term(*b)),

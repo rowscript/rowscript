@@ -7,7 +7,7 @@ use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::conc::load::{Import, ImportedDefs, Loaded};
 use crate::theory::{NameMap, Param, RawNameSet, ResolvedVar, Tele, Var, VarKind, UNBOUND};
 use crate::Error;
-use crate::Error::UnresolvedVar;
+use crate::Error::{DuplicateName, UnresolvedVar};
 
 pub struct Resolver<'a> {
     ubiquitous: &'a NameMap,
@@ -144,7 +144,10 @@ impl<'a> Resolver<'a> {
 
     fn get(&self, v: &Var) -> Option<&ResolvedVar> {
         let k = v.as_str();
-        self.names.get(k).or_else(|| self.ubiquitous.get(k))
+        self.names
+            .get(k)
+            .or_else(|| self.names.get(v.local().as_str()))
+            .or_else(|| self.ubiquitous.get(k))
     }
 
     fn insert(&mut self, v: &Var) -> Option<ResolvedVar> {
@@ -226,6 +229,33 @@ impl<'a> Resolver<'a> {
                     Box::new(b),
                 )
             }
+            LocalSet(loc, x, typ, a, b) => {
+                let x = x.local();
+                if self.names.contains_key(x.as_str()) {
+                    return Err(DuplicateName(loc));
+                }
+                let b = self.bodied(&[&x], *b)?;
+                LocalSet(
+                    loc,
+                    x,
+                    if let Some(ty) = typ {
+                        Some(Box::new(self.expr(*ty)?))
+                    } else {
+                        None
+                    },
+                    Box::new(self.expr(*a)?),
+                    Box::new(b),
+                )
+            }
+            LocalUpdate(loc, x, a, b) => match self.names.get(x.local().as_str()) {
+                Some(x) => LocalUpdate(
+                    loc,
+                    x.1.clone(),
+                    Box::new(self.expr(*a)?),
+                    Box::new(self.expr(*b)?),
+                ),
+                None => return Err(UnresolvedVar(loc)),
+            },
             While(loc, p, b, r) => While(
                 loc,
                 Box::new(self.expr(*p)?),
