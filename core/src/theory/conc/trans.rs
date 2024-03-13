@@ -742,6 +742,13 @@ impl Trans {
                     Box::new(self.fn_body(pairs.next().unwrap())),
                 )
             }
+            Rule::fn_body_fori => {
+                let mut pairs = p.into_inner();
+                let clause = pairs.next().unwrap();
+                let body = self.branch(pairs.next().unwrap(), true);
+                let rest = self.fn_body(pairs.next().unwrap());
+                self.fori(clause, body, rest)
+            }
             Rule::fn_body_if => {
                 let mut pairs = p.into_inner();
                 Guard(
@@ -1046,6 +1053,13 @@ impl Trans {
                     Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
                 )
             }
+            Rule::branch_fori | Rule::loop_branch_fori => {
+                let mut pairs = p.into_inner();
+                let clause = pairs.next().unwrap();
+                let body = self.branch(pairs.next().unwrap(), true);
+                let rest = self.branch(pairs.next().unwrap(), inside_loop);
+                self.fori(clause, body, rest)
+            }
             Rule::branch_if | Rule::loop_branch_if => {
                 let mut pairs = p.into_inner();
                 Guard(
@@ -1118,6 +1132,83 @@ impl Trans {
             Var::from(pairs.next().unwrap()),
             self.expr(pairs.next().unwrap()),
         )
+    }
+
+    fn fori(&self, clause: Pair<Rule>, body: Expr, rest: Expr) -> Expr {
+        use Expr::*;
+
+        let clause_loc = Loc::from(clause.as_span());
+        let mut pairs = clause.into_inner();
+        let init = pairs.next();
+        let pred = pairs.next();
+        let step = pairs.next();
+        let body = Box::new(body);
+
+        let body = Box::new(match step {
+            None => UnitLocal(clause_loc, Box::new(TT(clause_loc)), body),
+            Some(p) => {
+                let p = p.into_inner().next().unwrap();
+                let loc = Loc::from(p.as_span());
+                match p.as_rule() {
+                    Rule::unit_const_stmt => {
+                        UnitLocal(loc, Box::new(self.unit_const_stmt(p)), body)
+                    }
+                    Rule::array_assign_stmt => {
+                        UnitLocal(loc, Box::new(self.array_assign_stmt(p)), body)
+                    }
+                    Rule::local_assign_stmt => {
+                        let (v, expr) = self.local_assign_stmt(p);
+                        LocalUpdate(loc, v, Box::new(expr), body)
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        });
+
+        let body = Box::new(match pred {
+            None => UnitLocal(clause_loc, Box::new(TT(clause_loc)), body),
+            Some(p) => {
+                let loc = Loc::from(p.as_span());
+                Local(
+                    loc,
+                    Var::unbound(),
+                    Some(Box::new(Unit(loc))),
+                    Box::new(self.expr(p)),
+                    body,
+                )
+            }
+        });
+
+        let body = match init {
+            None => UnitLocal(clause_loc, Box::new(TT(clause_loc)), body),
+            Some(p) => {
+                let p = p.into_inner().next().unwrap();
+                let loc = Loc::from(p.as_span());
+                match p.as_rule() {
+                    Rule::const_stmt => {
+                        let (id, typ, tm) = self.local_stmt(p);
+                        Local(loc, id, typ, Box::new(tm), body)
+                    }
+                    Rule::let_stmt => {
+                        let (id, typ, tm) = self.local_stmt(p);
+                        LocalSet(loc, id, typ, Box::new(tm), body)
+                    }
+                    Rule::unit_const_stmt => {
+                        UnitLocal(loc, Box::new(self.unit_const_stmt(p)), body)
+                    }
+                    Rule::array_assign_stmt => {
+                        UnitLocal(loc, Box::new(self.array_assign_stmt(p)), body)
+                    }
+                    Rule::local_assign_stmt => {
+                        let (v, expr) = self.local_assign_stmt(p);
+                        LocalUpdate(loc, v, Box::new(expr), body)
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        };
+
+        Fori(clause_loc, Box::new(body), Box::new(rest))
     }
 
     fn app(&self, a: Pair<Rule>, mut rev_arg: Option<(Loc, Expr)>) -> Expr {
