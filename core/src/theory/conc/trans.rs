@@ -675,66 +675,61 @@ impl Trans {
         let loc = Loc::from(p.as_span());
         match p.as_rule() {
             Rule::fn_body_const => {
-                let mut l = p.into_inner();
-                let (id, typ, tm) = self.local_stmt(l.next().unwrap());
+                let mut pairs = p.into_inner();
+                let (id, typ, tm) = self.local_stmt(pairs.next().unwrap());
                 Local(
                     loc,
                     id,
                     typ,
                     Box::new(tm),
-                    Box::new(self.fn_body(l.next().unwrap())),
+                    Box::new(self.fn_body(pairs.next().unwrap())),
                 )
             }
             Rule::fn_body_let => {
-                let mut l = p.into_inner();
-                let (id, typ, tm) = self.local_stmt(l.next().unwrap());
+                let mut pairs = p.into_inner();
+                let (id, typ, tm) = self.local_stmt(pairs.next().unwrap());
                 LocalSet(
                     loc,
                     id,
                     typ,
                     Box::new(tm),
-                    Box::new(self.fn_body(l.next().unwrap())),
+                    Box::new(self.fn_body(pairs.next().unwrap())),
                 )
             }
             Rule::fn_body_unit_const => {
-                let mut l = p.into_inner();
+                let mut pairs = p.into_inner();
                 UnitLocal(
                     loc,
-                    Box::new(self.expr(l.next().unwrap())),
-                    Box::new(self.fn_body(l.next().unwrap())),
+                    Box::new(self.unit_const_stmt(pairs.next().unwrap())),
+                    Box::new(self.fn_body(pairs.next().unwrap())),
                 )
             }
             Rule::fn_body_object_assign => {
                 let mut pairs = p.into_inner();
-                let a = pairs.next().unwrap();
-                let a_loc = Loc::from(a.as_span());
-                let a_var = Var::from(a);
-                let n = pairs.next().unwrap();
-                let n_loc = Loc::from(n.as_span());
-                let fields = vec![(n.as_str().to_string(), self.expr(pairs.next().unwrap()))];
-                let expr = Concat(
+                let (a_var, expr) = self.object_assign_stmt(pairs.next().unwrap());
+                Local(
                     loc,
-                    Box::new(Unresolved(a_loc, None, a_var.clone())),
-                    Box::new(Obj(n_loc, Box::new(Fields(n_loc, fields)))),
-                );
-                let body = self.fn_body(pairs.next().unwrap());
-                Local(loc, a_var, None, Box::new(expr), Box::new(body))
+                    a_var,
+                    None,
+                    Box::new(expr),
+                    Box::new(self.fn_body(pairs.next().unwrap())),
+                )
             }
             Rule::fn_body_array_assign => {
                 let mut pairs = p.into_inner();
-                let a = self.maybe_qualified(pairs.next().unwrap());
-                let i = self.expr(pairs.next().unwrap());
-                let v = self.expr(pairs.next().unwrap());
-                let body = self.fn_body(pairs.next().unwrap());
-                let insert = Self::builtin_method(i.loc(), "Array", "insert");
-                UnitLocal(loc, Box::new(Self::call3(insert, a, i, v)), Box::new(body))
+                UnitLocal(
+                    loc,
+                    Box::new(self.array_assign_stmt(pairs.next().unwrap())),
+                    Box::new(self.fn_body(pairs.next().unwrap())),
+                )
             }
             Rule::fn_body_local_assign => {
                 let mut pairs = p.into_inner();
+                let (v, expr) = self.local_assign_stmt(pairs.next().unwrap());
                 LocalUpdate(
                     loc,
-                    Var::from(pairs.next().unwrap()),
-                    Box::new(self.expr(pairs.next().unwrap())),
+                    v,
+                    Box::new(expr),
                     Box::new(self.fn_body(pairs.next().unwrap())),
                 )
             }
@@ -984,66 +979,61 @@ impl Trans {
         let loc = Loc::from(p.as_span());
         match p.as_rule() {
             Rule::branch_const | Rule::loop_branch_const => {
-                let mut l = p.into_inner();
-                let (id, typ, tm) = self.local_stmt(l.next().unwrap());
+                let mut pairs = p.into_inner();
+                let (id, typ, tm) = self.local_stmt(pairs.next().unwrap());
                 Local(
                     loc,
                     id,
                     typ,
                     Box::new(tm),
-                    Box::new(self.branch(l.next().unwrap(), inside_loop)),
+                    Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
                 )
             }
             Rule::branch_let | Rule::loop_branch_let => {
-                let mut l = p.into_inner();
-                let (id, typ, tm) = self.local_stmt(l.next().unwrap());
+                let mut pairs = p.into_inner();
+                let (id, typ, tm) = self.local_stmt(pairs.next().unwrap());
                 LocalSet(
                     loc,
                     id,
                     typ,
                     Box::new(tm),
-                    Box::new(self.branch(l.next().unwrap(), inside_loop)),
+                    Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
                 )
             }
             Rule::branch_unit_const | Rule::loop_branch_unit_const => {
-                let mut l = p.into_inner();
+                let mut pairs = p.into_inner();
                 UnitLocal(
                     loc,
-                    Box::new(self.expr(l.next().unwrap())),
-                    Box::new(self.branch(l.next().unwrap(), inside_loop)),
+                    Box::new(self.unit_const_stmt(pairs.next().unwrap())),
+                    Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
                 )
             }
             Rule::branch_object_assign | Rule::loop_branch_object_assign => {
                 let mut pairs = p.into_inner();
-                let a = pairs.next().unwrap();
-                let a_loc = Loc::from(a.as_span());
-                let a_var = Var::from(a);
-                let n = pairs.next().unwrap();
-                let n_loc = Loc::from(n.as_span());
-                let fields = vec![(n.as_str().to_string(), self.expr(pairs.next().unwrap()))];
-                let expr = Concat(
+                let (a_var, expr) = self.object_assign_stmt(pairs.next().unwrap());
+                Local(
                     loc,
-                    Box::new(Unresolved(a_loc, None, a_var.clone())),
-                    Box::new(Obj(n_loc, Box::new(Fields(n_loc, fields)))),
-                );
-                let body = self.branch(pairs.next().unwrap(), inside_loop);
-                Local(loc, a_var, None, Box::new(expr), Box::new(body))
+                    a_var,
+                    None,
+                    Box::new(expr),
+                    Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
+                )
             }
             Rule::branch_array_assign | Rule::loop_branch_array_assign => {
                 let mut pairs = p.into_inner();
-                let a = self.maybe_qualified(pairs.next().unwrap());
-                let i = self.expr(pairs.next().unwrap());
-                let v = self.expr(pairs.next().unwrap());
-                let body = self.branch(pairs.next().unwrap(), inside_loop);
-                let insert = Self::builtin_method(i.loc(), "Array", "insert");
-                UnitLocal(loc, Box::new(Self::call3(insert, a, i, v)), Box::new(body))
+                UnitLocal(
+                    loc,
+                    Box::new(self.array_assign_stmt(pairs.next().unwrap())),
+                    Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
+                )
             }
             Rule::branch_local_assign | Rule::loop_branch_local_assign => {
                 let mut pairs = p.into_inner();
+                let (v, expr) = self.local_assign_stmt(pairs.next().unwrap());
                 LocalUpdate(
                     loc,
-                    Var::from(pairs.next().unwrap()),
-                    Box::new(self.expr(pairs.next().unwrap())),
+                    v,
+                    Box::new(expr),
                     Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
                 )
             }
@@ -1090,6 +1080,44 @@ impl Trans {
             _ => unreachable!(),
         };
         (id, typ, tm)
+    }
+
+    fn unit_const_stmt(&self, s: Pair<Rule>) -> Expr {
+        self.expr(s.into_inner().next().unwrap())
+    }
+
+    fn object_assign_stmt(&self, s: Pair<Rule>) -> (Var, Expr) {
+        use Expr::*;
+        let mut pairs = s.into_inner();
+        let a = pairs.next().unwrap();
+        let a_loc = Loc::from(a.as_span());
+        let a_var = Var::from(a);
+        let n = pairs.next().unwrap();
+        let n_loc = Loc::from(n.as_span());
+        let fields = vec![(n.as_str().to_string(), self.expr(pairs.next().unwrap()))];
+        let expr = Concat(
+            a_loc,
+            Box::new(Unresolved(a_loc, None, a_var.clone())),
+            Box::new(Obj(n_loc, Box::new(Fields(n_loc, fields)))),
+        );
+        (a_var, expr)
+    }
+
+    fn array_assign_stmt(&self, s: Pair<Rule>) -> Expr {
+        let mut pairs = s.into_inner();
+        let a = self.maybe_qualified(pairs.next().unwrap());
+        let i = self.expr(pairs.next().unwrap());
+        let v = self.expr(pairs.next().unwrap());
+        let insert = Self::builtin_method(i.loc(), "Array", "insert");
+        Self::call3(insert, a, i, v)
+    }
+
+    fn local_assign_stmt(&self, s: Pair<Rule>) -> (Var, Expr) {
+        let mut pairs = s.into_inner();
+        (
+            Var::from(pairs.next().unwrap()),
+            self.expr(pairs.next().unwrap()),
+        )
     }
 
     fn app(&self, a: Pair<Rule>, mut rev_arg: Option<(Loc, Expr)>) -> Expr {

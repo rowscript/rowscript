@@ -442,10 +442,10 @@ loop_branch_if = { if_stmt_start ~ loop_branch ~ branch_stmt_end ~ loop_branch }
 
 const_stmt = { "const" ~ local_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" }
 let_stmt = { "let" ~ local_id ~ (":" ~ type_expr)? ~ "=" ~ expr ~ ";" }
-unit_const_stmt = _{ expr ~ ";" }
-object_assign_stmt = _{ (local_id | this_id) ~ "." ~ prop_id ~ "=" ~ expr ~ ";" }
-array_assign_stmt = _{ local_id ~ "[" ~ expr ~ "]" ~ "=" ~ expr ~ ";" }
-local_assign_stmt = _{ local_id ~ "=" ~ expr ~ ";" }
+unit_const_stmt = { expr ~ ";" }
+object_assign_stmt = { (local_id | this_id) ~ "." ~ prop_id ~ "=" ~ expr ~ ";" }
+array_assign_stmt = { local_id ~ "[" ~ expr ~ "]" ~ "=" ~ expr ~ ";" }
+local_assign_stmt = { local_id ~ "=" ~ expr ~ ";" }
 while_stmt_start = _{ "while" ~ "(" ~ expr ~ ")" ~ "{" }
 fori_stmt_start = _{ "for" ~ "(" ~ expr ~ ")" ~ "{" } // TODO
 if_stmt_start = _{ "if" ~ "(" ~ expr ~ ")" ~ "{" }
