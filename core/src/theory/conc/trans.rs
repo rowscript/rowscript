@@ -676,7 +676,7 @@ impl Trans {
         match p.as_rule() {
             Rule::fn_body_const => {
                 let mut l = p.into_inner();
-                let (id, typ, tm) = self.partial_local(&mut l);
+                let (id, typ, tm) = self.local_stmt(l.next().unwrap());
                 Local(
                     loc,
                     id,
@@ -687,7 +687,7 @@ impl Trans {
             }
             Rule::fn_body_let => {
                 let mut l = p.into_inner();
-                let (id, typ, tm) = self.partial_local(&mut l);
+                let (id, typ, tm) = self.local_stmt(l.next().unwrap());
                 LocalSet(
                     loc,
                     id,
@@ -985,7 +985,7 @@ impl Trans {
         match p.as_rule() {
             Rule::branch_const | Rule::loop_branch_const => {
                 let mut l = p.into_inner();
-                let (id, typ, tm) = self.partial_local(&mut l);
+                let (id, typ, tm) = self.local_stmt(l.next().unwrap());
                 Local(
                     loc,
                     id,
@@ -996,7 +996,7 @@ impl Trans {
             }
             Rule::branch_let | Rule::loop_branch_let => {
                 let mut l = p.into_inner();
-                let (id, typ, tm) = self.partial_local(&mut l);
+                let (id, typ, tm) = self.local_stmt(l.next().unwrap());
                 LocalSet(
                     loc,
                     id,
@@ -1074,6 +1074,22 @@ impl Trans {
             Rule::ctl_break if inside_loop => Break(loc),
             _ => unreachable!(),
         }
+    }
+
+    fn local_stmt(&self, s: Pair<Rule>) -> (Var, Option<Box<Expr>>, Expr) {
+        let mut pairs = s.into_inner();
+        let id = Var::from(pairs.next().unwrap());
+        let mut typ = None;
+        let type_or_expr = pairs.next().unwrap();
+        let tm = match type_or_expr.as_rule() {
+            Rule::type_expr => {
+                typ = Some(Box::new(self.type_expr(type_or_expr)));
+                self.expr(pairs.next().unwrap())
+            }
+            Rule::expr => self.expr(type_or_expr),
+            _ => unreachable!(),
+        };
+        (id, typ, tm)
     }
 
     fn app(&self, a: Pair<Rule>, mut rev_arg: Option<(Loc, Expr)>) -> Expr {
@@ -1276,21 +1292,6 @@ impl Trans {
                 _ => unreachable!(),
             })
             .rfold(TT(loc), |a, (loc, x)| Tuple(loc, Box::new(x), Box::new(a)))
-    }
-
-    fn partial_local(&self, pairs: &mut Pairs<Rule>) -> (Var, Option<Box<Expr>>, Expr) {
-        let id = Var::from(pairs.next().unwrap());
-        let mut typ = None;
-        let type_or_expr = pairs.next().unwrap();
-        let tm = match type_or_expr.as_rule() {
-            Rule::type_expr => {
-                typ = Some(Box::new(self.type_expr(type_or_expr)));
-                self.expr(pairs.next().unwrap())
-            }
-            Rule::expr => self.expr(type_or_expr),
-            _ => unreachable!(),
-        };
-        (id, typ, tm)
     }
 
     fn builtin_method(loc: Loc, typ: &str, meth: &str) -> Expr {
