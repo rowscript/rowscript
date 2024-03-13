@@ -7,12 +7,12 @@ use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
     ArrayLit, ArrowExpr, AssignExpr, AssignOp, AssignTarget, BigInt as JsBigInt, BinExpr, BinaryOp,
     BindingIdent, BlockStmt, BlockStmtOrExpr, Bool, BreakStmt, CallExpr, Callee, ComputedPropName,
-    CondExpr, ContinueStmt, Decl, ExportDecl, Expr, ExprOrSpread, ExprStmt, FnDecl, Function,
-    Ident, IfStmt, ImportDecl, ImportNamedSpecifier, ImportSpecifier, ImportStarAsSpecifier,
-    KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleDecl, ModuleItem, Number as JsNumber,
-    ObjectLit, Param as JsParam, ParenExpr, Pat, Prop, PropName, PropOrSpread, ReturnStmt,
-    SimpleAssignTarget, SpreadElement, Stmt, Str as JsStr, Str, UnaryExpr, UnaryOp, VarDecl,
-    VarDeclKind, VarDeclarator, WhileStmt,
+    CondExpr, ContinueStmt, Decl, ExportDecl, Expr, ExprOrSpread, ExprStmt, FnDecl, ForStmt,
+    Function, Ident, IfStmt, ImportDecl, ImportNamedSpecifier, ImportSpecifier,
+    ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleDecl,
+    ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, Prop, PropName,
+    PropOrSpread, ReturnStmt, SimpleAssignTarget, SpreadElement, Stmt, Str as JsStr, Str,
+    UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr, VarDeclarator, WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -400,14 +400,14 @@ impl Ecma {
         }))
     }
 
-    fn local_decl_stmt(
+    fn local_decl(
         &mut self,
         sigma: &Sigma,
         loc: Loc,
         v: &Var,
         tm: &Term,
-    ) -> Result<Stmt, Error> {
-        Ok(Stmt::Decl(Decl::Var(Box::new(VarDecl {
+    ) -> Result<VarDecl, Error> {
+        Ok(VarDecl {
             span: loc.into(),
             kind: VarDeclKind::Var,
             declare: false,
@@ -417,27 +417,18 @@ impl Ecma {
                 init: Some(Box::new(self.expr(sigma, loc, tm)?)),
                 definite: false,
             }],
-        }))))
+        })
     }
 
-    fn local_update_stmt(
-        &mut self,
-        sigma: &Sigma,
-        loc: Loc,
-        v: &Var,
-        tm: &Term,
-    ) -> Result<Stmt, Error> {
-        Ok(Stmt::Expr(ExprStmt {
+    fn local_update(&mut self, sigma: &Sigma, loc: Loc, v: &Var, tm: &Term) -> Result<Expr, Error> {
+        Ok(Expr::Assign(AssignExpr {
             span: loc.into(),
-            expr: Box::new(Expr::Assign(AssignExpr {
-                span: loc.into(),
-                op: AssignOp::Assign,
-                left: AssignTarget::Simple(SimpleAssignTarget::Ident(BindingIdent {
-                    id: Self::ident(loc, v),
-                    type_ann: None,
-                })),
-                right: Box::new(self.expr(sigma, loc, tm)?),
+            op: AssignOp::Assign,
+            left: AssignTarget::Simple(SimpleAssignTarget::Ident(BindingIdent {
+                id: Self::ident(loc, v),
+                type_ann: None,
             })),
+            right: Box::new(self.expr(sigma, loc, tm)?),
         }))
     }
 
@@ -479,6 +470,49 @@ impl Ecma {
         }))
     }
 
+    fn fori_stmt(&mut self, sigma: &Sigma, loc: Loc, body: &Term) -> Result<Stmt, Error> {
+        use Term::*;
+
+        let (init, body) = match body {
+            Local(p, a, b) | LocalSet(p, a, b) => (
+                Some(VarDeclOrExpr::VarDecl(Box::new(
+                    self.local_decl(sigma, loc, &p.var, a)?,
+                ))),
+                b,
+            ),
+            LocalUpdate(v, a, b) => (
+                Some(VarDeclOrExpr::Expr(Box::new(
+                    self.local_update(sigma, loc, v, a)?,
+                ))),
+                b,
+            ),
+            UnitLocal(a, b) => (
+                Some(VarDeclOrExpr::Expr(Box::new(self.expr(sigma, loc, a)?))),
+                b,
+            ),
+            _ => unreachable!(),
+        };
+
+        let (test, body) = match body.as_ref() {
+            LocalSet(_, a, b) => (Some(Box::new(self.expr(sigma, loc, a)?)), b),
+            _ => unreachable!(),
+        };
+
+        let (update, body) = match body.as_ref() {
+            LocalUpdate(v, a, b) => (Some(Box::new(self.local_update(sigma, loc, v, a)?)), b),
+            UnitLocal(a, b) => (Some(Box::new(self.expr(sigma, loc, a)?)), b),
+            _ => unreachable!(),
+        };
+
+        Ok(Stmt::For(ForStmt {
+            span: loc.into(),
+            init,
+            test,
+            update,
+            body: Box::new(Stmt::Block(self.block(sigma, loc, body, false)?)),
+        }))
+    }
+
     fn guard_stmt(&mut self, sigma: &Sigma, loc: Loc, p: &Term, b: &Term) -> Result<Stmt, Error> {
         Ok(Stmt::If(IfStmt {
             span: loc.into(),
@@ -517,15 +551,24 @@ impl Ecma {
         loop {
             match tm {
                 Local(p, a, b) | LocalSet(p, a, b) => {
-                    stmts.push(self.local_decl_stmt(sigma, loc, &p.var, a)?);
+                    stmts.push(Stmt::Decl(Decl::Var(Box::new(
+                        self.local_decl(sigma, loc, &p.var, a)?,
+                    ))));
                     tm = b
                 }
                 LocalUpdate(v, a, b) => {
-                    stmts.push(self.local_update_stmt(sigma, loc, v, a)?);
+                    stmts.push(Stmt::Expr(ExprStmt {
+                        span,
+                        expr: Box::new(self.local_update(sigma, loc, v, a)?),
+                    }));
                     tm = b;
                 }
                 While(p, b, r) => {
                     stmts.push(self.while_stmt(sigma, loc, p, b)?);
+                    tm = r
+                }
+                Fori(b, r) => {
+                    stmts.push(self.fori_stmt(sigma, loc, b)?);
                     tm = r
                 }
                 Guard(p, b, r) => {
@@ -901,11 +944,7 @@ impl Ecma {
             }),
             Find(_, _, f) => return Err(NonErasable(Ref(f.clone()), loc)),
 
-            // _ => unreachable!(),
-            e => {
-                dbg!(e);
-                unreachable!()
-            }
+            _ => unreachable!(),
         })
     }
 

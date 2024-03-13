@@ -1,9 +1,19 @@
 function log<T>(m: T);
 
 function f0() {
-//    for (let i = 0; i < 10; i = i + 1) {
-//        log("hello");
-//    }
+    for (let i = 0; i < 10; i = i + 1) {
+        log("hello");
+    }
 }
 
 f0();
+
+function f1() {
+    for (const i = 0; i < 10; ) {
+        log("hello");
+    }
+}
+
+function f2() {
+    for (;;) { log("hello"); }
+}

@@ -5,6 +5,7 @@ pub fn has_side_effect(tm: &Term) -> bool {
     match tm {
         Local(_, a, b) => has_side_effect(a) || has_side_effect(b),
         While(p, b, r) => has_side_effect(p) || has_side_effect(b) || has_side_effect(r),
+        Fori(b, r) => has_side_effect(b) || has_side_effect(r),
         Guard(p, b, r) => has_side_effect(p) || has_side_effect(b) || has_side_effect(r),
         Lam(_, b) => has_side_effect(b),
         App(f, _, x) => has_side_effect(f) || has_side_effect(x),

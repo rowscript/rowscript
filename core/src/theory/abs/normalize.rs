@@ -98,6 +98,7 @@ impl<'a> Normalizer<'a> {
             }
             LocalSet(p, a, b) => LocalSet(p, self.term_box(a)?, self.term_box(b)?),
             While(p, b, r) => While(self.term_box(p)?, self.term_box(b)?, self.term_box(r)?),
+            Fori(b, r) => Fori(self.term_box(b)?, self.term_box(r)?),
             Guard(p, b, r) => Guard(self.term_box(p)?, self.term_box(b)?, self.term_box(r)?),
             Return(a) => Return(self.term_box(a)?),
             Pi(p, b) => Pi(self.param(p)?, self.term_box(b)?),

@@ -1166,13 +1166,19 @@ impl Trans {
         });
 
         let body = Box::new(match pred {
-            None => UnitLocal(clause_loc, Box::new(TT(clause_loc)), body),
+            None => LocalSet(
+                clause_loc,
+                Var::unbound(),
+                Some(Box::new(Boolean(clause_loc))),
+                Box::new(True(clause_loc)),
+                body,
+            ),
             Some(p) => {
                 let loc = Loc::from(p.as_span());
-                Local(
+                LocalSet(
                     loc,
                     Var::unbound(),
-                    Some(Box::new(Unit(loc))),
+                    Some(Box::new(Boolean(loc))),
                     Box::new(self.expr(p)),
                     body,
                 )

@@ -358,6 +358,11 @@ impl Elaborator {
                 let (r, ty) = self.infer(*r)?;
                 (Term::While(Box::new(p), Box::new(b), Box::new(r)), ty)
             }
+            Fori(_, b, r) => {
+                let b = self.check(*b, &Term::Unit)?;
+                let (r, ty) = self.infer(*r)?;
+                (Term::Fori(Box::new(b), Box::new(r)), ty)
+            }
             Guard(_, p, b, r) => {
                 let p = self.check(*p, &Term::Boolean)?;
                 let b = self.check(*b, &Term::Unit)?;

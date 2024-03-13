@@ -37,6 +37,7 @@ impl Renamer {
                 Box::new(self.term(*b)),
                 Box::new(self.term(*r)),
             ),
+            Fori(b, r) => Fori(Box::new(self.term(*b)), Box::new(self.term(*r))),
             Guard(p, b, r) => Guard(
                 Box::new(self.term(*p)),
                 Box::new(self.term(*b)),

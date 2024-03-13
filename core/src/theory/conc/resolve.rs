@@ -262,6 +262,7 @@ impl<'a> Resolver<'a> {
                 Box::new(self.expr(*b)?),
                 Box::new(self.expr(*r)?),
             ),
+            Fori(loc, b, r) => Fori(loc, Box::new(self.expr(*b)?), Box::new(self.expr(*r)?)),
             Guard(loc, p, b, r) => Guard(
                 loc,
                 Box::new(self.expr(*p)?),
