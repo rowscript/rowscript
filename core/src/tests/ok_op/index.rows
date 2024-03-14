@@ -13,3 +13,5 @@ const v1 = !true;
 const v2 = 1 == 1;
 const v3 = 1 != 1;
 const v4 = 10 % 3;
+const v5 = 10 * 3;
+const v6 = 10 / 3;

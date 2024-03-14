@@ -186,6 +186,22 @@ impl<'a> Normalizer<'a> {
                     (a, b) => NumSub(Box::new(a), Box::new(b)),
                 }
             }
+            NumMul(a, b) => {
+                let a = self.term_box(a)?;
+                let b = self.term_box(b)?;
+                match (*a, *b) {
+                    (Num(a), Num(b)) => Num(a * b),
+                    (a, b) => NumMul(Box::new(a), Box::new(b)),
+                }
+            }
+            NumDiv(a, b) => {
+                let a = self.term_box(a)?;
+                let b = self.term_box(b)?;
+                match (*a, *b) {
+                    (Num(a), Num(b)) if b != 0.0 => Num(a / b),
+                    (a, b) => NumDiv(Box::new(a), Box::new(b)),
+                }
+            }
             NumMod(a, b) => {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;

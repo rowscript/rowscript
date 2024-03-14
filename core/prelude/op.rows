@@ -86,6 +86,22 @@ implements SubOp for number {
     __sub__(a: number, b: number): number { number#__sub__(a, b) }
 }
 
+interface MulOp {
+    __mul__(a: MulOp, b: MulOp): MulOp;
+}
+
+implements MulOp for number {
+    __mul__(a: number, b: number): number { number#__mul__(a, b) }
+}
+
+interface DivOp {
+    __div__(a: DivOp, b: DivOp): DivOp;
+}
+
+implements DivOp for number {
+    __div__(a: number, b: number): number { number#__div__(a, b) }
+}
+
 interface ModOp {
     __mod__(a: ModOp, b: ModOp): ModOp;
 }

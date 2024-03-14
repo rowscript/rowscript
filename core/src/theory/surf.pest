@@ -114,6 +114,8 @@ fn_id = { pub_fn_id | priv_fn_id }
 magic_fn_id =
   { "__add__"
   | "__sub__"
+  | "__mul__"
+  | "__div__"
   | "__mod__"
   | "__or__"
   | "__and__"
@@ -159,47 +161,29 @@ idref =
   | this_id
   }
 builtin =
-  { numAdd
-  | numSub
-  | numMod
-  | numEq
-  | numNeq
-  | numLe
-  | numGe
-  | numLt
-  | numGt
-  | strAdd
-  | boolAnd
-  | boolOr
-  | boolNot
-  | arrayIterNext
-  | arrayLength
-  | arrayPush
-  | arrayForEach
-  | arrayAt
-  | arrayInsert
-  | arrayIter
+  { "number#__add__"
+  | "number#__sub__"
+  | "number#__mul__"
+  | "number#__div__"
+  | "number#__mod__"
+  | "number#__eq__"
+  | "number#__neq__"
+  | "number#__le__"
+  | "number#__ge__"
+  | "number#__lt__"
+  | "number#__gt__"
+  | "string#__add__"
+  | "boolean#__and__"
+  | "boolean#__or__"
+  | "boolean#__not__"
+  | "arrayIter#next"
+  | "array#length"
+  | "array#push"
+  | "array#forEach"
+  | "array#at"
+  | "array#insert"
+  | "array#iter"
   }
-numAdd = { "number#__add__" }
-numSub = { "number#__sub__" }
-numMod = { "number#__mod__" }
-numEq = { "number#__eq__" }
-numNeq = { "number#__neq__" }
-numLe = { "number#__le__" }
-numGe = { "number#__ge__" }
-numLt = { "number#__lt__" }
-numGt = { "number#__gt__" }
-strAdd = { "string#__add__" }
-boolAnd = { "boolean#__and__" }
-boolOr = { "boolean#__or__" }
-boolNot = { "boolean#__not__" }
-arrayIterNext = { "arrayIter#next" }
-arrayLength = { "array#length" }
-arrayPush = { "array#push" }
-arrayForEach = { "array#forEach" }
-arrayAt = { "array#at" }
-arrayInsert = { "array#insert" }
-arrayIter = { "array#iter" }
 
 tyref =
   { qualifier ~ tyref
@@ -305,6 +289,8 @@ prefix_not = { "!" }
 infix_op =
  _{ infix_add
   | infix_sub
+  | infix_mul
+  | infix_div
   | infix_mod
   | infix_eq
   | infix_neq
@@ -317,6 +303,8 @@ infix_op =
   }
 infix_add = { "+" }
 infix_sub = { "-" }
+infix_mul = { "*" }
+infix_div = { "/" }
 infix_mod = { "%" }
 infix_eq = { "==" }
 infix_neq = { "!=" }

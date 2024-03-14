@@ -32,7 +32,9 @@ impl Default for Trans {
                     | Op::infix(Rule::infix_ge, Assoc::Left)
                     | Op::infix(Rule::infix_lt, Assoc::Left)
                     | Op::infix(Rule::infix_gt, Assoc::Left))
-                .op(Op::infix(Rule::infix_mod, Assoc::Left))
+                .op(Op::infix(Rule::infix_mul, Assoc::Left)
+                    | Op::infix(Rule::infix_div, Assoc::Left)
+                    | Op::infix(Rule::infix_mod, Assoc::Left))
                 .op(Op::infix(Rule::infix_add, Assoc::Left)
                     | Op::infix(Rule::infix_sub, Assoc::Left)),
         }
@@ -780,6 +782,8 @@ impl Trans {
                     Rule::infix_gt => Self::infix_app(loc, "__gt__", lhs, rhs),
                     Rule::infix_add => Self::infix_app(loc, "__add__", lhs, rhs),
                     Rule::infix_sub => Self::infix_app(loc, "__sub__", lhs, rhs),
+                    Rule::infix_mul => Self::infix_app(loc, "__mul__", lhs, rhs),
+                    Rule::infix_div => Self::infix_app(loc, "__div__", lhs, rhs),
                     Rule::infix_mod => Self::infix_app(loc, "__mod__", lhs, rhs),
                     _ => unreachable!(),
                 }
