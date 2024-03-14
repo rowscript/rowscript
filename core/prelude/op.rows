@@ -85,3 +85,11 @@ interface SubOp {
 implements SubOp for number {
     __sub__(a: number, b: number): number { number#__sub__(a, b) }
 }
+
+interface ModOp {
+    __mod__(a: ModOp, b: ModOp): ModOp;
+}
+
+implements ModOp for number {
+    __mod__(a: number, b: number): number { number#__mod__(a, b) }
+}

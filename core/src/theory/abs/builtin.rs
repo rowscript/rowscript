@@ -54,6 +54,7 @@ impl Builtins {
             .reflect()
             .number_add()
             .number_sub()
+            .number_mod()
             .number_eq()
             .number_neq()
             .number_le()
@@ -185,6 +186,43 @@ impl Builtins {
         self.insert(Def {
             loc: Default::default(),
             name: Var::new("number#__sub__"),
+            tele: vec![tuple_param(
+                tupled,
+                [
+                    explicit(Var::new("a"), Term::Number),
+                    explicit(b, Term::Number),
+                ],
+            )],
+            ret: Box::new(Term::Number),
+            body,
+        })
+    }
+
+    fn number_mod(self) -> Self {
+        let tupled = Var::tupled();
+        let untupled_a = Var::new("a");
+        let untupled_a_rhs = untupled_a.untupled_rhs();
+        let b = Var::new("b");
+        let body = Body::Fn(Term::TupleLocal(
+            explicit(untupled_a.clone(), Term::Number),
+            explicit(
+                untupled_a_rhs.clone(),
+                Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
+            ),
+            Box::new(Term::Ref(tupled.clone())),
+            Box::new(Term::TupleLocal(
+                explicit(b.clone(), Term::Number),
+                explicit(Var::unbound(), Term::Unit),
+                Box::new(Term::Ref(untupled_a_rhs)),
+                Box::new(Term::NumMod(
+                    Box::new(Term::Ref(untupled_a)),
+                    Box::new(Term::Ref(b.clone())),
+                )),
+            )),
+        ));
+        self.insert(Def {
+            loc: Default::default(),
+            name: Var::new("number#__mod__"),
             tele: vec![tuple_param(
                 tupled,
                 [

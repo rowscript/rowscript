@@ -686,6 +686,7 @@ impl Ecma {
             })),
             NumAdd(a, b) => self.bin_expr(sigma, loc, BinaryOp::Add, a, b)?,
             NumSub(a, b) => self.bin_expr(sigma, loc, BinaryOp::Sub, a, b)?,
+            NumMod(a, b) => self.bin_expr(sigma, loc, BinaryOp::Mod, a, b)?,
             NumEq(a, b) => self.bin_expr(sigma, loc, BinaryOp::EqEqEq, a, b)?,
             NumNeq(a, b) => self.bin_expr(sigma, loc, BinaryOp::NotEqEq, a, b)?,
             NumLe(a, b) => self.bin_expr(sigma, loc, BinaryOp::LtEq, a, b)?,

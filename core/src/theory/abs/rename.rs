@@ -66,6 +66,7 @@ impl Renamer {
             BoolNot(a) => BoolNot(Box::new(self.term(*a))),
             NumAdd(a, b) => NumAdd(Box::new(self.term(*a)), Box::new(self.term(*b))),
             NumSub(a, b) => NumSub(Box::new(self.term(*a)), Box::new(self.term(*b))),
+            NumMod(a, b) => NumMod(Box::new(self.term(*a)), Box::new(self.term(*b))),
             NumEq(a, b) => NumEq(Box::new(self.term(*a)), Box::new(self.term(*b))),
             NumNeq(a, b) => NumNeq(Box::new(self.term(*a)), Box::new(self.term(*b))),
             NumLe(a, b) => NumLe(Box::new(self.term(*a)), Box::new(self.term(*b))),

@@ -18,6 +18,7 @@ pub fn has_side_effect(tm: &Term) -> bool {
         BoolNot(a) => has_side_effect(a),
         NumAdd(a, b) => has_side_effect(a) || has_side_effect(b),
         NumSub(a, b) => has_side_effect(a) || has_side_effect(b),
+        NumMod(a, b) => has_side_effect(a) || has_side_effect(b),
         NumEq(a, b) => has_side_effect(a) || has_side_effect(b),
         NumNeq(a, b) => has_side_effect(a) || has_side_effect(b),
         NumLe(a, b) => has_side_effect(a) || has_side_effect(b),
