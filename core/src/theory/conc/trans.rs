@@ -1069,13 +1069,13 @@ impl Trans {
                     Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
                 )
             }
-            Rule::expr => self.expr(p),
             Rule::ctl_return => Return(
                 loc,
                 Box::new(p.into_inner().next().map_or(TT(loc), |e| self.expr(e))),
             ),
             Rule::ctl_continue if inside_loop => Continue(loc),
             Rule::ctl_break if inside_loop => Break(loc),
+            Rule::ctl_expr => p.into_inner().next().map_or(TT(loc), |p| self.expr(p)),
             _ => unreachable!(),
         }
     }

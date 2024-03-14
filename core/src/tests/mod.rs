@@ -30,6 +30,7 @@ mod fail_resolve;
 mod fail_issue114;
 mod ok_issue101;
 mod ok_issue104;
+mod ok_issue127;
 mod ok_issue75;
 mod ok_issue93;
 

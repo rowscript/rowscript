@@ -496,6 +496,11 @@ impl Elaborator {
                 let a = self.check(*a, &Term::Sigma(p.clone(), q.typ.clone()))?;
                 (Term::TupleLocal(p, q, Box::new(a), Box::new(b)), b_ty)
             }
+            UnitLocal(_, a, b) => {
+                let a = self.check(*a, &Term::Unit)?;
+                let (b, ty) = self.infer(*b)?;
+                (Term::UnitLocal(Box::new(a), Box::new(b)), ty)
+            }
             Arr(_, xs) => {
                 let mut v_ty = None;
                 let mut checked = Vec::default();
