@@ -42,12 +42,17 @@ pub fn has_side_effect(tm: &Term) -> bool {
         Down(a, _) => has_side_effect(a),
         Variant(a) => has_side_effect(a),
         Up(a, _, _) => has_side_effect(a),
-        Switch(a, b) => {
+        Switch(a, b, d) => {
             if has_side_effect(a) {
                 return true;
             }
             for (_, a) in b.values() {
                 if has_side_effect(a) {
+                    return true;
+                }
+            }
+            if let Some((_, tm)) = d {
+                if has_side_effect(tm) {
                     return true;
                 }
             }

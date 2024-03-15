@@ -81,7 +81,12 @@ pub enum Expr {
     Enum(Loc, Box<Self>),
     Variant(Loc, String, Box<Self>),
     Upcast(Loc, Box<Self>),
-    Switch(Loc, Box<Self>, Vec<(String, Var, Self)>),
+    Switch(
+        Loc,
+        Box<Self>,
+        Vec<(String, Var, Self)>,
+        Option<(Var, Box<Self>)>,
+    ),
 
     Constraint(Loc, Box<Self>),
     Find(Loc, Var, Var),
@@ -310,13 +315,16 @@ impl Display for Expr {
                 Enum(_, r) => format!("[{r}]"),
                 Variant(_, n, a) => format!("{n}({a})"),
                 Upcast(_, a) => format!("[...{a}]"),
-                Switch(_, a, cs) => format!(
-                    "switch ({a}) {{\n{}\n}}",
-                    cs.iter()
-                        .map(|(n, v, e)| format!("\tcase {n}({v}): {e}"))
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                ),
+                Switch(_, a, cs, d) => {
+                    write!(f, "switch ({a}) {{")?;
+                    for (n, v, e) in cs {
+                        writeln!(f, "\tcase {n}({v}): {e}")?;
+                    }
+                    if let Some((v, e)) = d {
+                        writeln!(f, "\tcase {v}: {e}")?;
+                    }
+                    return write!(f, "}}");
+                }
                 Constraint(_, r) => r.to_string(),
                 Find(_, i, f) => format!("{i}.{f}"),
                 ImplementsOf(_, a) => a.to_string(),

@@ -380,8 +380,9 @@ enum_operand =
   | idref
   | paren_expr
   }
-enum_switch = { "switch" ~ paren_expr ~ "{" ~ enum_case+ ~ "}" }
+enum_switch = { "switch" ~ paren_expr ~ "{" ~ enum_case+ ~ enum_default_case? ~ "}" }
 enum_case = { "case" ~ variant_id ~ ("(" ~ param_id ~ ")")? ~ ":" ~ expr }
+enum_default_case = { "case" ~ local_id ~ ":" ~ expr }
 paren_expr = { "(" ~ expr ~ ")" }
 
 branch =

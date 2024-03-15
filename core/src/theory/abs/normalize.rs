@@ -10,7 +10,8 @@ use crate::theory::NameMap;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
 use crate::Error::{
-    ClassMethodNotImplemented, FieldsNonExtendable, UnresolvedImplementation, UnsatisfiedConstraint,
+    ClassMethodNotImplemented, FieldsNonExtendable, NonExhaustive, UnresolvedImplementation,
+    UnsatisfiedConstraint,
 };
 
 pub struct Normalizer<'a> {
@@ -386,20 +387,32 @@ impl<'a> Normalizer<'a> {
                     (from, to) => Up(r, Box::new(from), Box::new(to)),
                 }
             }
-            Switch(a, cs) => {
+            Switch(a, cs, d) => {
                 let a = self.term_box(a)?;
+                let d = match d {
+                    Some((v, tm)) => Some((v, Box::new(self.term(*tm)?))),
+                    None => None,
+                };
                 match a.as_ref() {
                     Variant(r) => match r.as_ref() {
                         Fields(f) => {
                             // TODO: eliminate clone
                             let (n, x) = f.iter().next().unwrap();
-                            let (v, tm) = cs.get(n).unwrap();
-                            self.rho.insert(v.clone(), Box::new(x.clone()));
-                            self.term(tm.clone())?
+                            match (cs.get(n), d) {
+                                (Some((v, tm)), _) => {
+                                    self.rho.insert(v.clone(), Box::new(x.clone()));
+                                    self.term(tm.clone())?
+                                }
+                                (None, Some((v, tm))) => {
+                                    self.rho.insert(v, Box::new(x.clone()));
+                                    self.term(*tm)?
+                                }
+                                _ => return Err(NonExhaustive(*a, self.loc)),
+                            }
                         }
-                        _ => Switch(a, self.case_map(cs)?),
+                        _ => Switch(a, self.case_map(cs)?, d),
                     },
-                    _ => Switch(a, self.case_map(cs)?),
+                    _ => Switch(a, self.case_map(cs)?, d),
                 }
             }
             Unionify(a) => Unionify(self.term_box(a)?),

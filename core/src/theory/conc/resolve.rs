@@ -352,7 +352,7 @@ impl<'a> Resolver<'a> {
             Enum(loc, a) => Enum(loc, Box::new(self.expr(*a)?)),
             Variant(loc, n, a) => Variant(loc, n, Box::new(self.expr(*a)?)),
             Upcast(loc, a) => Upcast(loc, Box::new(self.expr(*a)?)),
-            Switch(loc, a, cs) => {
+            Switch(loc, a, cs, d) => {
                 let mut names = RawNameSet::default();
                 let mut new = Vec::default();
                 for (n, v, e) in cs {
@@ -360,7 +360,14 @@ impl<'a> Resolver<'a> {
                     let e = self.bodied(&[&v], e)?;
                     new.push((n, v, e));
                 }
-                Switch(loc, Box::new(self.expr(*a)?), new)
+                let d = match d {
+                    Some((v, e)) => {
+                        let e = self.bodied(&[&v], *e)?;
+                        Some((v, Box::new(e)))
+                    }
+                    None => None,
+                };
+                Switch(loc, Box::new(self.expr(*a)?), new, d)
             }
             Constraint(loc, r) => Constraint(loc, Box::new(self.expr(*r)?)),
             ImplementsOf(loc, a) => ImplementsOf(loc, Box::new(self.expr(*a)?)),

@@ -12,7 +12,8 @@ use swc_ecma_ast::{
     ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleDecl,
     ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, Prop, PropName,
     PropOrSpread, ReturnStmt, SimpleAssignTarget, SpreadElement, Stmt, Str as JsStr, Str,
-    UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr, VarDeclarator, WhileStmt,
+    SwitchCase, SwitchStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr, VarDeclarator,
+    WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -398,6 +399,53 @@ impl Ecma {
             }],
             type_args: None,
         }))
+    }
+
+    fn enum_case_consequent(
+        &mut self,
+        sigma: &Sigma,
+        loc: Loc,
+        v: &Var,
+        tm: &Term,
+    ) -> Result<Vec<Stmt>, Error> {
+        Ok(vec![Stmt::Return(ReturnStmt {
+            span: loc.into(),
+            arg: Some(Box::from(Expr::Call(CallExpr {
+                span: loc.into(),
+                callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
+                    span: loc.into(),
+                    expr: Box::new(Expr::Arrow(ArrowExpr {
+                        span: loc.into(),
+                        params: vec![Self::ident_pat(loc, v)],
+                        body: Box::new(BlockStmtOrExpr::BlockStmt(
+                            self.block(sigma, loc, tm, true)?,
+                        )),
+                        is_async: false,
+                        is_generator: false,
+                        type_params: None,
+                        return_type: None,
+                    })),
+                }))),
+                args: vec![ExprOrSpread {
+                    spread: None,
+                    expr: Box::new(Expr::Ident(Self::str_ident(loc, "__v"))),
+                }],
+                type_args: None,
+            }))),
+        })])
+    }
+
+    fn enum_introspect(loc: Loc, e: &str, v: &str, prop: &str) -> VarDeclarator {
+        VarDeclarator {
+            span: loc.into(),
+            name: Self::str_ident_pat(loc, v),
+            init: Some(Box::new(Expr::Member(MemberExpr {
+                span: loc.into(),
+                obj: Box::new(Expr::Ident(Self::str_ident(loc, e))),
+                prop: MemberProp::Ident(Self::str_ident(loc, prop)),
+            }))),
+            definite: false,
+        }
     }
 
     fn local_decl(
@@ -799,7 +847,7 @@ impl Ecma {
                             return Err(UnsolvedMeta(
                                 MetaRef(k.clone(), m.clone(), sp.clone()),
                                 loc,
-                            ))
+                            ));
                         }
                         Some(fields) => match fields {
                             Fields(fields) => fields,
@@ -846,93 +894,70 @@ impl Ecma {
             Variant(f) => match f.as_ref() {
                 Fields(fields) => {
                     let (name, tm) = fields.iter().next().unwrap();
-                    Expr::Object(ObjectLit {
-                        span: loc.into(),
-                        props: vec![
-                            PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                                key: PropName::Ident(Self::str_ident(loc, JS_ENUM_TAG)),
-                                value: Box::new(Expr::Lit(Lit::Str(JsStr {
-                                    span: loc.into(),
-                                    value: name.as_str().into(),
-                                    raw: None,
-                                }))),
-                            }))),
-                            PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                                key: PropName::Ident(Self::str_ident(loc, JS_ENUM_VAL)),
-                                value: Box::new(self.expr(sigma, loc, &tm.clone())?),
-                            }))),
-                        ],
-                    })
+                    Self::variant(loc, name, self.expr(sigma, loc, tm)?)
                 }
                 _ => unreachable!(),
             },
             Up(a, _, _) => self.expr(sigma, loc, a)?,
-            Switch(a, cs) => {
-                // (x => ({Some: a => a + 1, None: () => undefined}[x.__rowsT])(x.__rowsV))(x)
-                let x = Self::str_ident(loc, "x");
-                let x_ref = Box::new(Expr::Ident(x.clone()));
+            Switch(a, cs, d) => {
+                // ((x) => {
+                //      const __t = x.__enumT, __v = x.__enumV;
+                //      switch (__t) {
+                //      case "Some": return ((a) => { return a + 1; })(__v)
+                //      case "None: return ((_) => { return undefined; })(__v)
+                //      default: return ((d) => { return d; })(__v)
+                //      }
+                // })(x)
 
-                let mut props = Vec::default();
-                for (n, (v, tm)) in cs {
-                    props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                        key: PropName::Ident(Self::str_ident(loc, n.as_str())),
-                        value: Box::new(Expr::Arrow(ArrowExpr {
+                let mut cases = Vec::default();
+                for (x, (v, tm)) in cs {
+                    cases.push(SwitchCase {
+                        span: loc.into(),
+                        test: Some(Box::new(Expr::Lit(Lit::Str(Self::js_str(loc, x))))),
+                        cons: self.enum_case_consequent(sigma, loc, v, tm)?,
+                    });
+                }
+                if let Some((v, tm)) = d {
+                    cases.push(SwitchCase {
+                        span: loc.into(),
+                        test: None,
+                        cons: self.enum_case_consequent(sigma, loc, v, tm)?,
+                    })
+                }
+                let matcher = Stmt::Switch(SwitchStmt {
+                    span: loc.into(),
+                    discriminant: Box::new(Expr::Ident(Self::str_ident(loc, "__t"))),
+                    cases,
+                });
+
+                Expr::Call(CallExpr {
+                    span: loc.into(),
+                    callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
+                        span: loc.into(),
+                        expr: Box::new(Expr::Arrow(ArrowExpr {
                             span: loc.into(),
-                            params: vec![Self::ident_pat(loc, v)],
-                            body: Box::new(BlockStmtOrExpr::BlockStmt(self.block(
-                                sigma,
-                                loc,
-                                &tm.clone(),
-                                true,
-                            )?)),
+                            params: vec![Self::str_ident_pat(loc, "x")],
+                            body: Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
+                                span: loc.into(),
+                                stmts: vec![
+                                    Stmt::Decl(Decl::Var(Box::new(VarDecl {
+                                        span: loc.into(),
+                                        kind: VarDeclKind::Const,
+                                        declare: false,
+                                        decls: vec![
+                                            Self::enum_introspect(loc, "x", "__t", JS_ENUM_TAG),
+                                            Self::enum_introspect(loc, "x", "__v", JS_ENUM_VAL),
+                                        ],
+                                    }))),
+                                    matcher,
+                                ],
+                            })),
                             is_async: false,
                             is_generator: false,
                             type_params: None,
                             return_type: None,
                         })),
-                    }))))
-                }
-                let branches = Box::new(Expr::Object(ObjectLit {
-                    span: loc.into(),
-                    props,
-                }));
-                let tag = Box::new(Expr::Member(MemberExpr {
-                    span: loc.into(),
-                    obj: x_ref.clone(),
-                    prop: MemberProp::Ident(Self::str_ident(loc, JS_ENUM_TAG)),
-                }));
-                let arg = Box::new(Expr::Member(MemberExpr {
-                    span: loc.into(),
-                    obj: x_ref,
-                    prop: MemberProp::Ident(Self::str_ident(loc, JS_ENUM_VAL)),
-                }));
-                let branch = Box::new(Expr::Member(MemberExpr {
-                    span: loc.into(),
-                    obj: branches,
-                    prop: MemberProp::Computed(ComputedPropName {
-                        span: loc.into(),
-                        expr: tag,
-                    }),
-                }));
-
-                Expr::Call(CallExpr {
-                    span: loc.into(),
-                    callee: Callee::Expr(Self::paren_arrow(
-                        loc,
-                        x,
-                        BlockStmtOrExpr::Expr(Box::new(Expr::Call(CallExpr {
-                            span: loc.into(),
-                            callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
-                                span: loc.into(),
-                                expr: branch,
-                            }))),
-                            args: vec![ExprOrSpread {
-                                spread: None,
-                                expr: arg,
-                            }],
-                            type_args: None,
-                        }))),
-                    )),
+                    }))),
                     args: vec![ExprOrSpread {
                         spread: None,
                         expr: Box::new(self.expr(sigma, loc, a)?),

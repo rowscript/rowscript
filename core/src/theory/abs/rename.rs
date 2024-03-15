@@ -113,13 +113,17 @@ impl Renamer {
                 Box::new(self.term(*from)),
                 Box::new(self.term(*to)),
             ),
-            Switch(a, cs) => {
+            Switch(a, cs, d) => {
                 let a = self.term(*a);
                 let mut m = CaseMap::default();
                 for (n, (v, tm)) in cs {
                     m.insert(n, (v, self.term(tm)));
                 }
-                Switch(Box::new(a), m)
+                Switch(
+                    Box::new(a),
+                    m,
+                    d.map(|(v, tm)| (v, Box::new(self.term(*tm)))),
+                )
             }
             Unionify(a) => Unionify(Box::new(self.term(*a))),
             Find(ty, i, f) => Find(Box::new(self.term(*ty)), i, f),

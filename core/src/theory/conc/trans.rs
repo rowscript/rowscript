@@ -926,21 +926,31 @@ impl Trans {
                 let mut pairs = p.into_inner();
                 let e = self.expr(pairs.next().unwrap().into_inner().next().unwrap());
                 let mut cases = Vec::default();
+                let mut default_case = None;
                 for p in pairs {
+                    let rule = p.as_rule();
                     let mut c = p.into_inner();
-                    let n = c.next().unwrap().as_str().to_string();
-                    let mut v = None;
-                    let mut body = None;
-                    for p in c {
-                        match p.as_rule() {
-                            Rule::param_id => v = Some(Var::from(p)),
-                            Rule::expr => body = Some(self.expr(p)),
-                            _ => unreachable!(),
-                        };
+                    match rule {
+                        Rule::enum_case => {
+                            let n = c.next().unwrap().as_str().to_string();
+                            let param_or_expr = c.next().unwrap();
+                            let (v, body) = if let Some(body) = c.next() {
+                                (Var::from(param_or_expr), self.expr(body))
+                            } else {
+                                (Var::unbound(), self.expr(param_or_expr))
+                            };
+                            cases.push((n, v, body));
+                        }
+                        Rule::enum_default_case => {
+                            default_case = Some((
+                                Var::from(c.next().unwrap()),
+                                Box::new(self.expr(c.next().unwrap())),
+                            ));
+                        }
+                        _ => unreachable!(),
                     }
-                    cases.push((n, v.unwrap_or(Var::unbound()), body.unwrap()));
                 }
-                Switch(loc, Box::new(e), cases)
+                Switch(loc, Box::new(e), cases, default_case)
             }
             Rule::lambda_expr => {
                 let pairs = p.into_inner();

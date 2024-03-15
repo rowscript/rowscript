@@ -14,8 +14,7 @@ use crate::theory::{Loc, NameMap, Param, Tele, Var, VarGen};
 use crate::Error;
 use crate::Error::{
     ExpectedEnum, ExpectedImplementsOf, ExpectedInterface, ExpectedObject, ExpectedPi,
-    ExpectedSigma, FieldsUnknown, NonExhaustive, UnresolvedField, UnresolvedImplicitParam,
-    UnresolvedVar,
+    ExpectedSigma, NonExhaustive, UnresolvedField, UnresolvedImplicitParam, UnresolvedVar,
 };
 
 #[derive(Debug)]
@@ -663,50 +662,68 @@ impl Elaborator {
                     ty => return Err(ExpectedEnum(ty, loc)),
                 }
             }
-            Switch(loc, a, cs) => {
+            Switch(loc, a, cs, d) => {
                 let mut ret_ty = None;
                 let a_loc = a.loc();
                 let (a, a_ty) = self.infer(*a)?;
                 let en = self.nf(loc).term(a_ty)?;
-                match en {
+                let fields = match en {
                     Term::Enum(y) => match *y {
                         Term::Fields(f) => {
-                            if f.len() != cs.len() {
+                            if d.is_none() && f.len() != cs.len() {
                                 return Err(NonExhaustive(Term::Fields(f), loc));
                             }
-                            let mut m = CaseMap::default();
-                            for (n, v, e) in cs {
-                                let ty = f
-                                    .get(&n)
-                                    .ok_or(UnresolvedField(
-                                        n.clone(),
-                                        Term::Fields(f.clone()),
-                                        loc,
-                                    ))?
-                                    .clone();
-                                let tm = match &ret_ty {
-                                    None => {
-                                        let (tm, ty) = self.infer(e)?;
-                                        ret_ty = Some(ty);
-                                        tm
-                                    }
-                                    Some(ret) => {
-                                        let p = Param {
-                                            var: v.clone(),
-                                            info: Explicit,
-                                            typ: Box::new(ty),
-                                        };
-                                        self.guarded_check(&[&p], e, ret)?
-                                    }
-                                };
-                                m.insert(n, (v, tm));
-                            }
-                            (Term::Switch(Box::new(a), m), ret_ty.unwrap())
+                            Some(f)
                         }
-                        y => return Err(FieldsUnknown(y, loc)),
+                        _ => None,
                     },
                     en => return Err(ExpectedEnum(en, a_loc)),
+                };
+                let mut m = CaseMap::default();
+                for (n, v, e) in cs {
+                    let ty = match &fields {
+                        Some(f) => f
+                            .get(&n)
+                            .ok_or(UnresolvedField(n.clone(), Term::Fields(f.clone()), loc))?
+                            .clone(),
+                        None => self.insert_meta(e.loc(), InsertedMeta).0,
+                    };
+                    let tm = match &ret_ty {
+                        None => {
+                            let (tm, ty) = self.infer(e)?;
+                            ret_ty = Some(ty);
+                            tm
+                        }
+                        Some(ret) => {
+                            let p = Param {
+                                var: v.clone(),
+                                info: Explicit,
+                                typ: Box::new(ty),
+                            };
+                            self.guarded_check(&[&p], e, ret)?
+                        }
+                    };
+                    m.insert(n, (v, tm));
                 }
+                let d = match d {
+                    Some((v, e)) => {
+                        let typ = Box::new(Term::Enum(Box::new(match fields {
+                            Some(f) => Term::Fields(f),
+                            None => self.insert_meta(e.loc(), InsertedMeta).0,
+                        })));
+                        let p = Param {
+                            var: v.clone(),
+                            info: Explicit,
+                            typ,
+                        };
+                        Some((
+                            v,
+                            Box::new(self.guarded_check(&[&p], *e, ret_ty.as_ref().unwrap())?),
+                        ))
+                    }
+                    None => None,
+                };
+                (Term::Switch(Box::new(a), m, d), ret_ty.unwrap())
             }
             Find(_, _, f) => {
                 let ty = self.sigma.get(&f).unwrap().to_type();

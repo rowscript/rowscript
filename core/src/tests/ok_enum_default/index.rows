@@ -1,0 +1,16 @@
+type Option<T> = [Ok: T | None];
+
+function isOk<'A, T>(o: ['A]): boolean
+where (Ok: T) <: 'A
+{
+    switch (o) {
+    case Ok(v): true
+    case v: false
+    }
+}
+
+const o0: Option<number> = Ok(42);
+const a0 = isOk(o0);
+
+const o1: Option<number> = None;
+const a1 = isOk(o1);

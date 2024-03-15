@@ -134,7 +134,7 @@ pub enum Term {
     Variant(Box<Self>),
     Upcast(Box<Self>),
     Up(Box<Self>, Box<Self>, Box<Self>),
-    Switch(Box<Self>, CaseMap),
+    Switch(Box<Self>, CaseMap, Option<(Var, Box<Self>)>),
     Unionify(Box<Self>),
 
     Find(Box<Self>, Var, Var),
@@ -305,14 +305,15 @@ impl Display for Term {
                 Variant(r) => format!("[{r}]"),
                 Upcast(a) => format!("upcast<{a}>"),
                 Up(a, _, _) => format!("[...{a}]"),
-                Switch(a, cs) => {
-                    format!(
-                        "switch ({a}) {{\n{}\n}}",
-                        cs.iter()
-                            .map(|(n, (v, e))| format!("\tcase {n}({v}): {e}"))
-                            .collect::<Vec<_>>()
-                            .join("\n")
-                    )
+                Switch(a, cs, d) => {
+                    write!(f, "switch ({a}) {{")?;
+                    for (n, (v, e)) in cs {
+                        writeln!(f, "\tcase {n}({v}): {e}")?;
+                    }
+                    if let Some((v, e)) = d {
+                        writeln!(f, "\tcase {v}: {e}")?;
+                    }
+                    return write!(f, "}}");
                 }
                 Unionify(a) => format!("unionify({a})"),
                 Find(ty, i, f) => format!("{i}.{f}<{ty}>"),
