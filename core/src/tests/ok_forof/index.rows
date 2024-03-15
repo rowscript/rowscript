@@ -5,7 +5,7 @@ function f0() {
     const it = a.iter();
     let r0 = it.next();
     log(r0);
-    // FIXME: `isOk()` makes type checker hangs.
+    // FIXME: `isOk()` breaks the unifier.
 //    log(r0.isOk());
 //    let r1 = it.next();
 //    let r2 = it.next();
