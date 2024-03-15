@@ -1,0 +1,18 @@
+function log<T>(m: T);
+
+function f0() {
+    const a = [42, 69];
+
+//    for (const v of a) {
+//        log(v);
+//        return
+//    }
+
+//    for (let it: ArrayIterator<number> = a.iter(); it.value().isOk(); it.next()) {
+//        let v = it.value().unwrap();
+//        log(v);
+//        return
+//    }
+}
+
+f0();

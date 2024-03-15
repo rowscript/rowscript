@@ -1248,7 +1248,9 @@ impl Trans {
             }
         };
 
-        Fori(clause_loc, Box::new(body), Box::new(rest))
+        let ret = Fori(clause_loc, Box::new(body), Box::new(rest));
+        println!("{ret}");
+        ret
     }
 
     /// From:
@@ -1283,36 +1285,30 @@ impl Trans {
 
         let it = Var::it();
 
-        let init = Box::new(RevApp(
-            a_loc,
-            Box::new(self.expr(a)),
-            Box::new(Unresolved(a_loc, None, Var::new("iter"))),
+        let init = Box::new(Self::rev_call1(
+            Unresolved(a_loc, None, Var::new("iter")),
+            self.expr(a),
         ));
-        let pred = Box::new(RevApp(
-            a_loc,
-            Box::new(RevApp(
-                a_loc,
-                Box::new(Unresolved(a_loc, None, it.clone())),
-                Box::new(Unresolved(a_loc, None, Var::new("value"))),
-            )),
-            Box::new(Unresolved(a_loc, None, Var::new("isOk"))),
+        let pred = Box::new(Self::rev_call1(
+            Unresolved(a_loc, None, Var::new("isOk")),
+            Self::rev_call1(
+                Unresolved(a_loc, None, Var::new("value")),
+                Unresolved(a_loc, None, it.clone()),
+            ),
         ));
-        let step = Box::new(RevApp(
-            a_loc,
-            Box::new(Unresolved(a_loc, None, it.clone())),
-            Box::new(Unresolved(a_loc, None, Var::new("next"))),
+        let step = Box::new(Self::rev_call1(
+            Unresolved(a_loc, None, Var::new("next")),
+            Unresolved(a_loc, None, it.clone()),
         ));
 
         let local = Box::new({
             let v = Var::from(v);
-            let value = Box::new(RevApp(
-                v_loc,
-                Box::new(RevApp(
-                    v_loc,
-                    Box::new(Unresolved(a_loc, None, it.clone())),
-                    Box::new(Unresolved(a_loc, None, Var::new("value"))),
-                )),
-                Box::new(Unresolved(a_loc, None, Var::new("unwrap"))),
+            let value = Box::new(Self::rev_call1(
+                Unresolved(a_loc, None, Var::new("unwrap")),
+                Self::rev_call1(
+                    Unresolved(a_loc, None, Var::new("value")),
+                    Unresolved(a_loc, None, it.clone()),
+                ),
             ));
             let b = Box::new(b);
             match l.as_rule() {
@@ -1331,7 +1327,9 @@ impl Trans {
         ));
         let init = Box::new(LocalSet(a_loc, it, None, init, pred));
 
-        Fori(loc, init, Box::new(rest))
+        let ret = Fori(loc, init, Box::new(rest));
+        println!("{ret}");
+        ret
     }
 
     fn app(&self, a: Pair<Rule>, mut rev_arg: Option<(Loc, Expr)>) -> Expr {
@@ -1556,6 +1554,16 @@ impl Trans {
                     Box::new(Tuple(a2.loc(), Box::new(a2), tt)),
                 )),
             )),
+        )
+    }
+
+    fn rev_call1(f: Expr, a0: Expr) -> Expr {
+        use Expr::*;
+        let tt = Box::new(TT(a0.loc()));
+        RevApp(
+            f.loc(),
+            Box::new(f),
+            Box::new(Tuple(a0.loc(), Box::new(a0), tt)),
         )
     }
 }

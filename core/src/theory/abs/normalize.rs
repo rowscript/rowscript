@@ -261,6 +261,7 @@ impl<'a> Normalizer<'a> {
             }
             ArrayIterator(t) => ArrayIterator(self.term_box(t)?),
             ArrIter(a) => ArrIter(self.term_box(a)?),
+            ArrIterValue(it) => ArrIterValue(self.term_box(it)?),
             ArrIterNext(it) => ArrIterNext(self.term_box(it)?),
             Array(t) => Array(self.term_box(t)?),
             Arr(xs) => {

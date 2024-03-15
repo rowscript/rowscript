@@ -25,13 +25,18 @@ where (Ok: T) <: 'A
 }
 
 interface Iterator<I> {
-    next<T>(it: Iterator<T>): Option<T>;
+    value<T>(it: Iterator<T>): Option<T>;
+    next<T>(it: Iterator<T>);
 }
 
 class ArrayIterator<T> {
     it: NativeArrayIterator<T>;
 
-    next(): Option<T> {
+    value(): Option<T> {
+        arrayIter#value(this.it)
+    }
+
+    next() {
         arrayIter#next(this.it)
     }
 }

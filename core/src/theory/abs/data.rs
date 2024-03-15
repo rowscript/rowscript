@@ -104,6 +104,7 @@ pub enum Term {
 
     ArrayIterator(Box<Self>),
     ArrIter(Box<Self>),
+    ArrIterValue(Box<Self>),
     ArrIterNext(Box<Self>),
     Array(Box<Self>),
     Arr(Vec<Self>),
@@ -263,6 +264,7 @@ impl Display for Term {
                 Big(v) => v.clone(),
                 ArrayIterator(t) => format!("NativeArrayIterator<{t}>"),
                 ArrIter(a) => format!("{a}.iter()"),
+                ArrIterValue(it) => format!("{it}.value()"),
                 ArrIterNext(it) => format!("{it}.next()"),
                 Array(t) => format!("NativeArray<{t}>"),
                 Arr(xs) => format!(
