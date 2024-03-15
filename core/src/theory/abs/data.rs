@@ -26,7 +26,7 @@ impl Display for Dir {
 pub type FieldMap = HashMap<String, Term>;
 pub type CaseMap = HashMap<String, (Var, Term)>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum MetaKind {
     UserMeta,
     InsertedMeta,

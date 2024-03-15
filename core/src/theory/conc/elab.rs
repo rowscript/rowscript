@@ -213,6 +213,12 @@ impl Elaborator {
                 let body = self.guarded_check(&[&param], *b, ty)?;
                 Term::LocalSet(param, Box::new(tm), Box::new(body))
             }
+            LocalUpdate(_, v, a, b) => {
+                let a_ty = self.gamma.get(&v).unwrap().clone();
+                let a = self.check(*a, &a_ty)?;
+                let b = self.check(*b, ty)?;
+                Term::LocalUpdate(v, Box::new(a), Box::new(b))
+            }
             Lam(loc, var, body) => {
                 let pi = self.nf(loc).term(ty.clone())?;
                 match pi {
@@ -345,12 +351,6 @@ impl Elaborator {
             }
             Hole(loc) => self.insert_meta(loc, UserMeta),
             InsertedHole(loc) => self.insert_meta(loc, InsertedMeta),
-            LocalUpdate(_, v, a, b) => {
-                let a_ty = self.gamma.get(&v).unwrap().clone();
-                let a = self.check(*a, &a_ty)?;
-                let (b, ty) = self.infer(*b)?;
-                (Term::LocalUpdate(v, Box::new(a), Box::new(b)), ty)
-            }
             While(_, p, b, r) => {
                 let p = self.check(*p, &Term::Boolean)?;
                 let b = self.check(*b, &Term::Unit)?;
@@ -749,7 +749,11 @@ impl Elaborator {
             Big(_, v) => (Term::Big(v), Term::BigInt),
             Row(_) => (Term::Row, Term::Univ),
 
-            _ => unreachable!(),
+            // _ => unreachable!(),
+            e => {
+                dbg!(e);
+                unreachable!()
+            }
         })
     }
 

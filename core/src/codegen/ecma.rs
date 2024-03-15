@@ -22,7 +22,7 @@ use crate::codegen::Target;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
-use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
+use crate::theory::conc::data::ArgInfo::{UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::Explicit;
 use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNBOUND, UNTUPLED_RHS_PREFIX};
@@ -280,9 +280,29 @@ impl Ecma {
         x: &Term,
     ) -> Result<Expr, Error> {
         use Term::*;
-        if !matches!(i, UnnamedExplicit) {
-            unreachable!()
+
+        match (i, x) {
+            (UnnamedImplicit, tm) => {
+                let mut ans = tm.clone();
+                if let MetaRef(_, v, _) = tm {
+                    let v = match &sigma.get(v).unwrap().body {
+                        Body::Meta(_, v) => v,
+                        _ => unreachable!(),
+                    };
+                    ans = match v {
+                        Some(v) => v.clone(),
+                        _ => unreachable!(),
+                    };
+                }
+                match ans {
+                    RowSat | RowRefl | ImplementsSat => return self.expr(sigma, loc, f),
+                    _ => unreachable!(),
+                }
+            }
+            (UnnamedExplicit, _) => {}
+            _ => unreachable!(),
         }
+
         loop {
             if let App(ff, ii, _) = f {
                 if !matches!(ii, UnnamedExplicit) {
@@ -292,6 +312,7 @@ impl Ecma {
             }
             break;
         }
+
         Ok(Expr::Call(CallExpr {
             span: loc.into(),
             callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {

@@ -13,16 +13,16 @@ function f0() {
 }
 f0();
 
-//function f1() {
-//    const a = [42, 69];
-//    const it = a.iter();
-//    for (let r = it.next(); r.isOk(); r = it.next()) {
-//        let v: number = r.unwrap();
-//        log(v);
-//        break;
-//    }
-//}
-//f1();
+function f1() {
+    const a = [42, 69];
+    const it = a.iter();
+    for (let r = it.next(); r.isOk(); r = it.next()) {
+        const v = r.unwrap();
+        log(v);
+        break;
+    }
+}
+f1();
 
 //function f2() {
 //    const a = [42, 69];
