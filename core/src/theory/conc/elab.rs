@@ -688,20 +688,18 @@ impl Elaborator {
                             .clone(),
                         None => self.insert_meta(e.loc(), InsertedMeta).0,
                     };
+                    let pat = Param {
+                        var: v.clone(),
+                        info: Explicit,
+                        typ: Box::new(ty),
+                    };
                     let tm = match &ret_ty {
                         None => {
-                            let (tm, ty) = self.infer(e)?;
+                            let (tm, ty) = self.guarded_infer(&[&pat], e)?;
                             ret_ty = Some(ty);
                             tm
                         }
-                        Some(ret) => {
-                            let p = Param {
-                                var: v.clone(),
-                                info: Explicit,
-                                typ: Box::new(ty),
-                            };
-                            self.guarded_check(&[&p], e, ret)?
-                        }
+                        Some(ret) => self.guarded_check(&[&pat], e, ret)?,
                     };
                     m.insert(n, (v, tm));
                 }

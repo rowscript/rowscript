@@ -1,4 +1,28 @@
-type Option<T> = [None | Some: T];
+function panic<T>(msg: string): T {
+    error#throw(msg)
+}
+
+type Option<T> = [Ok: T | None];
+
+type Result<T, E> = [Ok: T | Err: E];
+
+function isOk<'A, T>(e: ['A]): boolean
+where (Ok: T) <: 'A
+{
+    switch (e) {
+    case Ok(v): true
+    case v: false
+    }
+}
+
+function unwrap<'A, T>(e: ['A]): T
+where (Ok: T) <: 'A
+{
+    switch (e) {
+    case Ok(v): v
+    case v: panic("unwrap error")
+    }
+}
 
 interface Iterator<I> {
     next<T>(it: Iterator<T>): Option<T>;

@@ -12,8 +12,8 @@ use swc_ecma_ast::{
     ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleDecl,
     ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, Prop, PropName,
     PropOrSpread, ReturnStmt, SimpleAssignTarget, SpreadElement, Stmt, Str as JsStr, Str,
-    SwitchCase, SwitchStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr, VarDeclarator,
-    WhileStmt,
+    SwitchCase, SwitchStmt, ThrowStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr,
+    VarDeclarator, WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -127,8 +127,8 @@ impl Ecma {
         })
     }
 
-    fn some(loc: Loc, v: Expr) -> Expr {
-        Self::variant(loc, "Some", v)
+    fn ok(loc: Loc, v: Expr) -> Expr {
+        Self::variant(loc, "Ok", v)
     }
 
     fn none(loc: Loc, v: Expr) -> Expr {
@@ -193,7 +193,7 @@ impl Ecma {
     }
 
     fn optionify(loc: Loc, e: Expr) -> Expr {
-        // ((x) => x === undefined ? None : Some(x))(e)
+        // ((x) => x === undefined ? None : Ok(x))(e)
         Expr::Call(CallExpr {
             span: loc.into(),
             callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
@@ -210,7 +210,7 @@ impl Ecma {
                             right: Box::new(Self::undefined()),
                         })),
                         cons: Box::new(Self::none(loc, Self::undefined())),
-                        alt: Box::new(Self::some(loc, Expr::Ident(Self::str_ident(loc, "x")))),
+                        alt: Box::new(Self::ok(loc, Expr::Ident(Self::str_ident(loc, "x")))),
                     })))),
                     is_async: false,
                     is_generator: false,
@@ -903,7 +903,7 @@ impl Ecma {
                 // ((x) => {
                 //      const __t = x.__enumT, __v = x.__enumV;
                 //      switch (__t) {
-                //      case "Some": return ((a) => { return a + 1; })(__v)
+                //      case "Ok": return ((a) => { return a + 1; })(__v)
                 //      case "None: return ((_) => { return undefined; })(__v)
                 //      default: return ((d) => { return d; })(__v)
                 //      }
@@ -970,6 +970,26 @@ impl Ecma {
                 obj: Box::new(self.expr(sigma, loc, a)?),
                 prop: MemberProp::Ident(Self::special_ident(JS_ENUM_VAL)),
             }),
+            ErrorThrow(a) => Self::iife(
+                loc,
+                BlockStmt {
+                    span: loc.into(),
+                    stmts: vec![Stmt::Throw(ThrowStmt {
+                        span: loc.into(),
+                        arg: Box::new(Expr::Call(CallExpr {
+                            span: loc.into(),
+                            callee: Callee::Expr(Box::new(Expr::Ident(Self::special_ident(
+                                "Error",
+                            )))),
+                            args: vec![ExprOrSpread {
+                                spread: None,
+                                expr: Box::new(self.expr(sigma, loc, a)?),
+                            }],
+                            type_args: None,
+                        })),
+                    })],
+                },
+            ),
             Find(_, _, f) => return Err(NonErasable(Ref(f.clone()), loc)),
 
             _ => unreachable!(),

@@ -62,7 +62,7 @@ pub fn has_side_effect(tm: &Term) -> bool {
 
         Extern(..) | MetaRef(..) | LocalSet(..) | LocalUpdate(..) | Return(..) | Continue
         | Break | ArrIter(..) | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..)
-        | ArrForeach(..) | ArrAt(..) | ArrInsert(..) | Unionify(..) => true,
+        | ArrForeach(..) | ArrAt(..) | ArrInsert(..) | Unionify(..) | ErrorThrow(..) => true,
 
         Ref(..) | Qualified(..) | Univ | Pi(..) | Sigma(..) | Unit | TT | Boolean | False
         | True | String | Str(..) | Number | Num(..) | BigInt | Big(..) | ArrayIterator(..)

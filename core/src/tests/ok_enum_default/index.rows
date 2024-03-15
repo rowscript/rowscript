@@ -10,7 +10,9 @@ where (Ok: T) <: 'A
 }
 
 const o0: Option<number> = Ok(42);
-const a0 = isOk(o0);
+const a0 = o0.isOk();
+const v0 = o0.unwrap();
 
 const o1: Option<number> = None;
-const a1 = isOk(o1);
+const a1 = o1.isOk();
+const v1 = o1.unwrap();

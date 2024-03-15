@@ -35,7 +35,7 @@ fn tuple_param<const N: usize>(var: Var, tele: [Param<Term>; N]) -> Param<Term> 
 
 fn option_type(t: Term) -> Term {
     Term::Enum(Box::new(Term::Fields(
-        [("Some".to_string(), t), ("None".to_string(), Term::Unit)]
+        [("Ok".to_string(), t), ("None".to_string(), Term::Unit)]
             .into_iter()
             .collect(),
     )))
@@ -50,6 +50,7 @@ pub struct Builtins {
 impl Builtins {
     pub fn new() -> Self {
         Self::default()
+            .error_throw()
             .unionify()
             .reflect()
             .number_add()
@@ -91,6 +92,29 @@ impl Builtins {
         self.sigma.get(&v).unwrap().to_term(v)
     }
 
+    fn error_throw(self) -> Self {
+        let t = Var::new("T");
+        let tupled = Var::tupled();
+        let m = Var::new("m");
+        let m_ty = Term::String;
+        let m_rhs = m.untupled_rhs();
+        self.insert(Def {
+            loc: Default::default(),
+            name: Var::new("error#throw"),
+            tele: vec![
+                implicit(t.clone(), Term::Univ),
+                tuple_param(tupled.clone(), [explicit(m.clone(), m_ty.clone())]),
+            ],
+            ret: Box::new(Term::Ref(t)),
+            body: Body::Fn(Term::TupleLocal(
+                explicit(m.clone(), m_ty),
+                explicit(m_rhs.clone(), Term::Unit),
+                Box::new(Term::Ref(tupled)),
+                Box::new(Term::ErrorThrow(Box::new(Term::Ref(m.clone())))),
+            )),
+        })
+    }
+
     fn unionify(self) -> Self {
         let r = Var::new("'R");
         let a_ty = Term::Enum(Box::new(Term::Ref(r.clone())));
@@ -128,22 +152,22 @@ impl Builtins {
 
     fn number_add(self) -> Self {
         let tupled = Var::tupled();
-        let untupled_a = Var::new("a");
-        let untupled_a_rhs = untupled_a.untupled_rhs();
+        let a = Var::new("a");
+        let a_rhs = a.untupled_rhs();
         let b = Var::new("b");
         let body = Body::Fn(Term::TupleLocal(
-            explicit(untupled_a.clone(), Term::Number),
+            explicit(a.clone(), Term::Number),
             explicit(
-                untupled_a_rhs.clone(),
+                a_rhs.clone(),
                 Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
             ),
             Box::new(Term::Ref(tupled.clone())),
             Box::new(Term::TupleLocal(
                 explicit(b.clone(), Term::Number),
                 explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(untupled_a_rhs)),
+                Box::new(Term::Ref(a_rhs)),
                 Box::new(Term::NumAdd(
-                    Box::new(Term::Ref(untupled_a)),
+                    Box::new(Term::Ref(a)),
                     Box::new(Term::Ref(b.clone())),
                 )),
             )),
@@ -165,22 +189,22 @@ impl Builtins {
 
     fn number_sub(self) -> Self {
         let tupled = Var::tupled();
-        let untupled_a = Var::new("a");
-        let untupled_a_rhs = untupled_a.untupled_rhs();
+        let a = Var::new("a");
+        let a_rhs = a.untupled_rhs();
         let b = Var::new("b");
         let body = Body::Fn(Term::TupleLocal(
-            explicit(untupled_a.clone(), Term::Number),
+            explicit(a.clone(), Term::Number),
             explicit(
-                untupled_a_rhs.clone(),
+                a_rhs.clone(),
                 Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
             ),
             Box::new(Term::Ref(tupled.clone())),
             Box::new(Term::TupleLocal(
                 explicit(b.clone(), Term::Number),
                 explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(untupled_a_rhs)),
+                Box::new(Term::Ref(a_rhs)),
                 Box::new(Term::NumSub(
-                    Box::new(Term::Ref(untupled_a)),
+                    Box::new(Term::Ref(a)),
                     Box::new(Term::Ref(b.clone())),
                 )),
             )),
@@ -202,22 +226,22 @@ impl Builtins {
 
     fn number_mul(self) -> Self {
         let tupled = Var::tupled();
-        let untupled_a = Var::new("a");
-        let untupled_a_rhs = untupled_a.untupled_rhs();
+        let a = Var::new("a");
+        let a_rhs = a.untupled_rhs();
         let b = Var::new("b");
         let body = Body::Fn(Term::TupleLocal(
-            explicit(untupled_a.clone(), Term::Number),
+            explicit(a.clone(), Term::Number),
             explicit(
-                untupled_a_rhs.clone(),
+                a_rhs.clone(),
                 Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
             ),
             Box::new(Term::Ref(tupled.clone())),
             Box::new(Term::TupleLocal(
                 explicit(b.clone(), Term::Number),
                 explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(untupled_a_rhs)),
+                Box::new(Term::Ref(a_rhs)),
                 Box::new(Term::NumMul(
-                    Box::new(Term::Ref(untupled_a)),
+                    Box::new(Term::Ref(a)),
                     Box::new(Term::Ref(b.clone())),
                 )),
             )),
@@ -239,22 +263,22 @@ impl Builtins {
 
     fn number_div(self) -> Self {
         let tupled = Var::tupled();
-        let untupled_a = Var::new("a");
-        let untupled_a_rhs = untupled_a.untupled_rhs();
+        let a = Var::new("a");
+        let a_rhs = a.untupled_rhs();
         let b = Var::new("b");
         let body = Body::Fn(Term::TupleLocal(
-            explicit(untupled_a.clone(), Term::Number),
+            explicit(a.clone(), Term::Number),
             explicit(
-                untupled_a_rhs.clone(),
+                a_rhs.clone(),
                 Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
             ),
             Box::new(Term::Ref(tupled.clone())),
             Box::new(Term::TupleLocal(
                 explicit(b.clone(), Term::Number),
                 explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(untupled_a_rhs)),
+                Box::new(Term::Ref(a_rhs)),
                 Box::new(Term::NumDiv(
-                    Box::new(Term::Ref(untupled_a)),
+                    Box::new(Term::Ref(a)),
                     Box::new(Term::Ref(b.clone())),
                 )),
             )),
@@ -276,22 +300,22 @@ impl Builtins {
 
     fn number_mod(self) -> Self {
         let tupled = Var::tupled();
-        let untupled_a = Var::new("a");
-        let untupled_a_rhs = untupled_a.untupled_rhs();
+        let a = Var::new("a");
+        let a_rhs = a.untupled_rhs();
         let b = Var::new("b");
         let body = Body::Fn(Term::TupleLocal(
-            explicit(untupled_a.clone(), Term::Number),
+            explicit(a.clone(), Term::Number),
             explicit(
-                untupled_a_rhs.clone(),
+                a_rhs.clone(),
                 Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
             ),
             Box::new(Term::Ref(tupled.clone())),
             Box::new(Term::TupleLocal(
                 explicit(b.clone(), Term::Number),
                 explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(untupled_a_rhs)),
+                Box::new(Term::Ref(a_rhs)),
                 Box::new(Term::NumMod(
-                    Box::new(Term::Ref(untupled_a)),
+                    Box::new(Term::Ref(a)),
                     Box::new(Term::Ref(b.clone())),
                 )),
             )),
@@ -641,7 +665,7 @@ impl Builtins {
         let tupled = Var::tupled();
         let a = Var::new("a");
         let a_ty = Term::ArrayIterator(Box::new(Term::Ref(t.clone())));
-        let a_rhs = Var::new("a").untupled_rhs();
+        let a_rhs = a.untupled_rhs();
         self.insert(Def {
             loc: Default::default(),
             name: Var::new("arrayIter#next"),
@@ -675,7 +699,7 @@ impl Builtins {
         let tupled = Var::tupled();
         let a = Var::new("a");
         let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
-        let a_rhs = Var::new("a").untupled_rhs();
+        let a_rhs = a.untupled_rhs();
         self.insert(Def {
             loc: Default::default(),
             name: Var::new("array#length"),
@@ -880,7 +904,7 @@ impl Builtins {
         let tupled = Var::tupled();
         let a = Var::new("a");
         let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
-        let a_rhs = Var::new("a").untupled_rhs();
+        let a_rhs = a.untupled_rhs();
         self.insert(Def {
             loc: Default::default(),
             name: Var::new("array#iter"),

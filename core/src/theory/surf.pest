@@ -161,7 +161,8 @@ idref =
   | this_id
   }
 builtin =
-  { "number#__add__"
+  { "error#throw"
+  | "number#__add__"
   | "number#__sub__"
   | "number#__mul__"
   | "number#__div__"

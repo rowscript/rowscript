@@ -404,7 +404,7 @@ impl<'a> Normalizer<'a> {
                                     self.term(tm.clone())?
                                 }
                                 (None, Some((v, tm))) => {
-                                    self.rho.insert(v, Box::new(x.clone()));
+                                    self.rho.insert(v, a);
                                     self.term(*tm)?
                                 }
                                 _ => return Err(NonExhaustive(*a, self.loc)),
@@ -442,6 +442,7 @@ impl<'a> Normalizer<'a> {
                 let ty = *self.term_box(a)?;
                 *self.reflector().reflected(ty, true)?
             }
+            ErrorThrow(a) => ErrorThrow(self.term_box(a)?),
             tm => tm,
         })
     }

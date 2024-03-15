@@ -144,6 +144,8 @@ pub enum Term {
     Reflected(Box<Self>),
 
     Cls(Var, Box<Self>),
+
+    ErrorThrow(Box<Self>),
 }
 
 impl Term {
@@ -320,6 +322,7 @@ impl Display for Term {
                 ImplementsOf(t, i) => format!("{t} implementsOf {i}"),
                 ImplementsSat => "implementsSat".to_string(),
                 Reflected(a) => format!("Reflected<{a}>"),
+                ErrorThrow(a) => format!("throw Error({a})"),
             }
             .as_str(),
         )
