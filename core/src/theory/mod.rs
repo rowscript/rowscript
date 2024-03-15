@@ -70,6 +70,8 @@ pub const LOCALS: &str = "__locals_";
 
 pub const THIS: &str = "this";
 
+pub const ITER: &str = "__it";
+
 impl Var {
     fn new<S: Into<String>>(name: S) -> Self {
         Self {
@@ -111,6 +113,10 @@ impl Var {
 
     pub fn implement_func(&self, i: &Self, im: &Expr) -> Self {
         Self::new(format!("{i}__for__{im}__{self}"))
+    }
+
+    pub fn it() -> Self {
+        Self::new(ITER)
     }
 
     pub fn id(&self) -> usize {

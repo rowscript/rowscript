@@ -752,6 +752,15 @@ impl Trans {
                 let rest = self.fn_body(pairs.next().unwrap());
                 self.fori(clause, body, rest)
             }
+            Rule::fn_body_forof => {
+                let mut pairs = p.into_inner();
+                let local = pairs.next().unwrap();
+                let v = pairs.next().unwrap();
+                let a = pairs.next().unwrap();
+                let b = self.branch(pairs.next().unwrap(), true);
+                let rest = self.fn_body(pairs.next().unwrap());
+                self.forof(loc, local, v, a, b, rest)
+            }
             Rule::fn_body_if => {
                 let mut pairs = p.into_inner();
                 Guard(
@@ -1066,6 +1075,15 @@ impl Trans {
                 let rest = self.branch(pairs.next().unwrap(), inside_loop);
                 self.fori(clause, body, rest)
             }
+            Rule::branch_forof | Rule::loop_branch_forof => {
+                let mut pairs = p.into_inner();
+                let local = pairs.next().unwrap();
+                let v = pairs.next().unwrap();
+                let a = pairs.next().unwrap();
+                let b = self.branch(pairs.next().unwrap(), true);
+                let rest = self.branch(pairs.next().unwrap(), inside_loop);
+                self.forof(loc, local, v, a, b, rest)
+            }
             Rule::branch_if | Rule::loop_branch_if => {
                 let mut pairs = p.into_inner();
                 Guard(
@@ -1221,6 +1239,89 @@ impl Trans {
         };
 
         Fori(clause_loc, Box::new(body), Box::new(rest))
+    }
+
+    /// From:
+    ///
+    /// ```ts
+    /// for (const /* or let */ v of a) {
+    ///     /* b */
+    /// }
+    /// ```
+    ///
+    /// Into:
+    ///
+    /// ```ts
+    /// for (let __it = (expr).iter(); __it.value().isOk(); __it.next()) {
+    ///     const /* or let */ v = __it.value().unwrap();
+    ///     /* b */
+    /// }
+    /// ```
+    fn forof(
+        &self,
+        loc: Loc,
+        l: Pair<Rule>,
+        v: Pair<Rule>,
+        a: Pair<Rule>,
+        b: Expr,
+        rest: Expr,
+    ) -> Expr {
+        use Expr::*;
+
+        let v_loc = Loc::from(v.as_span());
+        let a_loc = Loc::from(a.as_span());
+
+        let it = Var::it();
+
+        let init = Box::new(RevApp(
+            a_loc,
+            Box::new(self.expr(a)),
+            Box::new(Unresolved(a_loc, None, Var::new("iter"))),
+        ));
+        let pred = Box::new(RevApp(
+            a_loc,
+            Box::new(RevApp(
+                a_loc,
+                Box::new(Unresolved(a_loc, None, it.clone())),
+                Box::new(Unresolved(a_loc, None, Var::new("value"))),
+            )),
+            Box::new(Unresolved(a_loc, None, Var::new("isOk"))),
+        ));
+        let step = Box::new(RevApp(
+            a_loc,
+            Box::new(Unresolved(a_loc, None, it.clone())),
+            Box::new(Unresolved(a_loc, None, Var::new("next"))),
+        ));
+
+        let local = Box::new({
+            let v = Var::from(v);
+            let value = Box::new(RevApp(
+                v_loc,
+                Box::new(RevApp(
+                    v_loc,
+                    Box::new(Unresolved(a_loc, None, it.clone())),
+                    Box::new(Unresolved(a_loc, None, Var::new("value"))),
+                )),
+                Box::new(Unresolved(a_loc, None, Var::new("unwrap"))),
+            ));
+            let b = Box::new(b);
+            match l.as_rule() {
+                Rule::forof_const => Local(v_loc, v, None, value, b),
+                Rule::forof_let => LocalSet(v_loc, v, None, value, b),
+                _ => unreachable!(),
+            }
+        });
+        let step = Box::new(UnitLocal(a_loc, step, local));
+        let pred = Box::new(LocalSet(
+            a_loc,
+            Var::unbound(),
+            Some(Box::new(Boolean(a_loc))),
+            pred,
+            step,
+        ));
+        let init = Box::new(LocalSet(a_loc, it, None, init, pred));
+
+        Fori(loc, init, Box::new(rest))
     }
 
     fn app(&self, a: Pair<Rule>, mut rev_arg: Option<(Loc, Expr)>) -> Expr {

@@ -393,6 +393,7 @@ branch =
   | branch_unit_const
   | branch_while
   | branch_fori
+  | branch_forof
   | branch_if
   | ctl_return
   | ctl_expr
@@ -405,6 +406,7 @@ branch_local_assign = { local_assign_stmt ~ ";" ~ branch }
 branch_unit_const = { unit_const_stmt ~ ";" ~ branch }
 branch_while = { while_stmt_start ~ loop_branch ~ "}" ~ branch }
 branch_fori = { fori_stmt_start ~ loop_branch ~ "}" ~ branch }
+branch_forof = { forof_stmt_start ~ loop_branch ~ "}" ~ branch }
 branch_if = { if_stmt_start ~ branch ~  "}" ~ branch }
 loop_branch =
   { loop_branch_const
@@ -415,6 +417,7 @@ loop_branch =
   | loop_branch_unit_const
   | loop_branch_while
   | loop_branch_fori
+  | loop_branch_forof
   | loop_branch_if
   | ctl_continue
   | ctl_break
@@ -429,6 +432,7 @@ loop_branch_local_assign = { local_assign_stmt ~ ";" ~ loop_branch }
 loop_branch_unit_const = { unit_const_stmt ~ ";" ~ loop_branch }
 loop_branch_while = { while_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
 loop_branch_fori = { fori_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
+loop_branch_forof = { forof_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
 loop_branch_if = { if_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
 
 const_stmt = { "const" ~ local_id ~ (":" ~ type_expr)? ~ "=" ~ expr }
@@ -452,6 +456,9 @@ fori_step =
   | array_assign_stmt
   | unit_const_stmt
   }
+forof_stmt_start = _{ "for" ~ "(" ~ (forof_const | forof_let) ~ local_id ~ "of" ~ expr ~ ")" ~ "{" }
+forof_const = { "const" }
+forof_let = { "let" }
 if_stmt_start = _{ "if" ~ "(" ~ expr ~ ")" ~ "{" }
 ctl_continue = { "continue" ~ ";"? }
 ctl_break = { "break" ~ ";"? }
@@ -501,6 +508,7 @@ fn_body =
   | fn_body_unit_const
   | fn_body_while
   | fn_body_fori
+  | fn_body_forof
   | fn_body_if
   | fn_body_ret
   }
@@ -512,6 +520,7 @@ fn_body_local_assign = { local_assign_stmt ~ ";" ~ fn_body }
 fn_body_unit_const = { unit_const_stmt ~ ";" ~ fn_body }
 fn_body_while = { while_stmt_start ~ loop_branch ~ "}" ~ fn_body }
 fn_body_fori = { fori_stmt_start ~ loop_branch ~ "}" ~ fn_body }
+fn_body_forof = { forof_stmt_start ~ loop_branch ~ "}" ~ fn_body }
 fn_body_if = { if_stmt_start ~ branch ~ "}" ~ fn_body }
 fn_body_ret = { expr? }
 
