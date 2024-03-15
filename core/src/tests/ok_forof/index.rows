@@ -2,17 +2,34 @@ function log<T>(m: T);
 
 function f0() {
     const a = [42, 69];
+    const it = a.iter();
+    let r0 = it.next();
+    log(r0);
+    // FIXME: `isOk()` makes type checker hangs.
+//    log(r0.isOk());
+//    let r1 = it.next();
+//    let r2 = it.next();
+//    log(r2);
+//    log(r2.isOk());
+}
+f0();
 
+//function f1() {
+//    const a = [42, 69];
+//    const it = a.iter();
+//    for (let r = it.next(); r.isOk(); r = it.next()) {
+//        let v: number = r.unwrap();
+//        log(v);
+//        break;
+//    }
+//}
+//f1();
+
+//function f2() {
+//    const a = [42, 69];
 //    for (const v of a) {
 //        log(v);
-//        return
+//        break;
 //    }
-
-//    for (let it: ArrayIterator<number> = a.iter(); it.value().isOk(); it.next()) {
-//        let v = it.value().unwrap();
-//        log(v);
-//        return
-//    }
-}
-
-f0();
+//}
+//f2();

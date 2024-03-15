@@ -1248,11 +1248,11 @@ impl Trans {
             }
         };
 
-        let ret = Fori(clause_loc, Box::new(body), Box::new(rest));
-        println!("{ret}");
-        ret
+        Fori(clause_loc, Box::new(body), Box::new(rest))
     }
 
+    /// FIXME: Totally wrong for now.
+    ///
     /// From:
     ///
     /// ```ts
@@ -1327,9 +1327,7 @@ impl Trans {
         ));
         let init = Box::new(LocalSet(a_loc, it, None, init, pred));
 
-        let ret = Fori(loc, init, Box::new(rest));
-        println!("{ret}");
-        ret
+        Fori(loc, init, Box::new(rest))
     }
 
     fn app(&self, a: Pair<Rule>, mut rev_arg: Option<(Loc, Expr)>) -> Expr {

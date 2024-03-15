@@ -177,7 +177,6 @@ builtin =
   | "boolean#__and__"
   | "boolean#__or__"
   | "boolean#__not__"
-  | "arrayIter#value"
   | "arrayIter#next"
   | "array#length"
   | "array#push"

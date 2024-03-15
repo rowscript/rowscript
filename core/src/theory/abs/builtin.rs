@@ -68,7 +68,6 @@ impl Builtins {
             .boolean_and()
             .boolean_not()
             .array_iterator()
-            .array_iterator_value()
             .array_iterator_next()
             .array()
             .array_length()
@@ -661,29 +660,6 @@ impl Builtins {
         })
     }
 
-    fn array_iterator_value(self) -> Self {
-        let t = Var::new("T");
-        let tupled = Var::tupled();
-        let a = Var::new("a");
-        let a_ty = Term::ArrayIterator(Box::new(Term::Ref(t.clone())));
-        let a_rhs = a.untupled_rhs();
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("arrayIter#value"),
-            tele: vec![
-                implicit(t.clone(), Term::Univ),
-                tuple_param(tupled.clone(), [explicit(a.clone(), a_ty.clone())]),
-            ],
-            ret: Box::new(option_type(Term::Ref(t))),
-            body: Body::Fn(Term::TupleLocal(
-                explicit(a.clone(), a_ty.clone()),
-                explicit(a_rhs.clone(), Term::Unit),
-                Box::new(Term::Ref(tupled)),
-                Box::new(Term::ArrIterValue(Box::new(Term::Ref(a.clone())))),
-            )),
-        })
-    }
-
     fn array_iterator_next(self) -> Self {
         let t = Var::new("T");
         let tupled = Var::tupled();
@@ -694,10 +670,10 @@ impl Builtins {
             loc: Default::default(),
             name: Var::new("arrayIter#next"),
             tele: vec![
-                implicit(t, Term::Univ),
+                implicit(t.clone(), Term::Univ),
                 tuple_param(tupled.clone(), [explicit(a.clone(), a_ty.clone())]),
             ],
-            ret: Box::new(Term::Unit),
+            ret: Box::new(option_type(Term::Ref(t))),
             body: Body::Fn(Term::TupleLocal(
                 explicit(a.clone(), a_ty.clone()),
                 explicit(a_rhs.clone(), Term::Unit),
