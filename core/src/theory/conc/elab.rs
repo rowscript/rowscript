@@ -667,21 +667,21 @@ impl Elaborator {
                 let a_loc = a.loc();
                 let (a, a_ty) = self.infer(*a)?;
                 let en = self.nf(loc).term(a_ty)?;
-                let fields = match en {
-                    Term::Enum(y) => match *y {
+                let fields = match &en {
+                    Term::Enum(y) => match y.as_ref() {
                         Term::Fields(f) => {
                             if d.is_none() && f.len() != cs.len() {
-                                return Err(NonExhaustive(Term::Fields(f), loc));
+                                return Err(NonExhaustive(Term::Fields(f.clone()), loc));
                             }
                             Some(f)
                         }
                         _ => None,
                     },
-                    en => return Err(ExpectedEnum(en, a_loc)),
+                    _ => return Err(ExpectedEnum(en, a_loc)),
                 };
                 let mut m = CaseMap::default();
                 for (n, v, e) in cs {
-                    let ty = match &fields {
+                    let ty = match fields {
                         Some(f) => f
                             .get(&n)
                             .ok_or(UnresolvedField(n.clone(), Term::Fields(f.clone()), loc))?
@@ -705,10 +705,10 @@ impl Elaborator {
                 }
                 let d = match d {
                     Some((v, e)) => {
-                        let typ = Box::new(Term::Enum(Box::new(match fields {
-                            Some(f) => Term::Fields(f),
-                            None => self.insert_meta(e.loc(), InsertedMeta).0,
-                        })));
+                        let typ = Box::new(match fields {
+                            Some(f) => Term::Enum(Box::new(Term::Fields(f.clone()))),
+                            None => en,
+                        });
                         let p = Param {
                             var: v.clone(),
                             info: Explicit,

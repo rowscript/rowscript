@@ -38,7 +38,7 @@ impl<'a> Unifier<'a> {
         use Term::*;
 
         match (lhs, rhs) {
-            (MetaRef(_, a, _), MetaRef(_, b, _)) if a == b => unreachable!(),
+            (MetaRef(_, a, _), MetaRef(_, b, _)) if a == b => Ok(()),
             (MetaRef(_, v, _), rhs) => {
                 self.solve(v, rhs)?;
                 Ok(())
