@@ -1251,8 +1251,6 @@ impl Trans {
         Fori(clause_loc, Box::new(body), Box::new(rest))
     }
 
-    /// FIXME: Totally wrong for now.
-    ///
     /// From:
     ///
     /// ```ts
@@ -1264,8 +1262,9 @@ impl Trans {
     /// Into:
     ///
     /// ```ts
-    /// for (let __it = (expr).iter(); __it.value().isOk(); __it.next()) {
-    ///     const /* or let */ v = __it.value().unwrap();
+    /// const __it = (expr).iter();
+    /// for (let __r = __it.next(); __r.isOk(); __r = __it.next()) {
+    ///     const /* or let */ v = __r.unwrap();
     ///     /* b */
     /// }
     /// ```
@@ -1283,18 +1282,20 @@ impl Trans {
         let v_loc = Loc::from(v.as_span());
         let a_loc = Loc::from(a.as_span());
 
-        let it = Var::it();
+        let it = Var::iterator();
+        let it_ret = Var::iteration_result();
 
-        let init = Box::new(Self::rev_call1(
+        let it_init = Box::new(Self::rev_call1(
             Unresolved(a_loc, None, Var::new("iter")),
             self.expr(a),
         ));
+        let init = Box::new(Self::rev_call1(
+            Unresolved(a_loc, None, Var::new("next")),
+            Unresolved(a_loc, None, it.clone()),
+        ));
         let pred = Box::new(Self::rev_call1(
             Unresolved(a_loc, None, Var::new("isOk")),
-            Self::rev_call1(
-                Unresolved(a_loc, None, Var::new("value")),
-                Unresolved(a_loc, None, it.clone()),
-            ),
+            Unresolved(a_loc, None, it_ret.clone()),
         ));
         let step = Box::new(Self::rev_call1(
             Unresolved(a_loc, None, Var::new("next")),
@@ -1305,10 +1306,7 @@ impl Trans {
             let v = Var::from(v);
             let value = Box::new(Self::rev_call1(
                 Unresolved(a_loc, None, Var::new("unwrap")),
-                Self::rev_call1(
-                    Unresolved(a_loc, None, Var::new("value")),
-                    Unresolved(a_loc, None, it.clone()),
-                ),
+                Unresolved(a_loc, None, it_ret.clone()),
             ));
             let b = Box::new(b);
             match l.as_rule() {
@@ -1317,7 +1315,7 @@ impl Trans {
                 _ => unreachable!(),
             }
         });
-        let step = Box::new(UnitLocal(a_loc, step, local));
+        let step = Box::new(LocalUpdate(a_loc, it_ret.clone(), step, local));
         let pred = Box::new(LocalSet(
             a_loc,
             Var::unbound(),
@@ -1325,9 +1323,15 @@ impl Trans {
             pred,
             step,
         ));
-        let init = Box::new(LocalSet(a_loc, it, None, init, pred));
+        let init = Box::new(LocalSet(a_loc, it_ret, None, init, pred));
 
-        Fori(loc, init, Box::new(rest))
+        Local(
+            a_loc,
+            it,
+            None,
+            it_init,
+            Box::from(Fori(loc, init, Box::new(rest))),
+        )
     }
 
     fn app(&self, a: Pair<Rule>, mut rev_arg: Option<(Loc, Expr)>) -> Expr {

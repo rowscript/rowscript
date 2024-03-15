@@ -24,11 +24,11 @@ function f1() {
 }
 f1();
 
-//function f2() {
-//    const a = [42, 69];
-//    for (const v of a) {
-//        log(v);
-//        break;
-//    }
-//}
-//f2();
+function f2() {
+    const a = [42, 69];
+    for (const v of a) {
+        log(v);
+        break;
+    }
+}
+f2();
