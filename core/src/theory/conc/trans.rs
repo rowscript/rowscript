@@ -485,6 +485,7 @@ impl Trans {
             ctor_param_vars,
             Obj(loc, Box::new(Fields(loc, ctor_body_obj))),
         ));
+        let ctor_ret = Self::wrap_implicit_apps(&tele, Unresolved(loc, None, name.clone()));
         let mut ctor_tele = tele.clone();
         ctor_tele.push(ctor_tupled_params);
 
@@ -500,7 +501,7 @@ impl Trans {
                 loc,
                 name: name.ctor(),
                 tele: ctor_tele,
-                ret: Box::new(Unresolved(loc, None, name)),
+                ret: Box::new(ctor_ret),
                 body: ctor_body,
             },
         ];

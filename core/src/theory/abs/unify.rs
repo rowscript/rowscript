@@ -123,6 +123,10 @@ impl<'a> Unifier<'a> {
             }
             (ArrayIterator(a), ArrayIterator(b)) => self.unify(a, b),
             (Array(a), Array(b)) => self.unify(a, b),
+            (Map(ka, va), Map(kb, vb)) => {
+                self.unify(ka, kb)?;
+                self.unify(va, vb)
+            }
             (Fields(a), Fields(b)) => self.fields_eq(a, b),
             (Object(a), Object(b)) => self.unify(a, b),
             (Obj(a), Obj(b)) => self.unify(a, b),

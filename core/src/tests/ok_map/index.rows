@@ -1,0 +1,3 @@
+function log(n: number);
+
+// TODO: Map constructor.

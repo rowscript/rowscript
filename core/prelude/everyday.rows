@@ -72,7 +72,6 @@ class Array<T> {
     }
 }
 
-/*
 class Map<K, V> {
     m: NativeMap<K, V>;
 
@@ -81,7 +80,7 @@ class Map<K, V> {
     }
 
     get(key: K): Option<V> {
-        (this.has(key)) ? map#get(this.m, key) : None
+        (this.has(key)) ? Ok(map#get(this.m, key)) : None
     }
 
     set(key: K, value: V): Map<K, V> {
@@ -97,4 +96,3 @@ class Map<K, V> {
         map#clear(this.m)
     }
 }
-*/

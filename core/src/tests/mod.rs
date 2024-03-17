@@ -55,6 +55,7 @@ mod ok_implicit_named;
 mod ok_implicit_unnamed;
 mod ok_interface;
 mod ok_interface_stuck;
+mod ok_map;
 mod ok_modsys;
 mod ok_mut;
 mod ok_num_add;

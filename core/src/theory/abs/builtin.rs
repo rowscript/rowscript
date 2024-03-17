@@ -611,10 +611,10 @@ impl Builtins {
         );
         let m_rhs = m.untupled_rhs();
         let key = Var::new("k");
-        let key_ty = Term::Number;
+        let key_ty = Term::Ref(k.clone());
         let key_rhs = key.untupled_rhs();
         let val = Var::new("v");
-        let val_ty = Term::Ref(val.clone());
+        let val_ty = Term::Ref(v.clone());
         self.func(
             "map#set",
             parameters(
