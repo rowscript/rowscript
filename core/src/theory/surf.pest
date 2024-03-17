@@ -184,6 +184,11 @@ builtin =
   | "array#at"
   | "array#insert"
   | "array#iter"
+  | "map#has"
+  | "map#get"
+  | "map#set"
+  | "map#delete"
+  | "map#clear"
   }
 
 tyref =

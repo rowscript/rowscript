@@ -28,16 +28,16 @@ interface Iterator<I> {
     next<T>(it: Iterator<T>): Option<T>;
 }
 
+interface Iterable<I> {
+    iter<It: type -> type, T>(a: Iterable<T>): It<T> where Iterator<It>;
+}
+
 class ArrayIterator<T> {
     it: NativeArrayIterator<T>;
 
     next(): Option<T> {
         arrayIter#next(this.it)
     }
-}
-
-interface Iterable<I> {
-    iter<It: type -> type, T>(a: Iterable<T>): It<T> where Iterator<It>;
 }
 
 class Array<T> {
@@ -67,3 +67,34 @@ class Array<T> {
         new ArrayIterator(array#iter(this.a))
     }
 }
+
+/*
+class Map<K, V> {
+    m: NativeMap<K, V>;
+
+    has(key: K): boolean {
+        map#has(this.m, key)
+    }
+
+    get(key: K): Option<V> {
+        if (this.has(key)) {
+            map#get(this.m, key)
+        } else {
+            None
+        }
+    }
+
+    set(key: K, value: V): Map<K, V> {
+        map#set(this.m, key, value);
+        this
+    }
+
+    delete(key: K): boolean {
+        map#delete(this.m, key)
+    }
+
+    clear() {
+        map#clear(this.m)
+    }
+}
+*/

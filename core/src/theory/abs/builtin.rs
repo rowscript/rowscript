@@ -2,8 +2,8 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo::UnnamedImplicit;
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::VarKind;
 use crate::theory::{NameMap, Param, ResolvedVar, Var};
+use crate::theory::{Tele, VarKind};
 
 fn implicit(var: Var, typ: Term) -> Param<Term> {
     Param {
@@ -13,12 +13,41 @@ fn implicit(var: Var, typ: Term) -> Param<Term> {
     }
 }
 
+fn type_param(var: Var) -> Param<Term> {
+    implicit(var, Term::Univ)
+}
+
+fn row_param(var: Var) -> Param<Term> {
+    implicit(var, Term::Row)
+}
+
 fn explicit(var: Var, typ: Term) -> Param<Term> {
     Param {
         var,
         info: Explicit,
         typ: Box::new(typ),
     }
+}
+
+fn explicit_sigma(p: (Var, Term), b: Term) -> Term {
+    Term::Sigma(explicit(p.0, p.1), Box::new(b))
+}
+
+fn explicit_sigma1(p: Var, ty: Term) -> Term {
+    explicit_sigma((p, ty), Term::Unit)
+}
+
+fn explicit_tuple_local(p: (Var, Term), q: (Var, Term), a: Term, b: Term) -> Term {
+    Term::TupleLocal(
+        explicit(p.0, p.1),
+        explicit(q.0, q.1),
+        Box::new(a),
+        Box::new(b),
+    )
+}
+
+fn explicit_tuple_local1(p: Var, ty: Term, a: Term, b: Term) -> Term {
+    explicit_tuple_local((p, ty), (Var::unbound(), Term::Unit), a, b)
 }
 
 fn tuple_param<const N: usize>(var: Var, tele: [Param<Term>; N]) -> Param<Term> {
@@ -39,6 +68,39 @@ fn option_type(t: Term) -> Term {
             .into_iter()
             .collect(),
     )))
+}
+
+macro_rules! bin_op {
+    ($name:ident, $builtin_name:literal, $typ:ident, $ret:ident, $op:ident) => {
+        fn $name(self) -> Self {
+            let tupled = Var::tupled();
+            let a = Var::new("a");
+            let a_rhs = a.untupled_rhs();
+            let b = Var::new("b");
+            self.func(
+                $builtin_name,
+                vec![tuple_param(
+                    tupled.clone(),
+                    [
+                        explicit(Var::new("a"), Term::$typ),
+                        explicit(b.clone(), Term::$typ),
+                    ],
+                )],
+                Term::$ret,
+                explicit_tuple_local(
+                    (a.clone(), Term::$typ),
+                    (a_rhs.clone(), explicit_sigma1(b.clone(), Term::$typ)),
+                    Term::Ref(tupled),
+                    explicit_tuple_local1(
+                        b.clone(),
+                        Term::$typ,
+                        Term::Ref(a_rhs),
+                        Term::$op(Box::new(Term::Ref(a)), Box::new(Term::Ref(b))),
+                    ),
+                ),
+            )
+        }
+    };
 }
 
 #[derive(Default)]
@@ -67,18 +129,34 @@ impl Builtins {
             .boolean_or()
             .boolean_and()
             .boolean_not()
-            .array_iterator()
+            .array_iterator_type()
             .array_iterator_next()
-            .array()
+            .array_type()
             .array_length()
             .array_push()
             .array_foreach()
             .array_at()
             .array_insert()
             .array_iter()
+        // .map_type()
+        // .map_has()
+        // .map_get()
+        // .map_set()
+        // .map_delete()
+        // .map_clear()
     }
 
-    fn insert(mut self, def: Def<Term>) -> Self {
+    fn func(self, name: &str, tele: Tele<Term>, ret: Term, f: Term) -> Self {
+        self.define(Def {
+            loc: Default::default(),
+            name: Var::new(name),
+            tele,
+            ret: Box::new(ret),
+            body: Body::Fn(f),
+        })
+    }
+
+    fn define(mut self, def: Def<Term>) -> Self {
         self.ubiquitous.insert(
             def.name.to_string(),
             ResolvedVar(VarKind::InModule, def.name.clone()),
@@ -97,22 +175,20 @@ impl Builtins {
         let tupled = Var::tupled();
         let m = Var::new("m");
         let m_ty = Term::String;
-        let m_rhs = m.untupled_rhs();
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("error#throw"),
-            tele: vec![
-                implicit(t.clone(), Term::Univ),
+        self.func(
+            "error#throw",
+            vec![
+                type_param(t.clone()),
                 tuple_param(tupled.clone(), [explicit(m.clone(), m_ty.clone())]),
             ],
-            ret: Box::new(Term::Ref(t)),
-            body: Body::Fn(Term::TupleLocal(
-                explicit(m.clone(), m_ty),
-                explicit(m_rhs.clone(), Term::Unit),
-                Box::new(Term::Ref(tupled)),
-                Box::new(Term::ErrorThrow(Box::new(Term::Ref(m.clone())))),
-            )),
-        })
+            Term::Ref(t),
+            explicit_tuple_local1(
+                m.clone(),
+                m_ty,
+                Term::Ref(tupled),
+                Term::ErrorThrow(Box::new(Term::Ref(m.clone()))),
+            ),
+        )
     }
 
     fn unionify(self) -> Self {
@@ -120,544 +196,75 @@ impl Builtins {
         let a_ty = Term::Enum(Box::new(Term::Ref(r.clone())));
         let tupled = Var::tupled();
         let tele = vec![
-            implicit(r, Term::Row),
+            row_param(r),
             tuple_param(tupled.clone(), [explicit(Var::new("a"), a_ty.clone())]),
         ];
         let a = Var::new("a");
-        let body = Body::Fn(Term::TupleLocal(
-            explicit(a.clone(), a_ty.clone()),
-            explicit(Var::unbound(), Term::Unit),
-            Box::new(Term::Ref(tupled)),
-            Box::new(Term::Unionify(Box::new(Term::Ref(a)))),
-        ));
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("unionify"),
+        self.func(
+            "unionify",
             tele,
-            ret: Box::new(a_ty),
-            body,
-        })
+            a_ty.clone(),
+            explicit_tuple_local1(
+                a.clone(),
+                a_ty,
+                Term::Ref(tupled),
+                Term::Unionify(Box::new(Term::Ref(a))),
+            ),
+        )
     }
 
     fn reflect(self) -> Self {
         let t = Var::new("T");
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("Reflected"),
-            tele: vec![implicit(t.clone(), Term::Univ)],
-            ret: Box::new(Term::Univ),
-            body: Body::Fn(Term::Reflected(Box::new(Term::Ref(t)))),
-        })
+        self.func(
+            "Reflected",
+            vec![implicit(t.clone(), Term::Univ)],
+            Term::Univ,
+            Term::Reflected(Box::new(Term::Ref(t))),
+        )
     }
 
-    fn number_add(self) -> Self {
-        let tupled = Var::tupled();
-        let a = Var::new("a");
-        let a_rhs = a.untupled_rhs();
-        let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLocal(
-            explicit(a.clone(), Term::Number),
-            explicit(
-                a_rhs.clone(),
-                Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
-            ),
-            Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLocal(
-                explicit(b.clone(), Term::Number),
-                explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(a_rhs)),
-                Box::new(Term::NumAdd(
-                    Box::new(Term::Ref(a)),
-                    Box::new(Term::Ref(b.clone())),
-                )),
-            )),
-        ));
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("number#__add__"),
-            tele: vec![tuple_param(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            )],
-            ret: Box::new(Term::Number),
-            body,
-        })
-    }
+    bin_op!(number_add, "number#__add__", Number, Number, NumAdd);
+    bin_op!(number_sub, "number#__sub__", Number, Number, NumSub);
+    bin_op!(number_mul, "number#__mul__", Number, Number, NumMul);
+    bin_op!(number_div, "number#__div__", Number, Number, NumDiv);
+    bin_op!(number_mod, "number#__mod__", Number, Number, NumMod);
+    bin_op!(number_eq, "number#__eq__", Number, Boolean, NumEq);
+    bin_op!(number_neq, "number#__neq__", Number, Boolean, NumNeq);
+    bin_op!(number_le, "number#__le__", Number, Boolean, NumLe);
+    bin_op!(number_ge, "number#__ge__", Number, Boolean, NumGe);
+    bin_op!(number_lt, "number#__lt__", Number, Boolean, NumLt);
+    bin_op!(number_gt, "number#__gt__", Number, Boolean, NumGt);
 
-    fn number_sub(self) -> Self {
-        let tupled = Var::tupled();
-        let a = Var::new("a");
-        let a_rhs = a.untupled_rhs();
-        let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLocal(
-            explicit(a.clone(), Term::Number),
-            explicit(
-                a_rhs.clone(),
-                Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
-            ),
-            Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLocal(
-                explicit(b.clone(), Term::Number),
-                explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(a_rhs)),
-                Box::new(Term::NumSub(
-                    Box::new(Term::Ref(a)),
-                    Box::new(Term::Ref(b.clone())),
-                )),
-            )),
-        ));
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("number#__sub__"),
-            tele: vec![tuple_param(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            )],
-            ret: Box::new(Term::Number),
-            body,
-        })
-    }
-
-    fn number_mul(self) -> Self {
-        let tupled = Var::tupled();
-        let a = Var::new("a");
-        let a_rhs = a.untupled_rhs();
-        let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLocal(
-            explicit(a.clone(), Term::Number),
-            explicit(
-                a_rhs.clone(),
-                Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
-            ),
-            Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLocal(
-                explicit(b.clone(), Term::Number),
-                explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(a_rhs)),
-                Box::new(Term::NumMul(
-                    Box::new(Term::Ref(a)),
-                    Box::new(Term::Ref(b.clone())),
-                )),
-            )),
-        ));
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("number#__mul__"),
-            tele: vec![tuple_param(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            )],
-            ret: Box::new(Term::Number),
-            body,
-        })
-    }
-
-    fn number_div(self) -> Self {
-        let tupled = Var::tupled();
-        let a = Var::new("a");
-        let a_rhs = a.untupled_rhs();
-        let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLocal(
-            explicit(a.clone(), Term::Number),
-            explicit(
-                a_rhs.clone(),
-                Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
-            ),
-            Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLocal(
-                explicit(b.clone(), Term::Number),
-                explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(a_rhs)),
-                Box::new(Term::NumDiv(
-                    Box::new(Term::Ref(a)),
-                    Box::new(Term::Ref(b.clone())),
-                )),
-            )),
-        ));
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("number#__div__"),
-            tele: vec![tuple_param(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            )],
-            ret: Box::new(Term::Number),
-            body,
-        })
-    }
-
-    fn number_mod(self) -> Self {
-        let tupled = Var::tupled();
-        let a = Var::new("a");
-        let a_rhs = a.untupled_rhs();
-        let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLocal(
-            explicit(a.clone(), Term::Number),
-            explicit(
-                a_rhs.clone(),
-                Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
-            ),
-            Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLocal(
-                explicit(b.clone(), Term::Number),
-                explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(a_rhs)),
-                Box::new(Term::NumMod(
-                    Box::new(Term::Ref(a)),
-                    Box::new(Term::Ref(b.clone())),
-                )),
-            )),
-        ));
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("number#__mod__"),
-            tele: vec![tuple_param(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            )],
-            ret: Box::new(Term::Number),
-            body,
-        })
-    }
-
-    fn number_eq(self) -> Self {
-        let tupled = Var::tupled();
-        let a = Var::new("a");
-        let a_rhs = a.untupled_rhs();
-        let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLocal(
-            explicit(a.clone(), Term::Number),
-            explicit(
-                a_rhs.clone(),
-                Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
-            ),
-            Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLocal(
-                explicit(b.clone(), Term::Number),
-                explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(a_rhs)),
-                Box::new(Term::NumEq(
-                    Box::new(Term::Ref(a)),
-                    Box::new(Term::Ref(b.clone())),
-                )),
-            )),
-        ));
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("number#__eq__"),
-            tele: vec![tuple_param(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            )],
-            ret: Box::new(Term::Boolean),
-            body,
-        })
-    }
-
-    fn number_neq(self) -> Self {
-        let tupled = Var::tupled();
-        let a = Var::new("a");
-        let a_rhs = a.untupled_rhs();
-        let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLocal(
-            explicit(a.clone(), Term::Number),
-            explicit(
-                a_rhs.clone(),
-                Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
-            ),
-            Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLocal(
-                explicit(b.clone(), Term::Number),
-                explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(a_rhs)),
-                Box::new(Term::NumNeq(
-                    Box::new(Term::Ref(a)),
-                    Box::new(Term::Ref(b.clone())),
-                )),
-            )),
-        ));
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("number#__neq__"),
-            tele: vec![tuple_param(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            )],
-            ret: Box::new(Term::Boolean),
-            body,
-        })
-    }
-
-    fn number_le(self) -> Self {
-        let tupled = Var::tupled();
-        let a = Var::new("a");
-        let a_rhs = a.untupled_rhs();
-        let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLocal(
-            explicit(a.clone(), Term::Number),
-            explicit(
-                a_rhs.clone(),
-                Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
-            ),
-            Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLocal(
-                explicit(b.clone(), Term::Number),
-                explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(a_rhs)),
-                Box::new(Term::NumLe(
-                    Box::new(Term::Ref(a)),
-                    Box::new(Term::Ref(b.clone())),
-                )),
-            )),
-        ));
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("number#__le__"),
-            tele: vec![tuple_param(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            )],
-            ret: Box::new(Term::Boolean),
-            body,
-        })
-    }
-
-    fn number_ge(self) -> Self {
-        let tupled = Var::tupled();
-        let a = Var::new("a");
-        let a_rhs = a.untupled_rhs();
-        let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLocal(
-            explicit(a.clone(), Term::Number),
-            explicit(
-                a_rhs.clone(),
-                Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
-            ),
-            Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLocal(
-                explicit(b.clone(), Term::Number),
-                explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(a_rhs)),
-                Box::new(Term::NumGe(
-                    Box::new(Term::Ref(a)),
-                    Box::new(Term::Ref(b.clone())),
-                )),
-            )),
-        ));
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("number#__ge__"),
-            tele: vec![tuple_param(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            )],
-            ret: Box::new(Term::Boolean),
-            body,
-        })
-    }
-
-    fn number_lt(self) -> Self {
-        let tupled = Var::tupled();
-        let a = Var::new("a");
-        let a_rhs = a.untupled_rhs();
-        let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLocal(
-            explicit(a.clone(), Term::Number),
-            explicit(
-                a_rhs.clone(),
-                Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
-            ),
-            Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLocal(
-                explicit(b.clone(), Term::Number),
-                explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(a_rhs)),
-                Box::new(Term::NumLt(
-                    Box::new(Term::Ref(a)),
-                    Box::new(Term::Ref(b.clone())),
-                )),
-            )),
-        ));
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("number#__lt__"),
-            tele: vec![tuple_param(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            )],
-            ret: Box::new(Term::Boolean),
-            body,
-        })
-    }
-
-    fn number_gt(self) -> Self {
-        let tupled = Var::tupled();
-        let a = Var::new("a");
-        let a_rhs = a.untupled_rhs();
-        let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLocal(
-            explicit(a.clone(), Term::Number),
-            explicit(
-                a_rhs.clone(),
-                Term::Sigma(explicit(b.clone(), Term::Number), Box::new(Term::Unit)),
-            ),
-            Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLocal(
-                explicit(b.clone(), Term::Number),
-                explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(a_rhs)),
-                Box::new(Term::NumGt(
-                    Box::new(Term::Ref(a)),
-                    Box::new(Term::Ref(b.clone())),
-                )),
-            )),
-        ));
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("number#__gt__"),
-            tele: vec![tuple_param(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Number),
-                    explicit(b, Term::Number),
-                ],
-            )],
-            ret: Box::new(Term::Boolean),
-            body,
-        })
-    }
-
-    fn boolean_or(self) -> Self {
-        let tupled = Var::tupled();
-        let a = Var::new("a");
-        let a_rhs = a.untupled_rhs();
-        let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLocal(
-            explicit(a.clone(), Term::Boolean),
-            explicit(
-                a_rhs.clone(),
-                Term::Sigma(explicit(b.clone(), Term::Boolean), Box::new(Term::Unit)),
-            ),
-            Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLocal(
-                explicit(b.clone(), Term::Boolean),
-                explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(a_rhs)),
-                Box::new(Term::BoolOr(
-                    Box::new(Term::Ref(a)),
-                    Box::new(Term::Ref(b.clone())),
-                )),
-            )),
-        ));
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("boolean#__or__"),
-            tele: vec![tuple_param(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Boolean),
-                    explicit(b, Term::Boolean),
-                ],
-            )],
-            ret: Box::new(Term::Boolean),
-            body,
-        })
-    }
-
-    fn boolean_and(self) -> Self {
-        let tupled = Var::tupled();
-        let a = Var::new("a");
-        let a_rhs = a.untupled_rhs();
-        let b = Var::new("b");
-        let body = Body::Fn(Term::TupleLocal(
-            explicit(a.clone(), Term::Boolean),
-            explicit(
-                a_rhs.clone(),
-                Term::Sigma(explicit(b.clone(), Term::Boolean), Box::new(Term::Unit)),
-            ),
-            Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::TupleLocal(
-                explicit(b.clone(), Term::Boolean),
-                explicit(Var::unbound(), Term::Unit),
-                Box::new(Term::Ref(a_rhs)),
-                Box::new(Term::BoolAnd(
-                    Box::new(Term::Ref(a)),
-                    Box::new(Term::Ref(b.clone())),
-                )),
-            )),
-        ));
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("boolean#__and__"),
-            tele: vec![tuple_param(
-                tupled,
-                [
-                    explicit(Var::new("a"), Term::Boolean),
-                    explicit(b, Term::Boolean),
-                ],
-            )],
-            ret: Box::new(Term::Boolean),
-            body,
-        })
-    }
+    bin_op!(boolean_or, "boolean#__or__", Boolean, Boolean, BoolOr);
+    bin_op!(boolean_and, "boolean#__and__", Boolean, Boolean, BoolAnd);
 
     fn boolean_not(self) -> Self {
         let tupled = Var::tupled();
         let a = Var::new("a");
-        let body = Body::Fn(Term::TupleLocal(
-            explicit(a.clone(), Term::Boolean),
-            explicit(a.untupled_rhs(), Term::Unit),
-            Box::new(Term::Ref(tupled.clone())),
-            Box::new(Term::BoolNot(Box::new(Term::Ref(a.clone())))),
-        ));
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("boolean#__not__"),
-            tele: vec![tuple_param(tupled, [explicit(a, Term::Boolean)])],
-            ret: Box::new(Term::Boolean),
-            body,
-        })
+        self.func(
+            "boolean#__not__",
+            vec![tuple_param(
+                tupled.clone(),
+                [explicit(a.clone(), Term::Boolean)],
+            )],
+            Term::Boolean,
+            explicit_tuple_local1(
+                a.clone(),
+                Term::Boolean,
+                Term::Ref(tupled),
+                Term::BoolNot(Box::new(Term::Ref(a))),
+            ),
+        )
     }
 
-    fn array_iterator(self) -> Self {
+    fn array_iterator_type(self) -> Self {
         let t = Var::new("T");
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("NativeArrayIterator"),
-            tele: vec![implicit(t.clone(), Term::Univ)],
-            ret: Box::new(Term::Univ),
-            body: Body::Fn(Term::ArrayIterator(Box::new(Term::Ref(t.clone())))),
-        })
+        self.func(
+            "NativeArrayIterator",
+            vec![implicit(t.clone(), Term::Univ)],
+            Term::Univ,
+            Term::ArrayIterator(Box::new(Term::Ref(t))),
+        )
     }
 
     fn array_iterator_next(self) -> Self {
@@ -665,33 +272,30 @@ impl Builtins {
         let tupled = Var::tupled();
         let a = Var::new("a");
         let a_ty = Term::ArrayIterator(Box::new(Term::Ref(t.clone())));
-        let a_rhs = a.untupled_rhs();
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("arrayIter#next"),
-            tele: vec![
-                implicit(t.clone(), Term::Univ),
+        self.func(
+            "arrayIter#next",
+            vec![
+                type_param(t.clone()),
                 tuple_param(tupled.clone(), [explicit(a.clone(), a_ty.clone())]),
             ],
-            ret: Box::new(option_type(Term::Ref(t))),
-            body: Body::Fn(Term::TupleLocal(
-                explicit(a.clone(), a_ty.clone()),
-                explicit(a_rhs.clone(), Term::Unit),
-                Box::new(Term::Ref(tupled)),
-                Box::new(Term::ArrIterNext(Box::new(Term::Ref(a.clone())))),
-            )),
-        })
+            option_type(Term::Ref(t)),
+            explicit_tuple_local1(
+                a.clone(),
+                a_ty.clone(),
+                Term::Ref(tupled),
+                Term::ArrIterNext(Box::new(Term::Ref(a))),
+            ),
+        )
     }
 
-    fn array(self) -> Self {
+    fn array_type(self) -> Self {
         let t = Var::new("T");
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("NativeArray"),
-            tele: vec![implicit(t.clone(), Term::Univ)],
-            ret: Box::new(Term::Univ),
-            body: Body::Fn(Term::Array(Box::new(Term::Ref(t.clone())))),
-        })
+        self.func(
+            "NativeArray",
+            vec![implicit(t.clone(), Term::Univ)],
+            Term::Univ,
+            Term::Array(Box::new(Term::Ref(t))),
+        )
     }
 
     fn array_length(self) -> Self {
@@ -699,22 +303,20 @@ impl Builtins {
         let tupled = Var::tupled();
         let a = Var::new("a");
         let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
-        let a_rhs = a.untupled_rhs();
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("array#length"),
-            tele: vec![
-                implicit(t, Term::Univ),
+        self.func(
+            "array#length",
+            vec![
+                type_param(t),
                 tuple_param(tupled.clone(), [explicit(a.clone(), a_ty.clone())]),
             ],
-            ret: Box::new(Term::Number),
-            body: Body::Fn(Term::TupleLocal(
-                explicit(a.clone(), a_ty.clone()),
-                explicit(a_rhs.clone(), Term::Unit),
-                Box::new(Term::Ref(tupled)),
-                Box::new(Term::ArrLength(Box::new(Term::Ref(a.clone())))),
-            )),
-        })
+            Term::Number,
+            explicit_tuple_local1(
+                a.clone(),
+                a_ty.clone(),
+                Term::Ref(tupled),
+                Term::ArrLength(Box::new(Term::Ref(a))),
+            ),
+        )
     }
 
     fn array_push(self) -> Self {
@@ -729,29 +331,22 @@ impl Builtins {
             explicit(a.clone(), a_ty.clone()),
             explicit(v.clone(), v_ty.clone()),
         ];
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("array#push"),
-            tele: vec![implicit(t, Term::Univ), tuple_param(tupled.clone(), params)],
-            ret: Box::new(Term::Number),
-            body: Body::Fn(Term::TupleLocal(
-                explicit(a.clone(), a_ty),
-                explicit(
-                    a_rhs.clone(),
-                    Term::Sigma(explicit(v.clone(), v_ty.clone()), Box::new(Term::Unit)),
+        self.func(
+            "array#push",
+            vec![type_param(t), tuple_param(tupled.clone(), params)],
+            Term::Number,
+            explicit_tuple_local(
+                (a.clone(), a_ty),
+                (a_rhs.clone(), explicit_sigma1(v.clone(), v_ty.clone())),
+                Term::Ref(tupled),
+                explicit_tuple_local1(
+                    v.clone(),
+                    v_ty,
+                    Term::Ref(a_rhs),
+                    Term::ArrPush(Box::new(Term::Ref(a)), Box::new(Term::Ref(v))),
                 ),
-                Box::new(Term::Ref(tupled)),
-                Box::new(Term::TupleLocal(
-                    explicit(v.clone(), v_ty),
-                    explicit(Var::unbound(), Term::Unit),
-                    Box::new(Term::Ref(a_rhs)),
-                    Box::new(Term::ArrPush(
-                        Box::new(Term::Ref(a)),
-                        Box::new(Term::Ref(v)),
-                    )),
-                )),
-            )),
-        })
+            ),
+        )
     }
 
     fn array_foreach(self) -> Self {
@@ -768,33 +363,31 @@ impl Builtins {
             ),
             Box::new(Term::Unit),
         );
-        let params = [
-            explicit(a.clone(), a_ty.clone()),
-            explicit(f.clone(), f_ty.clone()),
-        ];
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("array#forEach"),
-            tele: vec![implicit(t, Term::Univ), tuple_param(tupled.clone(), params)],
-            ret: Box::new(Term::Unit),
-            body: Body::Fn(Term::TupleLocal(
-                explicit(a.clone(), a_ty),
-                explicit(
-                    a_rhs.clone(),
-                    Term::Sigma(explicit(f.clone(), f_ty.clone()), Box::new(Term::Unit)),
+        self.func(
+            "array#forEach",
+            vec![
+                type_param(t),
+                tuple_param(
+                    tupled.clone(),
+                    [
+                        explicit(a.clone(), a_ty.clone()),
+                        explicit(f.clone(), f_ty.clone()),
+                    ],
                 ),
-                Box::new(Term::Ref(tupled)),
-                Box::new(Term::TupleLocal(
-                    explicit(f.clone(), f_ty),
-                    explicit(Var::unbound(), Term::Unit),
-                    Box::new(Term::Ref(a_rhs)),
-                    Box::new(Term::ArrForeach(
-                        Box::new(Term::Ref(a)),
-                        Box::new(Term::Ref(f)),
-                    )),
-                )),
-            )),
-        })
+            ],
+            Term::Unit,
+            explicit_tuple_local(
+                (a.clone(), a_ty),
+                (a_rhs.clone(), explicit_sigma1(f.clone(), f_ty.clone())),
+                Term::Ref(tupled),
+                explicit_tuple_local1(
+                    f.clone(),
+                    f_ty,
+                    Term::Ref(a_rhs),
+                    Term::ArrForeach(Box::new(Term::Ref(a)), Box::new(Term::Ref(f))),
+                ),
+            ),
+        )
     }
 
     fn array_at(self) -> Self {
@@ -805,33 +398,31 @@ impl Builtins {
         let a_rhs = a.untupled_rhs();
         let i = Var::new("i");
         let i_ty = Term::Number;
-        let params = [
-            explicit(a.clone(), a_ty.clone()),
-            explicit(i.clone(), i_ty.clone()),
-        ];
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("array#at"),
-            tele: vec![
-                implicit(t.clone(), Term::Univ),
-                tuple_param(tupled.clone(), params),
-            ],
-            ret: Box::new(option_type(Term::Ref(t))),
-            body: Body::Fn(Term::TupleLocal(
-                explicit(a.clone(), a_ty),
-                explicit(
-                    a_rhs.clone(),
-                    Term::Sigma(explicit(i.clone(), i_ty.clone()), Box::new(Term::Unit)),
+        self.func(
+            "array#at",
+            vec![
+                type_param(t.clone()),
+                tuple_param(
+                    tupled.clone(),
+                    [
+                        explicit(a.clone(), a_ty.clone()),
+                        explicit(i.clone(), i_ty.clone()),
+                    ],
                 ),
-                Box::new(Term::Ref(tupled)),
-                Box::new(Term::TupleLocal(
-                    explicit(i.clone(), i_ty),
-                    explicit(Var::unbound(), Term::Unit),
-                    Box::new(Term::Ref(a_rhs)),
-                    Box::new(Term::ArrAt(Box::new(Term::Ref(a)), Box::new(Term::Ref(i)))),
-                )),
-            )),
-        })
+            ],
+            option_type(Term::Ref(t)),
+            explicit_tuple_local(
+                (a.clone(), a_ty),
+                (a_rhs.clone(), explicit_sigma1(i.clone(), i_ty.clone())),
+                Term::Ref(tupled),
+                explicit_tuple_local1(
+                    i.clone(),
+                    i_ty,
+                    Term::Ref(a_rhs),
+                    Term::ArrAt(Box::new(Term::Ref(a)), Box::new(Term::Ref(i))),
+                ),
+            ),
+        )
     }
 
     fn array_insert(self) -> Self {
@@ -845,80 +436,287 @@ impl Builtins {
         let i_rhs = i.untupled_rhs();
         let v = Var::new("v");
         let v_ty = Term::Ref(t.clone());
-        let params = [
-            explicit(a.clone(), a_ty.clone()),
-            explicit(i.clone(), i_ty.clone()),
-            explicit(v.clone(), v_ty.clone()),
-        ];
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("array#insert"),
-            tele: vec![
-                implicit(t.clone(), Term::Univ),
-                tuple_param(tupled.clone(), params),
-            ],
-            ret: Box::new(Term::Unit),
-            body: Body::Fn(Term::TupleLocal(
-                explicit(a.clone(), a_ty),
-                explicit(
-                    a_rhs.clone(),
-                    Term::Sigma(
+        self.func(
+            "array#insert",
+            vec![
+                type_param(t.clone()),
+                tuple_param(
+                    tupled.clone(),
+                    [
+                        explicit(a.clone(), a_ty.clone()),
                         explicit(i.clone(), i_ty.clone()),
-                        Box::new(Term::Sigma(
-                            explicit(v.clone(), v_ty.clone()),
-                            Box::new(Term::Unit),
-                        )),
+                        explicit(v.clone(), v_ty.clone()),
+                    ],
+                ),
+            ],
+            Term::Unit,
+            explicit_tuple_local(
+                (a.clone(), a_ty),
+                (
+                    a_rhs.clone(),
+                    explicit_sigma(
+                        (i.clone(), i_ty.clone()),
+                        explicit_sigma1(v.clone(), v_ty.clone()),
                     ),
                 ),
-                Box::new(Term::Ref(tupled)),
-                Box::new(Term::TupleLocal(
-                    explicit(i.clone(), i_ty),
-                    explicit(
-                        i_rhs.clone(),
-                        Term::Sigma(explicit(v.clone(), v_ty.clone()), Box::new(Term::Unit)),
-                    ),
-                    Box::new(Term::Ref(a_rhs)),
-                    Box::new(Term::TupleLocal(
-                        explicit(v.clone(), v_ty),
-                        explicit(Var::unbound(), Term::Unit),
-                        Box::new(Term::Ref(i_rhs)),
-                        Box::new(Term::ArrInsert(
+                Term::Ref(tupled),
+                explicit_tuple_local(
+                    (i.clone(), i_ty),
+                    (i_rhs.clone(), explicit_sigma1(v.clone(), v_ty.clone())),
+                    Term::Ref(a_rhs),
+                    explicit_tuple_local1(
+                        v.clone(),
+                        v_ty,
+                        Term::Ref(i_rhs),
+                        Term::ArrInsert(
                             Box::new(Term::Ref(a)),
                             Box::new(Term::Ref(i)),
                             Box::new(Term::Ref(v)),
-                        )),
-                    )),
-                )),
-            )),
-        })
+                        ),
+                    ),
+                ),
+            ),
+        )
     }
 
     fn array_iter(self) -> Self {
         let t = Var::new("T");
         let iterator = self.get("NativeArrayIterator");
-        let ret = Box::new(Term::App(
-            Box::new(iterator),
-            UnnamedImplicit,
-            Box::new(Term::Ref(t.clone())),
-        ));
         let tupled = Var::tupled();
         let a = Var::new("a");
         let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
-        let a_rhs = a.untupled_rhs();
-        self.insert(Def {
-            loc: Default::default(),
-            name: Var::new("array#iter"),
-            tele: vec![
-                implicit(t, Term::Univ),
+        self.func(
+            "array#iter",
+            vec![
+                type_param(t.clone()),
                 tuple_param(tupled.clone(), [explicit(a.clone(), a_ty.clone())]),
             ],
-            ret,
-            body: Body::Fn(Term::TupleLocal(
-                explicit(a.clone(), a_ty.clone()),
-                explicit(a_rhs.clone(), Term::Unit),
-                Box::new(Term::Ref(tupled)),
-                Box::new(Term::ArrIter(Box::new(Term::Ref(a.clone())))),
-            )),
-        })
+            Term::App(Box::new(iterator), UnnamedImplicit, Box::new(Term::Ref(t))),
+            explicit_tuple_local1(
+                a.clone(),
+                a_ty,
+                Term::Ref(tupled),
+                Term::ArrIter(Box::new(Term::Ref(a))),
+            ),
+        )
     }
+
+    /*
+        fn map_type(self) -> Self {
+            let k = Var::new("K");
+            let v = Var::new("V");
+            self.func(
+                "NativeMap",
+                vec![type_param(k.clone()), type_param(v.clone())],
+                Term::Univ,
+                Term::Map(Box::new(Term::Ref(k)), Box::new(Term::Ref(v))),
+            )
+        }
+
+        fn map_has(self) -> Self {
+            let k = Var::new("K");
+            let v = Var::new("V");
+            let tupled = Var::tupled();
+            let m = Var::new("m");
+            let m_ty = Term::Map(
+                Box::new(Term::Ref(k.clone())),
+                Box::new(Term::Ref(v.clone())),
+            );
+            let m_rhs = m.untupled_rhs();
+            let key = Var::new("k");
+            let key_ty = Term::Ref(k.clone());
+            self.func(
+                "map#has",
+                vec![
+                    type_param(k.clone()),
+                    type_param(v),
+                    tuple_param(
+                        tupled.clone(),
+                        [
+                            explicit(m.clone(), m_ty.clone()),
+                            explicit(key.clone(), key_ty.clone()),
+                        ],
+                    ),
+                ],
+                Term::Boolean,
+                explicit_tuple_local(
+                    (m.clone(), m_ty),
+                    (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
+                    Term::Ref(tupled),
+                    explicit_tuple_local1(
+                        key.clone(),
+                        key_ty,
+                        Term::Ref(m_rhs),
+                        Term::MapHas(Box::new(Term::Ref(m)), Box::new(Term::Ref(key))),
+                    ),
+                ),
+            )
+        }
+
+        fn map_get(self) -> Self {
+            let k = Var::new("K");
+            let v = Var::new("V");
+            let tupled = Var::tupled();
+            let m = Var::new("m");
+            let m_ty = Term::Map(
+                Box::new(Term::Ref(k.clone())),
+                Box::new(Term::Ref(v.clone())),
+            );
+            let m_rhs = m.untupled_rhs();
+            let key = Var::new("k");
+            let key_ty = Term::Ref(k.clone());
+            self.func(
+                "map#get",
+                vec![
+                    type_param(k.clone()),
+                    type_param(v.clone()),
+                    tuple_param(
+                        tupled.clone(),
+                        [
+                            explicit(m.clone(), m_ty.clone()),
+                            explicit(key.clone(), key_ty.clone()),
+                        ],
+                    ),
+                ],
+                Term::Ref(v),
+                explicit_tuple_local(
+                    (m.clone(), m_ty),
+                    (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
+                    Term::Ref(tupled),
+                    explicit_tuple_local1(
+                        key.clone(),
+                        key_ty,
+                        Term::Ref(m_rhs),
+                        Term::MapGet(Box::new(Term::Ref(m)), Box::new(Term::Ref(key))),
+                    ),
+                ),
+            )
+        }
+
+        fn map_set(self) -> Self {
+            let k = Var::new("K");
+            let v = Var::new("T");
+            let tupled = Var::tupled();
+            let m = Var::new("m");
+            let m_ty = Term::Map(
+                Box::new(Term::Ref(k.clone())),
+                Box::new(Term::Ref(v.clone())),
+            );
+            let m_rhs = m.untupled_rhs();
+            let key = Var::new("k");
+            let key_ty = Term::Number;
+            let key_rhs = key.untupled_rhs();
+            let val = Var::new("v");
+            let val_ty = Term::Ref(val.clone());
+            self.func(
+                "map#set",
+                vec![
+                    type_param(k.clone()),
+                    type_param(v.clone()),
+                    tuple_param(
+                        tupled.clone(),
+                        [
+                            explicit(m.clone(), m_ty.clone()),
+                            explicit(key.clone(), key_ty.clone()),
+                            explicit(val.clone(), val_ty.clone()),
+                        ],
+                    ),
+                ],
+                Term::Unit,
+                explicit_tuple_local(
+                    (m.clone(), m_ty),
+                    (
+                        m_rhs.clone(),
+                        explicit_sigma(
+                            (key.clone(), key_ty.clone()),
+                            explicit_sigma1(val.clone(), val_ty.clone()),
+                        ),
+                    ),
+                    Term::Ref(tupled),
+                    explicit_tuple_local(
+                        (key.clone(), key_ty),
+                        (
+                            key_rhs.clone(),
+                            explicit_sigma1(val.clone(), val_ty.clone()),
+                        ),
+                        Term::Ref(m_rhs),
+                        explicit_tuple_local1(
+                            val.clone(),
+                            val_ty,
+                            Term::Ref(key_rhs),
+                            Term::MapSet(
+                                Box::new(Term::Ref(m)),
+                                Box::new(Term::Ref(key)),
+                                Box::new(Term::Ref(val)),
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        }
+
+        fn map_delete(self) -> Self {
+            let k = Var::new("K");
+            let v = Var::new("V");
+            let tupled = Var::tupled();
+            let m = Var::new("m");
+            let m_ty = Term::Map(
+                Box::new(Term::Ref(k.clone())),
+                Box::new(Term::Ref(v.clone())),
+            );
+            let m_rhs = m.untupled_rhs();
+            let key = Var::new("k");
+            let key_ty = Term::Ref(k.clone());
+            let params = [
+                explicit(m.clone(), m_ty.clone()),
+                explicit(key.clone(), key_ty.clone()),
+            ];
+            self.func(
+                "map#delete",
+                vec![
+                    type_param(k.clone()),
+                    type_param(v.clone()),
+                    tuple_param(tupled.clone(), params),
+                ],
+                Term::Boolean,
+                explicit_tuple_local(
+                    (m.clone(), m_ty),
+                    (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
+                    Term::Ref(tupled),
+                    explicit_tuple_local1(
+                        key.clone(),
+                        key_ty,
+                        Term::Ref(m_rhs),
+                        Term::MapDelete(Box::new(Term::Ref(m)), Box::new(Term::Ref(key))),
+                    ),
+                ),
+            )
+        }
+
+        fn map_clear(self) -> Self {
+            let k = Var::new("K");
+            let v = Var::new("V");
+            let tupled = Var::tupled();
+            let m = Var::new("m");
+            let m_ty = Term::Map(
+                Box::new(Term::Ref(k.clone())),
+                Box::new(Term::Ref(v.clone())),
+            );
+            self.func(
+                "map#clear",
+                vec![
+                    type_param(k.clone()),
+                    type_param(v.clone()),
+                    tuple_param(tupled.clone(), [explicit(m.clone(), m_ty.clone())]),
+                ],
+                Term::Unit,
+                explicit_tuple_local1(
+                    m.clone(),
+                    m_ty,
+                    Term::Ref(tupled),
+                    Term::MapClear(Box::new(Term::Ref(m))),
+                ),
+            )
+        }
+    */
 }

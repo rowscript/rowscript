@@ -113,6 +113,12 @@ pub enum Term {
     ArrAt(Box<Self>, Box<Self>),
     ArrInsert(Box<Self>, Box<Self>, Box<Self>),
 
+    // Map(Box<Self>, Box<Self>),
+    // MapHas(Box<Self>, Box<Self>),
+    // MapGet(Box<Self>, Box<Self>),
+    // MapSet(Box<Self>, Box<Self>, Box<Self>),
+    // MapDelete(Box<Self>, Box<Self>),
+    // MapClear(Box<Self>),
     Row,
     Fields(FieldMap),
     Combine(bool, Box<Self>, Box<Self>),
