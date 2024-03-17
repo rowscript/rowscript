@@ -89,6 +89,16 @@ impl Renamer {
                 Box::new(self.term(*i)),
                 Box::new(self.term(*v)),
             ),
+            Map(k, v) => Map(Box::new(self.term(*k)), Box::new(self.term(*v))),
+            MapHas(m, k) => MapHas(Box::new(self.term(*m)), Box::new(self.term(*k))),
+            MapGet(m, k) => MapGet(Box::new(self.term(*m)), Box::new(self.term(*k))),
+            MapSet(m, k, v) => MapSet(
+                Box::new(self.term(*m)),
+                Box::new(self.term(*k)),
+                Box::new(self.term(*v)),
+            ),
+            MapDelete(m, k) => MapDelete(Box::new(self.term(*m)), Box::new(self.term(*k))),
+            MapClear(m) => MapClear(Box::new(self.term(*m))),
             Fields(fields) => {
                 let mut m = FieldMap::default();
                 for (f, tm) in fields {

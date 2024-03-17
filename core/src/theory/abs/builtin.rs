@@ -70,6 +70,16 @@ fn option_type(t: Term) -> Term {
     )))
 }
 
+fn parameters<const T: usize, const V: usize>(
+    types: [Var; T],
+    tupled: Var,
+    params: [(Var, Term); V],
+) -> Tele<Term> {
+    let mut tele: Tele<_> = types.into_iter().map(type_param).collect();
+    tele.push(tuple_param(tupled, params.map(|(v, typ)| explicit(v, typ))));
+    tele
+}
+
 macro_rules! bin_op {
     ($name:ident, $builtin_name:literal, $typ:ident, $ret:ident, $op:ident) => {
         fn $name(self) -> Self {
@@ -138,12 +148,12 @@ impl Builtins {
             .array_at()
             .array_insert()
             .array_iter()
-        // .map_type()
-        // .map_has()
-        // .map_get()
-        // .map_set()
-        // .map_delete()
-        // .map_clear()
+            .map_type()
+            .map_has()
+            .map_get()
+            .map_set()
+            .map_delete()
+            .map_clear()
     }
 
     fn func(self, name: &str, tele: Tele<Term>, ret: Term, f: Term) -> Self {
@@ -437,18 +447,16 @@ impl Builtins {
         let v = Var::new("v");
         let v_ty = Term::Ref(t.clone());
         self.func(
-            "array#insert",
-            vec![
-                type_param(t.clone()),
-                tuple_param(
-                    tupled.clone(),
-                    [
-                        explicit(a.clone(), a_ty.clone()),
-                        explicit(i.clone(), i_ty.clone()),
-                        explicit(v.clone(), v_ty.clone()),
-                    ],
-                ),
-            ],
+            "array#set",
+            parameters(
+                [t],
+                tupled.clone(),
+                [
+                    (a.clone(), a_ty.clone()),
+                    (i.clone(), i_ty.clone()),
+                    (v.clone(), v_ty.clone()),
+                ],
+            ),
             Term::Unit,
             explicit_tuple_local(
                 (a.clone(), a_ty),
@@ -501,222 +509,217 @@ impl Builtins {
         )
     }
 
-    /*
-        fn map_type(self) -> Self {
-            let k = Var::new("K");
-            let v = Var::new("V");
-            self.func(
-                "NativeMap",
-                vec![type_param(k.clone()), type_param(v.clone())],
-                Term::Univ,
-                Term::Map(Box::new(Term::Ref(k)), Box::new(Term::Ref(v))),
-            )
-        }
+    fn map_type(self) -> Self {
+        let k = Var::new("K");
+        let v = Var::new("V");
+        self.func(
+            "NativeMap",
+            vec![type_param(k.clone()), type_param(v.clone())],
+            Term::Univ,
+            Term::Map(Box::new(Term::Ref(k)), Box::new(Term::Ref(v))),
+        )
+    }
 
-        fn map_has(self) -> Self {
-            let k = Var::new("K");
-            let v = Var::new("V");
-            let tupled = Var::tupled();
-            let m = Var::new("m");
-            let m_ty = Term::Map(
-                Box::new(Term::Ref(k.clone())),
-                Box::new(Term::Ref(v.clone())),
-            );
-            let m_rhs = m.untupled_rhs();
-            let key = Var::new("k");
-            let key_ty = Term::Ref(k.clone());
-            self.func(
-                "map#has",
-                vec![
-                    type_param(k.clone()),
-                    type_param(v),
-                    tuple_param(
-                        tupled.clone(),
-                        [
-                            explicit(m.clone(), m_ty.clone()),
-                            explicit(key.clone(), key_ty.clone()),
-                        ],
-                    ),
-                ],
-                Term::Boolean,
-                explicit_tuple_local(
-                    (m.clone(), m_ty),
-                    (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
-                    Term::Ref(tupled),
-                    explicit_tuple_local1(
-                        key.clone(),
-                        key_ty,
-                        Term::Ref(m_rhs),
-                        Term::MapHas(Box::new(Term::Ref(m)), Box::new(Term::Ref(key))),
-                    ),
+    fn map_has(self) -> Self {
+        let k = Var::new("K");
+        let v = Var::new("V");
+        let tupled = Var::tupled();
+        let m = Var::new("m");
+        let m_ty = Term::Map(
+            Box::new(Term::Ref(k.clone())),
+            Box::new(Term::Ref(v.clone())),
+        );
+        let m_rhs = m.untupled_rhs();
+        let key = Var::new("k");
+        let key_ty = Term::Ref(k.clone());
+        self.func(
+            "map#has",
+            vec![
+                type_param(k.clone()),
+                type_param(v),
+                tuple_param(
+                    tupled.clone(),
+                    [
+                        explicit(m.clone(), m_ty.clone()),
+                        explicit(key.clone(), key_ty.clone()),
+                    ],
                 ),
-            )
-        }
-
-        fn map_get(self) -> Self {
-            let k = Var::new("K");
-            let v = Var::new("V");
-            let tupled = Var::tupled();
-            let m = Var::new("m");
-            let m_ty = Term::Map(
-                Box::new(Term::Ref(k.clone())),
-                Box::new(Term::Ref(v.clone())),
-            );
-            let m_rhs = m.untupled_rhs();
-            let key = Var::new("k");
-            let key_ty = Term::Ref(k.clone());
-            self.func(
-                "map#get",
-                vec![
-                    type_param(k.clone()),
-                    type_param(v.clone()),
-                    tuple_param(
-                        tupled.clone(),
-                        [
-                            explicit(m.clone(), m_ty.clone()),
-                            explicit(key.clone(), key_ty.clone()),
-                        ],
-                    ),
-                ],
-                Term::Ref(v),
-                explicit_tuple_local(
-                    (m.clone(), m_ty),
-                    (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
-                    Term::Ref(tupled),
-                    explicit_tuple_local1(
-                        key.clone(),
-                        key_ty,
-                        Term::Ref(m_rhs),
-                        Term::MapGet(Box::new(Term::Ref(m)), Box::new(Term::Ref(key))),
-                    ),
-                ),
-            )
-        }
-
-        fn map_set(self) -> Self {
-            let k = Var::new("K");
-            let v = Var::new("T");
-            let tupled = Var::tupled();
-            let m = Var::new("m");
-            let m_ty = Term::Map(
-                Box::new(Term::Ref(k.clone())),
-                Box::new(Term::Ref(v.clone())),
-            );
-            let m_rhs = m.untupled_rhs();
-            let key = Var::new("k");
-            let key_ty = Term::Number;
-            let key_rhs = key.untupled_rhs();
-            let val = Var::new("v");
-            let val_ty = Term::Ref(val.clone());
-            self.func(
-                "map#set",
-                vec![
-                    type_param(k.clone()),
-                    type_param(v.clone()),
-                    tuple_param(
-                        tupled.clone(),
-                        [
-                            explicit(m.clone(), m_ty.clone()),
-                            explicit(key.clone(), key_ty.clone()),
-                            explicit(val.clone(), val_ty.clone()),
-                        ],
-                    ),
-                ],
-                Term::Unit,
-                explicit_tuple_local(
-                    (m.clone(), m_ty),
-                    (
-                        m_rhs.clone(),
-                        explicit_sigma(
-                            (key.clone(), key_ty.clone()),
-                            explicit_sigma1(val.clone(), val_ty.clone()),
-                        ),
-                    ),
-                    Term::Ref(tupled),
-                    explicit_tuple_local(
-                        (key.clone(), key_ty),
-                        (
-                            key_rhs.clone(),
-                            explicit_sigma1(val.clone(), val_ty.clone()),
-                        ),
-                        Term::Ref(m_rhs),
-                        explicit_tuple_local1(
-                            val.clone(),
-                            val_ty,
-                            Term::Ref(key_rhs),
-                            Term::MapSet(
-                                Box::new(Term::Ref(m)),
-                                Box::new(Term::Ref(key)),
-                                Box::new(Term::Ref(val)),
-                            ),
-                        ),
-                    ),
-                ),
-            )
-        }
-
-        fn map_delete(self) -> Self {
-            let k = Var::new("K");
-            let v = Var::new("V");
-            let tupled = Var::tupled();
-            let m = Var::new("m");
-            let m_ty = Term::Map(
-                Box::new(Term::Ref(k.clone())),
-                Box::new(Term::Ref(v.clone())),
-            );
-            let m_rhs = m.untupled_rhs();
-            let key = Var::new("k");
-            let key_ty = Term::Ref(k.clone());
-            let params = [
-                explicit(m.clone(), m_ty.clone()),
-                explicit(key.clone(), key_ty.clone()),
-            ];
-            self.func(
-                "map#delete",
-                vec![
-                    type_param(k.clone()),
-                    type_param(v.clone()),
-                    tuple_param(tupled.clone(), params),
-                ],
-                Term::Boolean,
-                explicit_tuple_local(
-                    (m.clone(), m_ty),
-                    (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
-                    Term::Ref(tupled),
-                    explicit_tuple_local1(
-                        key.clone(),
-                        key_ty,
-                        Term::Ref(m_rhs),
-                        Term::MapDelete(Box::new(Term::Ref(m)), Box::new(Term::Ref(key))),
-                    ),
-                ),
-            )
-        }
-
-        fn map_clear(self) -> Self {
-            let k = Var::new("K");
-            let v = Var::new("V");
-            let tupled = Var::tupled();
-            let m = Var::new("m");
-            let m_ty = Term::Map(
-                Box::new(Term::Ref(k.clone())),
-                Box::new(Term::Ref(v.clone())),
-            );
-            self.func(
-                "map#clear",
-                vec![
-                    type_param(k.clone()),
-                    type_param(v.clone()),
-                    tuple_param(tupled.clone(), [explicit(m.clone(), m_ty.clone())]),
-                ],
-                Term::Unit,
+            ],
+            Term::Boolean,
+            explicit_tuple_local(
+                (m.clone(), m_ty),
+                (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
+                Term::Ref(tupled),
                 explicit_tuple_local1(
-                    m.clone(),
-                    m_ty,
-                    Term::Ref(tupled),
-                    Term::MapClear(Box::new(Term::Ref(m))),
+                    key.clone(),
+                    key_ty,
+                    Term::Ref(m_rhs),
+                    Term::MapHas(Box::new(Term::Ref(m)), Box::new(Term::Ref(key))),
                 ),
-            )
-        }
-    */
+            ),
+        )
+    }
+
+    fn map_get(self) -> Self {
+        let k = Var::new("K");
+        let v = Var::new("V");
+        let tupled = Var::tupled();
+        let m = Var::new("m");
+        let m_ty = Term::Map(
+            Box::new(Term::Ref(k.clone())),
+            Box::new(Term::Ref(v.clone())),
+        );
+        let m_rhs = m.untupled_rhs();
+        let key = Var::new("k");
+        let key_ty = Term::Ref(k.clone());
+        self.func(
+            "map#get",
+            vec![
+                type_param(k.clone()),
+                type_param(v.clone()),
+                tuple_param(
+                    tupled.clone(),
+                    [
+                        explicit(m.clone(), m_ty.clone()),
+                        explicit(key.clone(), key_ty.clone()),
+                    ],
+                ),
+            ],
+            Term::Ref(v),
+            explicit_tuple_local(
+                (m.clone(), m_ty),
+                (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
+                Term::Ref(tupled),
+                explicit_tuple_local1(
+                    key.clone(),
+                    key_ty,
+                    Term::Ref(m_rhs),
+                    Term::MapGet(Box::new(Term::Ref(m)), Box::new(Term::Ref(key))),
+                ),
+            ),
+        )
+    }
+
+    fn map_set(self) -> Self {
+        let k = Var::new("K");
+        let v = Var::new("T");
+        let tupled = Var::tupled();
+        let m = Var::new("m");
+        let m_ty = Term::Map(
+            Box::new(Term::Ref(k.clone())),
+            Box::new(Term::Ref(v.clone())),
+        );
+        let m_rhs = m.untupled_rhs();
+        let key = Var::new("k");
+        let key_ty = Term::Number;
+        let key_rhs = key.untupled_rhs();
+        let val = Var::new("v");
+        let val_ty = Term::Ref(val.clone());
+        self.func(
+            "map#set",
+            parameters(
+                [k.clone(), v.clone()],
+                tupled.clone(),
+                [
+                    (m.clone(), m_ty.clone()),
+                    (key.clone(), key_ty.clone()),
+                    (val.clone(), val_ty.clone()),
+                ],
+            ),
+            Term::Unit,
+            explicit_tuple_local(
+                (m.clone(), m_ty),
+                (
+                    m_rhs.clone(),
+                    explicit_sigma(
+                        (key.clone(), key_ty.clone()),
+                        explicit_sigma1(val.clone(), val_ty.clone()),
+                    ),
+                ),
+                Term::Ref(tupled),
+                explicit_tuple_local(
+                    (key.clone(), key_ty),
+                    (
+                        key_rhs.clone(),
+                        explicit_sigma1(val.clone(), val_ty.clone()),
+                    ),
+                    Term::Ref(m_rhs),
+                    explicit_tuple_local1(
+                        val.clone(),
+                        val_ty,
+                        Term::Ref(key_rhs),
+                        Term::MapSet(
+                            Box::new(Term::Ref(m)),
+                            Box::new(Term::Ref(key)),
+                            Box::new(Term::Ref(val)),
+                        ),
+                    ),
+                ),
+            ),
+        )
+    }
+
+    fn map_delete(self) -> Self {
+        let k = Var::new("K");
+        let v = Var::new("V");
+        let tupled = Var::tupled();
+        let m = Var::new("m");
+        let m_ty = Term::Map(
+            Box::new(Term::Ref(k.clone())),
+            Box::new(Term::Ref(v.clone())),
+        );
+        let m_rhs = m.untupled_rhs();
+        let key = Var::new("k");
+        let key_ty = Term::Ref(k.clone());
+        let params = [
+            explicit(m.clone(), m_ty.clone()),
+            explicit(key.clone(), key_ty.clone()),
+        ];
+        self.func(
+            "map#delete",
+            vec![
+                type_param(k.clone()),
+                type_param(v.clone()),
+                tuple_param(tupled.clone(), params),
+            ],
+            Term::Boolean,
+            explicit_tuple_local(
+                (m.clone(), m_ty),
+                (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
+                Term::Ref(tupled),
+                explicit_tuple_local1(
+                    key.clone(),
+                    key_ty,
+                    Term::Ref(m_rhs),
+                    Term::MapDelete(Box::new(Term::Ref(m)), Box::new(Term::Ref(key))),
+                ),
+            ),
+        )
+    }
+
+    fn map_clear(self) -> Self {
+        let k = Var::new("K");
+        let v = Var::new("V");
+        let tupled = Var::tupled();
+        let m = Var::new("m");
+        let m_ty = Term::Map(
+            Box::new(Term::Ref(k.clone())),
+            Box::new(Term::Ref(v.clone())),
+        );
+        self.func(
+            "map#clear",
+            vec![
+                type_param(k.clone()),
+                type_param(v.clone()),
+                tuple_param(tupled.clone(), [explicit(m.clone(), m_ty.clone())]),
+            ],
+            Term::Unit,
+            explicit_tuple_local1(
+                m.clone(),
+                m_ty,
+                Term::Ref(tupled),
+                Term::MapClear(Box::new(Term::Ref(m))),
+            ),
+        )
+    }
 }

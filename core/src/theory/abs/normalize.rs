@@ -278,6 +278,12 @@ impl<'a> Normalizer<'a> {
             ArrInsert(a, i, v) => {
                 ArrInsert(self.term_box(a)?, self.term_box(i)?, self.term_box(v)?)
             }
+            Map(k, v) => Map(self.term_box(k)?, self.term_box(v)?),
+            MapHas(m, k) => MapHas(self.term_box(m)?, self.term_box(k)?),
+            MapGet(m, k) => MapGet(self.term_box(m)?, self.term_box(k)?),
+            MapSet(m, k, v) => MapSet(self.term_box(m)?, self.term_box(k)?, self.term_box(v)?),
+            MapDelete(m, k) => MapDelete(self.term_box(m)?, self.term_box(k)?),
+            MapClear(m) => MapClear(self.term_box(m)?),
             Fields(mut fields) => {
                 for tm in fields.values_mut() {
                     // FIXME: not unwind-safe, refactor `Self::term` to accept a `&mut Term`

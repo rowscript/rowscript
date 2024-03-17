@@ -1,9 +1,5 @@
 function f(): number {
-    const a: number = if (true) {
-        42
-    } else {
-        69
-    };
+    const a: number = (true) ? 42 : 69;
     a
 }
 

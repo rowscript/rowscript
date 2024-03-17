@@ -1156,8 +1156,8 @@ impl Trans {
         let a = self.maybe_qualified(pairs.next().unwrap());
         let i = self.expr(pairs.next().unwrap());
         let v = self.expr(pairs.next().unwrap());
-        let insert = Self::builtin_method(i.loc(), "Array", "insert");
-        Self::call3(insert, a, i, v)
+        let m = Self::builtin_method(i.loc(), "Array", "set");
+        Self::call3(m, a, i, v)
     }
 
     fn local_assign_stmt(&self, s: Pair<Rule>) -> (Var, Expr) {

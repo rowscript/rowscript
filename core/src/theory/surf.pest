@@ -12,7 +12,7 @@ reserved =
   | "continue"
   | "debugger"
   | "default"
-  | "delete"
+  //| "delete"
   | "do"
   | "else"
   | "export"
@@ -83,9 +83,9 @@ reserved =
   | "async"
   | "eval"
   | "from"
-  | "get"
   | "of"
-  | "set"
+  //| "get"
+  //| "set"
 
   // Sanity keywords.
   | "null"
@@ -182,7 +182,7 @@ builtin =
   | "array#push"
   | "array#forEach"
   | "array#at"
-  | "array#insert"
+  | "array#set"
   | "array#iter"
   | "map#has"
   | "map#get"
@@ -347,7 +347,7 @@ primary_expr =
   }
 boolean_false = { "false" }
 boolean_true = { "true" }
-boolean_if = { "if" ~ "(" ~ expr ~ ")" ~ "{" ~ expr ~ "}" ~ "else" ~ "{" ~ expr ~ "}" }
+boolean_if = { "(" ~ expr ~ ")" ~ "?" ~ expr ~ ":" ~ expr }
 rev_app = { ("(" ~ expr ~ ")" | idref | new_expr) ~ rev_app_caller+ }
 rev_app_caller = { "." ~ idref ~ implicit_args? ~ args+ }
 array_expr = { "[]" | "[" ~ expr ~ ("," ~ expr)* ~ "]" }

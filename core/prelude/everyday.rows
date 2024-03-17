@@ -59,8 +59,12 @@ class Array<T> {
         array#at(this.a, i)
     }
 
-    insert(i: number, v: T) {
-        array#insert(this.a, i, v)
+    get(i: number): Option<T> {
+        this.at(i)
+    }
+
+    set(i: number, v: T) {
+        array#set(this.a, i, v)
     }
 
     iter(): ArrayIterator<T> {
@@ -77,11 +81,7 @@ class Map<K, V> {
     }
 
     get(key: K): Option<V> {
-        if (this.has(key)) {
-            map#get(this.m, key)
-        } else {
-            None
-        }
+        (this.has(key)) ? map#get(this.m, key) : None
     }
 
     set(key: K, value: V): Map<K, V> {
