@@ -1,6 +1,5 @@
 use std::fmt::{Display, Formatter};
 
-use crate::theory::abs::data::Dir;
 use crate::theory::conc::load::ModuleID;
 use crate::theory::{Loc, Param, Syntax, Tele, Var};
 
@@ -71,7 +70,7 @@ pub enum Expr {
     Fields(Loc, Vec<(String, Self)>),
     Combine(Loc, Box<Self>, Box<Self>),
 
-    RowOrd(Loc, Box<Self>, Dir, Box<Self>),
+    RowOrd(Loc, Box<Self>, Box<Self>),
     RowEq(Loc, Box<Self>, Box<Self>),
 
     Object(Loc, Box<Self>),
@@ -315,7 +314,7 @@ impl Display for Expr {
                         .join(", ")
                 ),
                 Combine(_, a, b) => format!("{a} + {b}"),
-                RowOrd(_, a, dir, b) => format!("{a} {dir} {b}"),
+                RowOrd(_, a, b) => format!("{a} keyof {b}"),
                 RowEq(_, a, b) => format!("{a} = {b}"),
                 Object(_, r) => format!("{{{r}}}"),
                 Obj(_, r) => format!("{{{r}}}"),

@@ -1,6 +1,6 @@
 function f<'A, 'B>(a: {'A}, b: {'B}): number
 where
-    (n: number) <: 'A + 'B
+    (n: number) keyof 'A + 'B
 {
     (a...b).n
 }

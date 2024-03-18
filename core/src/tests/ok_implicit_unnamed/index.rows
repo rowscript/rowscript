@@ -1,6 +1,6 @@
 function f0<'A, T>(v: T): T
 where
-    (n: string) <: 'A
+    (n: string) keyof 'A
 {
     v
 }

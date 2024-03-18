@@ -1,4 +1,4 @@
-use crate::theory::abs::data::{CaseMap, Dir, Term};
+use crate::theory::abs::data::{CaseMap, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::effect::has_side_effect;
 use crate::theory::abs::reflect::Reflector;
@@ -317,17 +317,13 @@ impl<'a> Normalizer<'a> {
                     _ => Combine(inplace, a, b),
                 }
             }
-            RowOrd(a, d, b) => {
+            RowOrd(a, b) => {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;
                 if let (Fields(a), Fields(b)) = (a.as_ref(), b.as_ref()) {
-                    let mut u = self.unifier();
-                    match d {
-                        Dir::Le => u.fields_ord(a, b)?,
-                        Dir::Ge => u.fields_ord(b, a)?,
-                    };
+                    self.unifier().fields_ord(a, b)?;
                 }
-                RowOrd(a, d, b)
+                RowOrd(a, b)
             }
             RowEq(a, b) => {
                 let a = self.term_box(a)?;
@@ -501,9 +497,9 @@ impl<'a> Normalizer<'a> {
     fn auto_implicit(tm: &Term) -> Option<Term> {
         use Term::*;
         match tm {
-            RowEq(_, _) => Some(RowRefl),
-            RowOrd(_, _, _) => Some(RowSat),
-            ImplementsOf(_, _) => Some(ImplementsSat),
+            RowEq(..) => Some(RowRefl),
+            RowOrd(..) => Some(RowSat),
+            ImplementsOf(..) => Some(ImplementsSat),
             _ => None,
         }
     }

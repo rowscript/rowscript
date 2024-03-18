@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use pest::iterators::{Pair, Pairs};
 use pest::pratt_parser::{Assoc, Op, PrattParser};
 
-use crate::theory::abs::data::Dir;
 use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, ImplementsBody};
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
@@ -637,14 +636,8 @@ impl Trans {
                 Rule::row_ord => {
                     let mut p = p.into_inner();
                     let lhs = self.row_expr(p.next().unwrap());
-                    let dir = p.next().unwrap();
-                    let dir = match dir.as_rule() {
-                        Rule::row_le => Dir::Le,
-                        Rule::row_ge => Dir::Ge,
-                        _ => unreachable!(),
-                    };
                     let rhs = self.row_expr(p.next().unwrap());
-                    Box::new(RowOrd(loc, Box::new(lhs), dir, Box::new(rhs)))
+                    Box::new(RowOrd(loc, Box::new(lhs), Box::new(rhs)))
                 }
                 Rule::row_eq => {
                     let mut p = p.into_inner();

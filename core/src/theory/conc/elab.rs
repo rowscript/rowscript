@@ -1,6 +1,5 @@
 use crate::maybe_grow;
 use crate::theory::abs::builtin::Builtins;
-use crate::theory::abs::data::Dir::Le;
 use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, Term};
 use crate::theory::abs::def::{gamma_to_tele, Body, ImplementsBody};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
@@ -567,10 +566,10 @@ impl Elaborator {
                 let b = self.check(*b, &Term::Row)?;
                 (Term::Combine(false, Box::new(a), Box::new(b)), Term::Row)
             }
-            RowOrd(_, a, d, b) => {
+            RowOrd(_, a, b) => {
                 let a = self.check(*a, &Term::Row)?;
                 let b = self.check(*b, &Term::Row)?;
-                (Term::RowOrd(Box::new(a), d, Box::new(b)), Term::Univ)
+                (Term::RowOrd(Box::new(a), Box::new(b)), Term::Univ)
             }
             RowEq(_, a, b) => {
                 let a = self.check(*a, &Term::Row)?;
@@ -648,7 +647,6 @@ impl Elaborator {
                                 n.clone(),
                                 Term::Ref(t.clone()),
                             )]))),
-                            Le,
                             Box::new(Term::Ref(a)),
                         )),
                     },

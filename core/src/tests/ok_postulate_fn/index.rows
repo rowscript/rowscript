@@ -4,5 +4,5 @@ function f1();
 function f2<T>(): T;
 const a2: number = f2<number>();
 
-function f3<'R>(a: {'R}) where (n: number) <: 'R;
+function f3<'R>(a: {'R}) where (n: number) keyof 'R;
 f3({n: 42, m: 69});

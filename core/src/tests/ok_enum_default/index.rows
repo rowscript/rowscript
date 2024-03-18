@@ -1,7 +1,7 @@
 type Option<T> = [Ok: T | None];
 
 function isOk<'A, T>(o: ['A]): boolean
-where (Ok: T) <: 'A
+where (Ok: T) keyof 'A
 {
     switch (o) {
     case Ok(v): true

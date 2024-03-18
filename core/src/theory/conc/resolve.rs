@@ -349,9 +349,7 @@ impl<'a> Resolver<'a> {
                 Fields(loc, resolved)
             }
             Combine(loc, a, b) => Combine(loc, Box::new(self.expr(*a)?), Box::new(self.expr(*b)?)),
-            RowOrd(loc, a, d, b) => {
-                RowOrd(loc, Box::new(self.expr(*a)?), d, Box::new(self.expr(*b)?))
-            }
+            RowOrd(loc, a, b) => RowOrd(loc, Box::new(self.expr(*a)?), Box::new(self.expr(*b)?)),
             RowEq(loc, a, b) => RowEq(loc, Box::new(self.expr(*a)?), Box::new(self.expr(*b)?)),
             Object(loc, a) => Object(loc, Box::new(self.expr(*a)?)),
             Obj(loc, a) => Obj(loc, Box::new(self.expr(*a)?)),

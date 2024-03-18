@@ -488,9 +488,7 @@ pred =
   | row_eq
   | constraint_expr
   }
-row_ord = { row_expr ~ (row_le | row_ge) ~ row_expr }
-row_le = { "<:" }
-row_ge = { ":>" }
+row_ord = { row_expr ~ "keyof" ~ row_expr }
 row_eq = { row_expr ~ "=" ~ row_expr }
 row_expr =
   { row_concat

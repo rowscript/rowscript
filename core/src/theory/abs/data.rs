@@ -8,21 +8,6 @@ use crate::theory::{Param, ParamInfo, Syntax, Tele, Var};
 
 pub type Spine = Vec<(ParamInfo, Term)>;
 
-#[derive(Debug, Copy, Clone)]
-pub enum Dir {
-    Le,
-    Ge,
-}
-
-impl Display for Dir {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            Dir::Le => "<:",
-            Dir::Ge => ":>",
-        })
-    }
-}
-
 pub type FieldMap = HashMap<String, Term>;
 pub type CaseMap = HashMap<String, (Var, Term)>;
 
@@ -125,7 +110,7 @@ pub enum Term {
     Fields(FieldMap),
     Combine(bool, Box<Self>, Box<Self>),
 
-    RowOrd(Box<Self>, Dir, Box<Self>),
+    RowOrd(Box<Self>, Box<Self>),
     RowSat,
 
     RowEq(Box<Self>, Box<Self>),
@@ -314,7 +299,7 @@ impl Display for Term {
                         format!("{a} + {b}")
                     }
                 }
-                RowOrd(a, d, b) => format!("{a} {d} {b}"),
+                RowOrd(a, b) => format!("{a} keyof {b}"),
                 RowSat => "sat".to_string(),
                 RowEq(a, b) => format!("{a} = {b}"),
                 RowRefl => "refl".to_string(),
