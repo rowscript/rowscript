@@ -279,6 +279,13 @@ impl<'a> Normalizer<'a> {
                 ArrInsert(self.term_box(a)?, self.term_box(i)?, self.term_box(v)?)
             }
             Map(k, v) => Map(self.term_box(k)?, self.term_box(v)?),
+            Kv(xs) => {
+                let mut ret = Vec::default();
+                for (k, v) in xs {
+                    ret.push((self.term(k)?, self.term(v)?));
+                }
+                Kv(ret)
+            }
             MapHas(m, k) => MapHas(self.term_box(m)?, self.term_box(k)?),
             MapGet(m, k) => MapGet(self.term_box(m)?, self.term_box(k)?),
             MapSet(m, k, v) => MapSet(self.term_box(m)?, self.term_box(k)?, self.term_box(v)?),

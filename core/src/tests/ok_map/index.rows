@@ -1,3 +1,9 @@
-function log(n: number);
+function log<T>(m: T);
 
-// TODO: Map constructor.
+//function f0() {
+//    let m = {};
+//    let ignored = m.set("key", 42);
+//    log(m.has("key"));
+//    log(m.get("key"));
+//}
+//f0();

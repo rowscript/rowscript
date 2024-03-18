@@ -114,6 +114,7 @@ pub enum Term {
     ArrInsert(Box<Self>, Box<Self>, Box<Self>),
 
     Map(Box<Self>, Box<Self>),
+    Kv(Vec<(Self, Self)>),
     MapHas(Box<Self>, Box<Self>),
     MapGet(Box<Self>, Box<Self>),
     MapSet(Box<Self>, Box<Self>, Box<Self>),
@@ -285,6 +286,13 @@ impl Display for Term {
                 ArrAt(a, i) => format!("{a}.at({i})"),
                 ArrInsert(a, i, v) => format!("{a}.insert({i}, {v})"),
                 Map(k, v) => format!("NativeMap<{k}, {v}>"),
+                Kv(xs) => format!(
+                    "{{{}}}",
+                    xs.iter()
+                        .map(|(k, v)| format!("{k}: {v}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
                 MapHas(m, k) => format!("{m}.has({k})"),
                 MapGet(m, k) => format!("{m}.get({k})"),
                 MapSet(m, k, v) => format!("{m}.set({k}, {v})"),

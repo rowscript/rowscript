@@ -90,6 +90,10 @@ impl Renamer {
                 Box::new(self.term(*v)),
             ),
             Map(k, v) => Map(Box::new(self.term(*k)), Box::new(self.term(*v))),
+            Kv(xs) => Kv(xs
+                .into_iter()
+                .map(|(k, v)| (self.term(k), self.term(v)))
+                .collect()),
             MapHas(m, k) => MapHas(Box::new(self.term(*m)), Box::new(self.term(*k))),
             MapGet(m, k) => MapGet(Box::new(self.term(*m)), Box::new(self.term(*k))),
             MapSet(m, k, v) => MapSet(

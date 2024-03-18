@@ -328,8 +328,9 @@ primary_expr =
   | boolean_true
   | boolean_if
   | rev_app
-  | array_expr
+  | array_literal
   | array_index
+  | map_literal
   | object_literal
   | object_concat
   | object_access
@@ -350,8 +351,17 @@ boolean_true = { "true" }
 boolean_if = { "(" ~ expr ~ ")" ~ "?" ~ expr ~ ":" ~ expr }
 rev_app = { ("(" ~ expr ~ ")" | idref | new_expr) ~ rev_app_caller+ }
 rev_app_caller = { "." ~ idref ~ implicit_args? ~ args+ }
-array_expr = { "[]" | "[" ~ expr ~ ("," ~ expr)* ~ "]" }
+array_literal = { "[]" | "[" ~ expr ~ ("," ~ expr)* ~ "]" }
 array_index = { ("(" ~ expr ~ ")" | idref) ~ "[" ~ expr ~ "]" }
+map_literal = { "{}" | "{" ~ map_literal_key ~ ":" ~ expr ~ ("," ~ map_literal_key ~ ":" ~ expr)* ~ "}" }
+map_literal_key =
+ _{ string
+  | number
+  | bigint
+  | boolean_false
+  | boolean_true
+  | paren_expr
+  }
 new_expr = { "new" ~ tyref ~ ("<" ~ type_args ~ ">")? ~ args }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
 lambda_params = _{ "()" | "(" ~ param_id ~ ("," ~ param_id)* ~ ")" }

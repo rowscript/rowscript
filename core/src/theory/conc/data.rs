@@ -65,6 +65,8 @@ pub enum Expr {
 
     Arr(Loc, Vec<Self>),
 
+    Kv(Loc, Vec<(Self, Self)>),
+
     Row(Loc),
     Fields(Loc, Vec<(String, Self)>),
     Combine(Loc, Box<Self>, Box<Self>),
@@ -151,6 +153,7 @@ impl Expr {
             BigInt(loc) => loc,
             Big(loc, ..) => loc,
             Arr(loc, ..) => loc,
+            Kv(loc, ..) => loc,
             Row(loc) => loc,
             Fields(loc, ..) => loc,
             Combine(loc, ..) => loc,
@@ -292,6 +295,13 @@ impl Display for Expr {
                     "[{}]",
                     xs.iter()
                         .map(|x| x.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+                Kv(_, xs) => format!(
+                    "{{{}}}",
+                    xs.iter()
+                        .map(|(k, v)| format!("{k}: {v}"))
                         .collect::<Vec<_>>()
                         .join(", ")
                 ),

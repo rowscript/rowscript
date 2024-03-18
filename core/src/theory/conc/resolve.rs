@@ -331,6 +331,13 @@ impl<'a> Resolver<'a> {
                 }
                 Arr(loc, resolved)
             }
+            Kv(loc, xs) => {
+                let mut resolved = Vec::default();
+                for (k, v) in xs {
+                    resolved.push((self.expr(k)?, self.expr(v)?));
+                }
+                Kv(loc, resolved)
+            }
             Fields(loc, fields) => {
                 let mut names = RawNameSet::default();
                 let mut resolved = Vec::default();

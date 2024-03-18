@@ -8,6 +8,7 @@ use crate::theory::abs::data::Dir;
 use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, ImplementsBody};
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
+use crate::theory::conc::data::Expr::{Big, False, Num, Str, True};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::conc::load::ImportedPkg::Vendor;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
@@ -870,7 +871,7 @@ impl Trans {
                     )
                     .1
             }
-            Rule::array_expr => App(
+            Rule::array_literal => App(
                 loc,
                 Box::new(Unresolved(loc, None, Var::new("Array").ctor())),
                 UnnamedExplicit,
@@ -899,6 +900,30 @@ impl Trans {
                         Box::new(x),
                         Box::new(Tuple(loc, Box::new(i), Box::new(TT(loc)))),
                     )),
+                )
+            }
+            Rule::map_literal => {
+                let mut pairs = p.into_inner();
+                let k = pairs.next();
+                let v = pairs.next();
+                let kv = match k {
+                    Some(k) => {
+                        let mut kv = vec![(self.map_literal_key(loc, k), self.expr(v.unwrap()))];
+                        while let Some(k) = pairs.next() {
+                            kv.push((
+                                self.map_literal_key(loc, k),
+                                self.expr(pairs.next().unwrap()),
+                            ))
+                        }
+                        kv
+                    }
+                    None => Default::default(),
+                };
+                App(
+                    loc,
+                    Box::new(Unresolved(loc, None, Var::new("Map").ctor())),
+                    UnnamedExplicit,
+                    Box::new(Tuple(loc, Box::new(Kv(loc, kv)), Box::new(TT(loc)))),
                 )
             }
             Rule::object_literal => self.object_literal(p),
@@ -981,6 +1006,18 @@ impl Trans {
             Rule::idref => self.maybe_qualified(p),
             Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),
             Rule::hole => Hole(loc),
+            _ => unreachable!(),
+        }
+    }
+
+    fn map_literal_key(&self, loc: Loc, k: Pair<Rule>) -> Expr {
+        match k.as_rule() {
+            Rule::string => Str(loc, k.into_inner().next().unwrap().as_str().to_string()),
+            Rule::number => Num(loc, k.into_inner().next().unwrap().as_str().to_string()),
+            Rule::bigint => Big(loc, k.as_str().to_string()),
+            Rule::boolean_false => False(loc),
+            Rule::boolean_true => True(loc),
+            Rule::paren_expr => self.expr(k.into_inner().next().unwrap()),
             _ => unreachable!(),
         }
     }
