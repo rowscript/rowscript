@@ -3,6 +3,7 @@ use std::rc::Rc;
 use std::str::FromStr;
 
 use num_bigint::BigInt as BigIntValue;
+use swc_atoms::Atom;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
     ArrayLit, ArrowExpr, AssignExpr, AssignOp, AssignTarget, BigInt as JsBigInt, BinExpr, BinaryOp,
@@ -1078,6 +1079,14 @@ impl Ecma {
         })
     }
 
+    fn js_path(pb: PathBuf) -> Atom {
+        pb.iter()
+            .map(|item| item.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("/")
+            .into()
+    }
+
     fn imports(&self, imports: Vec<Import>) -> Result<Vec<ModuleItem>, Error> {
         use ImportedDefs::*;
         let mut items = Vec::default();
@@ -1107,12 +1116,7 @@ impl Ecma {
                 specifiers,
                 src: Box::new(JsStr {
                     span: DUMMY_SP,
-                    value: i
-                        .module
-                        .to_generated_path()
-                        .join(self.filename())
-                        .to_string_lossy()
-                        .into(),
+                    value: Self::js_path(i.module.to_generated_path().join(self.filename())),
                     raw: None,
                 }),
                 type_only: false,
@@ -1144,7 +1148,7 @@ impl Ecma {
                 })],
                 src: Box::new(JsStr {
                     span: DUMMY_SP,
-                    value: src.to_string_lossy().into(),
+                    value: Self::js_path(src),
                     raw: None,
                 }),
                 type_only: false,
