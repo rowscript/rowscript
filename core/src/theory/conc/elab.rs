@@ -93,6 +93,10 @@ impl Elaborator {
                     tm
                 },
             ),
+            Verify(a) => {
+                let expected = self.sigma.get(&d.name).unwrap().to_type();
+                Verify(self.verify(d.loc, a, expected)?)
+            }
 
             Interface { fns, ims } => Interface { fns, ims },
             Implements(body) => Implements(self.check_implements_body(&d.name, *body)?),
@@ -873,6 +877,22 @@ impl Elaborator {
             },
             _ => None,
         })
+    }
+
+    fn verify(&mut self, loc: Loc, target: Expr, expected: Term) -> Result<Term, Error> {
+        let (tm, ty) = self.infer(target)?;
+        #[cfg(not(test))]
+        {
+            let _ = loc;
+            let _ = expected;
+            let _ = ty;
+        }
+        #[cfg(test)]
+        {
+            let expected = self.nf(loc).term(expected)?;
+            self.unifier(loc).unify(&ty, &expected)?;
+        }
+        Ok(tm)
     }
 }
 

@@ -97,3 +97,43 @@ class Map<K, V> {
         map#clear(this.m)
     }
 }
+
+declare function error#throw<T>(m: string): T;
+
+declare function unionify<'R>(a: ['R]): ['R];
+
+declare Reflected<T>;
+
+declare function number#__add__(a: number, b: number): number;
+declare function number#__sub__(a: number, b: number): number;
+declare function number#__mul__(a: number, b: number): number;
+declare function number#__div__(a: number, b: number): number;
+declare function number#__mod__(a: number, b: number): number;
+declare function number#__eq__(a: number, b: number): boolean;
+declare function number#__neq__(a: number, b: number): boolean;
+declare function number#__le__(a: number, b: number): boolean;
+declare function number#__ge__(a: number, b: number): boolean;
+declare function number#__lt__(a: number, b: number): boolean;
+declare function number#__gt__(a: number, b: number): boolean;
+
+declare function boolean#__or__(a: boolean, b: boolean): boolean;
+declare function boolean#__and__(a: boolean, b: boolean): boolean;
+declare function boolean#__not__(a: boolean): boolean;
+
+declare NativeArrayIterator<T>;
+declare function arrayIter#next<T>(a: NativeArrayIterator<T>): Option<T>;
+
+declare NativeArray<T>;
+declare function array#length<T>(a: NativeArray<T>): number;
+declare function array#push<T>(a: NativeArray<T>, v: T): number;
+declare function array#forEach<T>(a: NativeArray<T>, f: (v: T) -> unit);
+declare function array#at<T>(a: NativeArray<T>, i: number): Option<T>;
+declare function array#set<T>(a: NativeArray<T>, i: number, v: T);
+declare function array#iter<T>(a: NativeArray<T>): NativeArrayIterator<T>;
+
+declare NativeMap<K, V>;
+declare function map#has<K, V>(m: NativeMap<K, V>, key: K): boolean;
+declare function map#get<K, V>(m: NativeMap<K, V>, key: K): V;
+declare function map#set<K, V>(m: NativeMap<K, V>, key: K, value: V);
+declare function map#delete<K, V>(m: NativeMap<K, V>, key: K): boolean;
+declare function map#clear<K, V>(m: NativeMap<K, V>);

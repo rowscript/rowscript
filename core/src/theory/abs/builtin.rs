@@ -1,6 +1,5 @@
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
-use crate::theory::conc::data::ArgInfo::UnnamedImplicit;
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{NameMap, Param, ResolvedVar, Var};
 use crate::theory::{Tele, VarKind};
@@ -146,7 +145,7 @@ impl Builtins {
             .array_push()
             .array_foreach()
             .array_at()
-            .array_insert()
+            .array_set()
             .array_iter()
             .map_type()
             .map_has()
@@ -173,11 +172,6 @@ impl Builtins {
         );
         self.sigma.insert(def.name.clone(), def);
         self
-    }
-
-    fn get(&self, s: &str) -> Term {
-        let v = self.ubiquitous.get(s).unwrap().clone().1;
-        self.sigma.get(&v).unwrap().to_term(v)
     }
 
     fn error_throw(self) -> Self {
@@ -435,7 +429,7 @@ impl Builtins {
         )
     }
 
-    fn array_insert(self) -> Self {
+    fn array_set(self) -> Self {
         let t = Var::new("T");
         let tupled = Var::tupled();
         let a = Var::new("a");
@@ -489,7 +483,6 @@ impl Builtins {
 
     fn array_iter(self) -> Self {
         let t = Var::new("T");
-        let iterator = self.get("NativeArrayIterator");
         let tupled = Var::tupled();
         let a = Var::new("a");
         let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
@@ -499,7 +492,7 @@ impl Builtins {
                 type_param(t.clone()),
                 tuple_param(tupled.clone(), [explicit(a.clone(), a_ty.clone())]),
             ],
-            Term::App(Box::new(iterator), UnnamedImplicit, Box::new(Term::Ref(t))),
+            Term::ArrayIterator(Box::new(Term::Ref(t))),
             explicit_tuple_local1(
                 a.clone(),
                 a_ty,

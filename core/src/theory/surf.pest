@@ -617,6 +617,25 @@ class_method =
   ~ fn_body_block
   }
 
+type_verify =
+  { "declare"
+  ~ tyref
+  ~ implicits?
+  ~ preds?
+  ~ ";"
+  }
+
+fn_verify =
+  { "declare"
+  ~ "function"
+  ~ idref
+  ~ implicits?
+  ~ params
+  ~ (":" ~ type_expr)?
+  ~ preds?
+  ~ ";"
+  }
+
 def =
  _{ fn_def
   | fn_postulate
@@ -626,6 +645,8 @@ def =
   | implements_def
   | const_def
   | class_def
+  | type_verify
+  | fn_verify
   }
 
 import_std =

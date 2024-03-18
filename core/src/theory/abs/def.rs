@@ -51,6 +51,7 @@ impl Def<Term> {
             Postulate => Term::Extern(v),
             Alias(t) => self.to_lam_term(t.clone()),
             Const(_, f) => self.to_lam_term(f.clone()),
+            Verify(..) => unreachable!(),
 
             Interface { .. } => {
                 let r = Term::Ref(self.tele[0].var.clone());
@@ -110,7 +111,7 @@ impl<T: Syntax> Display for Def<T> {
                     self.ret,
                 ),
                 Postulate => format!(
-                    "declare function {} {}: {};",
+                    "function {} {}: {};",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
@@ -128,6 +129,11 @@ impl<T: Syntax> Display for Def<T> {
                         format!("const {} = {f};", self.name)
                     }
                 }
+                Verify(a) => format!(
+                    "declare {a} {}: {};",
+                    Param::tele_to_string(&self.tele),
+                    self.ret
+                ),
                 Interface { fns, ims } => format!(
                     "interface {} {}: {} {{\n{}\n{}}}",
                     self.name,
@@ -203,6 +209,7 @@ pub enum Body<T: Syntax> {
     Postulate,
     Alias(T),
     Const(bool, T),
+    Verify(T),
 
     Interface { fns: Vec<Var>, ims: Vec<Var> },
     Implements(Box<ImplementsBody<T>>),

@@ -8,7 +8,7 @@ use crate::theory::abs::data::Dir;
 use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, ImplementsBody};
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
-use crate::theory::conc::data::Expr::{Big, False, Num, Str, True};
+use crate::theory::conc::data::Expr::{Big, False, Num, Str, True, Unit, Univ};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::conc::load::ImportedPkg::Vendor;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
@@ -59,6 +59,8 @@ impl Trans {
                 Rule::implements_def => defs.extend(self.implements_def(d)),
                 Rule::const_def => defs.push(self.const_def(d)),
                 Rule::class_def => defs.extend(self.class_def(d)),
+                Rule::type_verify => defs.push(self.type_verify(d)),
+                Rule::fn_verify => defs.push(self.fn_verify(d)),
                 Rule::EOI => break,
                 _ => unreachable!(),
             }
@@ -189,15 +191,7 @@ impl Trans {
         }
     }
 
-    fn fn_postulate(&self, f: Pair<Rule>) -> Def<Expr> {
-        use Body::*;
-        use Expr::*;
-
-        let loc = Loc::from(f.as_span());
-        let mut pairs = f.into_inner();
-
-        let name = Var::from(pairs.next().unwrap());
-
+    fn fn_signature(&self, pairs: Pairs<Rule>, loc: Loc) -> (Tele<Expr>, Box<Expr>) {
         let mut tele = Tele::default();
         let mut untupled = UntupledParams::new(loc);
         let mut preds = Tele::default();
@@ -217,12 +211,20 @@ impl Trans {
         tele.push(Param::from(untupled));
         tele.extend(preds);
 
+        (tele, ret)
+    }
+
+    fn fn_postulate(&self, f: Pair<Rule>) -> Def<Expr> {
+        let loc = Loc::from(f.as_span());
+        let mut pairs = f.into_inner();
+        let name = Var::from(pairs.next().unwrap());
+        let (tele, ret) = self.fn_signature(pairs, loc);
         Def {
             loc,
             name,
             tele,
             ret,
-            body: Postulate,
+            body: Body::Postulate,
         }
     }
 
@@ -508,6 +510,42 @@ impl Trans {
         ];
         defs.extend(methods);
         defs
+    }
+
+    fn type_verify(&self, t: Pair<Rule>) -> Def<Expr> {
+        let loc = Loc::from(t.as_span());
+        let mut pairs = t.into_inner();
+        let target = self.maybe_qualified(pairs.next().unwrap());
+        let mut tele = Tele::default();
+        for p in pairs {
+            match p.as_rule() {
+                Rule::row_id => tele.push(Self::row_param(p)),
+                Rule::implicit_id => tele.push(Self::implicit_param(p)),
+                Rule::pred => tele.push(self.pred(p)),
+                _ => unreachable!(),
+            }
+        }
+        Def {
+            loc,
+            name: Var::unbound(),
+            tele,
+            ret: Box::new(Univ(loc)),
+            body: Body::Verify(target),
+        }
+    }
+
+    fn fn_verify(&self, f: Pair<Rule>) -> Def<Expr> {
+        let loc = Loc::from(f.as_span());
+        let mut pairs = f.into_inner();
+        let target = self.maybe_qualified(pairs.next().unwrap());
+        let (tele, ret) = self.fn_signature(pairs, loc);
+        Def {
+            loc,
+            name: Var::unbound(),
+            tele,
+            ret,
+            body: Body::Verify(target),
+        }
     }
 
     fn type_expr(&self, t: Pair<Rule>) -> Expr {

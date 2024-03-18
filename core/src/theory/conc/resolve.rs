@@ -95,6 +95,7 @@ impl<'a> Resolver<'a> {
             Postulate => Postulate,
             Alias(t) => Alias(self.expr(t)?),
             Const(anno, f) => Const(anno, self.expr(f)?),
+            Verify(a) => Verify(self.expr(a)?),
 
             Interface { fns, ims } => Interface { fns, ims },
             Implements(body) => {
