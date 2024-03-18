@@ -1,9 +1,19 @@
 function log<T>(m: T);
 
-//function f0() {
-//    let m = {};
-//    let ignored = m.set("key", 42);
-//    log(m.has("key"));
-//    log(m.get("key"));
-//}
-//f0();
+function f0() {
+    let m = {};
+    let ignored = m.set("key", 42);
+    log(m.has("key"));
+    log(m.get("key"));
+    log(m.delete("key"));
+    log(m.delete("key"));
+    m.clear();
+    log(m);
+}
+f0();
+
+function f1() {
+    let m = {42: 69};
+    log(m);
+}
+f1();

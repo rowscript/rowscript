@@ -125,7 +125,7 @@ impl<'a> Normalizer<'a> {
                     self.rho.insert(q.var, y);
                     self.term(*b)?
                 } else {
-                    TupleLocal(p, q, a, self.term_box(b)?)
+                    TupleLocal(self.param(p)?, self.param(q)?, a, self.term_box(b)?)
                 }
             }
             UnitLocal(a, b) => {

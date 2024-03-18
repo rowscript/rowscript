@@ -500,7 +500,7 @@ impl Elaborator {
                 let (b, ty) = self.infer(*b)?;
                 (Term::UnitLocal(Box::new(a), Box::new(b)), ty)
             }
-            Arr(_, xs) => {
+            Arr(loc, xs) => {
                 let mut v_ty = None;
                 let mut checked = Vec::default();
                 for (i, x) in xs.into_iter().enumerate() {
@@ -513,21 +513,15 @@ impl Elaborator {
                     checked.push(x_tm);
                 }
                 if checked.is_empty() {
-                    let t = Var::new("T");
-                    let p = Param {
-                        var: t.clone(),
-                        info: Implicit,
-                        typ: Box::new(Term::Univ),
-                    };
                     (
-                        Term::Lam(p.clone(), Box::new(Term::Arr(Default::default()))),
-                        Term::Pi(p, Box::new(Term::Array(Box::new(Term::Ref(t))))),
+                        Term::Arr(Default::default()),
+                        Term::Array(Box::new(self.insert_meta(loc, InsertedMeta).0)),
                     )
                 } else {
                     (Term::Arr(checked), Term::Array(Box::new(v_ty.unwrap())))
                 }
             }
-            Kv(_, xs) => {
+            Kv(loc, xs) => {
                 let mut k_ty = None;
                 let mut v_ty = None;
                 let mut checked = Vec::default();
@@ -546,25 +540,10 @@ impl Elaborator {
                     checked.push((key, val));
                 }
                 if checked.is_empty() {
-                    let k = Var::new("K");
-                    let v = Var::new("V");
-                    let tele = vec![
-                        Param {
-                            var: k.clone(),
-                            info: Implicit,
-                            typ: Box::new(Term::Univ),
-                        },
-                        Param {
-                            var: v.clone(),
-                            info: Implicit,
-                            typ: Box::new(Term::Univ),
-                        },
-                    ];
-                    let m_ty = Term::Map(Box::new(Term::Ref(k)), Box::new(Term::Ref(v)));
-                    (
-                        Term::lam(&tele, Term::Kv(Default::default())),
-                        Term::pi(&tele, m_ty),
-                    )
+                    let k_ty = self.insert_meta(loc, InsertedMeta).0;
+                    let v_ty = self.insert_meta(loc, InsertedMeta).0;
+                    let m_ty = Term::Map(Box::new(k_ty), Box::new(v_ty));
+                    (Term::Kv(Default::default()), m_ty)
                 } else {
                     (
                         Term::Kv(checked),

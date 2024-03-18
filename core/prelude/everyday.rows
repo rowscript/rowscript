@@ -72,6 +72,7 @@ class Array<T> {
     }
 }
 
+// TODO: Map iterator.
 class Map<K, V> {
     m: NativeMap<K, V>;
 

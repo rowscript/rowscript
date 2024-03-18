@@ -10,8 +10,8 @@ use swc_ecma_ast::{
     CondExpr, ContinueStmt, Decl, ExportDecl, Expr, ExprOrSpread, ExprStmt, FnDecl, ForStmt,
     Function, Ident, IfStmt, ImportDecl, ImportNamedSpecifier, ImportSpecifier,
     ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleDecl,
-    ModuleItem, Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, Prop, PropName,
-    PropOrSpread, ReturnStmt, SimpleAssignTarget, SpreadElement, Stmt, Str as JsStr, Str,
+    ModuleItem, NewExpr, Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, Prop,
+    PropName, PropOrSpread, ReturnStmt, SimpleAssignTarget, SpreadElement, Stmt, Str as JsStr, Str,
     SwitchCase, SwitchStmt, ThrowStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr,
     VarDeclarator, WhileStmt,
 };
@@ -842,6 +842,57 @@ impl Ecma {
                     })),
                 })),
             }),
+            Kv(xs) => {
+                let mut elems = Vec::default();
+                for (k, v) in xs {
+                    elems.push(Some(ExprOrSpread {
+                        spread: None,
+                        expr: Box::new(Expr::Array(ArrayLit {
+                            span: loc.into(),
+                            elems: vec![
+                                Some(ExprOrSpread {
+                                    spread: None,
+                                    expr: Box::new(self.expr(sigma, loc, k)?),
+                                }),
+                                Some(ExprOrSpread {
+                                    spread: None,
+                                    expr: Box::new(self.expr(sigma, loc, v)?),
+                                }),
+                            ],
+                        })),
+                    }));
+                }
+                Expr::New(NewExpr {
+                    span: loc.into(),
+                    callee: Box::new(Expr::Ident(Self::special_ident("Map"))),
+                    args: Some(vec![ExprOrSpread {
+                        spread: None,
+                        expr: Box::new(Expr::Array(ArrayLit {
+                            span: loc.into(),
+                            elems,
+                        })),
+                    }]),
+                    type_args: None,
+                })
+            }
+            MapHas(m, k) => {
+                let k = self.expr(sigma, loc, k)?;
+                self.prototype(sigma, loc, m, "has", [k])?
+            }
+            MapGet(m, k) => {
+                let k = self.expr(sigma, loc, k)?;
+                self.prototype(sigma, loc, m, "get", [k])?
+            }
+            MapSet(m, k, v) => {
+                let k = self.expr(sigma, loc, k)?;
+                let v = self.expr(sigma, loc, v)?;
+                self.prototype(sigma, loc, m, "set", [k, v])?
+            }
+            MapDelete(m, k) => {
+                let k = self.expr(sigma, loc, k)?;
+                self.prototype(sigma, loc, m, "delete", [k])?
+            }
+            MapClear(m) => self.prototype(sigma, loc, m, "clear", [])?,
             Obj(f) => match f.as_ref() {
                 Fields(fields) => {
                     let mut props = Vec::default();
