@@ -28,6 +28,7 @@ mod fail_reserved;
 mod fail_resolve;
 
 mod fail_issue114;
+mod fail_issue134;
 mod ok_issue101;
 mod ok_issue104;
 mod ok_issue127;

@@ -62,6 +62,9 @@ impl<'a> Resolver<'a> {
         let mut ret = Vec::default();
         for d in defs {
             if d.name.as_str() != UNBOUND {
+                if self.ubiquitous.contains_key(d.name.as_str()) {
+                    return Err(DuplicateName(d.loc));
+                }
                 names.var(d.loc, &d.name)?;
             }
             ret.push(self.def(d)?);

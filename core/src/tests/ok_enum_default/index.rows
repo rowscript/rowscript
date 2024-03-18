@@ -1,18 +1,16 @@
-type Option<T> = [Ok: T | None];
+type Optional<T> = [Some: T | None];
 
-function isOk<'A, T>(o: ['A]): boolean
-where (Ok: T) keyof 'A
+function isSome<'A, T>(o: ['A]): boolean
+where (Some: T) keyof 'A
 {
     switch (o) {
-    case Ok(v): true
+    case Some(v): true
     case v: false
     }
 }
 
-const o0: Option<number> = Ok(42);
-const a0 = o0.isOk();
-const v0 = o0.unwrap();
+const o0: Optional<number> = Some(42);
+const a0 = o0.isSome();
 
-const o1: Option<number> = None;
-const a1 = o1.isOk();
-const v1 = o1.unwrap();
+const o1: Optional<number> = None;
+const a1 = o1.isSome();
