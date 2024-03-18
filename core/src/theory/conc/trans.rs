@@ -870,7 +870,7 @@ impl Trans {
         let p = e.into_inner().next().unwrap();
         let loc = Loc::from(p.as_span());
         match p.as_rule() {
-            Rule::string => Str(loc, p.into_inner().next().unwrap().as_str().to_string()),
+            Rule::string => Str(loc, p.as_str().to_string()),
             Rule::number => Num(loc, p.into_inner().next().unwrap().as_str().to_string()),
             Rule::bigint => Big(loc, p.as_str().to_string()),
             Rule::boolean_false => False(loc),

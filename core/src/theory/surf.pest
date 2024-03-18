@@ -12,7 +12,6 @@ reserved =
   | "continue"
   | "debugger"
   | "default"
-  //| "delete"
   | "do"
   | "else"
   | "export"
@@ -84,8 +83,6 @@ reserved =
   | "eval"
   | "from"
   | "of"
-  //| "get"
-  //| "set"
 
   // Sanity keywords.
   | "null"
@@ -99,6 +96,11 @@ reserved =
   | "bigint"
   | "unit"
   | "type"
+
+  // RowScript accepts these for fun.
+  //| "get"
+  //| "set"
+  //| "delete"
   }
 
 camelback_id = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
@@ -201,7 +203,7 @@ importable = { pub_fn_id | pub_type_id }
 hole = { "?" }
 univ = { "type" }
 
-string = { "\"" ~ unquoted_string_part ~ "\"" }
+string = @{ "\"" ~ unquoted_string_part ~ "\"" }
 unquoted_string_part = @{ (unescaped_string_fragment | escaped_string_fragment)* }
 unescaped_string_fragment = @{ (!("\"" | "\\") ~ ANY)+ }
 escaped_string_fragment =

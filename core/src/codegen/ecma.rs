@@ -3,7 +3,7 @@ use std::rc::Rc;
 use std::str::FromStr;
 
 use num_bigint::BigInt as BigIntValue;
-use swc_atoms::Atom;
+use swc_atoms::js_word;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
     ArrayLit, ArrowExpr, AssignExpr, AssignOp, AssignTarget, BigInt as JsBigInt, BinExpr, BinaryOp,
@@ -12,9 +12,9 @@ use swc_ecma_ast::{
     Function, Ident, IfStmt, ImportDecl, ImportNamedSpecifier, ImportSpecifier,
     ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleDecl,
     ModuleItem, NewExpr, Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, Prop,
-    PropName, PropOrSpread, ReturnStmt, SimpleAssignTarget, SpreadElement, Stmt, Str as JsStr, Str,
-    SwitchCase, SwitchStmt, ThrowStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr,
-    VarDeclarator, WhileStmt,
+    PropName, PropOrSpread, ReturnStmt, SimpleAssignTarget, SpreadElement, Stmt, Str, SwitchCase,
+    SwitchStmt, ThrowStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr, VarDeclarator,
+    WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -104,10 +104,23 @@ impl Ecma {
         Self::special_ident(JS_LIB)
     }
 
-    fn js_str(loc: Loc, s: &str) -> Str {
+    fn js_raw_str(loc: Loc, s: &str) -> Str {
         Str {
             span: loc.into(),
-            value: s.into(),
+            value: js_word!(""),
+            raw: Some(s.into()),
+        }
+    }
+
+    fn js_path(pb: PathBuf) -> Str {
+        Str {
+            span: DUMMY_SP,
+            value: pb
+                .iter()
+                .map(|item| item.to_string_lossy())
+                .collect::<Vec<_>>()
+                .join("/")
+                .into(),
             raw: None,
         }
     }
@@ -132,11 +145,11 @@ impl Ecma {
             span: loc.into(),
             props: vec![
                 PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                    key: PropName::Str(Self::js_str(loc, JS_ENUM_TAG)),
-                    value: Box::new(Expr::Lit(Lit::Str(Self::js_str(loc, tag)))),
+                    key: PropName::Str(Self::js_raw_str(loc, JS_ENUM_TAG)),
+                    value: Box::new(Expr::Lit(Lit::Str(Self::js_raw_str(loc, tag)))),
                 }))),
                 PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                    key: PropName::Str(Self::js_str(loc, JS_ENUM_VAL)),
+                    key: PropName::Str(Self::js_raw_str(loc, JS_ENUM_VAL)),
                     value: Box::new(v),
                 }))),
             ],
@@ -760,11 +773,7 @@ impl Ecma {
             BoolOr(a, b) => self.bin_expr(sigma, loc, BinaryOp::LogicalOr, a, b)?,
             BoolAnd(a, b) => self.bin_expr(sigma, loc, BinaryOp::LogicalAnd, a, b)?,
             BoolNot(a) => self.unary_expr(sigma, loc, UnaryOp::Bang, a)?,
-            Str(s) => Expr::Lit(Lit::Str(JsStr {
-                span: loc.into(),
-                value: s.as_str().into(),
-                raw: None,
-            })),
+            Str(s) => Expr::Lit(Lit::Str(Self::js_raw_str(loc, s))),
             Num(v) => Expr::Lit(Lit::Num(JsNumber {
                 span: loc.into(),
                 value: *v,
@@ -1009,7 +1018,7 @@ impl Ecma {
                 for (x, (v, tm)) in cs {
                     cases.push(SwitchCase {
                         span: loc.into(),
-                        test: Some(Box::new(Expr::Lit(Lit::Str(Self::js_str(loc, x))))),
+                        test: Some(Box::new(Expr::Lit(Lit::Str(Self::js_raw_str(loc, x))))),
                         cons: self.enum_case_consequent(sigma, loc, v, tm)?,
                     });
                 }
@@ -1079,14 +1088,6 @@ impl Ecma {
         })
     }
 
-    fn js_path(pb: PathBuf) -> Atom {
-        pb.iter()
-            .map(|item| item.to_string_lossy())
-            .collect::<Vec<_>>()
-            .join("/")
-            .into()
-    }
-
     fn imports(&self, imports: Vec<Import>) -> Result<Vec<ModuleItem>, Error> {
         use ImportedDefs::*;
         let mut items = Vec::default();
@@ -1114,11 +1115,9 @@ impl Ecma {
             items.push(ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
                 span: DUMMY_SP,
                 specifiers,
-                src: Box::new(JsStr {
-                    span: DUMMY_SP,
-                    value: Self::js_path(i.module.to_generated_path().join(self.filename())),
-                    raw: None,
-                }),
+                src: Box::new(Self::js_path(
+                    i.module.to_generated_path().join(self.filename()),
+                )),
                 type_only: false,
                 with: None,
                 phase: Default::default(),
@@ -1146,11 +1145,7 @@ impl Ecma {
                         optional: false,
                     },
                 })],
-                src: Box::new(JsStr {
-                    span: DUMMY_SP,
-                    value: Self::js_path(src),
-                    raw: None,
-                }),
+                src: Box::new(Self::js_path(src)),
                 type_only: false,
                 with: None,
                 phase: Default::default(),
