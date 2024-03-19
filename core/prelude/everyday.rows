@@ -41,6 +41,9 @@ class ArrayIterator<T> {
 }
 
 class Array<T> {
+    type Key = number;
+    type Value = T;
+
     a: NativeArray<T>;
 
     length(): number {
@@ -74,6 +77,9 @@ class Array<T> {
 
 // TODO: Map iterator.
 class Map<K, V> {
+    type Key = K;
+    type Value = V;
+
     m: NativeMap<K, V>;
 
     has(key: K): boolean {
