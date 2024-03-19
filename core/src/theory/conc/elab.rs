@@ -554,6 +554,22 @@ impl Elaborator {
                     )
                 }
             }
+            RowOf(loc, a) => {
+                let a = self.infer(*a)?.0;
+                let fields = match a {
+                    Term::Cls(_, obj) => match *obj {
+                        Term::Object(fields) => *fields,
+                        _ => unreachable!(),
+                    },
+                    Term::Object(fields) | Term::Enum(fields) => *fields,
+                    a => return Err(ExpectedObject(a, loc)),
+                };
+                (fields, Term::Row)
+            }
+            Associate(loc, a, n) => (
+                Term::Associate(Box::new(self.check(*a, &Term::Row)?), n),
+                self.insert_meta(loc, InsertedMeta).0,
+            ),
             Fields(_, fields) => {
                 let mut inferred = FieldMap::default();
                 for (f, e) in fields {
@@ -775,11 +791,7 @@ impl Elaborator {
             Big(_, v) => (Term::Big(v), Term::BigInt),
             Row(_) => (Term::Row, Term::Univ),
 
-            // _ => unreachable!(),
-            e => {
-                dbg!(e);
-                unreachable!()
-            }
+            _ => unreachable!(),
         })
     }
 

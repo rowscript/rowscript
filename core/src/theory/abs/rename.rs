@@ -110,6 +110,7 @@ impl Renamer {
                 }
                 Fields(m)
             }
+            Associate(a, n) => Associate(Box::new(self.term(*a)), n),
             Combine(i, a, b) => Combine(i, Box::new(self.term(*a)), Box::new(self.term(*b))),
             RowOrd(a, b) => RowOrd(Box::new(self.term(*a)), Box::new(self.term(*b))),
             RowEq(a, b) => RowEq(Box::new(self.term(*a)), Box::new(self.term(*b))),

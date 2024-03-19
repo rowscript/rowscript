@@ -108,6 +108,7 @@ pub enum Term {
 
     Row,
     Fields(FieldMap),
+    Associate(Box<Self>, String),
     Combine(bool, Box<Self>, Box<Self>),
 
     RowOrd(Box<Self>, Box<Self>),
@@ -292,6 +293,7 @@ impl Display for Term {
                         .collect::<Vec<_>>()
                         .join(", ")
                 ),
+                Associate(a, n) => format!("{a}::{n}"),
                 Combine(inplace, a, b) => {
                     if *inplace {
                         format!("{a} += {b}")

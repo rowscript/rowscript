@@ -10,8 +10,8 @@ use crate::theory::NameMap;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
 use crate::Error::{
-    ClassMethodNotImplemented, FieldsNonExtendable, NonExhaustive, UnresolvedImplementation,
-    UnsatisfiedConstraint,
+    ClassMethodNotImplemented, FieldsNonExtendable, NonExhaustive, UnresolvedField,
+    UnresolvedImplementation, UnsatisfiedConstraint,
 };
 
 pub struct Normalizer<'a> {
@@ -301,6 +301,13 @@ impl<'a> Normalizer<'a> {
                 }
                 Fields(fields)
             }
+            Associate(a, n) => match *a {
+                Fields(fields) => match fields.get(&n) {
+                    Some(f) => f.clone(),
+                    None => return Err(UnresolvedField(n, Fields(fields), self.loc)),
+                },
+                a => a,
+            },
             Combine(inplace, a, b) => {
                 let mut a = self.term_box(a)?;
                 let b = self.term_box(b)?;

@@ -128,6 +128,7 @@ impl<'a> Unifier<'a> {
                 self.unify(va, vb)
             }
             (Fields(a), Fields(b)) => self.fields_eq(a, b),
+            (Associate(a, x), Associate(b, y)) if x == y => self.unify(a, b),
             (Object(a), Object(b)) => self.unify(a, b),
             (Obj(a), Obj(b)) => self.unify(a, b),
             (Downcast(a, m), Object(b)) => self.downcast(m, a, b),

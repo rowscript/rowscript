@@ -67,6 +67,8 @@ pub enum Expr {
     Kv(Loc, Vec<(Self, Self)>),
 
     Row(Loc),
+    RowOf(Loc, Box<Self>),
+    Associate(Loc, Box<Self>, String),
     Fields(Loc, Vec<(String, Self)>),
     Combine(Loc, Box<Self>, Box<Self>),
 
@@ -154,6 +156,8 @@ impl Expr {
             Arr(loc, ..) => loc,
             Kv(loc, ..) => loc,
             Row(loc) => loc,
+            RowOf(loc, ..) => loc,
+            Associate(loc, ..) => loc,
             Fields(loc, ..) => loc,
             Combine(loc, ..) => loc,
             RowOrd(loc, ..) => loc,
@@ -305,6 +309,8 @@ impl Display for Expr {
                         .join(", ")
                 ),
                 Row(_) => "row".to_string(),
+                RowOf(_, a) => format!("rowOf({a})"),
+                Associate(_, a, n) => format!("{a}::{n}"),
                 Fields(_, fields) => format!(
                     "({})",
                     fields

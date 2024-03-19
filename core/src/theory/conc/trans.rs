@@ -605,23 +605,31 @@ impl Trans {
 
         let mut pairs = a.into_inner();
         let f = pairs.next().unwrap();
-        let f = match f.as_rule() {
+        let mut f = match f.as_rule() {
             Rule::type_expr => self.type_expr(f),
             Rule::tyref => self.maybe_qualified(f),
             _ => unreachable!(),
         };
 
-        pairs
-            .map(|arg| {
-                let loc = Loc::from(arg.as_span());
-                let (i, e) = match arg.as_rule() {
-                    Rule::row_arg => self.row_arg(arg),
-                    Rule::type_arg => self.type_arg(arg),
-                    _ => unreachable!(),
-                };
-                (loc, i, e)
-            })
-            .fold(f, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
+        for arg in pairs {
+            let loc = Loc::from(arg.as_span());
+            let (i, x) = match arg.as_rule() {
+                Rule::row_arg => self.row_arg(arg),
+                Rule::type_arg => self.type_arg(arg),
+                Rule::type_id => {
+                    f = Associate(
+                        loc,
+                        Box::new(RowOf(loc, Box::new(f))),
+                        arg.as_str().to_string(),
+                    );
+                    continue;
+                }
+                _ => unreachable!(),
+            };
+            f = App(loc, Box::new(f), i, Box::new(x))
+        }
+
+        f
     }
 
     fn pred(&self, pred: Pair<Rule>) -> Param<Expr> {
@@ -632,22 +640,22 @@ impl Trans {
         Param {
             var: Var::unbound(),
             info: Implicit,
-            typ: match p.as_rule() {
+            typ: Box::new(match p.as_rule() {
                 Rule::row_ord => {
                     let mut p = p.into_inner();
                     let lhs = self.row_expr(p.next().unwrap());
                     let rhs = self.row_expr(p.next().unwrap());
-                    Box::new(RowOrd(loc, Box::new(lhs), Box::new(rhs)))
+                    RowOrd(loc, Box::new(lhs), Box::new(rhs))
                 }
                 Rule::row_eq => {
                     let mut p = p.into_inner();
                     let lhs = self.row_expr(p.next().unwrap());
                     let rhs = self.row_expr(p.next().unwrap());
-                    Box::new(RowEq(loc, Box::new(lhs), Box::new(rhs)))
+                    RowEq(loc, Box::new(lhs), Box::new(rhs))
                 }
-                Rule::constraint_expr => Box::new(ImplementsOf(loc, Box::new(self.type_app(p)))),
+                Rule::interface_constraint => ImplementsOf(loc, Box::new(self.type_app(p))),
                 _ => unreachable!(),
-            },
+            }),
         }
     }
 

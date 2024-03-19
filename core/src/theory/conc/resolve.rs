@@ -342,6 +342,8 @@ impl<'a> Resolver<'a> {
                 }
                 Kv(loc, resolved)
             }
+            RowOf(loc, a) => RowOf(loc, Box::new(self.expr(*a)?)),
+            Associate(loc, a, n) => Associate(loc, Box::new(self.expr(*a)?), n),
             Fields(loc, fields) => {
                 let mut names = RawNameSet::default();
                 let mut resolved = Vec::default();
