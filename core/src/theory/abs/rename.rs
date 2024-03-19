@@ -144,6 +144,7 @@ impl Renamer {
             Find(ty, i, f) => Find(Box::new(self.term(*ty)), i, f),
             ImplementsOf(a, i) => ImplementsOf(Box::new(self.term(*a)), i),
             Reflected(a) => Reflected(Box::new(self.term(*a))),
+            Cls(n, a) => Cls(n, Box::new(self.term(*a))),
             ErrorThrow(a) => ErrorThrow(Box::new(self.term(*a))),
             tm => tm,
         }
