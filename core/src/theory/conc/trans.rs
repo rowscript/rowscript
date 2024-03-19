@@ -616,7 +616,7 @@ impl Trans {
             let (i, x) = match arg.as_rule() {
                 Rule::row_arg => self.row_arg(arg),
                 Rule::type_arg => self.type_arg(arg),
-                Rule::type_id => {
+                Rule::row_id => {
                     f = Associate(
                         loc,
                         Box::new(RowOf(loc, Box::new(f))),

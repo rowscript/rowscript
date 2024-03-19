@@ -287,7 +287,7 @@ object_type_ref = { "{" ~ row_id ~ "}" }
 object_type_literal = { "{" ~ property ~ ("," ~ property)* ~ "}" }
 enum_type_ref = { "[" ~ row_id ~ "]" }
 enum_type_literal = { "[" ~ variant ~ ("|" ~ variant)* ~ "]" }
-type_app = { ("(" ~ type_expr ~ ")" | tyref) ~ implicit_args? ~ ("::" ~ type_id)? }
+type_app = { ("(" ~ type_expr ~ ")" | tyref) ~ implicit_args? ~ ("::" ~ row_id)? }
 
 expr = { prefix_op* ~ primary_expr ~ (infix_op ~ prefix_op* ~ primary_expr)* }
 prefix_op =
@@ -604,7 +604,7 @@ class_def =
   ~ ("<" ~ implicit_params ~ ">")?
   ~ "{"
   ~ class_member+
-  ~ class_method+
+  ~ class_method*
   ~ "}"
   }
 class_member = { prop_id ~ ":" ~ type_expr ~ ";" }

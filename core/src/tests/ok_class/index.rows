@@ -2,6 +2,12 @@ import .outside;
 
 function log(m: string);
 
+class N {
+    n: number;
+}
+
+const n0 = new N(42);
+
 function foo() {
     log("foo");
 }
