@@ -120,14 +120,26 @@ impl<'a> Resolver<'a> {
             ImplementsFn(f) => ImplementsFn(self.expr(f)?), // FIXME: currently cannot be recursive
             Findable(i) => Findable(i),
 
-            Class(ms, meths) => {
-                let mut names = RawNameSet::default();
-                let mut resolved = Vec::default();
-                for (loc, id, typ) in ms {
-                    names.raw(loc, id.clone())?;
-                    resolved.push((loc, id, self.expr(typ)?));
+            Class {
+                associated,
+                members,
+                methods,
+            } => {
+                let mut resolved_associated = HashMap::default();
+                for (name, typ) in associated {
+                    resolved_associated.insert(name, self.expr(typ)?);
                 }
-                Class(resolved, meths)
+                let mut names = RawNameSet::default();
+                let mut resolved_members = Vec::default();
+                for (loc, id, typ) in members {
+                    names.raw(loc, id.clone())?;
+                    resolved_members.push((loc, id, self.expr(typ)?));
+                }
+                Class {
+                    associated: resolved_associated,
+                    members: resolved_members,
+                    methods,
+                }
             }
             Method(t, f) => Method(t, self.expr(f)?),
 
@@ -342,7 +354,6 @@ impl<'a> Resolver<'a> {
                 }
                 Kv(loc, resolved)
             }
-            RowOf(loc, a) => RowOf(loc, Box::new(self.expr(*a)?)),
             Associate(loc, a, n) => Associate(loc, Box::new(self.expr(*a)?), n),
             Fields(loc, fields) => {
                 let mut names = RawNameSet::default();

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::maybe_grow;
 use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, Term};
@@ -102,12 +104,24 @@ impl Elaborator {
             ImplementsFn(f) => ImplementsFn(self.check(f, &ret)?),
             Findable(i) => Findable(i),
 
-            Class(ms, meths) => {
-                let mut checked = Vec::default();
-                for (loc, id, typ) in ms {
-                    checked.push((loc, id, self.check(typ, &ret)?));
+            Class {
+                associated,
+                members,
+                methods,
+            } => {
+                let mut checked_associated = HashMap::default();
+                for (name, typ) in associated {
+                    checked_associated.insert(name, self.check(typ, &ret)?);
                 }
-                Class(checked, meths)
+                let mut checked_members = Vec::default();
+                for (loc, id, typ) in members {
+                    checked_members.push((loc, id, self.check(typ, &ret)?));
+                }
+                Class {
+                    associated: checked_associated,
+                    members: checked_members,
+                    methods,
+                }
             }
             Method(t, f) => Method(t, self.check(f, &ret)?),
 
@@ -431,7 +445,7 @@ impl Elaborator {
                 if let Term::Sigma(p, _) = self.infer(*x.clone())?.1 {
                     if let Term::Cls(t, _) = *p.typ {
                         let meths = match &self.sigma.get(&t).unwrap().body {
-                            Body::Class(_, meths) => meths,
+                            Body::Class { methods, .. } => methods,
                             _ => unreachable!(),
                         };
                         let (f_loc, f_var, globally_found) = match *f {
@@ -554,20 +568,8 @@ impl Elaborator {
                     )
                 }
             }
-            RowOf(loc, a) => {
-                let a = self.infer(*a)?.0;
-                let fields = match a {
-                    Term::Cls(_, obj) => match *obj {
-                        Term::Object(fields) => *fields,
-                        _ => unreachable!(),
-                    },
-                    Term::Object(fields) | Term::Enum(fields) => *fields,
-                    a => return Err(ExpectedObject(a, loc)),
-                };
-                (fields, Term::Row)
-            }
             Associate(loc, a, n) => (
-                Term::Associate(Box::new(self.check(*a, &Term::Row)?), n),
+                Term::Associate(Box::new(self.check(*a, &Term::Univ)?), n),
                 self.insert_meta(loc, InsertedMeta).0,
             ),
             Fields(_, fields) => {

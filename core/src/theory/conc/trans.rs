@@ -435,15 +435,22 @@ impl Trans {
         let name = Var::from(pairs.next().unwrap());
 
         let mut tele = Tele::default();
+        let mut associated = HashMap::default();
         let mut members = Vec::default();
-        let mut methods = Vec::default();
-        let mut method_names = HashMap::default();
+        let mut method_defs = Vec::default();
+        let mut methods = HashMap::default();
         let mut ctor_body_obj = Vec::default();
         let mut ctor_params = UntupledParams::new(loc);
 
         for p in pairs {
             match p.as_rule() {
                 Rule::implicit_id => tele.push(Self::implicit_param(p)),
+                Rule::associated_type => {
+                    let mut t = p.into_inner();
+                    let name = t.next().unwrap().as_str().to_string();
+                    let typ = self.type_expr(t.next().unwrap());
+                    associated.insert(name, typ);
+                }
                 Rule::class_member => {
                     let loc = Loc::from(p.as_span());
                     let mut f = p.into_inner();
@@ -471,8 +478,8 @@ impl Trans {
                         Fn(f) => Method(name.clone(), f),
                         _ => unreachable!(),
                     };
-                    methods.push(m);
-                    method_names.insert(method_name, method_var);
+                    method_defs.push(m);
+                    methods.insert(method_name, method_var);
                 }
                 _ => unreachable!(),
             }
@@ -497,7 +504,11 @@ impl Trans {
                 name: name.clone(),
                 tele,
                 ret: Box::new(Univ(loc)),
-                body: Class(members, method_names),
+                body: Class {
+                    associated,
+                    members,
+                    methods,
+                },
             },
             Def {
                 loc,
@@ -507,7 +518,7 @@ impl Trans {
                 body: ctor_body,
             },
         ];
-        defs.extend(methods);
+        defs.extend(method_defs);
         defs
     }
 
@@ -616,12 +627,8 @@ impl Trans {
             let (i, x) = match arg.as_rule() {
                 Rule::row_arg => self.row_arg(arg),
                 Rule::type_arg => self.type_arg(arg),
-                Rule::row_id => {
-                    f = Associate(
-                        loc,
-                        Box::new(RowOf(loc, Box::new(f))),
-                        arg.as_str().to_string(),
-                    );
+                Rule::type_id => {
+                    f = Associate(loc, Box::new(f), arg.as_str().to_string());
                     continue;
                 }
                 _ => unreachable!(),

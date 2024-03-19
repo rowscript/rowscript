@@ -175,7 +175,7 @@ impl Term {
         loop {
             match x {
                 Cls(c, _) => match &sigma.get(c).unwrap().body {
-                    Class(_, meths) => return Some(meths.clone()),
+                    Class { methods, .. } => return Some(methods.clone()),
                     _ => unreachable!(),
                 },
                 Lam(_, body) => {

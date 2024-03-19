@@ -301,10 +301,13 @@ impl<'a> Normalizer<'a> {
                 }
                 Fields(fields)
             }
-            Associate(a, n) => match *a {
-                Fields(fields) => match fields.get(&n) {
-                    Some(f) => f.clone(),
-                    None => return Err(UnresolvedField(n, Fields(fields), self.loc)),
+            Associate(a, n) => match *self.term_box(a)? {
+                Cls(c, ms) => match &self.sigma.get(&c).unwrap().body {
+                    Class { associated, .. } => match associated.get(&n) {
+                        Some(typ) => typ.clone(),
+                        None => return Err(UnresolvedField(n, Cls(c, ms), self.loc)),
+                    },
+                    _ => unreachable!(),
                 },
                 a => a,
             },

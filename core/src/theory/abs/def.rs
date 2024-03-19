@@ -72,10 +72,11 @@ impl Def<Term> {
                 self.to_lam_term(f)
             }
 
-            Class(ms, _) => self.to_lam_term(Term::Cls(
+            Class { members, .. } => self.to_lam_term(Term::Cls(
                 self.name.clone(),
                 Box::new(Term::Object(Box::new(Term::Fields(
-                    ms.iter()
+                    members
+                        .iter()
                         .map(|(_, id, typ)| (id.clone(), typ.clone()))
                         .collect(),
                 )))),
@@ -156,14 +157,25 @@ impl<T: Syntax> Display for Def<T> {
                     self.ret,
                 ),
 
-                Class(ms, meths) => format!(
-                    "class {} {{\n{}\n\n{}\n}}",
+                Class {
+                    associated,
+                    members,
+                    methods,
+                } => format!(
+                    "class {}{} {{\n{}\n{}\n\n{}\n}}",
                     self.name,
-                    ms.iter()
+                    Param::tele_to_string(&self.tele),
+                    associated
+                        .iter()
+                        .map(|(name, typ)| format!("\ttype {name} = {typ};\n"))
+                        .collect::<Vec<_>>()
+                        .concat(),
+                    members
+                        .iter()
                         .map(|(_, id, typ)| format!("\t{id}: {typ};\n"))
                         .collect::<Vec<_>>()
                         .concat(),
-                    meths
+                    methods
                         .iter()
                         .map(|(_, m)| format!("\t{m};\n"))
                         .collect::<Vec<_>>()
@@ -211,12 +223,19 @@ pub enum Body<T: Syntax> {
     Const(bool, T),
     Verify(T),
 
-    Interface { fns: Vec<Var>, ims: Vec<Var> },
+    Interface {
+        fns: Vec<Var>,
+        ims: Vec<Var>,
+    },
     Implements(Box<ImplementsBody<T>>),
     ImplementsFn(T),
     Findable(Var),
 
-    Class(Vec<(Loc, String, T)>, HashMap<String, Var>),
+    Class {
+        associated: HashMap<String, T>,
+        members: Vec<(Loc, String, T)>,
+        methods: HashMap<String, Var>,
+    },
     Method(Var, T),
 
     Undefined,
