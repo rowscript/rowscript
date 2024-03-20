@@ -26,8 +26,8 @@ pub mod theory;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("IO error")]
-    IO(#[from] io::Error),
+    #[error("IO error on file \"{0}\": \"{1}\"")]
+    IO(Box<Path>, io::Error),
     #[error("parse error")]
     Parsing(#[from] Box<pest::error::Error<Rule>>),
 
@@ -100,7 +100,7 @@ fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
     use Error::*;
 
     let (range, title, msg) = match &e {
-        IO(_) => (Range::default(), PARSER_FAILED, None),
+        IO(..) => (Range::default(), PARSER_FAILED, None),
         Parsing(e) => {
             let range = match e.location {
                 InputLocation::Pos(start) => start..source.as_ref().len(),
@@ -162,7 +162,7 @@ pub const OUTDIR: &str = "dist";
 pub const FILE_EXT: &str = "rows";
 
 pub struct ModuleFile {
-    file: PathBuf,
+    file: Box<Path>,
     imports: Vec<Import>,
     defs: Vec<Def<Term>>,
 }
@@ -221,9 +221,9 @@ impl Driver {
             ViaPath(p) => (p, None),
         };
 
-        for r in path.read_dir()? {
-            let entry = r?;
-            if entry.file_type()?.is_dir() {
+        for r in path.read_dir().unwrap() {
+            let entry = r.unwrap();
+            if entry.file_type().unwrap().is_dir() {
                 continue;
             }
             let file = entry.path();
@@ -239,12 +239,13 @@ impl Driver {
                         continue;
                     }
 
-                    let src = read_to_string(&file)?;
+                    let filepath = file.as_path();
+                    let src = read_to_string(&file).map_err(|e| Error::IO(filepath.into(), e))?;
                     let (imports, defs) = self
                         .load_src(&module, src.as_str(), is_ubiquitous)
                         .map_err(|e| print_err(e, &file, src))?;
                     files.push(ModuleFile {
-                        file,
+                        file: filepath.into(),
                         imports,
                         defs,
                     });

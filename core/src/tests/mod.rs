@@ -22,6 +22,8 @@ use crate::codegen::noop::Noop;
 use crate::codegen::Target;
 use crate::{Driver, Error};
 
+mod playground;
+
 mod fail_hole;
 mod fail_parse;
 mod fail_reserved;
@@ -105,10 +107,19 @@ fn parse_outfiles(_: &Path) -> Result<(), Error> {
 
 #[cfg(feature = "codegen-ecma")]
 fn parse_outfiles(d: &Path) -> Result<(), Error> {
-    for r in d.to_path_buf().read_dir()? {
-        let entry = r?;
-        let path = entry.path();
-        if entry.file_type()?.is_dir() {
+    for r in d
+        .to_path_buf()
+        .read_dir()
+        .map_err(|e| Error::IO(d.into(), e))?
+    {
+        let entry = r.map_err(|e| Error::IO(d.into(), e))?;
+        let entry_path = entry.path();
+        let path = entry_path.as_path();
+        if entry
+            .file_type()
+            .map_err(|e| Error::IO(path.into(), e))?
+            .is_dir()
+        {
             parse_outfiles(&path)?;
             continue;
         }
@@ -125,7 +136,7 @@ fn parse_outfile(file: &Path) -> Result<(), Error> {
     let cm = Rc::<SourceMap>::default();
     let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(cm.clone()));
 
-    let file = cm.load_file(file)?;
+    let file = cm.load_file(file).map_err(|e| Error::IO(file.into(), e))?;
     let mut parser = Parser::new_from(Lexer::new(
         Syntax::Es(Default::default()),
         Default::default(),

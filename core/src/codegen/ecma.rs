@@ -1340,7 +1340,8 @@ impl Target for Ecma {
             comments: None,
             wr: JsWriter::new(cm, "\n", buf, None),
         }
-        .emit_module(&m)?;
+        .emit_module(&m)
+        .map_err(|e| Error::IO(file.file, e))?;
 
         Ok(())
     }

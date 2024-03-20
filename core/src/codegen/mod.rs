@@ -52,8 +52,13 @@ impl Codegen {
 
         for f in files {
             let file = f.file.clone();
+            let file = file.as_ref();
             if let Err(e) = self.target.module(&mut buf, sigma, &includes, f) {
-                return Err(print_err(e, &file, read_to_string(&file)?));
+                return Err(print_err(
+                    e,
+                    file,
+                    read_to_string(file).map_err(|e| Error::IO(file.into(), e))?,
+                ));
             }
         }
 
@@ -62,13 +67,15 @@ impl Codegen {
         }
 
         let module_dir = module.to_source_path(&self.outdir);
+        let module_dir_path = module_dir.as_path();
         let module_index_file = module_dir.join(self.target.filename());
-        create_dir_all(&module_dir)?;
-        write(module_index_file, &buf)?;
+        create_dir_all(&module_dir).map_err(|e| Error::IO(module_dir_path.into(), e))?;
+        write(&module_index_file, &buf)
+            .map_err(|e| Error::IO(module_index_file.into_boxed_path(), e))?;
 
         for file in includes {
             let to = module_dir.join(file.file_name().unwrap());
-            copy(file, to)?;
+            copy(file, &to).map_err(|e| Error::IO(to.into_boxed_path(), e))?;
         }
 
         Ok(())
