@@ -33,6 +33,8 @@ interface Iterable<I> {
 }
 
 class ArrayIterator<T> {
+    type Item = T;
+
     it: NativeArrayIterator<T>;
 
     next(): Option<T> {
@@ -83,7 +85,21 @@ class Array<T> {
     }
 }
 
-// TODO: Map iterator.
+type Entry<K, V> = {
+    key: K,
+    value: V
+};
+
+//class MapIterator<K, V> {
+//    type Item = Entry<K, V>;
+//
+//    it: NativeMapIterator<T>;
+//
+//    next(): Option<Item> {
+//        mapIter#next(this.it)
+//    }
+//}
+
 class Map<K, V> {
     type Key = K;
     type Value = V;
@@ -118,4 +134,8 @@ class Map<K, V> {
     clear() {
         map#clear(this.m)
     }
+
+//    iter(): MapIterator<K, V> {
+//        new MapIterator(map#iter(this.a))
+//    }
 }
