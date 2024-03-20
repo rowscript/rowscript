@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::theory::abs::data::{CaseMap, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::effect::has_side_effect;
@@ -87,7 +89,13 @@ impl<'a> Normalizer<'a> {
                 ret
             }
             Undef(x) => self.sigma.get(&x).unwrap().to_term(x),
-            Cls(n, a) => Cls(n, self.term_box(a)?),
+            Cls(n, a, o) => {
+                let mut associated = HashMap::default();
+                for (name, typ) in a {
+                    associated.insert(name, self.term(typ)?);
+                }
+                Cls(n, associated, self.term_box(o)?)
+            }
             Local(p, a, b) => {
                 let a = self.term_box(a)?;
                 if has_side_effect(a.as_ref()) {
@@ -302,16 +310,13 @@ impl<'a> Normalizer<'a> {
                 Fields(fields)
             }
             Associate(a, n) => match *self.term_box(a)? {
-                Cls(c, ms) => match &self.sigma.get(&c).unwrap().body {
-                    Class { associated, .. } => match associated.get(&n) {
-                        Some(typ) => typ.clone(),
-                        None => return Err(UnresolvedField(n, Cls(c, ms), self.loc)),
-                    },
-                    _ => unreachable!(),
+                Cls(c, associated, ms) => match associated.get(&n) {
+                    Some(typ) => typ.clone(),
+                    None => return Err(UnresolvedField(n, Cls(c, associated, ms), self.loc)),
                 },
-                a => a,
+                a => Associate(Box::new(a), n),
             },
-            Combine(inplace, a, b) => {
+            Combine(inplace_only, a, b) => {
                 let mut a = self.term_box(a)?;
                 let b = self.term_box(b)?;
                 match (a.as_mut(), b.as_ref()) {
@@ -319,12 +324,12 @@ impl<'a> Normalizer<'a> {
                         let l = x.len();
                         // TODO: eliminate clone
                         x.extend(y.iter().map(|(n, tm)| (n.clone(), tm.clone())));
-                        if inplace && x.len() > l {
+                        if inplace_only && x.len() > l {
                             return Err(FieldsNonExtendable(*b, self.loc));
                         }
                         *a
                     }
-                    _ => Combine(inplace, a, b),
+                    _ => Combine(inplace_only, a, b),
                 }
             }
             RowOrd(a, b) => {

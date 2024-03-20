@@ -128,6 +128,8 @@ magic_fn_id =
   | "__lt__"
   | "__gt__"
   | "__not__"
+  | "__getitem__"
+  | "__setitem__"
   }
 pub_fn_id = _{ pub_camelback_id }
 priv_fn_id = _{ priv_camelback_id }
@@ -408,7 +410,7 @@ branch =
   | branch_let
   | branch_local_assign
   | branch_object_assign
-  | branch_array_assign
+  | branch_item_assign
   | branch_unit_const
   | branch_while
   | branch_fori
@@ -420,7 +422,7 @@ branch =
 branch_const = { const_stmt ~ ";" ~ branch }
 branch_let = { let_stmt ~ ";" ~ branch }
 branch_object_assign = { object_assign_stmt ~ ";" ~ branch }
-branch_array_assign = { array_assign_stmt ~ ";" ~ branch }
+branch_item_assign = { item_assign_stmt ~ ";" ~ branch }
 branch_local_assign = { local_assign_stmt ~ ";" ~ branch }
 branch_unit_const = { unit_const_stmt ~ ";" ~ branch }
 branch_while = { while_stmt_start ~ loop_branch ~ "}" ~ branch }
@@ -432,7 +434,7 @@ loop_branch =
   | loop_branch_let
   | loop_branch_local_assign
   | loop_branch_object_assign
-  | loop_branch_array_assign
+  | loop_branch_item_assign
   | loop_branch_unit_const
   | loop_branch_while
   | loop_branch_fori
@@ -446,7 +448,7 @@ loop_branch =
 loop_branch_const = { const_stmt ~ ";" ~ loop_branch }
 loop_branch_let = { let_stmt ~ ";" ~ loop_branch }
 loop_branch_object_assign = { object_assign_stmt ~ ";" ~ loop_branch }
-loop_branch_array_assign = { array_assign_stmt ~ ";" ~ loop_branch }
+loop_branch_item_assign = { item_assign_stmt ~ ";" ~ loop_branch }
 loop_branch_local_assign = { local_assign_stmt ~ ";" ~ loop_branch }
 loop_branch_unit_const = { unit_const_stmt ~ ";" ~ loop_branch }
 loop_branch_while = { while_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
@@ -457,7 +459,7 @@ loop_branch_if = { if_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
 const_stmt = { "const" ~ local_id ~ (":" ~ type_expr)? ~ "=" ~ expr }
 let_stmt = { "let" ~ local_id ~ (":" ~ type_expr)? ~ "=" ~ expr }
 object_assign_stmt = { (local_id | this_id) ~ "." ~ prop_id ~ "=" ~ expr }
-array_assign_stmt = { local_id ~ "[" ~ expr ~ "]" ~ "=" ~ expr }
+item_assign_stmt = { local_id ~ "[" ~ expr ~ "]" ~ "=" ~ expr }
 local_assign_stmt = { local_id ~ "=" ~ expr }
 unit_const_stmt = { expr }
 while_stmt_start = _{ "while" ~ "(" ~ expr ~ ")" ~ "{" }
@@ -467,12 +469,12 @@ fori_init =
   { const_stmt
   | let_stmt
   | local_assign_stmt
-  | array_assign_stmt
+  | item_assign_stmt
   | unit_const_stmt
   }
 fori_step =
   { local_assign_stmt
-  | array_assign_stmt
+  | item_assign_stmt
   | unit_const_stmt
   }
 forof_stmt_start = _{ "for" ~ "(" ~ (forof_const | forof_let) ~ local_id ~ "of" ~ expr ~ ")" ~ "{" }
@@ -520,7 +522,7 @@ fn_body =
   { fn_body_const
   | fn_body_let
   | fn_body_object_assign
-  | fn_body_array_assign
+  | fn_body_item_assign
   | fn_body_local_assign
   | fn_body_unit_const
   | fn_body_while
@@ -532,7 +534,7 @@ fn_body =
 fn_body_const = { const_stmt ~ ";" ~ fn_body }
 fn_body_let = { let_stmt ~ ";" ~ fn_body }
 fn_body_object_assign = { object_assign_stmt ~ ";" ~ fn_body }
-fn_body_array_assign = { array_assign_stmt ~ ";" ~ fn_body }
+fn_body_item_assign = { item_assign_stmt ~ ";" ~ fn_body }
 fn_body_local_assign = { local_assign_stmt ~ ";" ~ fn_body }
 fn_body_unit_const = { unit_const_stmt ~ ";" ~ fn_body }
 fn_body_while = { while_stmt_start ~ loop_branch ~ "}" ~ fn_body }
@@ -611,7 +613,7 @@ class_def =
 associated_type = { "type" ~ type_id ~ "=" ~ type_expr ~ ";" }
 class_member = { prop_id ~ ":" ~ type_expr ~ ";" }
 class_method =
-  { fn_id
+  { (fn_id | magic_fn_id)
   ~ implicits?
   ~ params
   ~ (":" ~ type_expr)?

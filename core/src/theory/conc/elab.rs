@@ -443,7 +443,7 @@ impl Elaborator {
             }
             RevApp(loc, f, x) => {
                 if let Term::Sigma(p, _) = self.infer(*x.clone())?.1 {
-                    if let Term::Cls(t, _) = *p.typ {
+                    if let Term::Cls(t, ..) = *p.typ {
                         let meths = match &self.sigma.get(&t).unwrap().body {
                             Body::Class { methods, .. } => methods,
                             _ => unreachable!(),
@@ -619,15 +619,16 @@ impl Elaborator {
                 let y_loc = b.loc();
                 let (x, x_ty) = self.infer(*a)?;
                 let (y, y_ty) = self.infer(*b)?;
-                let (x_ty, x_name) = if let Term::Cls(n, t) = x_ty {
-                    (*t, Some(n))
+                let (x_ty, x_associated, x_name) = if let Term::Cls(n, a, t) = x_ty {
+                    (*t, Some(a), Some(n))
                 } else {
-                    (x_ty, None)
+                    (x_ty, None, None)
                 };
                 let ty = match (x_ty, y_ty) {
                     (Term::Object(rx), Term::Object(ry)) => match x_name {
                         Some(n) => Term::Cls(
                             n,
+                            x_associated.unwrap(),
                             Box::new(Term::Object(Box::new(Term::Combine(true, rx, ry)))),
                         ),
                         None => Term::Object(Box::new(Term::Combine(false, rx, ry))),

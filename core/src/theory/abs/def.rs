@@ -72,8 +72,13 @@ impl Def<Term> {
                 self.to_lam_term(f)
             }
 
-            Class { members, .. } => self.to_lam_term(Term::Cls(
+            Class {
+                associated,
+                members,
+                ..
+            } => self.to_lam_term(Term::Cls(
                 self.name.clone(),
+                associated.clone(),
                 Box::new(Term::Object(Box::new(Term::Fields(
                     members
                         .iter()

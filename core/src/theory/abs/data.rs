@@ -137,7 +137,7 @@ pub enum Term {
 
     Reflected(Box<Self>),
 
-    Cls(Var, Box<Self>),
+    Cls(Var, HashMap<String, Self>, Box<Self>),
 
     ErrorThrow(Box<Self>),
 }
@@ -174,7 +174,7 @@ impl Term {
         let mut x = self;
         loop {
             match x {
-                Cls(c, _) => match &sigma.get(c).unwrap().body {
+                Cls(c, ..) => match &sigma.get(c).unwrap().body {
                     Class { methods, .. } => return Some(methods.clone()),
                     _ => unreachable!(),
                 },
@@ -211,7 +211,13 @@ impl Display for Term {
                     format!("({})", s.join(" "))
                 }
                 Undef(r) => r.to_string(),
-                Cls(n, a) => format!("{n}({a})"),
+                Cls(n, a, obj) => format!(
+                    "{n}({}, {obj})",
+                    a.iter()
+                        .map(|(n, typ)| format!("{n}={typ}"))
+                        .collect::<Vec<std::string::String>>()
+                        .join(", ")
+                ),
                 Local(p, a, b) => format!("const {p} = {a};\n\t{b}"),
                 LocalSet(p, a, b) => format!("let {p} = {a};\n\t{b}"),
                 LocalUpdate(v, a, b) => format!("{v} = {a};\n\t{b}"),

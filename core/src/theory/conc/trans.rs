@@ -7,7 +7,6 @@ use pest::pratt_parser::{Assoc, Op, PrattParser};
 use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, ImplementsBody};
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
-use crate::theory::conc::data::Expr::{Big, False, Num, Str, True, Unit, Univ};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::conc::load::ImportedPkg::Vendor;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
@@ -194,7 +193,7 @@ impl Trans {
         let mut tele = Tele::default();
         let mut untupled = UntupledParams::new(loc);
         let mut preds = Tele::default();
-        let mut ret = Box::new(Unit(loc));
+        let mut ret = Box::new(Expr::Unit(loc));
 
         for p in pairs {
             match p.as_rule() {
@@ -539,7 +538,7 @@ impl Trans {
             loc,
             name: Var::unbound(),
             tele,
-            ret: Box::new(Univ(loc)),
+            ret: Box::new(Expr::Univ(loc)),
             body: Body::Verify(target),
         }
     }
@@ -766,11 +765,11 @@ impl Trans {
                     Box::new(self.fn_body(pairs.next().unwrap())),
                 )
             }
-            Rule::fn_body_array_assign => {
+            Rule::fn_body_item_assign => {
                 let mut pairs = p.into_inner();
                 UnitLocal(
                     loc,
-                    Box::new(self.array_assign_stmt(pairs.next().unwrap())),
+                    Box::new(self.item_assign_stmt(pairs.next().unwrap())),
                     Box::new(self.fn_body(pairs.next().unwrap())),
                 )
             }
@@ -1057,6 +1056,7 @@ impl Trans {
     }
 
     fn map_literal_key(&self, loc: Loc, k: Pair<Rule>) -> Expr {
+        use Expr::*;
         match k.as_rule() {
             Rule::string => Str(loc, k.into_inner().next().unwrap().as_str().to_string()),
             Rule::number => Num(loc, k.into_inner().next().unwrap().as_str().to_string()),
@@ -1135,11 +1135,11 @@ impl Trans {
                     Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
                 )
             }
-            Rule::branch_array_assign | Rule::loop_branch_array_assign => {
+            Rule::branch_item_assign | Rule::loop_branch_item_assign => {
                 let mut pairs = p.into_inner();
                 UnitLocal(
                     loc,
-                    Box::new(self.array_assign_stmt(pairs.next().unwrap())),
+                    Box::new(self.item_assign_stmt(pairs.next().unwrap())),
                     Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
                 )
             }
@@ -1235,13 +1235,13 @@ impl Trans {
         (a_var, expr)
     }
 
-    fn array_assign_stmt(&self, s: Pair<Rule>) -> Expr {
+    fn item_assign_stmt(&self, s: Pair<Rule>) -> Expr {
         let mut pairs = s.into_inner();
         let a = self.maybe_qualified(pairs.next().unwrap());
-        let i = self.expr(pairs.next().unwrap());
+        let k = self.expr(pairs.next().unwrap());
         let v = self.expr(pairs.next().unwrap());
-        let m = Self::builtin_method(i.loc(), "Array", "set");
-        Self::call3(m, a, i, v)
+        let f = Expr::Unresolved(a.loc(), None, Var::new("__setitem__"));
+        Self::call3(f, a, k, v)
     }
 
     fn local_assign_stmt(&self, s: Pair<Rule>) -> (Var, Expr) {
@@ -1271,8 +1271,8 @@ impl Trans {
                     Rule::unit_const_stmt => {
                         UnitLocal(loc, Box::new(self.unit_const_stmt(p)), body)
                     }
-                    Rule::array_assign_stmt => {
-                        UnitLocal(loc, Box::new(self.array_assign_stmt(p)), body)
+                    Rule::item_assign_stmt => {
+                        UnitLocal(loc, Box::new(self.item_assign_stmt(p)), body)
                     }
                     Rule::local_assign_stmt => {
                         let (v, expr) = self.local_assign_stmt(p);
@@ -1320,8 +1320,8 @@ impl Trans {
                     Rule::unit_const_stmt => {
                         UnitLocal(loc, Box::new(self.unit_const_stmt(p)), body)
                     }
-                    Rule::array_assign_stmt => {
-                        UnitLocal(loc, Box::new(self.array_assign_stmt(p)), body)
+                    Rule::item_assign_stmt => {
+                        UnitLocal(loc, Box::new(self.item_assign_stmt(p)), body)
                     }
                     Rule::local_assign_stmt => {
                         let (v, expr) = self.local_assign_stmt(p);

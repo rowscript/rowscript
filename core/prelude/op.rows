@@ -109,3 +109,11 @@ interface ModOp {
 implements ModOp for number {
     __mod__(a: number, b: number): number { number#__mod__(a, b) }
 }
+
+interface GetOp {
+    __getitem__(a: GetOp, key: GetOp::Key): [Ok: GetOp::Value | None];
+}
+
+interface SetOp {
+    __setitem__(a: SetOp, key: SetOp::Key, value: SetOp::Value);
+}
