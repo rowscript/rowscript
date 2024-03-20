@@ -333,7 +333,7 @@ primary_expr =
   | boolean_if
   | rev_app
   | array_literal
-  | array_index
+  | item_index
   | map_literal
   | object_literal
   | object_concat
@@ -356,7 +356,7 @@ boolean_if = { "(" ~ expr ~ ")" ~ "?" ~ expr ~ ":" ~ expr }
 rev_app = { ("(" ~ expr ~ ")" | idref | new_expr) ~ rev_app_caller+ }
 rev_app_caller = { "." ~ idref ~ implicit_args? ~ args+ }
 array_literal = { "[]" | "[" ~ expr ~ ("," ~ expr)* ~ "]" }
-array_index = { ("(" ~ expr ~ ")" | idref) ~ "[" ~ expr ~ "]" }
+item_index = { ("(" ~ expr ~ ")" | idref) ~ "[" ~ expr ~ "]" }
 map_literal = { "{}" | "{" ~ map_literal_key ~ ":" ~ expr ~ ("," ~ map_literal_key ~ ":" ~ expr)* ~ "}" }
 map_literal_key =
  _{ string

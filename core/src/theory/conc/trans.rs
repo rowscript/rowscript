@@ -926,7 +926,7 @@ impl Trans {
                     Box::new(TT(loc)),
                 )),
             ),
-            Rule::array_index => {
+            Rule::item_index => {
                 let mut pairs = p.into_inner();
                 let x = pairs.next().unwrap();
                 let x = match x.as_rule() {
@@ -934,16 +934,16 @@ impl Trans {
                     Rule::idref => self.maybe_qualified(x),
                     _ => unreachable!(),
                 };
-                let at = Self::builtin_method(loc, "Array", "at");
-                let i = self.expr(pairs.next().unwrap());
+                let f = Unresolved(loc, None, Var::new("__getitem__"));
+                let k = self.expr(pairs.next().unwrap());
                 App(
                     loc,
-                    Box::new(at),
+                    Box::new(f),
                     UnnamedExplicit,
                     Box::new(Tuple(
                         loc,
                         Box::new(x),
-                        Box::new(Tuple(loc, Box::new(i), Box::new(TT(loc)))),
+                        Box::new(Tuple(loc, Box::new(k), Box::new(TT(loc)))),
                     )),
                 )
             }
@@ -1618,10 +1618,6 @@ impl Trans {
                 _ => unreachable!(),
             })
             .rfold(TT(loc), |a, (loc, x)| Tuple(loc, Box::new(x), Box::new(a)))
-    }
-
-    fn builtin_method(loc: Loc, typ: &str, meth: &str) -> Expr {
-        Expr::Unresolved(loc, None, Var::new(typ).method(Var::new(meth)))
     }
 
     fn call3(f: Expr, a0: Expr, a1: Expr, a2: Expr) -> Expr {

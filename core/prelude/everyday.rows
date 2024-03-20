@@ -108,7 +108,7 @@ class Map<K, V> {
     }
 
     __setitem__(key: K, value: V) {
-        map#set(this.m, key, value)
+        let ignored = this.set(key, value);
     }
 
     delete(key: K): boolean {
