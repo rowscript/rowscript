@@ -112,17 +112,23 @@ impl Ecma {
         }
     }
 
-    fn js_path(pb: PathBuf) -> Str {
+    fn js_str(loc: Loc, s: &str) -> Str {
         Str {
-            span: DUMMY_SP,
-            value: pb
-                .iter()
+            span: loc.into(),
+            value: s.into(),
+            raw: None,
+        }
+    }
+
+    fn js_path(pb: PathBuf) -> Str {
+        Self::js_str(
+            Default::default(),
+            pb.iter()
                 .map(|item| item.to_string_lossy())
                 .collect::<Vec<_>>()
                 .join("/")
-                .into(),
-            raw: None,
-        }
+                .as_str(),
+        )
     }
 
     fn paren_call(loc: Loc, f: Expr, e: Expr) -> Expr {
@@ -146,7 +152,7 @@ impl Ecma {
             props: vec![
                 PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                     key: PropName::Str(Self::js_raw_str(loc, JS_ENUM_TAG)),
-                    value: Box::new(Expr::Lit(Lit::Str(Self::js_raw_str(loc, tag)))),
+                    value: Box::new(Expr::Lit(Lit::Str(Self::js_str(loc, tag)))),
                 }))),
                 PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                     key: PropName::Str(Self::js_raw_str(loc, JS_ENUM_VAL)),
@@ -1018,7 +1024,7 @@ impl Ecma {
                 for (x, (v, tm)) in cs {
                     cases.push(SwitchCase {
                         span: loc.into(),
-                        test: Some(Box::new(Expr::Lit(Lit::Str(Self::js_raw_str(loc, x))))),
+                        test: Some(Box::new(Expr::Lit(Lit::Str(Self::js_str(loc, x))))),
                         cons: self.enum_case_consequent(sigma, loc, v, tm)?,
                     });
                 }
