@@ -750,7 +750,17 @@ impl Trans {
                 let mut pairs = p.into_inner();
                 UnitLocal(
                     loc,
-                    Box::new(self.unit_const_stmt(pairs.next().unwrap())),
+                    Box::new(self.expr_stmt(pairs.next().unwrap())),
+                    Box::new(self.fn_body(pairs.next().unwrap())),
+                )
+            }
+            Rule::fn_body_ignored => {
+                let mut pairs = p.into_inner();
+                Local(
+                    loc,
+                    Var::unbound(),
+                    None,
+                    Box::new(self.expr_stmt(pairs.next().unwrap())),
                     Box::new(self.fn_body(pairs.next().unwrap())),
                 )
             }
@@ -1120,7 +1130,17 @@ impl Trans {
                 let mut pairs = p.into_inner();
                 UnitLocal(
                     loc,
-                    Box::new(self.unit_const_stmt(pairs.next().unwrap())),
+                    Box::new(self.expr_stmt(pairs.next().unwrap())),
+                    Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
+                )
+            }
+            Rule::branch_ignored | Rule::loop_branch_ignored => {
+                let mut pairs = p.into_inner();
+                Local(
+                    loc,
+                    Var::unbound(),
+                    None,
+                    Box::new(self.expr_stmt(pairs.next().unwrap())),
                     Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
                 )
             }
@@ -1214,7 +1234,7 @@ impl Trans {
         (id, typ, tm)
     }
 
-    fn unit_const_stmt(&self, s: Pair<Rule>) -> Expr {
+    fn expr_stmt(&self, s: Pair<Rule>) -> Expr {
         self.expr(s.into_inner().next().unwrap())
     }
 
@@ -1268,9 +1288,7 @@ impl Trans {
                 let p = p.into_inner().next().unwrap();
                 let loc = Loc::from(p.as_span());
                 match p.as_rule() {
-                    Rule::unit_const_stmt => {
-                        UnitLocal(loc, Box::new(self.unit_const_stmt(p)), body)
-                    }
+                    Rule::unit_const_stmt => UnitLocal(loc, Box::new(self.expr_stmt(p)), body),
                     Rule::item_assign_stmt => {
                         UnitLocal(loc, Box::new(self.item_assign_stmt(p)), body)
                     }
@@ -1317,9 +1335,7 @@ impl Trans {
                         let (id, typ, tm) = self.local_stmt(p);
                         LocalSet(loc, id, typ, Box::new(tm), body)
                     }
-                    Rule::unit_const_stmt => {
-                        UnitLocal(loc, Box::new(self.unit_const_stmt(p)), body)
-                    }
+                    Rule::unit_const_stmt => UnitLocal(loc, Box::new(self.expr_stmt(p)), body),
                     Rule::item_assign_stmt => {
                         UnitLocal(loc, Box::new(self.item_assign_stmt(p)), body)
                     }

@@ -412,6 +412,7 @@ branch =
   | branch_object_assign
   | branch_item_assign
   | branch_unit_const
+  | branch_ignored
   | branch_while
   | branch_fori
   | branch_forof
@@ -425,6 +426,7 @@ branch_object_assign = { object_assign_stmt ~ ";" ~ branch }
 branch_item_assign = { item_assign_stmt ~ ";" ~ branch }
 branch_local_assign = { local_assign_stmt ~ ";" ~ branch }
 branch_unit_const = { unit_const_stmt ~ ";" ~ branch }
+branch_ignored = { ignored_stmt ~ ";" ~ branch }
 branch_while = { while_stmt_start ~ loop_branch ~ "}" ~ branch }
 branch_fori = { fori_stmt_start ~ loop_branch ~ "}" ~ branch }
 branch_forof = { forof_stmt_start ~ loop_branch ~ "}" ~ branch }
@@ -436,6 +438,7 @@ loop_branch =
   | loop_branch_object_assign
   | loop_branch_item_assign
   | loop_branch_unit_const
+  | loop_branch_ignored
   | loop_branch_while
   | loop_branch_fori
   | loop_branch_forof
@@ -451,6 +454,7 @@ loop_branch_object_assign = { object_assign_stmt ~ ";" ~ loop_branch }
 loop_branch_item_assign = { item_assign_stmt ~ ";" ~ loop_branch }
 loop_branch_local_assign = { local_assign_stmt ~ ";" ~ loop_branch }
 loop_branch_unit_const = { unit_const_stmt ~ ";" ~ loop_branch }
+loop_branch_ignored = { ignored_stmt ~ ";" ~ loop_branch }
 loop_branch_while = { while_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
 loop_branch_fori = { fori_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
 loop_branch_forof = { forof_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
@@ -462,6 +466,7 @@ object_assign_stmt = { (local_id | this_id) ~ "." ~ prop_id ~ "=" ~ expr }
 item_assign_stmt = { local_id ~ "[" ~ expr ~ "]" ~ "=" ~ expr }
 local_assign_stmt = { local_id ~ "=" ~ expr }
 unit_const_stmt = { expr }
+ignored_stmt = { "_" ~ "=" ~ expr }
 while_stmt_start = _{ "while" ~ "(" ~ expr ~ ")" ~ "{" }
 fori_stmt_start = _{ "for" ~ "(" ~ fori_clause ~ ")" ~ "{" }
 fori_clause = { fori_init? ~ ";" ~ expr? ~ ";" ~ fori_step? }
@@ -525,6 +530,7 @@ fn_body =
   | fn_body_item_assign
   | fn_body_local_assign
   | fn_body_unit_const
+  | fn_body_ignored
   | fn_body_while
   | fn_body_fori
   | fn_body_forof
@@ -537,6 +543,7 @@ fn_body_object_assign = { object_assign_stmt ~ ";" ~ fn_body }
 fn_body_item_assign = { item_assign_stmt ~ ";" ~ fn_body }
 fn_body_local_assign = { local_assign_stmt ~ ";" ~ fn_body }
 fn_body_unit_const = { unit_const_stmt ~ ";" ~ fn_body }
+fn_body_ignored = { ignored_stmt ~ ";" ~ fn_body }
 fn_body_while = { while_stmt_start ~ loop_branch ~ "}" ~ fn_body }
 fn_body_fori = { fori_stmt_start ~ loop_branch ~ "}" ~ fn_body }
 fn_body_forof = { forof_stmt_start ~ loop_branch ~ "}" ~ fn_body }
