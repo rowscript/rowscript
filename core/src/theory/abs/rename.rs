@@ -156,6 +156,7 @@ impl Renamer {
                 object: Box::new(self.term(*object)),
             },
             ErrorThrow(a) => ErrorThrow(Box::new(self.term(*a))),
+            ConsoleLog(m) => ConsoleLog(Box::new(self.term(*m))),
             tm => tm,
         }
     }

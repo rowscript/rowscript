@@ -1,5 +1,3 @@
-function log<T>(n: T);
-
 // https://oeis.org/A000010
 function phiTable(n: number): Array<number> {
     let phi: Array<number> = [];
@@ -16,4 +14,4 @@ function phiTable(n: number): Array<number> {
     phi
 }
 
-log(phiTable(20));
+console.log(phiTable(20));

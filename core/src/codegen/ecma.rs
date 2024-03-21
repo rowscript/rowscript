@@ -1119,6 +1119,20 @@ impl Ecma {
                     })],
                 },
             ),
+            ConsoleLog(m) => Expr::Call(CallExpr {
+                span: Default::default(),
+                callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
+                    span: loc.into(),
+                    obj: Box::new(Expr::Ident(Self::special_ident("console"))),
+                    prop: MemberProp::Ident(Self::special_ident("log")),
+                }))),
+                args: vec![ExprOrSpread {
+                    spread: None,
+                    expr: Box::new(self.expr(sigma, loc, m)?),
+                }],
+                type_args: None,
+            }),
+
             Find(_, _, f) => return Err(NonErasable(Ref(f.clone()), loc)),
 
             _ => unreachable!(),

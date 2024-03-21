@@ -484,6 +484,7 @@ impl<'a> Normalizer<'a> {
                 *self.reflector().reflected(ty, true)?
             }
             ErrorThrow(a) => ErrorThrow(self.term_box(a)?),
+            ConsoleLog(m) => ConsoleLog(self.term_box(m)?),
             tm => tm,
         })
     }

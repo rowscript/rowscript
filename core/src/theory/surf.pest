@@ -166,6 +166,7 @@ idref =
   }
 builtin =
   { "error#throw"
+  | "console#log"
   | "number#__add__"
   | "number#__sub__"
   | "number#__mul__"

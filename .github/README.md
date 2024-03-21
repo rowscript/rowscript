@@ -22,14 +22,20 @@ And luckily, the overall syntax would be in the style of TypeScript!
 
 ## Example
 
-```ts
-import console;
+A hello-world example:
 
+```ts
+console.log("Hello, RowScript!");
+```
+
+More complicated example with classes and interfaces:
+
+```ts
 class Person {
     name: string;
 
     dial() {
-        console::log(this.name)
+        console.log(this.name)
     }
 }
 

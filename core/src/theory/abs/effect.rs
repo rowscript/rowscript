@@ -41,7 +41,7 @@ pub fn has_side_effect(tm: &Term) -> bool {
         Access(a, _) => has_side_effect(a),
         Down(a, _) => has_side_effect(a),
         Variant(a) => has_side_effect(a),
-        Up(a, _, _) => has_side_effect(a),
+        Up(a, ..) => has_side_effect(a),
         Switch(a, b, d) => {
             if has_side_effect(a) {
                 return true;
@@ -58,12 +58,13 @@ pub fn has_side_effect(tm: &Term) -> bool {
             }
             false
         }
-        Find(a, _, _) => has_side_effect(a),
+        Find(a, ..) => has_side_effect(a),
 
         Extern(..) | MetaRef(..) | LocalSet(..) | LocalUpdate(..) | Return(..) | Continue
         | Break | ArrIter(..) | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..)
         | ArrForeach(..) | ArrAt(..) | ArrInsert(..) | Kv(..) | MapHas(..) | MapGet(..)
-        | MapSet(..) | MapDelete(..) | MapClear(..) | Unionify(..) | ErrorThrow(..) => true,
+        | MapSet(..) | MapDelete(..) | MapClear(..) | Unionify(..) | ErrorThrow(..)
+        | ConsoleLog(..) => true,
 
         Ref(..)
         | Qualified(..)
@@ -93,7 +94,7 @@ pub fn has_side_effect(tm: &Term) -> bool {
         | Object(..)
         | Downcast(..)
         | Enum(..)
-        | Upcast(_)
+        | Upcast(..)
         | ImplementsOf(..)
         | ImplementsSat
         | Reflected(..)

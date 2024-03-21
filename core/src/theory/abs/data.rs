@@ -145,6 +145,7 @@ pub enum Term {
     },
 
     ErrorThrow(Box<Self>),
+    ConsoleLog(Box<Self>),
 }
 
 pub struct PartialClass {
@@ -372,6 +373,7 @@ impl Display for Term {
                         .join(", ")
                 ),
                 ErrorThrow(a) => format!("throw Error({a})"),
+                ConsoleLog(m) => format!("console.log({m})"),
             }
             .as_str(),
         )

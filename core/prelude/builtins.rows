@@ -1,5 +1,7 @@
 declare function error#throw<T>(m: string): T;
 
+declare function console#log<T>(m: T);
+
 declare function unionify<'R>(a: ['R]): ['R];
 
 declare Reflected<T>;
