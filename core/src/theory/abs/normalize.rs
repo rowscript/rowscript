@@ -89,12 +89,20 @@ impl<'a> Normalizer<'a> {
                 ret
             }
             Undef(x) => self.sigma.get(&x).unwrap().to_term(x),
-            Cls(n, a, o) => {
-                let mut associated = HashMap::default();
-                for (name, typ) in a {
-                    associated.insert(name, self.term(typ)?);
+            Cls {
+                class,
+                associated,
+                object,
+            } => {
+                let mut a = HashMap::default();
+                for (name, typ) in associated {
+                    a.insert(name, self.term(typ)?);
                 }
-                Cls(n, associated, self.term_box(o)?)
+                Cls {
+                    class,
+                    associated: a,
+                    object: self.term_box(object)?,
+                }
             }
             Local(p, a, b) => {
                 let a = self.term_box(a)?;
@@ -310,9 +318,23 @@ impl<'a> Normalizer<'a> {
                 Fields(fields)
             }
             Associate(a, n) => match *self.term_box(a)? {
-                Cls(c, associated, ms) => match associated.get(&n) {
+                Cls {
+                    class,
+                    associated,
+                    object,
+                } => match associated.get(&n) {
                     Some(typ) => typ.clone(),
-                    None => return Err(UnresolvedField(n, Cls(c, associated, ms), self.loc)),
+                    None => {
+                        return Err(UnresolvedField(
+                            n,
+                            Cls {
+                                class,
+                                associated,
+                                object,
+                            },
+                            self.loc,
+                        ))
+                    }
                 },
                 a => Associate(Box::new(a), n),
             },

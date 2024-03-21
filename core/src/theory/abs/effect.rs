@@ -65,11 +65,39 @@ pub fn has_side_effect(tm: &Term) -> bool {
         | ArrForeach(..) | ArrAt(..) | ArrInsert(..) | Kv(..) | MapHas(..) | MapGet(..)
         | MapSet(..) | MapDelete(..) | MapClear(..) | Unionify(..) | ErrorThrow(..) => true,
 
-        Ref(..) | Qualified(..) | Univ | Pi(..) | Sigma(..) | Unit | TT | Boolean | False
-        | True | String | Str(..) | Number | Num(..) | BigInt | Big(..) | ArrayIterator(..)
-        | Array(..) | Map(..) | Row | Associate(..) | RowOrd(..) | RowSat | RowEq(..) | RowRefl
-        | Object(..) | Downcast(..) | Enum(..) | Upcast(_) | ImplementsOf(..) | ImplementsSat
-        | Reflected(..) | Cls(..) => false,
+        Ref(..)
+        | Qualified(..)
+        | Univ
+        | Pi(..)
+        | Sigma(..)
+        | Unit
+        | TT
+        | Boolean
+        | False
+        | True
+        | String
+        | Str(..)
+        | Number
+        | Num(..)
+        | BigInt
+        | Big(..)
+        | ArrayIterator(..)
+        | Array(..)
+        | Map(..)
+        | Row
+        | Associate(..)
+        | RowOrd(..)
+        | RowSat
+        | RowEq(..)
+        | RowRefl
+        | Object(..)
+        | Downcast(..)
+        | Enum(..)
+        | Upcast(_)
+        | ImplementsOf(..)
+        | ImplementsSat
+        | Reflected(..)
+        | Cls { .. } => false,
 
         Undef(..) => unreachable!(),
     }

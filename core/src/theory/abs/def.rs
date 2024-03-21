@@ -76,16 +76,16 @@ impl Def<Term> {
                 associated,
                 members,
                 ..
-            } => self.to_lam_term(Term::Cls(
-                self.name.clone(),
-                associated.clone(),
-                Box::new(Term::Object(Box::new(Term::Fields(
+            } => self.to_lam_term(Term::Cls {
+                class: self.name.clone(),
+                associated: associated.clone(),
+                object: Box::new(Term::Object(Box::new(Term::Fields(
                     members
                         .iter()
                         .map(|(_, id, typ)| (id.clone(), typ.clone()))
                         .collect(),
                 )))),
-            )),
+            }),
             Method(_, f) => self.to_lam_term(f.clone()),
 
             Undefined => Term::Undef(v),
