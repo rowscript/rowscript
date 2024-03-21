@@ -245,10 +245,12 @@ impl<'a> Resolver<'a> {
                     Box::new(b),
                 )
             }
-            LocalSet(loc, x, typ, a, b) => {
-                let x = x.local();
-                if self.names.contains_key(x.as_str()) {
-                    return Err(DuplicateName(loc));
+            LocalSet(loc, mut x, typ, a, b) => {
+                if x.as_str() != UNBOUND {
+                    x = x.local();
+                    if self.names.contains_key(x.as_str()) {
+                        return Err(DuplicateName(loc));
+                    }
                 }
                 let b = self.bodied(&[&x], *b)?;
                 LocalSet(

@@ -455,7 +455,7 @@ impl Ecma {
             Expr::Arrow(ArrowExpr {
                 span: loc.into(),
                 params: v.map_or_else(Default::default, |v| vec![Self::ident_pat(loc, v)]),
-                body: Box::new(BlockStmtOrExpr::Expr(Box::new(self.expr(sigma, loc, b)?))),
+                body: Box::new(BlockStmtOrExpr::BlockStmt(self.block(sigma, loc, b, true)?)),
                 is_async: false,
                 is_generator: false,
                 type_params: None,
@@ -509,12 +509,13 @@ impl Ecma {
         &mut self,
         sigma: &Sigma,
         loc: Loc,
+        kind: VarDeclKind,
         v: &Var,
         tm: &Term,
     ) -> Result<VarDecl, Error> {
         Ok(VarDecl {
             span: loc.into(),
-            kind: VarDeclKind::Var,
+            kind,
             declare: false,
             decls: vec![VarDeclarator {
                 span: loc.into(),
@@ -579,10 +580,24 @@ impl Ecma {
         use Term::*;
 
         let (init, body) = match body {
-            Local(p, a, b) | LocalSet(p, a, b) => (
-                Some(VarDeclOrExpr::VarDecl(Box::new(
-                    self.local_decl(sigma, loc, &p.var, a)?,
-                ))),
+            Local(p, a, b) => (
+                Some(VarDeclOrExpr::VarDecl(Box::new(self.local_decl(
+                    sigma,
+                    loc,
+                    VarDeclKind::Const,
+                    &p.var,
+                    a,
+                )?))),
+                b,
+            ),
+            LocalSet(p, a, b) => (
+                Some(VarDeclOrExpr::VarDecl(Box::new(self.local_decl(
+                    sigma,
+                    loc,
+                    VarDeclKind::Let,
+                    &p.var,
+                    a,
+                )?))),
                 b,
             ),
             LocalUpdate(v, a, b) => (
@@ -655,10 +670,24 @@ impl Ecma {
 
         loop {
             match tm {
-                Local(p, a, b) | LocalSet(p, a, b) => {
-                    stmts.push(Stmt::Decl(Decl::Var(Box::new(
-                        self.local_decl(sigma, loc, &p.var, a)?,
-                    ))));
+                Local(p, a, b) => {
+                    stmts.push(Stmt::Decl(Decl::Var(Box::new(self.local_decl(
+                        sigma,
+                        loc,
+                        VarDeclKind::Const,
+                        &p.var,
+                        a,
+                    )?))));
+                    tm = b
+                }
+                LocalSet(p, a, b) => {
+                    stmts.push(Stmt::Decl(Decl::Var(Box::new(self.local_decl(
+                        sigma,
+                        loc,
+                        VarDeclKind::Let,
+                        &p.var,
+                        a,
+                    )?))));
                     tm = b
                 }
                 LocalUpdate(v, a, b) => {
@@ -730,7 +759,9 @@ impl Ecma {
                 Some(_) => unreachable!(),
             },
 
-            Local(p, a, b) => self.lambda_encoded_let(sigma, loc, Some(&p.var), a, b)?,
+            Local(p, a, b) | LocalSet(p, a, b) => {
+                self.lambda_encoded_let(sigma, loc, Some(&p.var), a, b)?
+            }
             UnitLocal(a, b) => self.lambda_encoded_let(sigma, loc, None, a, b)?,
 
             Ref(r) | Undef(r) => Expr::Ident(Self::ident(loc, r)),

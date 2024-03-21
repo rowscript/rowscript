@@ -1,0 +1,19 @@
+function log<T>(n: T);
+
+// https://oeis.org/A000010
+function phiTable(n: number): Array<number> {
+    let phi: Array<number> = [];
+    for (let i = 0; i <= n; i = i + 1) {
+        phi[i] = (i % 2 == 1) ? i : i / 2;
+    }
+    for (let i = 3; i <= n; i = i + 2) {
+        if (phi[i] == i) {
+            for (let j = i; j <= n; j = j + i) {
+                phi[j] = phi[j] - phi[j] / i;
+            }
+        }
+    }
+    phi
+}
+
+log(phiTable(20));

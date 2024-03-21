@@ -22,7 +22,6 @@ impl Default for Trans {
     fn default() -> Self {
         Self {
             pratt: PrattParser::new()
-                .op(Op::prefix(Rule::prefix_not))
                 .op(Op::infix(Rule::infix_or, Assoc::Left))
                 .op(Op::infix(Rule::infix_and, Assoc::Left))
                 .op(Op::infix(Rule::infix_eq, Assoc::Left)
@@ -31,11 +30,12 @@ impl Default for Trans {
                     | Op::infix(Rule::infix_ge, Assoc::Left)
                     | Op::infix(Rule::infix_lt, Assoc::Left)
                     | Op::infix(Rule::infix_gt, Assoc::Left))
+                .op(Op::infix(Rule::infix_add, Assoc::Left)
+                    | Op::infix(Rule::infix_sub, Assoc::Left))
                 .op(Op::infix(Rule::infix_mul, Assoc::Left)
                     | Op::infix(Rule::infix_div, Assoc::Left)
                     | Op::infix(Rule::infix_mod, Assoc::Left))
-                .op(Op::infix(Rule::infix_add, Assoc::Left)
-                    | Op::infix(Rule::infix_sub, Assoc::Left)),
+                .op(Op::prefix(Rule::prefix_not)),
         }
     }
 }

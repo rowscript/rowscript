@@ -49,7 +49,7 @@ impl RawNameSet {
     }
 
     pub fn raw(&mut self, loc: Loc, f: String) -> Result<(), Error> {
-        if !self.0.insert(f) {
+        if f.as_str() != UNBOUND && !self.0.insert(f) {
             return Err(Error::DuplicateName(loc));
         }
         Ok(())

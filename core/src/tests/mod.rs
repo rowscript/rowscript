@@ -24,6 +24,8 @@ use crate::{Driver, Error};
 
 mod playground;
 
+mod example_phi;
+
 mod fail_hole;
 mod fail_parse;
 mod fail_reserved;
