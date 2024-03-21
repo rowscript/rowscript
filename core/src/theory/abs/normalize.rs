@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
-use crate::theory::abs::data::{CaseMap, Term};
+use crate::theory::abs::data::{CaseMap, PartialClass, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::effect::has_side_effect;
 use crate::theory::abs::reflect::Reflector;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo;
-use crate::theory::conc::data::ArgInfo::UnnamedExplicit;
+use crate::theory::conc::data::ArgInfo::{UnnamedExplicit, UnnamedImplicit};
 use crate::theory::NameMap;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
@@ -88,25 +88,25 @@ impl<'a> Normalizer<'a> {
                 self.sigma.insert(x, def);
                 ret
             }
-            Undef(x) => self.sigma.get(&x).unwrap().to_term(self.sigma, x),
+            Undef(x) => self.sigma.get(&x).unwrap().to_term(x),
             Cls {
                 class,
+                type_args,
                 associated,
-                methods,
                 object,
             } => {
                 let mut a = HashMap::default();
                 for (name, typ) in associated {
                     a.insert(name, self.term(typ)?);
                 }
-                let mut m = HashMap::default();
-                for (name, f) in methods {
-                    m.insert(name, self.term(f)?);
+                let mut args = Vec::default();
+                for arg in type_args {
+                    args.push(self.term(arg)?);
                 }
                 Cls {
                     class,
+                    type_args: args,
                     associated: a,
-                    methods: m,
                     object: self.term_box(object)?,
                 }
             }
@@ -556,7 +556,7 @@ impl<'a> Normalizer<'a> {
         }
 
         let meths = match x.class_methods(self.sigma) {
-            Some(meths) => meths,
+            Some(meths) => meths.methods,
             None => return Err(UnsatisfiedConstraint(i.clone(), x.clone(), self.loc)),
         };
         for f in fns {
@@ -598,14 +598,22 @@ impl<'a> Normalizer<'a> {
                 continue;
             }
 
-            return Ok(self.sigma.get(&im_fn).unwrap().to_term(self.sigma, im_fn));
+            return Ok(self.sigma.get(&im_fn).unwrap().to_term(im_fn));
         }
 
-        let meth = match ty.class_methods(self.sigma) {
-            Some(meths) => meths.get(f.as_str()).unwrap().clone(),
+        let (args, meth_ref) = match ty.class_methods(self.sigma) {
+            Some(PartialClass {
+                applied_types,
+                methods,
+            }) => (applied_types, methods.get(f.as_str()).unwrap().clone()),
             None => return Err(UnresolvedImplementation(ty, self.loc)),
         };
-        Ok(self.sigma.get(&meth).unwrap().to_term(self.sigma, meth))
+        let mut meth = self.sigma.get(&meth_ref).unwrap().to_term(meth_ref);
+        if !args.is_empty() {
+            meth = self.apply(meth, UnnamedImplicit, args.as_ref())?;
+        }
+
+        Ok(meth)
     }
 
     fn is_reflector(&self, i: &Var) -> bool {

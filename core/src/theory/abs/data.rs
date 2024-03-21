@@ -139,12 +139,17 @@ pub enum Term {
 
     Cls {
         class: Var,
+        type_args: Vec<Self>,
         associated: HashMap<String, Self>,
-        methods: HashMap<String, Self>,
         object: Box<Self>,
     },
 
     ErrorThrow(Box<Self>),
+}
+
+pub struct PartialClass {
+    pub applied_types: Box<[Term]>,
+    pub methods: HashMap<String, Var>,
 }
 
 impl Term {
@@ -172,15 +177,17 @@ impl Term {
         }
     }
 
-    pub fn class_methods(&self, sigma: &Sigma) -> Option<HashMap<String, Var>> {
+    pub fn class_methods(&self, sigma: &Sigma) -> Option<PartialClass> {
         use Body::*;
         use Term::*;
 
         let mut x = self;
         loop {
-            match x {
-                Cls { class, .. } => match &sigma.get(class).unwrap().body {
-                    Class { methods, .. } => return Some(methods.clone()),
+            let (args, methods) = match x {
+                Cls {
+                    class, type_args, ..
+                } => match &sigma.get(class).unwrap().body {
+                    Class { methods, .. } => (type_args, methods.clone()),
                     _ => unreachable!(),
                 },
                 Lam(_, body) => {
@@ -189,6 +196,18 @@ impl Term {
                 }
                 _ => return None,
             };
+            let mut applied = Vec::default();
+            for arg in args {
+                if matches!(arg, Ref(..)) {
+                    continue;
+                }
+                applied.push(arg.clone())
+            }
+            let applied_types = applied.into_boxed_slice();
+            return Some(PartialClass {
+                applied_types,
+                methods,
+            });
         }
     }
 }
@@ -216,19 +235,6 @@ impl Display for Term {
                     format!("({})", s.join(" "))
                 }
                 Undef(r) => r.to_string(),
-                Cls {
-                    class,
-                    associated,
-                    object,
-                    ..
-                } => format!(
-                    "{class}({}, {object})",
-                    associated
-                        .iter()
-                        .map(|(n, typ)| format!("{n}={typ}"))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
                 Local(p, a, b) => format!("const {p} = {a};\n\t{b}"),
                 LocalSet(p, a, b) => format!("let {p} = {a};\n\t{b}"),
                 LocalUpdate(v, a, b) => format!("{v} = {a};\n\t{b}"),
@@ -347,6 +353,24 @@ impl Display for Term {
                 ImplementsOf(t, i) => format!("{t} implementsOf {i}"),
                 ImplementsSat => "implementsSat".to_string(),
                 Reflected(a) => format!("Reflected<{a}>"),
+                Cls {
+                    class,
+                    type_args,
+                    associated,
+                    object,
+                } => format!(
+                    "class {class}(type_args={{{}}}, associated={{{}}}, members={object})",
+                    type_args
+                        .iter()
+                        .map(|typ| typ.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                    associated
+                        .iter()
+                        .map(|(n, typ)| format!("{n}={typ}"))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
                 ErrorThrow(a) => format!("throw Error({a})"),
             }
             .as_str(),
