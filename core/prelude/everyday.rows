@@ -68,8 +68,8 @@ class Array<T> {
         this.at(index)
     }
 
-    __getitem__(index: number): Option<T> {
-        this.get(index)
+    __getitem__(index: number): T {
+        this.get(index).unwrap()
     }
 
     set(index: number, value: T) {
@@ -114,8 +114,8 @@ class Map<K, V> {
         (this.has(key)) ? Ok(map#get(this.m, key)) : None
     }
 
-    __getitem__(key: K): Option<V> {
-        this.get(key)
+    __getitem__(key: K): V {
+        this.get(key).unwrap()
     }
 
     set(key: K, value: V): Map<K, V> {

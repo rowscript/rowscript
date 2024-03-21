@@ -11,14 +11,14 @@ function f0() {
 
 f0();
 
-function f1(): Option<number> {
+function f1(): number {
     const a = [1];
     a[0]
 }
 
 const n1 = f1();
 
-function f2(): Option<number> {
+function f2(): number {
     const a = [1];
     a[0] = 2;
     a[0]

@@ -111,7 +111,7 @@ implements ModOp for number {
 }
 
 interface GetOp {
-    __getitem__(a: GetOp, key: GetOp::Key): [Ok: GetOp::Value | None];
+    __getitem__(a: GetOp, key: GetOp::Key): GetOp::Value;
 }
 
 interface SetOp {
