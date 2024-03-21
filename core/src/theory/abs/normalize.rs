@@ -88,19 +88,25 @@ impl<'a> Normalizer<'a> {
                 self.sigma.insert(x, def);
                 ret
             }
-            Undef(x) => self.sigma.get(&x).unwrap().to_term(x),
+            Undef(x) => self.sigma.get(&x).unwrap().to_term(self.sigma, x),
             Cls {
                 class,
                 associated,
+                methods,
                 object,
             } => {
                 let mut a = HashMap::default();
                 for (name, typ) in associated {
                     a.insert(name, self.term(typ)?);
                 }
+                let mut m = HashMap::default();
+                for (name, f) in methods {
+                    m.insert(name, self.term(f)?);
+                }
                 Cls {
                     class,
                     associated: a,
+                    methods: m,
                     object: self.term_box(object)?,
                 }
             }
@@ -319,22 +325,10 @@ impl<'a> Normalizer<'a> {
             }
             Associate(a, n) => match *self.term_box(a)? {
                 Cls {
-                    class,
-                    associated,
-                    object,
+                    class, associated, ..
                 } => match associated.get(&n) {
                     Some(typ) => typ.clone(),
-                    None => {
-                        return Err(UnresolvedField(
-                            n,
-                            Cls {
-                                class,
-                                associated,
-                                object,
-                            },
-                            self.loc,
-                        ))
-                    }
+                    None => return Err(UnresolvedField(n, Ref(class), self.loc)),
                 },
                 a => Associate(Box::new(a), n),
             },
@@ -604,14 +598,14 @@ impl<'a> Normalizer<'a> {
                 continue;
             }
 
-            return Ok(self.sigma.get(&im_fn).unwrap().to_term(im_fn));
+            return Ok(self.sigma.get(&im_fn).unwrap().to_term(self.sigma, im_fn));
         }
 
         let meth = match ty.class_methods(self.sigma) {
             Some(meths) => meths.get(f.as_str()).unwrap().clone(),
             None => return Err(UnresolvedImplementation(ty, self.loc)),
         };
-        Ok(self.sigma.get(&meth).unwrap().to_term(meth))
+        Ok(self.sigma.get(&meth).unwrap().to_term(self.sigma, meth))
     }
 
     fn is_reflector(&self, i: &Var) -> bool {

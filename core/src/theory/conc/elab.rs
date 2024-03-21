@@ -355,7 +355,7 @@ impl Elaborator {
                 Some(ty) => (Term::Ref(v), *ty.clone()),
                 None => {
                     let d = self.sigma.get(&v).unwrap();
-                    (d.to_term(v), d.to_type())
+                    (d.to_term(&self.sigma, v), d.to_type())
                 }
             },
             Imported(_, v) => {
@@ -619,21 +619,23 @@ impl Elaborator {
                 let y_loc = b.loc();
                 let (x, x_ty) = self.infer(*a)?;
                 let (y, y_ty) = self.infer(*b)?;
-                let (x_ty, x_associated, x_name) = if let Term::Cls {
+                let (x_ty, x_associated, x_meths, x_name) = if let Term::Cls {
                     class,
                     associated,
+                    methods,
                     object,
                 } = x_ty
                 {
-                    (*object, Some(associated), Some(class))
+                    (*object, Some(associated), Some(methods), Some(class))
                 } else {
-                    (x_ty, None, None)
+                    (x_ty, None, None, None)
                 };
                 let ty = match (x_ty, y_ty) {
                     (Term::Object(rx), Term::Object(ry)) => match x_name {
                         Some(n) => Term::Cls {
                             class: n,
                             associated: x_associated.unwrap(),
+                            methods: x_meths.unwrap(),
                             object: Box::new(Term::Object(Box::new(Term::Combine(true, rx, ry)))),
                         },
                         None => Term::Object(Box::new(Term::Combine(false, rx, ry))),

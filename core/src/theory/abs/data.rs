@@ -140,6 +140,7 @@ pub enum Term {
     Cls {
         class: Var,
         associated: HashMap<String, Self>,
+        methods: HashMap<String, Self>,
         object: Box<Self>,
     },
 

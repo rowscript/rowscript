@@ -44,7 +44,7 @@ impl Def<Expr> {
 }
 
 impl Def<Term> {
-    pub fn to_term(&self, v: Var) -> Term {
+    pub fn to_term(&self, sigma: &Sigma, v: Var) -> Term {
         use Body::*;
         match &self.body {
             Fn(f) => self.to_lam_term(f.clone()),
@@ -75,10 +75,20 @@ impl Def<Term> {
             Class {
                 associated,
                 members,
-                ..
+                methods,
             } => self.to_lam_term(Term::Cls {
                 class: self.name.clone(),
                 associated: associated.clone(),
+                methods: {
+                    let _ = sigma;
+                    let _ = methods;
+                    Default::default()
+                },
+                // FIXME: This panics.
+                //methods: methods
+                //    .iter()
+                //    .map(|(n, f)| (n.clone(), sigma.get(f).unwrap().to_term(sigma, f.clone())))
+                //    .collect(),
                 object: Box::new(Term::Object(Box::new(Term::Fields(
                     members
                         .iter()
@@ -265,7 +275,7 @@ impl ImplementsBody<Term> {
                 if !matches!(def.body, Alias(_)) {
                     return Err(ExpectedAlias(Ref(im), def.loc));
                 }
-                def.to_term(im.clone())
+                def.to_term(sigma, im.clone())
             }
             tm => tm.clone(),
         })

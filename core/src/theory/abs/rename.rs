@@ -147,10 +147,12 @@ impl Renamer {
             Cls {
                 class,
                 associated: a,
+                methods: m,
                 object,
             } => Cls {
                 class,
                 associated: a.into_iter().map(|(n, ty)| (n, self.term(ty))).collect(),
+                methods: m.into_iter().map(|(n, f)| (n, self.term(f))).collect(),
                 object: Box::new(self.term(*object)),
             },
             ErrorThrow(a) => ErrorThrow(Box::new(self.term(*a))),
