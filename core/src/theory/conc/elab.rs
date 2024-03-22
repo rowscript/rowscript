@@ -254,6 +254,23 @@ impl Elaborator {
                 let b = self.check(*b, ty)?;
                 Term::LocalUpdate(v, Box::new(a), Box::new(b))
             }
+            While(_, p, b, r) => {
+                let p = self.check(*p, &Term::Boolean)?;
+                let b = self.check(*b, &Term::Unit)?;
+                let r = self.check(*r, ty)?;
+                Term::While(Box::new(p), Box::new(b), Box::new(r))
+            }
+            Fori(_, b, r) => {
+                let b = self.check(*b, &Term::Unit)?;
+                let r = self.check(*r, ty)?;
+                Term::Fori(Box::new(b), Box::new(r))
+            }
+            Guard(_, p, b, r) => {
+                let p = self.check(*p, &Term::Boolean)?;
+                let b = self.check(*b, &Term::Unit)?;
+                let r = self.check(*r, ty)?;
+                Term::Guard(Box::new(p), Box::new(b), Box::new(r))
+            }
             Lam(loc, var, body) => {
                 let pi = self.nf(loc).term(ty.clone())?;
                 match pi {
@@ -367,7 +384,6 @@ impl Elaborator {
     fn infer_impl(&mut self, e: Expr) -> Result<(Term, Term), Error> {
         use Expr::*;
         use MetaKind::*;
-
         Ok(match e {
             Resolved(loc, v) => match self.gamma.get(&v) {
                 Some(ty) => (Term::Ref(v), *ty.clone()),
@@ -392,23 +408,6 @@ impl Elaborator {
             }
             Hole(loc) => self.insert_meta(loc, UserMeta),
             InsertedHole(loc) => self.insert_meta(loc, InsertedMeta),
-            While(_, p, b, r) => {
-                let p = self.check(*p, &Term::Boolean)?;
-                let b = self.check(*b, &Term::Unit)?;
-                let (r, ty) = self.infer(*r)?;
-                (Term::While(Box::new(p), Box::new(b), Box::new(r)), ty)
-            }
-            Fori(_, b, r) => {
-                let b = self.check(*b, &Term::Unit)?;
-                let (r, ty) = self.infer(*r)?;
-                (Term::Fori(Box::new(b), Box::new(r)), ty)
-            }
-            Guard(_, p, b, r) => {
-                let p = self.check(*p, &Term::Boolean)?;
-                let b = self.check(*b, &Term::Unit)?;
-                let (r, ty) = self.infer(*r)?;
-                (Term::Guard(Box::new(p), Box::new(b), Box::new(r)), ty)
-            }
             Return(_, a) => {
                 let a = self.check(*a, &self.checking_ret.clone().unwrap())?;
                 (Term::Return(Box::new(a)), Term::Unit)
