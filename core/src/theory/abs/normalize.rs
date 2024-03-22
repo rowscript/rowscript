@@ -326,15 +326,23 @@ impl<'a> Normalizer<'a> {
                 }
                 Fields(fields)
             }
-            Associate(a, n) => match *self.term_box(a)? {
-                Cls {
-                    class, associated, ..
-                } => match associated.get(&n) {
-                    Some(typ) => typ.clone(),
-                    None => return Err(UnresolvedField(n, Ref(class), self.loc)),
-                },
-                a => Associate(Box::new(a), n),
-            },
+            Associate(a, n) => {
+                let a = *self.term_box(a)?;
+                let (params, assoc) = match a.class_methods(self.sigma) {
+                    Some(PartialClass {
+                        type_params,
+                        associated,
+                        ..
+                    }) => (type_params, associated),
+                    None => return Ok(Associate(Box::new(a), n)),
+                };
+                let typ = match assoc.get(&n) {
+                    Some(v) => v,
+                    None => return Err(UnresolvedField(n, a, self.loc)),
+                };
+                let f = self.sigma.get(typ).unwrap().to_term(typ.clone());
+                self.apply(f, UnnamedImplicit, params.as_ref())?
+            }
             Combine(inplace_only, a, b) => {
                 let mut a = self.term_box(a)?;
                 let b = self.term_box(b)?;
@@ -577,6 +585,7 @@ impl<'a> Normalizer<'a> {
             Some(PartialClass {
                 applied_types,
                 methods,
+                ..
             }) => (applied_types, methods),
             None => return Err(UnsatisfiedConstraint(i.clone(), x.clone(), self.loc)),
         };
@@ -631,6 +640,7 @@ impl<'a> Normalizer<'a> {
             Some(PartialClass {
                 applied_types,
                 methods,
+                ..
             }) => (applied_types, methods.get(f.as_str()).unwrap().clone()),
             None => return Err(UnresolvedImplementation(ty, self.loc)),
         };

@@ -153,6 +153,8 @@ pub enum Term {
 
 pub struct PartialClass {
     pub applied_types: Box<[Term]>,
+    pub type_params: Box<[Term]>,
+    pub associated: HashMap<String, Var>,
     pub methods: HashMap<String, Var>,
 }
 
@@ -187,11 +189,15 @@ impl Term {
 
         let mut x = self;
         loop {
-            let (args, methods) = match x {
+            let (params, associated, methods) = match x {
                 Cls {
                     class, type_args, ..
                 } => match &sigma.get(class).unwrap().body {
-                    Class { methods, .. } => (type_args, methods.clone()),
+                    Class {
+                        associated,
+                        methods,
+                        ..
+                    } => (type_args.clone(), associated.clone(), methods.clone()),
                     _ => unreachable!(),
                 },
                 Lam(_, body) => {
@@ -201,15 +207,18 @@ impl Term {
                 _ => return None,
             };
             let mut applied = Vec::default();
-            for arg in args {
+            for arg in params.iter() {
                 if matches!(arg, Ref(..)) {
                     continue;
                 }
                 applied.push(arg.clone())
             }
             let applied_types = applied.into_boxed_slice();
+            let type_params = params.into_boxed_slice();
             return Some(PartialClass {
                 applied_types,
+                type_params,
+                associated,
                 methods,
             });
         }

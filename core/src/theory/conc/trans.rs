@@ -434,10 +434,14 @@ impl Trans {
         let name = Var::from(pairs.next().unwrap());
 
         let mut tele = Tele::default();
+
         let mut associated = HashMap::default();
+        let mut associated_defs = Vec::default();
+
         let mut members = Vec::default();
         let mut method_defs = Vec::default();
         let mut methods = HashMap::default();
+
         let mut ctor_body_obj = Vec::default();
         let mut ctor_params = UntupledParams::new(loc);
 
@@ -446,10 +450,23 @@ impl Trans {
                 Rule::implicit_id => tele.push(Self::implicit_param(p)),
                 Rule::associated_type => {
                     let mut t = p.into_inner();
-                    let var = Var::new(t.next().unwrap().as_str());
-                    let name = var.to_string();
+
+                    let typ_name = t.next().unwrap();
+                    let typ_name_loc = Loc::from(typ_name.as_span());
+                    let typ_var = Var::new(typ_name.as_str());
+                    let typ_name = typ_var.to_string();
+                    let mangled_typ_var = name.associated(typ_var);
+
                     let typ = self.type_expr(t.next().unwrap());
-                    associated.insert(name, (var, typ));
+
+                    associated.insert(typ_name, mangled_typ_var.clone());
+                    associated_defs.push(Def {
+                        loc: typ_name_loc,
+                        name: mangled_typ_var,
+                        tele: tele.clone(),
+                        ret: Box::new(Univ(typ_name_loc)),
+                        body: Associated(typ),
+                    });
                 }
                 Rule::class_member => {
                     let loc = Loc::from(p.as_span());
@@ -477,10 +494,7 @@ impl Trans {
                     m.body = match m.body {
                         Fn(f) => Method {
                             class: name.clone(),
-                            associated_names: associated
-                                .iter()
-                                .map(|(_, (v, _))| v.clone())
-                                .collect(),
+                            associated: associated.clone(),
                             f,
                         },
                         _ => unreachable!(),
@@ -495,36 +509,39 @@ impl Trans {
         let ctor_loc = ctor_params.0;
         let ctor_param_vars = ctor_params.unresolved();
         let ctor_tupled_params = Param::from(ctor_params);
-        let ctor_body = Fn(Expr::wrap_tuple_locals(
-            ctor_loc,
-            &ctor_tupled_params.var,
-            ctor_param_vars,
-            Obj(loc, Box::new(Fields(loc, ctor_body_obj))),
-        ));
+        let ctor_body = Method {
+            class: name.clone(),
+            associated: associated.clone(),
+            f: Expr::wrap_tuple_locals(
+                ctor_loc,
+                &ctor_tupled_params.var,
+                ctor_param_vars,
+                Obj(loc, Box::new(Fields(loc, ctor_body_obj))),
+            ),
+        };
         let ctor_ret = Self::wrap_implicit_apps(&tele, Unresolved(loc, None, name.clone()));
         let mut ctor_tele = tele.clone();
         ctor_tele.push(ctor_tupled_params);
 
-        let mut defs = vec![
-            Def {
-                loc,
-                name: name.clone(),
-                tele,
-                ret: Box::new(Univ(loc)),
-                body: Class {
-                    associated,
-                    members,
-                    methods,
-                },
+        let mut defs = associated_defs;
+        defs.push(Def {
+            loc,
+            name: name.clone(),
+            tele,
+            ret: Box::new(Univ(loc)),
+            body: Class {
+                associated,
+                members,
+                methods,
             },
-            Def {
-                loc,
-                name: name.ctor(),
-                tele: ctor_tele,
-                ret: Box::new(ctor_ret),
-                body: ctor_body,
-            },
-        ];
+        });
+        defs.push(Def {
+            loc,
+            name: name.ctor(),
+            tele: ctor_tele,
+            ret: Box::new(ctor_ret),
+            body: ctor_body,
+        });
         defs.extend(method_defs);
         defs
     }

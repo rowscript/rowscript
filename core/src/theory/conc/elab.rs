@@ -1,14 +1,12 @@
-use std::collections::HashMap;
-
 use crate::maybe_grow;
 use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, Term};
-use crate::theory::abs::def::{gamma_to_tele, Body, ImplementsBody};
+use crate::theory::abs::def::{gamma_to_tele, tele_to_refs, Body, ImplementsBody};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
-use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit};
+use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, NameMap, Param, Tele, Var, VarGen};
@@ -23,8 +21,11 @@ pub struct Elaborator {
     pub ubiquitous: NameMap,
     pub sigma: Sigma,
     gamma: Gamma,
+
     vg: VarGen,
+
     checking_ret: Option<Term>,
+    checking_class_type_args: Option<Box<[Term]>>,
 }
 
 impl Elaborator {
@@ -47,6 +48,12 @@ impl Elaborator {
     fn def(&mut self, d: Def<Expr>) -> Result<Def<Term>, Error> {
         use Body::*;
 
+        // Help to sugar the associated type argument insertion, see `self.try_sugar_type_args`.
+        if let Method { class, .. } = &d.body {
+            self.checking_class_type_args =
+                Some(tele_to_refs(&self.sigma.get(class).unwrap().tele));
+        }
+
         let mut checked = Vec::default();
         let mut tele = Tele::default();
         for p in d.tele {
@@ -64,6 +71,11 @@ impl Elaborator {
                 info: p.info,
                 typ,
             })
+        }
+
+        // Help to sugar the associated type argument insertion, see `self.try_sugar_type_args`.
+        if matches!(d.body, Class { .. }) {
+            self.checking_class_type_args = Some(tele_to_refs(&tele));
         }
 
         let ret = self.check(*d.ret, &Term::Univ)?;
@@ -109,27 +121,24 @@ impl Elaborator {
                 members,
                 methods,
             } => {
-                let mut checked_associated = HashMap::default();
-                for (name, (v, typ)) in associated {
-                    checked_associated.insert(name, (v, self.check(typ, &ret)?));
-                }
                 let mut checked_members = Vec::default();
                 for (loc, id, typ) in members {
                     checked_members.push((loc, id, self.check(typ, &ret)?));
                 }
                 Class {
-                    associated: checked_associated,
+                    associated,
                     members: checked_members,
                     methods,
                 }
             }
+            Associated(t) => Associated(self.check(t, &ret)?),
             Method {
                 class,
-                associated_names,
+                associated,
                 f,
             } => Method {
                 class,
-                associated_names,
+                associated,
                 f: self.check(f, &ret)?,
             },
 
@@ -147,6 +156,7 @@ impl Elaborator {
             checked.ret = ret;
         }
         self.checking_ret = None;
+        self.checking_class_type_args = None;
 
         Ok(checked.clone())
     }
@@ -359,11 +369,17 @@ impl Elaborator {
         use MetaKind::*;
 
         Ok(match e {
-            Resolved(_, v) => match self.gamma.get(&v) {
+            Resolved(loc, v) => match self.gamma.get(&v) {
                 Some(ty) => (Term::Ref(v), *ty.clone()),
                 None => {
                     let d = self.sigma.get(&v).unwrap();
-                    (d.to_term(v), d.to_type())
+                    let tm = d.to_term(v);
+                    let ty = d.to_type();
+                    if matches!(d.body, Body::Associated(..)) {
+                        self.try_sugar_type_args(loc, tm, ty)?
+                    } else {
+                        (tm, ty)
+                    }
                 }
             },
             Imported(_, v) => {
@@ -922,6 +938,18 @@ impl Elaborator {
         }
         Ok(tm)
     }
+
+    fn try_sugar_type_args(&mut self, loc: Loc, tm: Term, ty: Term) -> Result<(Term, Term), Error> {
+        let args = match &self.checking_class_type_args {
+            Some(args) => args.clone(),
+            None => return Ok((tm, ty)),
+        };
+        let tm = args.iter().fold(tm, |a, arg| {
+            Term::App(Box::new(a), UnnamedImplicit, Box::new(arg.clone()))
+        });
+        let ty = self.nf(loc).apply_type(ty, args.as_ref())?;
+        Ok((tm, ty))
+    }
 }
 
 impl Default for Elaborator {
@@ -932,7 +960,8 @@ impl Default for Elaborator {
             sigma,
             gamma: Default::default(),
             vg: Default::default(),
-            checking_ret: None,
+            checking_ret: Default::default(),
+            checking_class_type_args: Default::default(),
         }
     }
 }

@@ -22,6 +22,10 @@ pub fn gamma_to_tele(g: &Gamma) -> Tele<Term> {
         .collect()
 }
 
+pub fn tele_to_refs(tele: &Tele<Term>) -> Box<[Term]> {
+    tele.iter().map(|p| Term::Ref(p.var.clone())).collect()
+}
+
 #[derive(Clone, Debug)]
 pub struct Def<T: Syntax> {
     pub loc: Loc,
@@ -81,7 +85,7 @@ impl Def<Term> {
                 type_args: self.tele.iter().map(|p| Term::Ref(p.var.clone())).collect(),
                 associated: associated
                     .iter()
-                    .map(|(n, (_, typ))| (n.clone(), typ.clone()))
+                    .map(|(n, v)| (n.clone(), Term::Ref(v.clone())))
                     .collect(),
                 object: Box::new(Term::Object(Box::new(Term::Fields(
                     members
@@ -90,6 +94,7 @@ impl Def<Term> {
                         .collect(),
                 )))),
             }),
+            Associated(t) => self.to_lam_term(t.clone()),
             Method { f, .. } => self.to_lam_term(f.clone()),
 
             Undefined => Term::Undef(v),
@@ -176,7 +181,7 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     associated
                         .iter()
-                        .map(|(name, (_, typ))| format!("\ttype {name} = {typ};\n"))
+                        .map(|(name, v)| format!("\ttype {name} = {v};\n"))
                         .collect::<Vec<_>>()
                         .concat(),
                     members
@@ -190,8 +195,13 @@ impl<T: Syntax> Display for Def<T> {
                         .collect::<Vec<_>>()
                         .concat()
                 ),
-                Method { class, f, .. } => format!(
-                    "method {class}.{} {}: {} {{\n\t{f}\n}}",
+                Associated(t) => format!(
+                    "associated {} {} = {t};",
+                    self.name,
+                    Param::tele_to_string(&self.tele),
+                ),
+                Method { f, .. } => format!(
+                    "method {} {}: {} {{\n\t{f}\n}}",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
@@ -241,14 +251,15 @@ pub enum Body<T: Syntax> {
     Findable(Var),
 
     Class {
-        associated: HashMap<String, (Var, T)>,
+        associated: HashMap<String, Var>,
         members: Vec<(Loc, String, T)>,
         methods: HashMap<String, Var>,
     },
+    Associated(T),
     Method {
         class: Var,
-        /// Names of the associated types, only used during name resolving.
-        associated_names: Box<[Var]>,
+        /// Only usable during name resolving.
+        associated: HashMap<String, Var>,
         f: T,
     },
 

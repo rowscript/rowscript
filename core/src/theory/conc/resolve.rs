@@ -78,6 +78,22 @@ impl<'a> Resolver<'a> {
         let mut recoverable = Vec::default();
         let mut removable = Vec::default();
 
+        match &d.body {
+            Method { associated, .. } | Class { associated, .. } => {
+                for (raw, v) in associated.iter() {
+                    let old = self
+                        .names
+                        .insert(raw.clone(), ResolvedVar(VarKind::InModule, v.clone()));
+                    if let Some(old) = old {
+                        recoverable.push(old);
+                    } else {
+                        removable.push(v.clone());
+                    }
+                }
+            }
+            _ => {}
+        }
+
         let mut tele = Tele::default();
         for p in d.tele {
             if let Some(old) = self.insert(&p.var) {
@@ -125,10 +141,6 @@ impl<'a> Resolver<'a> {
                 members,
                 methods,
             } => {
-                let mut resolved_associated = HashMap::default();
-                for (name, (v, typ)) in associated {
-                    resolved_associated.insert(name, (v, self.expr(typ)?));
-                }
                 let mut names = RawNameSet::default();
                 let mut resolved_members = Vec::default();
                 for (loc, id, typ) in members {
@@ -136,18 +148,19 @@ impl<'a> Resolver<'a> {
                     resolved_members.push((loc, id, self.expr(typ)?));
                 }
                 Class {
-                    associated: resolved_associated,
+                    associated,
                     members: resolved_members,
                     methods,
                 }
             }
+            Associated(t) => Associated(self.expr(t)?),
             Method {
                 class,
-                associated_names,
+                associated,
                 f,
             } => Method {
                 class,
-                associated_names,
+                associated,
                 f: self.expr(f)?,
             },
 

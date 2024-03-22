@@ -92,6 +92,10 @@ impl Var {
         Self::new(format!("{self}__{m}"))
     }
 
+    pub fn associated(&self, m: Self) -> Self {
+        Self::new(format!("{self}::{m}"))
+    }
+
     pub fn ctor(&self) -> Self {
         Self::new(format!("{self}__new"))
     }

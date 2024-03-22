@@ -90,15 +90,15 @@ type Entry<K, V> = {
     value: V
 };
 
-//class MapIterator<K, V> {
-//    type Item = Entry<K, V>;
-//
-//    it: NativeMapIterator<Item>;
-//
-//    next(): Option<Item> {
-//        mapIter#next(this.it)
-//    }
-//}
+class MapIterator<K, V> {
+    type Item = Entry<K, V>;
+
+    it: NativeMapIterator<Item>;
+
+    next(): Option<Item> {
+        mapIter#next(this.it)
+    }
+}
 
 class Map<K, V> {
     type Key = K;
@@ -135,7 +135,7 @@ class Map<K, V> {
         map#clear(this.m)
     }
 
-//    iter(): MapIterator<K, V> {
-//        new MapIterator(map#iter(this.m))
-//    }
+    iter(): MapIterator<K, V> {
+        new MapIterator(map#iter(this.m))
+    }
 }
