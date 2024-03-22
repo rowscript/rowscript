@@ -126,8 +126,8 @@ impl<'a> Resolver<'a> {
                 methods,
             } => {
                 let mut resolved_associated = HashMap::default();
-                for (name, typ) in associated {
-                    resolved_associated.insert(name, self.expr(typ)?);
+                for (name, (v, typ)) in associated {
+                    resolved_associated.insert(name, (v, self.expr(typ)?));
                 }
                 let mut names = RawNameSet::default();
                 let mut resolved_members = Vec::default();
@@ -141,7 +141,15 @@ impl<'a> Resolver<'a> {
                     methods,
                 }
             }
-            Method(t, f) => Method(t, self.expr(f)?),
+            Method {
+                class,
+                associated_names,
+                f,
+            } => Method {
+                class,
+                associated_names,
+                f: self.expr(f)?,
+            },
 
             Undefined => unreachable!(),
             Meta(_, _) => unreachable!(),

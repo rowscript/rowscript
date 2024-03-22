@@ -1240,7 +1240,7 @@ impl Ecma {
                 Fn(f) => self.func_decl(&mut items, sigma, &def, f),
                 Postulate => self.postulate_decl(&mut items, &def),
                 Const(_, f) => self.const_decl(&mut items, sigma, &def, f),
-                Method(_, f) => self.func_decl(&mut items, sigma, &def, f),
+                Method { f, .. } => self.func_decl(&mut items, sigma, &def, f),
                 Undefined => unreachable!(),
                 _ => continue,
             } {

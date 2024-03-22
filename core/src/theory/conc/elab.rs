@@ -110,8 +110,8 @@ impl Elaborator {
                 methods,
             } => {
                 let mut checked_associated = HashMap::default();
-                for (name, typ) in associated {
-                    checked_associated.insert(name, self.check(typ, &ret)?);
+                for (name, (v, typ)) in associated {
+                    checked_associated.insert(name, (v, self.check(typ, &ret)?));
                 }
                 let mut checked_members = Vec::default();
                 for (loc, id, typ) in members {
@@ -123,7 +123,15 @@ impl Elaborator {
                     methods,
                 }
             }
-            Method(t, f) => Method(t, self.check(f, &ret)?),
+            Method {
+                class,
+                associated_names,
+                f,
+            } => Method {
+                class,
+                associated_names,
+                f: self.check(f, &ret)?,
+            },
 
             Undefined => unreachable!(),
             Meta(_, _) => unreachable!(),

@@ -446,9 +446,10 @@ impl Trans {
                 Rule::implicit_id => tele.push(Self::implicit_param(p)),
                 Rule::associated_type => {
                     let mut t = p.into_inner();
-                    let name = t.next().unwrap().as_str().to_string();
+                    let var = Var::new(t.next().unwrap().as_str());
+                    let name = var.to_string();
                     let typ = self.type_expr(t.next().unwrap());
-                    associated.insert(name, typ);
+                    associated.insert(name, (var, typ));
                 }
                 Rule::class_member => {
                     let loc = Loc::from(p.as_span());
@@ -474,7 +475,14 @@ impl Trans {
                     let method_var = name.method(m.name);
                     m.name = method_var.clone();
                     m.body = match m.body {
-                        Fn(f) => Method(name.clone(), f),
+                        Fn(f) => Method {
+                            class: name.clone(),
+                            associated_names: associated
+                                .iter()
+                                .map(|(_, (v, _))| v.clone())
+                                .collect(),
+                            f,
+                        },
                         _ => unreachable!(),
                     };
                     method_defs.push(m);

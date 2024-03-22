@@ -79,7 +79,10 @@ impl Def<Term> {
             } => self.to_lam_term(Term::Cls {
                 class: self.name.clone(),
                 type_args: self.tele.iter().map(|p| Term::Ref(p.var.clone())).collect(),
-                associated: associated.clone(),
+                associated: associated
+                    .iter()
+                    .map(|(n, (_, typ))| (n.clone(), typ.clone()))
+                    .collect(),
                 object: Box::new(Term::Object(Box::new(Term::Fields(
                     members
                         .iter()
@@ -87,7 +90,7 @@ impl Def<Term> {
                         .collect(),
                 )))),
             }),
-            Method(_, f) => self.to_lam_term(f.clone()),
+            Method { f, .. } => self.to_lam_term(f.clone()),
 
             Undefined => Term::Undef(v),
             Meta(_, s) => match s {
@@ -173,7 +176,7 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     associated
                         .iter()
-                        .map(|(name, typ)| format!("\ttype {name} = {typ};\n"))
+                        .map(|(name, (_, typ))| format!("\ttype {name} = {typ};\n"))
                         .collect::<Vec<_>>()
                         .concat(),
                     members
@@ -187,8 +190,8 @@ impl<T: Syntax> Display for Def<T> {
                         .collect::<Vec<_>>()
                         .concat()
                 ),
-                Method(_, f) => format!(
-                    "method {} {}: {} {{\n\t{f}\n}}",
+                Method { class, f, .. } => format!(
+                    "method {class}.{} {}: {} {{\n\t{f}\n}}",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
@@ -238,11 +241,16 @@ pub enum Body<T: Syntax> {
     Findable(Var),
 
     Class {
-        associated: HashMap<String, T>,
+        associated: HashMap<String, (Var, T)>,
         members: Vec<(Loc, String, T)>,
         methods: HashMap<String, Var>,
     },
-    Method(Var, T),
+    Method {
+        class: Var,
+        /// Names of the associated types, only used during name resolving.
+        associated_names: Box<[Var]>,
+        f: T,
+    },
 
     Undefined,
     Meta(MetaKind, Option<T>),
