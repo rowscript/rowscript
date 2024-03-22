@@ -580,7 +580,10 @@ impl Elaborator {
                     checked.push((key, val));
                 }
                 if checked.is_empty() {
-                    (Term::Kv(Default::default()), self.insert_meta(loc, InsertedMeta).0)
+                    (
+                        Term::Kv(Default::default()),
+                        self.insert_meta(loc, InsertedMeta).0,
+                    )
                 } else {
                     (
                         Term::Kv(checked),
