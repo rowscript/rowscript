@@ -1093,7 +1093,7 @@ impl Trans {
     fn map_literal_key(&self, loc: Loc, k: Pair<Rule>) -> Expr {
         use Expr::*;
         match k.as_rule() {
-            Rule::string => Str(loc, k.into_inner().next().unwrap().as_str().to_string()),
+            Rule::string => Str(loc, k.as_str().to_string()),
             Rule::number => Num(loc, k.into_inner().next().unwrap().as_str().to_string()),
             Rule::bigint => Big(loc, k.as_str().to_string()),
             Rule::boolean_false => False(loc),

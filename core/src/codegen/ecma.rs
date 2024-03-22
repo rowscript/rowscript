@@ -11,10 +11,10 @@ use swc_ecma_ast::{
     CondExpr, ContinueStmt, Decl, ExportDecl, Expr, ExprOrSpread, ExprStmt, FnDecl, ForStmt,
     Function, Ident, IfStmt, ImportDecl, ImportNamedSpecifier, ImportSpecifier,
     ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleDecl,
-    ModuleItem, NewExpr, Number as JsNumber, ObjectLit, Param as JsParam, ParenExpr, Pat, Prop,
-    PropName, PropOrSpread, ReturnStmt, SimpleAssignTarget, SpreadElement, Stmt, Str, SwitchCase,
-    SwitchStmt, ThrowStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr, VarDeclarator,
-    WhileStmt,
+    ModuleItem, NewExpr, Number as JsNumber, Number, ObjectLit, Param as JsParam, ParenExpr, Pat,
+    Prop, PropName, PropOrSpread, ReturnStmt, SimpleAssignTarget, SpreadElement, Stmt, Str,
+    SwitchCase, SwitchStmt, ThrowStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr,
+    VarDeclarator, WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -170,15 +170,77 @@ impl Ecma {
         Self::variant(loc, "None", Self::undefined())
     }
 
-    fn access(&mut self, sigma: &Sigma, loc: Loc, a: &Term, n: &str) -> Result<Expr, Error> {
-        Ok(Expr::Member(MemberExpr {
+    fn index(loc: Loc, e: Expr, value: f64) -> Expr {
+        Expr::Member(MemberExpr {
+            span: loc.into(),
+            obj: Box::new(e.clone()),
+            prop: MemberProp::Computed(ComputedPropName {
+                span: loc.into(),
+                expr: Box::new(Expr::Lit(Lit::Num(Number {
+                    span: loc.into(),
+                    value,
+                    raw: None,
+                }))),
+            }),
+        })
+    }
+
+    fn entry(loc: Loc, k: Expr, v: Expr) -> Expr {
+        Expr::Object(ObjectLit {
+            span: loc.into(),
+            props: vec![
+                PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                    key: PropName::Ident(Self::str_ident(loc, "key")),
+                    value: Box::new(k),
+                }))),
+                PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                    key: PropName::Ident(Self::str_ident(loc, "value")),
+                    value: Box::new(v),
+                }))),
+            ],
+        })
+    }
+
+    /// ```ts
+    /// ((x) => x.done ? None : Ok({key: x.value[0], value: x.value[1]}))(e)
+    /// ```
+    fn entryify_iteration_result(loc: Loc, e: Expr) -> Expr {
+        let item = Self::access(loc, Expr::Ident(Self::str_ident(loc, "x")), "value");
+        let k = Self::index(loc, item.clone(), 0.0);
+        let v = Self::index(loc, item, 1.0);
+        Self::paren_call(
+            loc,
+            Expr::Arrow(ArrowExpr {
+                span: loc.into(),
+                params: vec![Self::str_ident_pat(loc, "x")],
+                body: Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Cond(CondExpr {
+                    span: loc.into(),
+                    test: Box::new(Self::access(
+                        loc,
+                        Expr::Ident(Self::str_ident(loc, "x")),
+                        "done",
+                    )),
+                    cons: Box::new(Self::none(loc)),
+                    alt: Box::new(Self::ok(loc, Self::entry(loc, k, v))),
+                })))),
+                is_async: false,
+                is_generator: false,
+                type_params: None,
+                return_type: None,
+            }),
+            e,
+        )
+    }
+
+    fn access(loc: Loc, a: Expr, n: &str) -> Expr {
+        Expr::Member(MemberExpr {
             span: loc.into(),
             obj: Box::new(Expr::Paren(ParenExpr {
                 span: loc.into(),
-                expr: Box::new(self.expr(sigma, loc, a)?),
+                expr: Box::new(a),
             })),
             prop: MemberProp::Ident(Self::str_ident(loc, n)),
-        }))
+        })
     }
 
     fn prototype<const N: usize>(
@@ -191,7 +253,7 @@ impl Ecma {
     ) -> Result<Expr, Error> {
         Ok(Expr::Call(CallExpr {
             span: loc.into(),
-            callee: Callee::Expr(Box::new(self.access(sigma, loc, a, m)?)),
+            callee: Callee::Expr(Box::new(Self::access(loc, self.expr(sigma, loc, a)?, m))),
             args: args
                 .into_iter()
                 .map(|e| ExprOrSpread {
@@ -227,8 +289,23 @@ impl Ecma {
         }))
     }
 
+    fn well_known_symbol_call(
+        &mut self,
+        sigma: &Sigma,
+        loc: Loc,
+        v: &Term,
+        sym: &str,
+    ) -> Result<Expr, Error> {
+        Ok(Expr::Call(CallExpr {
+            span: loc.into(),
+            callee: Callee::Expr(Box::new(self.well_known_symbol(sigma, loc, v, sym)?)),
+            args: Default::default(),
+            type_args: None,
+        }))
+    }
+
     /// ```ts
-    /// ((x) => x.done ? None : Ok(x.value))(tm)
+    /// ((x) => x.done ? None : Ok(x.value))(e)
     /// ```
     fn optionify_iteration_result(loc: Loc, e: Expr) -> Expr {
         Self::paren_call(
@@ -238,19 +315,15 @@ impl Ecma {
                 params: vec![Self::str_ident_pat(loc, "x")],
                 body: Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Cond(CondExpr {
                     span: loc.into(),
-                    test: Box::new(Expr::Member(MemberExpr {
-                        span: loc.into(),
-                        obj: Box::new(Expr::Ident(Self::str_ident(loc, "x"))),
-                        prop: MemberProp::Ident(Self::special_ident("done")),
-                    })),
+                    test: Box::new(Self::access(
+                        loc,
+                        Expr::Ident(Self::str_ident(loc, "x")),
+                        "done",
+                    )),
                     cons: Box::new(Self::none(loc)),
                     alt: Box::new(Self::ok(
                         loc,
-                        Expr::Member(MemberExpr {
-                            span: loc.into(),
-                            obj: Box::new(Expr::Ident(Self::str_ident(loc, "x"))),
-                            prop: MemberProp::Ident(Self::special_ident("value")),
-                        }),
+                        Self::access(loc, Expr::Ident(Self::str_ident(loc, "x")), "value"),
                     )),
                 })))),
                 is_async: false,
@@ -832,12 +905,6 @@ impl Ecma {
                 value: Box::new(BigIntValue::from_str(v).unwrap()),
                 raw: None,
             })),
-            ArrIter(a) => Expr::Call(CallExpr {
-                span: loc.into(),
-                callee: Callee::Expr(Box::new(self.well_known_symbol(sigma, loc, a, "iterator")?)),
-                args: Default::default(),
-                type_args: None,
-            }),
             ArrIterNext(it) => {
                 Self::optionify_iteration_result(loc, self.prototype(sigma, loc, it, "next", [])?)
             }
@@ -854,7 +921,7 @@ impl Ecma {
                     elems,
                 })
             }
-            ArrLength(a) => self.access(sigma, loc, a, "length")?,
+            ArrLength(a) => Self::access(loc, self.expr(sigma, loc, a)?, "length"),
             ArrPush(a, v) => {
                 let v = self.expr(sigma, loc, v)?;
                 self.prototype(sigma, loc, a, "push", [v])?
@@ -889,6 +956,10 @@ impl Ecma {
                     })),
                 })),
             }),
+            ArrIter(a) => self.well_known_symbol_call(sigma, loc, a, "iterator")?,
+            MapIterNext(it) => {
+                Self::entryify_iteration_result(loc, self.prototype(sigma, loc, it, "next", [])?)
+            }
             Kv(xs) => {
                 let mut elems = Vec::default();
                 for (k, v) in xs {
@@ -939,6 +1010,7 @@ impl Ecma {
                 let k = self.expr(sigma, loc, k)?;
                 self.prototype(sigma, loc, m, "delete", [k])?
             }
+            MapIter(m) => self.well_known_symbol_call(sigma, loc, m, "iterator")?,
             MapClear(m) => self.prototype(sigma, loc, m, "clear", [])?,
             Obj(f) => match f.as_ref() {
                 Fields(fields) => {
@@ -972,7 +1044,7 @@ impl Ecma {
                     }),
                 ],
             }),
-            Access(a, n) => self.access(sigma, loc, a, n)?,
+            Access(a, n) => Self::access(loc, self.expr(sigma, loc, a)?, n),
             Down(a, to) => {
                 // ((x) => {a: x.a, b: x.b})(n)
                 let x = Self::str_ident(loc, "x");
