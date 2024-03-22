@@ -414,7 +414,6 @@ impl<'a> Resolver<'a> {
                 };
                 Switch(loc, Box::new(self.expr(*a)?), new, d)
             }
-            Constraint(loc, r) => Constraint(loc, Box::new(self.expr(*r)?)),
             ImplementsOf(loc, a) => ImplementsOf(loc, Box::new(self.expr(*a)?)),
 
             e => e,

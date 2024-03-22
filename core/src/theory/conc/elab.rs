@@ -799,10 +799,6 @@ impl Elaborator {
                 };
                 (Term::Switch(Box::new(a), m, d), ret_ty.unwrap())
             }
-            Find(_, _, f) => {
-                let ty = self.sigma.get(&f).unwrap().to_type();
-                (Term::Ref(f), ty)
-            }
             ImplementsOf(loc, a) => {
                 let (tm, ty) = self.infer(*a)?;
                 match tm {

@@ -90,8 +90,6 @@ pub enum Expr {
         Option<(Var, Box<Self>)>,
     ),
 
-    Constraint(Loc, Box<Self>),
-    Find(Loc, Var, Var),
     ImplementsOf(Loc, Box<Self>),
 }
 
@@ -169,8 +167,6 @@ impl Expr {
             Variant(loc, ..) => loc,
             Upcast(loc, ..) => loc,
             Switch(loc, ..) => loc,
-            Constraint(loc, ..) => loc,
-            Find(loc, ..) => loc,
             ImplementsOf(loc, ..) => loc,
         }
     }
@@ -337,8 +333,6 @@ impl Display for Expr {
                     }
                     return write!(f, "}}");
                 }
-                Constraint(_, r) => r.to_string(),
-                Find(_, i, f) => format!("{i}.{f}"),
                 ImplementsOf(_, a) => a.to_string(),
             }
             .as_str(),

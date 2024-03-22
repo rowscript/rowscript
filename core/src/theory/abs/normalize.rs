@@ -7,7 +7,7 @@ use crate::theory::abs::reflect::Reflector;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo;
-use crate::theory::conc::data::ArgInfo::{UnnamedExplicit, UnnamedImplicit};
+use crate::theory::conc::data::ArgInfo::UnnamedImplicit;
 use crate::theory::NameMap;
 use crate::theory::{Loc, Param, Var};
 use crate::Error;
@@ -69,8 +69,8 @@ impl<'a> Normalizer<'a> {
                     Meta(_, s) => match s {
                         Some(solved) => {
                             let mut ret = rename(Term::lam(&def.tele, solved.clone()));
-                            for (_, x) in sp {
-                                ret = App(Box::new(ret), UnnamedExplicit, Box::new(x))
+                            for (p, x) in sp {
+                                ret = App(Box::new(ret), p.into(), Box::new(x))
                             }
                             self.term(ret)?
                         }
