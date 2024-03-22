@@ -189,11 +189,13 @@ builtin =
   | "array#at"
   | "array#set"
   | "array#iter"
+  | "mapIter#next"
   | "map#has"
   | "map#get"
   | "map#set"
   | "map#delete"
   | "map#clear"
+  | "map#iter"
   }
 
 tyref =

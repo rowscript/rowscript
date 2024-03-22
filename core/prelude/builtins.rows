@@ -23,7 +23,7 @@ declare function boolean#__and__(a: boolean, b: boolean): boolean;
 declare function boolean#__not__(a: boolean): boolean;
 
 declare NativeArrayIterator<T>;
-declare function arrayIter#next<T>(a: NativeArrayIterator<T>): [Ok: T | None];
+declare function arrayIter#next<T>(it: NativeArrayIterator<T>): [Ok: T | None];
 
 declare NativeArray<T>;
 declare function array#length<T>(a: NativeArray<T>): number;
@@ -33,9 +33,13 @@ declare function array#at<T>(a: NativeArray<T>, i: number): [Ok: T | None];
 declare function array#set<T>(a: NativeArray<T>, i: number, v: T);
 declare function array#iter<T>(a: NativeArray<T>): NativeArrayIterator<T>;
 
+declare NativeMapIterator<T>;
+declare function mapIter#next<T>(it: NativeMapIterator<T>): [Ok: T | None];
+
 declare NativeMap<K, V>;
 declare function map#has<K, V>(m: NativeMap<K, V>, key: K): boolean;
 declare function map#get<K, V>(m: NativeMap<K, V>, key: K): V;
 declare function map#set<K, V>(m: NativeMap<K, V>, key: K, value: V);
 declare function map#delete<K, V>(m: NativeMap<K, V>, key: K): boolean;
 declare function map#clear<K, V>(m: NativeMap<K, V>);
+declare function map#iter<K, V>(m: NativeMap<K, V>): NativeMapIterator<{key: K, value: V}>;

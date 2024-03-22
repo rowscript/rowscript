@@ -88,7 +88,6 @@ pub enum Term {
     Big(String),
 
     ArrayIterator(Box<Self>),
-    ArrIter(Box<Self>),
     ArrIterNext(Box<Self>),
     Array(Box<Self>),
     Arr(Vec<Self>),
@@ -97,7 +96,10 @@ pub enum Term {
     ArrForeach(Box<Self>, Box<Self>),
     ArrAt(Box<Self>, Box<Self>),
     ArrInsert(Box<Self>, Box<Self>, Box<Self>),
+    ArrIter(Box<Self>),
 
+    MapIterator(Box<Self>),
+    MapIterNext(Box<Self>),
     Map(Box<Self>, Box<Self>),
     Kv(Vec<(Self, Self)>),
     MapHas(Box<Self>, Box<Self>),
@@ -105,6 +107,7 @@ pub enum Term {
     MapSet(Box<Self>, Box<Self>, Box<Self>),
     MapDelete(Box<Self>, Box<Self>),
     MapClear(Box<Self>),
+    MapIter(Box<Self>),
 
     Row,
     Fields(FieldMap),
@@ -280,7 +283,6 @@ impl Display for Term {
                 BigInt => "bigint".to_string(),
                 Big(v) => v.clone(),
                 ArrayIterator(t) => format!("NativeArrayIterator<{t}>"),
-                ArrIter(a) => format!("{a}.iter()"),
                 ArrIterNext(it) => format!("{it}.next()"),
                 Array(t) => format!("NativeArray<{t}>"),
                 Arr(xs) => format!(
@@ -295,6 +297,9 @@ impl Display for Term {
                 ArrForeach(a, f) => format!("{a}.forEach({f})"),
                 ArrAt(a, i) => format!("{a}.at({i})"),
                 ArrInsert(a, i, v) => format!("{a}.insert({i}, {v})"),
+                ArrIter(a) => format!("{a}.iter()"),
+                MapIterator(t) => format!("NativeMapIterator<{t}>"),
+                MapIterNext(it) => format!("{it}.next()"),
                 Map(k, v) => format!("NativeMap<{k}, {v}>"),
                 Kv(xs) => format!(
                     "{{{}}}",
@@ -308,6 +313,7 @@ impl Display for Term {
                 MapSet(m, k, v) => format!("{m}.set({k}, {v})"),
                 MapDelete(m, k) => format!("{m}.delete({k})"),
                 MapClear(m) => format!("{m}.clear()"),
+                MapIter(m) => format!("{m}.iter()"),
                 Row => "row".to_string(),
                 Fields(fields) => format!(
                     "({})",

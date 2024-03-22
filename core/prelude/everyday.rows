@@ -24,12 +24,12 @@ where (Ok: T) keyof 'A
     }
 }
 
-interface Iterator<I> {
-    next<T>(it: Iterator<T>): Option<T>;
+interface Iterator {
+    next(it: Iterator): Option<Iterator::Item>;
 }
 
-interface Iterable<I> {
-    iter<It: type -> type, T>(a: Iterable<T>): It<T> where Iterator<It>;
+interface Iterable {
+    iter<T>(a: Iterable): T where Iterator<T>;
 }
 
 class ArrayIterator<T> {
@@ -93,7 +93,7 @@ type Entry<K, V> = {
 //class MapIterator<K, V> {
 //    type Item = Entry<K, V>;
 //
-//    it: NativeMapIterator<T>;
+//    it: NativeMapIterator<Item>;
 //
 //    next(): Option<Item> {
 //        mapIter#next(this.it)
@@ -124,7 +124,7 @@ class Map<K, V> {
     }
 
     __setitem__(key: K, value: V) {
-        let ignored = this.set(key, value);
+        _ = this.set(key, value);
     }
 
     delete(key: K): boolean {
@@ -136,6 +136,6 @@ class Map<K, V> {
     }
 
 //    iter(): MapIterator<K, V> {
-//        new MapIterator(map#iter(this.a))
+//        new MapIterator(map#iter(this.m))
 //    }
 }

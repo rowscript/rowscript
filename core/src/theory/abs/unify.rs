@@ -115,6 +115,7 @@ impl<'a> Unifier<'a> {
             }
             (ArrayIterator(a), ArrayIterator(b)) => self.unify(a, b),
             (Array(a), Array(b)) => self.unify(a, b),
+            (MapIterator(a), MapIterator(b)) => self.unify(a, b),
             (Map(ka, va), Map(kb, vb)) => {
                 self.unify(ka, kb)?;
                 self.unify(va, vb)

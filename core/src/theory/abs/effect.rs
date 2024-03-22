@@ -61,10 +61,10 @@ pub fn has_side_effect(tm: &Term) -> bool {
         Find(a, ..) => has_side_effect(a),
 
         Extern(..) | MetaRef(..) | LocalSet(..) | LocalUpdate(..) | Return(..) | Continue
-        | Break | ArrIter(..) | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..)
-        | ArrForeach(..) | ArrAt(..) | ArrInsert(..) | Kv(..) | MapHas(..) | MapGet(..)
-        | MapSet(..) | MapDelete(..) | MapClear(..) | Unionify(..) | ErrorThrow(..)
-        | ConsoleLog(..) => true,
+        | Break | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..) | ArrForeach(..)
+        | ArrAt(..) | ArrInsert(..) | ArrIter(..) | MapIterNext(..) | Kv(..) | MapHas(..)
+        | MapGet(..) | MapSet(..) | MapDelete(..) | MapClear(..) | MapIter(..) | Unionify(..)
+        | ErrorThrow(..) | ConsoleLog(..) => true,
 
         Ref(..)
         | Qualified(..)
@@ -84,6 +84,7 @@ pub fn has_side_effect(tm: &Term) -> bool {
         | Big(..)
         | ArrayIterator(..)
         | Array(..)
+        | MapIterator(..)
         | Map(..)
         | Row
         | Associate(..)

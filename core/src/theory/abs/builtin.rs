@@ -69,6 +69,14 @@ fn option_type(t: Term) -> Term {
     )))
 }
 
+fn entry_type(k: Term, v: Term) -> Term {
+    Term::Object(Box::new(Term::Fields(
+        [("key".to_string(), k), ("value".to_string(), v)]
+            .into_iter()
+            .collect(),
+    )))
+}
+
 fn parameters<const T: usize, const V: usize>(
     types: [Var; T],
     params: [(Var, Term); V],
@@ -142,12 +150,15 @@ impl Builtins {
             .array_at()
             .array_set()
             .array_iter()
+            .map_iterator_type()
+            .map_iterator_next()
             .map_type()
             .map_has()
             .map_get()
             .map_set()
             .map_delete()
             .map_clear()
+            .map_iter()
     }
 
     fn func(self, name: &str, tele: Tele<Term>, ret: Term, f: Term) -> Self {
@@ -283,20 +294,17 @@ impl Builtins {
 
     fn array_iterator_next(self) -> Self {
         let t = Var::new("T");
-        let tupled = Var::tupled();
         let a = Var::new("a");
         let a_ty = Term::ArrayIterator(Box::new(Term::Ref(t.clone())));
+        let (tupled, tele) = parameters([t.clone()], [(a.clone(), a_ty.clone())]);
         self.func(
             "arrayIter#next",
-            vec![
-                type_param(t.clone()),
-                tuple_param(tupled.clone(), [(a.clone(), a_ty.clone())]),
-            ],
+            tele,
             option_type(Term::Ref(t)),
             explicit_tuple_local1(
                 a.clone(),
                 a_ty.clone(),
-                Term::Ref(tupled),
+                tupled,
                 Term::ArrIterNext(Box::new(Term::Ref(a))),
             ),
         )
@@ -306,7 +314,7 @@ impl Builtins {
         let t = Var::new("T");
         self.func(
             "NativeArray",
-            vec![implicit(t.clone(), Term::Univ)],
+            vec![type_param(t.clone())],
             Term::Univ,
             Term::Array(Box::new(Term::Ref(t))),
         )
@@ -504,6 +512,34 @@ impl Builtins {
         )
     }
 
+    fn map_iterator_type(self) -> Self {
+        let t = Var::new("T");
+        self.func(
+            "NativeMapIterator",
+            vec![type_param(t.clone())],
+            Term::Univ,
+            Term::MapIterator(Box::new(Term::Ref(t))),
+        )
+    }
+
+    fn map_iterator_next(self) -> Self {
+        let t = Var::new("T");
+        let m = Var::new("m");
+        let m_ty = Term::MapIterator(Box::new(Term::Ref(t.clone())));
+        let (tupled, tele) = parameters([t.clone()], [(m.clone(), m_ty.clone())]);
+        self.func(
+            "mapIter#next",
+            tele,
+            option_type(Term::Ref(t)),
+            explicit_tuple_local1(
+                m.clone(),
+                m_ty,
+                tupled,
+                Term::MapIterNext(Box::new(Term::Ref(m))),
+            ),
+        )
+    }
+
     fn map_type(self) -> Self {
         let k = Var::new("K");
         let v = Var::new("V");
@@ -679,25 +715,43 @@ impl Builtins {
     fn map_clear(self) -> Self {
         let k = Var::new("K");
         let v = Var::new("V");
-        let tupled = Var::tupled();
         let m = Var::new("m");
         let m_ty = Term::Map(
             Box::new(Term::Ref(k.clone())),
             Box::new(Term::Ref(v.clone())),
         );
+        let (tupled, tele) = parameters([k.clone(), v.clone()], [(m.clone(), m_ty.clone())]);
         self.func(
             "map#clear",
-            vec![
-                type_param(k.clone()),
-                type_param(v.clone()),
-                tuple_param(tupled.clone(), [(m.clone(), m_ty.clone())]),
-            ],
+            tele,
             Term::Unit,
             explicit_tuple_local1(
                 m.clone(),
                 m_ty,
-                Term::Ref(tupled),
+                tupled,
                 Term::MapClear(Box::new(Term::Ref(m))),
+            ),
+        )
+    }
+
+    fn map_iter(self) -> Self {
+        let k = Var::new("K");
+        let v = Var::new("V");
+        let m = Var::new("m");
+        let m_ty = Term::Map(
+            Box::new(Term::Ref(k.clone())),
+            Box::new(Term::Ref(v.clone())),
+        );
+        let (tupled, tele) = parameters([k.clone(), v.clone()], [(m.clone(), m_ty.clone())]);
+        self.func(
+            "map#iter",
+            tele,
+            Term::MapIterator(Box::new(entry_type(Term::Ref(k), Term::Ref(v)))),
+            explicit_tuple_local1(
+                m.clone(),
+                m_ty,
+                tupled,
+                Term::MapIter(Box::new(Term::Ref(m))),
             ),
         )
     }

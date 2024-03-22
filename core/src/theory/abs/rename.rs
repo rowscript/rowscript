@@ -76,7 +76,6 @@ impl Renamer {
             NumLt(a, b) => NumLt(Box::new(self.term(*a)), Box::new(self.term(*b))),
             NumGt(a, b) => NumGt(Box::new(self.term(*a)), Box::new(self.term(*b))),
             ArrayIterator(t) => ArrayIterator(Box::new(self.term(*t))),
-            ArrIter(a) => ArrIter(Box::new(self.term(*a))),
             ArrIterNext(it) => ArrIterNext(Box::new(self.term(*it))),
             Array(t) => Array(Box::new(self.term(*t))),
             Arr(xs) => Arr(xs.into_iter().map(|x| self.term(x)).collect()),
@@ -89,6 +88,9 @@ impl Renamer {
                 Box::new(self.term(*i)),
                 Box::new(self.term(*v)),
             ),
+            ArrIter(a) => ArrIter(Box::new(self.term(*a))),
+            MapIterator(t) => MapIterator(Box::new(self.term(*t))),
+            MapIterNext(it) => MapIterNext(Box::new(self.term(*it))),
             Map(k, v) => Map(Box::new(self.term(*k)), Box::new(self.term(*v))),
             Kv(xs) => Kv(xs
                 .into_iter()
@@ -103,6 +105,7 @@ impl Renamer {
             ),
             MapDelete(m, k) => MapDelete(Box::new(self.term(*m)), Box::new(self.term(*k))),
             MapClear(m) => MapClear(Box::new(self.term(*m))),
+            MapIter(a) => MapIter(Box::new(self.term(*a))),
             Fields(fields) => {
                 let mut m = FieldMap::default();
                 for (f, tm) in fields {

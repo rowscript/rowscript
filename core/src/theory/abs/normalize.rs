@@ -283,7 +283,6 @@ impl<'a> Normalizer<'a> {
                 }
             }
             ArrayIterator(t) => ArrayIterator(self.term_box(t)?),
-            ArrIter(a) => ArrIter(self.term_box(a)?),
             ArrIterNext(it) => ArrIterNext(self.term_box(it)?),
             Array(t) => Array(self.term_box(t)?),
             Arr(xs) => {
@@ -300,6 +299,9 @@ impl<'a> Normalizer<'a> {
             ArrInsert(a, i, v) => {
                 ArrInsert(self.term_box(a)?, self.term_box(i)?, self.term_box(v)?)
             }
+            ArrIter(a) => ArrIter(self.term_box(a)?),
+            MapIterator(t) => MapIterator(self.term_box(t)?),
+            MapIterNext(it) => MapIterNext(self.term_box(it)?),
             Map(k, v) => Map(self.term_box(k)?, self.term_box(v)?),
             Kv(xs) => {
                 let mut ret = Vec::default();
@@ -313,6 +315,7 @@ impl<'a> Normalizer<'a> {
             MapSet(m, k, v) => MapSet(self.term_box(m)?, self.term_box(k)?, self.term_box(v)?),
             MapDelete(m, k) => MapDelete(self.term_box(m)?, self.term_box(k)?),
             MapClear(m) => MapClear(self.term_box(m)?),
+            MapIter(a) => MapIter(self.term_box(a)?),
             Fields(mut fields) => {
                 for tm in fields.values_mut() {
                     // FIXME: not unwind-safe, refactor `Self::term` to accept a `&mut Term`
@@ -510,6 +513,20 @@ impl<'a> Normalizer<'a> {
         Ok(ret)
     }
 
+    pub fn apply_type(&mut self, f: Term, args: &[Term]) -> Result<Term, Error> {
+        use Term::*;
+        let mut ret = f;
+        for x in args {
+            match ret {
+                Pi(p, b) => {
+                    ret = self.with(&[(&p.var, x)], *b)?;
+                }
+                _ => unreachable!(),
+            }
+        }
+        Ok(ret)
+    }
+
     fn param(&mut self, mut p: Param<Term>) -> Result<Param<Term>, Error> {
         *p.typ = self.term(*p.typ)?;
         Ok(p)
@@ -556,19 +573,27 @@ impl<'a> Normalizer<'a> {
             }
         }
 
-        let meths = match x.class_methods(self.sigma) {
-            Some(meths) => meths.methods,
+        let (args, meths) = match x.class_methods(self.sigma) {
+            Some(PartialClass {
+                applied_types,
+                methods,
+            }) => (applied_types, methods),
             None => return Err(UnsatisfiedConstraint(i.clone(), x.clone(), self.loc)),
         };
         for f in fns {
-            let m_ty = match meths.get(f.as_str()) {
+            let mut m_ty = match meths.get(f.as_str()) {
                 Some(m) => self.sigma.get(m).unwrap().to_type(),
                 None => return Err(ClassMethodNotImplemented(f, i.clone(), x.clone(), self.loc)),
             };
+            if !args.is_empty() {
+                m_ty = self.apply_type(m_ty, args.as_ref())?;
+            }
+
             let f_ty = match self.sigma.get(&f).unwrap().to_type() {
                 Pi(p, body) => self.with(&[(&p.var, x)], *body)?,
                 _ => unreachable!(),
             };
+
             match self.unifier().unify(&m_ty, &f_ty) {
                 Ok(_) => continue,
                 Err(_) => return Err(ClassMethodNotImplemented(f, i.clone(), x.clone(), self.loc)),

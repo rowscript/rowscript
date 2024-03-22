@@ -1,7 +1,7 @@
 function log<T>(v: T);
 
-function f1<I: type -> type, T: type>(it: I<T>)
-where Iterator<I>
+function f1<T>(it: T)
+where Iterator<T>
 {
     const n = it.next();
     log(n);
@@ -10,7 +10,7 @@ where Iterator<I>
 function f0() {
     const a = [42];
     const it = a.iter();
-    f1<ArrayIterator, number>(it);
+    f1(it);
 }
 
 f0();
