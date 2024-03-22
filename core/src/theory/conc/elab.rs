@@ -555,7 +555,7 @@ impl Elaborator {
                 if checked.is_empty() {
                     (
                         Term::Arr(Default::default()),
-                        Term::Array(Box::new(self.insert_meta(loc, InsertedMeta).0)),
+                        self.insert_meta(loc, InsertedMeta).0,
                     )
                 } else {
                     (Term::Arr(checked), Term::Array(Box::new(v_ty.unwrap())))
@@ -580,10 +580,7 @@ impl Elaborator {
                     checked.push((key, val));
                 }
                 if checked.is_empty() {
-                    let k_ty = self.insert_meta(loc, InsertedMeta).0;
-                    let v_ty = self.insert_meta(loc, InsertedMeta).0;
-                    let m_ty = Term::Map(Box::new(k_ty), Box::new(v_ty));
-                    (Term::Kv(Default::default()), m_ty)
+                    (Term::Kv(Default::default()), self.insert_meta(loc, InsertedMeta).0)
                 } else {
                     (
                         Term::Kv(checked),
