@@ -1,4 +1,4 @@
-use log::info;
+use log::{debug, info, trace};
 
 use crate::maybe_grow;
 use crate::theory::abs::builtin::Builtins;
@@ -50,7 +50,7 @@ impl Elaborator {
     fn def(&mut self, d: Def<Expr>) -> Result<Def<Term>, Error> {
         use Body::*;
 
-        info!("checking definition: {}", d.name);
+        info!(target: "elab", "checking definition: {}", d.name);
 
         // Help to sugar the associated type argument insertion, see `self.try_sugar_type_args`.
         if let Method { class, .. } = &d.body {
@@ -162,6 +162,8 @@ impl Elaborator {
         self.checking_ret = None;
         self.checking_class_type_args = None;
 
+        debug!(target: "elab", "definition checked successfully: {checked}");
+
         Ok(checked.clone())
     }
 
@@ -231,6 +233,7 @@ impl Elaborator {
 
     fn check_impl(&mut self, e: Expr, ty: &Term) -> Result<Term, Error> {
         use Expr::*;
+        trace!(target: "elab", "checking expression: e={e}, ty={ty}");
         Ok(match e {
             Local(_, var, maybe_typ, a, b) => {
                 let (tm, typ) = self.check_anno(*a, maybe_typ)?;
@@ -388,6 +391,7 @@ impl Elaborator {
     fn infer_impl(&mut self, e: Expr) -> Result<(Term, Term), Error> {
         use Expr::*;
         use MetaKind::*;
+        trace!(target: "elab", "inferring expression: e={e}");
         Ok(match e {
             Resolved(loc, v) => match self.gamma.get(&v) {
                 Some(ty) => (Term::Ref(v), *ty.clone()),

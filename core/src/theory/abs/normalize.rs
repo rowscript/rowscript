@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use log::trace;
+
 use crate::theory::abs::data::{CaseMap, PartialClass, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::effect::has_side_effect;
@@ -54,6 +56,7 @@ impl<'a> Normalizer<'a> {
         use Body::*;
         use Term::*;
 
+        trace!(target: "normalize", "normalizing term: {tm}");
         Ok(match tm {
             Ref(x) => {
                 if let Some(y) = self.rho.get(&x) {
@@ -79,6 +82,7 @@ impl<'a> Normalizer<'a> {
                                 def.body = Meta(k, Some(tm.clone()));
                                 tm
                             } else {
+                                trace!(target: "unify", "cannot solve meta: {x}");
                                 MetaRef(k, x.clone(), sp)
                             }
                         }
@@ -88,7 +92,6 @@ impl<'a> Normalizer<'a> {
                 self.sigma.insert(x, def);
                 ret
             }
-            Undef(x) => self.sigma.get(&x).unwrap().to_term(x),
             Cls {
                 class,
                 type_args,

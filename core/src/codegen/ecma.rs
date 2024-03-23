@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str::FromStr;
 
+use log::debug;
 use num_bigint::BigInt as BigIntValue;
 use swc_atoms::js_word;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
@@ -1308,6 +1309,7 @@ impl Ecma {
         use Body::*;
         let mut items = Vec::default();
         for def in defs {
+            debug!(target: "codegen", "generating definition: {def}");
             match match &def.body {
                 Fn(f) => self.func_decl(&mut items, sigma, &def, f),
                 Postulate => self.postulate_decl(&mut items, &def),

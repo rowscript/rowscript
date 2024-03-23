@@ -355,7 +355,7 @@ impl Display for Term {
                 Upcast(a) => format!("upcast<{a}>"),
                 Up(a, _, _) => format!("[...{a}]"),
                 Switch(a, cs, d) => {
-                    write!(f, "switch ({a}) {{")?;
+                    writeln!(f, "switch ({a}) {{")?;
                     for (n, (v, e)) in cs {
                         writeln!(f, "\tcase {n}({v}): {e}")?;
                     }
