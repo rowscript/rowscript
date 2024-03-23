@@ -1,3 +1,5 @@
+use log::info;
+
 use crate::maybe_grow;
 use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, Term};
@@ -47,6 +49,8 @@ impl Elaborator {
 
     fn def(&mut self, d: Def<Expr>) -> Result<Def<Term>, Error> {
         use Body::*;
+
+        info!("checking definition: {}", d.name);
 
         // Help to sugar the associated type argument insertion, see `self.try_sugar_type_args`.
         if let Method { class, .. } = &d.body {

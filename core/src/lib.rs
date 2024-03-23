@@ -174,7 +174,7 @@ pub struct Module {
 }
 
 pub struct Driver {
-    path: PathBuf,
+    path: Box<Path>,
     trans: Trans,
     loaded: Loaded,
     elab: Elaborator,
@@ -187,10 +187,10 @@ enum Loadable {
 }
 
 impl Driver {
-    pub fn new(path: PathBuf, target: Box<dyn Target>) -> Self {
+    pub fn new(path: &Path, target: Box<dyn Target>) -> Self {
         let codegen = Codegen::new(target, path.join(OUTDIR));
         Self {
-            path,
+            path: path.into(),
             trans: Default::default(),
             loaded: Default::default(),
             elab: Default::default(),
@@ -217,11 +217,14 @@ impl Driver {
         let mut includes = Vec::default();
 
         let (path, module) = match loadable {
-            ViaID(m) => (m.to_source_path(&self.path), Some(m)),
+            ViaID(m) => (m.to_source_path(self.path.as_ref()), Some(m)),
             ViaPath(p) => (p, None),
         };
 
-        for r in path.read_dir().unwrap() {
+        for r in path
+            .read_dir()
+            .map_err(|e| Error::IO(path.into_boxed_path(), e))?
+        {
             let entry = r.unwrap();
             if entry.file_type().unwrap().is_dir() {
                 continue;

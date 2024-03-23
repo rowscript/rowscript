@@ -60,11 +60,11 @@ pub fn has_side_effect(tm: &Term) -> bool {
         }
         Find(a, ..) => has_side_effect(a),
 
-        Extern(..) | MetaRef(..) | LocalSet(..) | LocalUpdate(..) | Return(..) | Continue
-        | Break | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..) | ArrForeach(..)
-        | ArrAt(..) | ArrInsert(..) | ArrIter(..) | MapIterNext(..) | Kv(..) | MapHas(..)
-        | MapGet(..) | MapSet(..) | MapDelete(..) | MapClear(..) | MapIter(..) | Unionify(..)
-        | ErrorThrow(..) | ConsoleLog(..) => true,
+        Extern(..) | MetaRef(..) | Undef(..) | LocalSet(..) | LocalUpdate(..) | Return(..)
+        | Continue | Break | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..)
+        | ArrForeach(..) | ArrAt(..) | ArrInsert(..) | ArrIter(..) | MapIterNext(..) | Kv(..)
+        | MapHas(..) | MapGet(..) | MapSet(..) | MapDelete(..) | MapClear(..) | MapIter(..)
+        | Unionify(..) | ErrorThrow(..) | ConsoleLog(..) => true,
 
         Ref(..)
         | Qualified(..)
@@ -100,7 +100,5 @@ pub fn has_side_effect(tm: &Term) -> bool {
         | ImplementsSat
         | Reflected(..)
         | Cls { .. } => false,
-
-        Undef(..) => unreachable!(),
     }
 }

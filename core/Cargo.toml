@@ -14,12 +14,6 @@ codegen-ecma = [
     "dep:num-bigint",
 ]
 
-[dependencies.pest]
-version = "2.7.8"
-
-[dependencies.pest_derive]
-version = "2.7.8"
-
 [dependencies.thiserror]
 version = "1.0.58"
 
@@ -28,6 +22,16 @@ version = "0.4.0"
 
 [dependencies.stacker]
 version = "0.1.15"
+
+[dependencies.log]
+version = "0.4.21"
+features = ["kv"]
+
+[dependencies.pest]
+version = "2.7.8"
+
+[dependencies.pest_derive]
+version = "2.7.8"
 
 [dependencies]
 swc_ecma_parser = { version = "0.143.10", optional = true }

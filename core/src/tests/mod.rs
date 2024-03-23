@@ -24,6 +24,7 @@ use crate::{Driver, Error};
 
 mod playground;
 
+mod example_nqueens;
 mod example_phi;
 
 mod fail_hole;
@@ -98,7 +99,7 @@ fn run_helper(mod_path: &str) -> Result<(), Error> {
         .join("src")
         .join("tests")
         .join(mod_path.to_string().split("::").last().unwrap());
-    let mut driver = Driver::new(pkg, target);
+    let mut driver = Driver::new(pkg.as_path(), target);
     driver.run()?;
     parse_outfiles(&driver.codegen.outdir)
 }

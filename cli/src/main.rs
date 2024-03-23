@@ -1,6 +1,9 @@
+use std::env::set_var;
 use std::path::PathBuf;
+use std::process::ExitCode;
 
 use clap::{Parser, ValueEnum};
+use log::error;
 
 use rowscript_core::codegen::{ecma, noop, Target};
 use rowscript_core::Driver;
@@ -12,6 +15,8 @@ struct Args {
     path: PathBuf,
     #[arg(short, long, value_enum, default_value_t = DEFAULT_TARGET_ID)]
     target: TargetID,
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    verbose: u8,
 }
 
 #[cfg(feature = "codegen-ecma")]
@@ -35,9 +40,25 @@ impl From<TargetID> for Box<dyn Target> {
     }
 }
 
-fn main() {
-    let args = Args::parse();
-    Driver::new(args.path, args.target.into())
+fn main() -> ExitCode {
+    let Args {
+        path,
+        target,
+        verbose,
+    } = Args::parse();
+
+    if let Some(lvl) = match verbose {
+        1 => Some("info"),
+        2 => Some("debug"),
+        3 => Some("trace"),
+        _ => None,
+    } {
+        set_var("RUST_LOG", lvl);
+    }
+    env_logger::init();
+
+    Driver::new(&path, target.into())
         .run()
-        .expect("compilation failed")
+        .map_err(|e| error!("compilation failed: {e}"))
+        .map_or(ExitCode::FAILURE, |_| ExitCode::SUCCESS)
 }
