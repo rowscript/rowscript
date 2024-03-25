@@ -474,15 +474,21 @@ impl Trans {
                     let m = Var::from(f.next().unwrap());
                     let typ = self.type_expr(f.next().unwrap());
                     members.push((loc, m.to_string(), typ.clone()));
-                    ctor_body_obj.push((m.to_string(), Unresolved(loc, None, m.clone())));
-                    ctor_params.push(
-                        loc,
-                        Param {
-                            var: m,
-                            info: Explicit,
-                            typ: Box::new(typ),
-                        },
-                    );
+                    let v = match f.next() {
+                        None => {
+                            ctor_params.push(
+                                loc,
+                                Param {
+                                    var: m.clone(),
+                                    info: Explicit,
+                                    typ: Box::new(typ),
+                                },
+                            );
+                            Unresolved(loc, None, m.clone())
+                        }
+                        Some(e) => self.expr(e),
+                    };
+                    ctor_body_obj.push((m.to_string(), v));
                 }
                 Rule::class_method => {
                     let loc = Loc::from(p.as_span());

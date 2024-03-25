@@ -1,7 +1,5 @@
 import .outside;
 
-function log(m: string);
-
 class N {
     n: number;
 }
@@ -9,7 +7,7 @@ class N {
 const n0 = new N(42);
 
 function foo() {
-    log("foo");
+    console.log("foo");
 }
 
 class Foo {
@@ -21,12 +19,18 @@ class Foo {
 
     foo() {
         this.update();
-        log("Foo::foo");
+        console.log("Foo::foo");
     }
 }
 
 new Foo(42).foo();
 
 function f() {
-    log(new ::outside::Outside("hello").outside());
+    console.log(new ::outside::Outside("hello").outside());
 }
+
+class Bar {
+    n: number = 42;
+}
+
+console.log(new Bar());

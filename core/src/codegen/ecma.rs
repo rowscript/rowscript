@@ -599,13 +599,12 @@ impl Ecma {
         &mut self,
         sigma: &Sigma,
         loc: Loc,
-        kind: VarDeclKind,
         v: &Var,
         tm: &Term,
     ) -> Result<VarDecl, Error> {
         Ok(VarDecl {
             span: loc.into(),
-            kind,
+            kind: VarDeclKind::Var,
             declare: false,
             decls: vec![VarDeclarator {
                 span: loc.into(),
@@ -670,24 +669,10 @@ impl Ecma {
         use Term::*;
 
         let (init, body) = match body {
-            Local(p, a, b) => (
-                Some(VarDeclOrExpr::VarDecl(Box::new(self.local_decl(
-                    sigma,
-                    loc,
-                    VarDeclKind::Const,
-                    &p.var,
-                    a,
-                )?))),
-                b,
-            ),
-            LocalSet(p, a, b) => (
-                Some(VarDeclOrExpr::VarDecl(Box::new(self.local_decl(
-                    sigma,
-                    loc,
-                    VarDeclKind::Let,
-                    &p.var,
-                    a,
-                )?))),
+            Local(p, a, b) | LocalSet(p, a, b) => (
+                Some(VarDeclOrExpr::VarDecl(Box::new(
+                    self.local_decl(sigma, loc, &p.var, a)?,
+                ))),
                 b,
             ),
             LocalUpdate(v, a, b) => (
@@ -761,24 +746,10 @@ impl Ecma {
         let mut tm = strip_untupled_lets(body);
         loop {
             match tm {
-                Local(p, a, b) => {
-                    stmts.push(Stmt::Decl(Decl::Var(Box::new(self.local_decl(
-                        sigma,
-                        loc,
-                        VarDeclKind::Const,
-                        &p.var,
-                        a,
-                    )?))));
-                    tm = b
-                }
-                LocalSet(p, a, b) => {
-                    stmts.push(Stmt::Decl(Decl::Var(Box::new(self.local_decl(
-                        sigma,
-                        loc,
-                        VarDeclKind::Let,
-                        &p.var,
-                        a,
-                    )?))));
+                Local(p, a, b) | LocalSet(p, a, b) => {
+                    stmts.push(Stmt::Decl(Decl::Var(Box::new(
+                        self.local_decl(sigma, loc, &p.var, a)?,
+                    ))));
                     tm = b
                 }
                 LocalUpdate(v, a, b) => {

@@ -11,7 +11,6 @@ reserved =
   | "const"
   | "continue"
   | "debugger"
-  | "default"
   | "do"
   | "else"
   | "export"
@@ -101,6 +100,7 @@ reserved =
   //| "get"
   //| "set"
   //| "delete"
+  //| "default"
   }
 
 camelback_id = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
@@ -621,7 +621,7 @@ class_def =
   ~ "}"
   }
 associated_type = { "type" ~ type_id ~ "=" ~ type_expr ~ ";" }
-class_member = { prop_id ~ ":" ~ type_expr ~ ";" }
+class_member = { prop_id ~ ":" ~ type_expr ~ ("=" ~ expr)? ~ ";" }
 class_method =
   { (fn_id | magic_fn_id)
   ~ implicits?
