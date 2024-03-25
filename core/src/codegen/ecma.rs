@@ -469,7 +469,7 @@ impl Ecma {
             params: Self::type_erased_params(def.loc, &def.tele),
             decorators: Default::default(),
             span: def.loc.into(),
-            body: Some(self.block(sigma, def.loc, body, true, true)?),
+            body: Some(self.block(sigma, def.loc, body, true)?),
             is_generator: false,
             is_async: false,
             type_params: None,
@@ -545,9 +545,7 @@ impl Ecma {
             Expr::Arrow(ArrowExpr {
                 span: loc.into(),
                 params: v.map_or_else(Default::default, |v| vec![Self::ident_pat(loc, v)]),
-                body: Box::new(BlockStmtOrExpr::BlockStmt(
-                    self.block(sigma, loc, b, true, true)?,
-                )),
+                body: Box::new(BlockStmtOrExpr::BlockStmt(self.block(sigma, loc, b, true)?)),
                 is_async: false,
                 is_generator: false,
                 type_params: None,
@@ -572,7 +570,7 @@ impl Ecma {
                     span: loc.into(),
                     params: vec![Self::ident_pat(loc, v)],
                     body: Box::new(BlockStmtOrExpr::BlockStmt(
-                        self.block(sigma, loc, tm, true, true)?,
+                        self.block(sigma, loc, tm, true)?,
                     )),
                     is_async: false,
                     is_generator: false,
@@ -664,7 +662,7 @@ impl Ecma {
         Ok(Stmt::While(WhileStmt {
             span: loc.into(),
             test: Box::new(self.expr(sigma, loc, p)?),
-            body: Box::new(Stmt::Block(self.block(sigma, loc, b, true, false)?)),
+            body: Box::new(Stmt::Block(self.block(sigma, loc, b, false)?)),
         }))
     }
 
@@ -721,7 +719,7 @@ impl Ecma {
             init,
             test,
             update,
-            body: Box::new(Stmt::Block(self.block(sigma, loc, body, true, false)?)),
+            body: Box::new(Stmt::Block(self.block(sigma, loc, body, false)?)),
         }))
     }
 
@@ -729,7 +727,7 @@ impl Ecma {
         Ok(Stmt::If(IfStmt {
             span: loc.into(),
             test: Box::new(self.expr(sigma, loc, p)?),
-            cons: Box::new(Stmt::Block(self.block(sigma, loc, b, true, false)?)),
+            cons: Box::new(Stmt::Block(self.block(sigma, loc, b, false)?)),
             alt: None,
         }))
     }
@@ -739,7 +737,6 @@ impl Ecma {
         sigma: &Sigma,
         loc: Loc,
         body: &Term,
-        strip_untupled: bool,
         returns: bool,
     ) -> Result<BlockStmt, Error> {
         fn strip_untupled_lets(mut tm: &Term) -> &Term {
@@ -761,11 +758,7 @@ impl Ecma {
         let mut stmts = Vec::default();
         let span = loc.into();
 
-        let mut tm = body;
-        if strip_untupled {
-            tm = &strip_untupled_lets(tm);
-        }
-
+        let mut tm = strip_untupled_lets(body);
         loop {
             match tm {
                 Local(p, a, b) => {
@@ -880,9 +873,7 @@ impl Ecma {
                 Explicit => Expr::Arrow(ArrowExpr {
                     span: loc.into(),
                     params: Self::type_erased_param_pat(loc, p),
-                    body: Box::new(BlockStmtOrExpr::BlockStmt(
-                        self.block(sigma, loc, b, true, true)?,
-                    )),
+                    body: Box::new(BlockStmtOrExpr::BlockStmt(self.block(sigma, loc, b, true)?)),
                     is_async: false,
                     is_generator: false,
                     type_params: None,
@@ -1227,7 +1218,7 @@ impl Ecma {
             Find(_, _, f) => return Err(NonErasable(Ref(f.clone()), loc)),
 
             tm if matches!(tm, Fori(..) | While(..) | Guard(..)) => {
-                Self::iife(loc, self.block(sigma, loc, tm, false, true)?)
+                Self::iife(loc, self.block(sigma, loc, tm, true)?)
             }
 
             _ => unreachable!(),
@@ -1411,10 +1402,7 @@ impl Ecma {
         items.push(match def.name.as_str() {
             UNBOUND => ModuleItem::Stmt(Stmt::Expr(ExprStmt {
                 span: def.loc.into(),
-                expr: Box::new(Self::iife(
-                    def.loc,
-                    self.block(sigma, def.loc, f, true, false)?,
-                )),
+                expr: Box::new(Self::iife(def.loc, self.block(sigma, def.loc, f, false)?)),
             })),
             _ => Self::try_export_decl(
                 def,
@@ -1427,7 +1415,7 @@ impl Ecma {
                         name: Self::ident_pat(def.loc, &def.name),
                         init: Some(Box::new(Self::iife(
                             def.loc,
-                            self.block(sigma, def.loc, f, true, true)?,
+                            self.block(sigma, def.loc, f, true)?,
                         ))),
                         definite: false,
                     }],
