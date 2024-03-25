@@ -11,22 +11,22 @@ function lastQueenHasConflict(queens: Array<number>, row: number): boolean {
     false
 }
 
-function dfs(n: number, dep: number, queens: Array<number>): number {
+function dfs(queens: Array<number>, n: number, dep: number): number {
     if (dep == n) {
         return 1;
     }
     let cnt = 0;
     for (let c = 0; c < n; c = c + 1) {
         queens[dep] = c;
-        if (!lastQueenHasConflict(queens, dep)) {
-            cnt = cnt + dfs(n, dep + 1, queens);
+        if (!queens.lastQueenHasConflict(dep)) {
+            cnt = cnt + queens.dfs(n, dep + 1);
         }
     }
     cnt
 }
 
 function nqueens(n: number): number {
-    dfs(n, 0, [])
+    ([]).dfs(n, 0)
 }
 
 console.log(nqueens(8));
