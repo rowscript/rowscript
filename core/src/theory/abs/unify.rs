@@ -63,7 +63,18 @@ impl<'a> Unifier<'a> {
             (ImplementsOf(a, _), b) => self.unify(a, b),
             (a, ImplementsOf(b, _)) => self.unify(a, b),
 
-            (Cls { class: m, .. }, Cls { class: n, .. }) if m == n => Ok(()),
+            (
+                Cls {
+                    class: m,
+                    object: a,
+                    ..
+                },
+                Cls {
+                    class: n,
+                    object: b,
+                    ..
+                },
+            ) if m == n => self.unify(a, b),
             (Cls { object, .. }, b) => self.unify(object, b),
             (a, Cls { object, .. }) => self.unify(a, object),
 

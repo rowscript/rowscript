@@ -410,26 +410,23 @@ impl Builtins {
 
     fn array_at(self) -> Self {
         let t = Var::new("T");
-        let tupled = Var::tupled();
         let a = Var::new("a");
         let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
         let a_rhs = a.untupled_rhs();
         let i = Var::new("i");
         let i_ty = Term::Number;
+        let (tupled, tele) = parameters(
+            [t.clone()],
+            [(a.clone(), a_ty.clone()), (i.clone(), i_ty.clone())],
+        );
         self.func(
             "array#at",
-            vec![
-                type_param(t.clone()),
-                tuple_param(
-                    tupled.clone(),
-                    [(a.clone(), a_ty.clone()), (i.clone(), i_ty.clone())],
-                ),
-            ],
+            tele,
             option_type(Term::Ref(t)),
             explicit_tuple_local(
                 (a.clone(), a_ty),
                 (a_rhs.clone(), explicit_sigma1(i.clone(), i_ty.clone())),
-                Term::Ref(tupled),
+                tupled,
                 explicit_tuple_local1(
                     i.clone(),
                     i_ty,

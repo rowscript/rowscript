@@ -1,4 +1,3 @@
-/*
 function isConflict(r1: number, c1: number, r2: number, c2: number): boolean {
     r1 == r2 || c1 == c2 || r1 - c1 == r2 - c2 || r1 + c1 == r2 + c2
 }
@@ -31,6 +30,3 @@ function nqueens(n: number): number {
 }
 
 console.log(nqueens(8));
-*/
-
-console.log("TODO");

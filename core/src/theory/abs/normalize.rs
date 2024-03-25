@@ -126,7 +126,15 @@ impl<'a> Normalizer<'a> {
             LocalUpdate(p, a, b) => LocalUpdate(p, self.term_box(a)?, self.term_box(b)?),
             While(p, b, r) => While(self.term_box(p)?, self.term_box(b)?, self.term_box(r)?),
             Fori(b, r) => Fori(self.term_box(b)?, self.term_box(r)?),
-            Guard(p, b, r) => Guard(self.term_box(p)?, self.term_box(b)?, self.term_box(r)?),
+            Guard(p, b, r) => {
+                let p = self.term_box(p)?;
+                let b = self.term_box(b)?;
+                let r = self.term_box(r)?;
+                match *p {
+                    False => *r,
+                    p => Guard(Box::new(p), b, r),
+                }
+            }
             Return(a) => Return(self.term_box(a)?),
             Pi(p, b) => Pi(self.param(p)?, self.term_box(b)?),
             Lam(p, b) => Lam(self.param(p)?, self.term_box(b)?),
@@ -144,13 +152,33 @@ impl<'a> Normalizer<'a> {
             Sigma(p, b) => Sigma(self.param(p)?, self.term_box(b)?),
             Tuple(a, b) => Tuple(self.term_box(a)?, self.term_box(b)?),
             TupleLocal(p, q, a, b) => {
+                let p = self.param(p)?;
+                let q = self.param(q)?;
                 let a = self.term_box(a)?;
-                if let Tuple(x, y) = *a {
-                    self.rho.insert(p.var, x);
-                    self.rho.insert(q.var, y);
-                    self.term(*b)?
-                } else {
-                    TupleLocal(self.param(p)?, self.param(q)?, a, self.term_box(b)?)
+                match *a {
+                    Tuple(x, y) => {
+                        let mut tms = vec![(p, x)];
+                        let mut tm = *y;
+                        let mut body = *b;
+                        loop {
+                            match (tm, body) {
+                                (Tuple(x, y), TupleLocal(p, _, _, b)) => {
+                                    tms.push((p, x));
+                                    tm = *y;
+                                    body = *b;
+                                }
+                                (_, b) => {
+                                    body = b;
+                                    break;
+                                }
+                            }
+                        }
+                        self.term(
+                            tms.into_iter()
+                                .rfold(body, |b, (p, a)| Local(p, a, Box::new(b))),
+                        )?
+                    }
+                    a => TupleLocal(p, q, Box::new(a), self.term_box(b)?),
                 }
             }
             UnitLocal(a, b) => {
@@ -444,6 +472,7 @@ impl<'a> Normalizer<'a> {
             }
             Switch(a, cs, d) => {
                 let a = self.term_box(a)?;
+                let cs = self.case_map(cs)?;
                 let d = match d {
                     Some((v, tm)) => Some((v, Box::new(self.term(*tm)?))),
                     None => None,
@@ -465,9 +494,9 @@ impl<'a> Normalizer<'a> {
                                 _ => return Err(NonExhaustive(*a, self.loc)),
                             }
                         }
-                        _ => Switch(a, self.case_map(cs)?, d),
+                        _ => Switch(a, cs, d),
                     },
-                    _ => Switch(a, self.case_map(cs)?, d),
+                    _ => Switch(a, cs, d),
                 }
             }
             Unionify(a) => Unionify(self.term_box(a)?),
