@@ -1,0 +1,33 @@
+class Minesweeper {
+    score: number;
+    field: Array<Array<string>>;
+
+    nrows(): number {
+        (this.field).length()
+    }
+
+    ncols(): number {
+        ((this.field)[0]).length()
+    }
+
+    init(r: number, c: number) {
+        this.score = 0;
+        for (let i = 0; i < r; i = i + 1) {
+            const f = this.field;
+            f[i] = [];
+            for (let j = 0; j < c; j = j + 1) {
+                const g = (this.field)[i];
+                g[j] = ".";
+            }
+        }
+    }
+}
+
+function test() {
+    const a: Array<Array<string>> = [];
+    a[0] = [];
+    a[1] = ["5", "6", "7"];
+    console.log((a[1])[2]);
+}
+
+test();

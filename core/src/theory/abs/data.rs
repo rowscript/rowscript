@@ -200,7 +200,7 @@ impl Term {
                     } => (type_args.clone(), associated.clone(), methods.clone()),
                     _ => unreachable!(),
                 },
-                Lam(_, body) => {
+                Pi(_, body) | Lam(_, body) => {
                     x = body.as_ref();
                     continue;
                 }

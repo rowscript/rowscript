@@ -2,7 +2,7 @@ use log::{debug, info, trace};
 
 use crate::maybe_grow;
 use crate::theory::abs::builtin::Builtins;
-use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, Term};
+use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, PartialClass, Term};
 use crate::theory::abs::def::{gamma_to_tele, tele_to_refs, Body, ImplementsBody};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
@@ -474,11 +474,7 @@ impl Elaborator {
             }
             RevApp(loc, f, x) => {
                 if let Term::Sigma(p, _) = self.infer(*x.clone())?.1 {
-                    if let Term::Cls { class, .. } = *p.typ {
-                        let meths = match &self.sigma.get(&class).unwrap().body {
-                            Body::Class { methods, .. } => methods,
-                            _ => unreachable!(),
-                        };
+                    if let Some(PartialClass { methods, .. }) = p.typ.class_methods(&self.sigma) {
                         let (f_loc, f_var, globally_found) = match *f {
                             Resolved(f_loc, v) => (f_loc, v, true),
                             Unresolved(f_loc, _, v) => (f_loc, v, false),
@@ -486,7 +482,7 @@ impl Elaborator {
                         };
                         return self.infer(App(
                             loc,
-                            Box::new(match meths.get(f_var.as_str()) {
+                            Box::new(match methods.get(f_var.as_str()) {
                                 Some(v) => Resolved(f_loc, v.clone()),
                                 None if globally_found => Resolved(f_loc, f_var),
                                 _ => return Err(UnresolvedVar(f_loc)),
@@ -496,7 +492,7 @@ impl Elaborator {
                         ));
                     }
                 }
-                if let Unresolved(f_loc, _, _) = *f {
+                if let Unresolved(f_loc, ..) = *f {
                     return Err(UnresolvedVar(f_loc));
                 }
                 self.infer(App(loc, f, UnnamedExplicit, x))?
