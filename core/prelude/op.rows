@@ -117,3 +117,25 @@ interface GetOp {
 interface SetOp {
     __setitem__(a: SetOp, key: SetOp::Key, value: SetOp::Value);
 }
+
+interface Default {
+    default(): Default;
+}
+
+implements Default for number {
+    default(): number {
+        0
+    }
+}
+
+implements Default for string {
+    default(): string {
+        ""
+    }
+}
+
+implements Default for boolean {
+    default(): boolean {
+        false
+    }
+}
