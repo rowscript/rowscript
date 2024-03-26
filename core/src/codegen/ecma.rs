@@ -895,6 +895,7 @@ impl Ecma {
             NumLt(a, b) => self.bin_expr(sigma, loc, BinaryOp::Lt, a, b)?,
             NumGt(a, b) => self.bin_expr(sigma, loc, BinaryOp::Gt, a, b)?,
             NumNeg(a) => self.unary_expr(sigma, loc, UnaryOp::Minus, a)?,
+            NumToStr(a) => self.prototype(sigma, loc, a, "toString", [])?,
             Big(v) => Expr::Lit(Lit::BigInt(JsBigInt {
                 span: loc.into(),
                 value: Box::new(BigIntValue::from_str(v).unwrap()),

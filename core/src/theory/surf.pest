@@ -193,6 +193,7 @@ builtin =
   | "number#__lt__"
   | "number#__gt__"
   | "number#__neg__"
+  | "number#toString"
   | "arrayIter#next"
   | "array#length"
   | "array#push"

@@ -167,6 +167,7 @@ impl Builtins {
             .number_lt()
             .number_gt()
             .number_neg()
+            .number_to_string()
             .array_iterator_type()
             .array_iterator_next()
             .array_type()
@@ -299,6 +300,13 @@ impl Builtins {
     bin_op!(number_lt, "number#__lt__", Number, Boolean, NumLt);
     bin_op!(number_gt, "number#__gt__", Number, Boolean, NumGt);
     un_op!(number_neg, "number#__neg__", Number, Number, NumNeg);
+    un_op!(
+        number_to_string,
+        "number#toString",
+        Number,
+        String,
+        NumToStr
+    );
 
     fn array_iterator_type(self) -> Self {
         let t = Var::new("T");

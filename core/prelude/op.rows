@@ -167,3 +167,13 @@ implements Default for boolean {
         false
     }
 }
+
+interface ToString {
+    toString(a: ToString): string;
+}
+
+implements ToString for number {
+    toString(a: number): string {
+        number#toString(a)
+    }
+}

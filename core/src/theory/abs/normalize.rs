@@ -225,17 +225,17 @@ impl<'a> Normalizer<'a> {
                     a => BoolNot(Box::new(a)),
                 }
             }
-            BoolEq(a, b) => match (self.term(*a)?, self.term(*b)?) {
+            BoolEq(a, b) => match (*self.term_box(a)?, *self.term_box(b)?) {
                 (True, True) | (False, False) => True,
                 (True, False) | (False, True) => False,
                 (a, b) => BoolEq(Box::new(a), Box::new(b)),
             },
-            BoolNeq(a, b) => match (self.term(*a)?, self.term(*b)?) {
+            BoolNeq(a, b) => match (*self.term_box(a)?, *self.term_box(b)?) {
                 (True, True) | (False, False) => False,
                 (True, False) | (False, True) => True,
                 (a, b) => BoolNeq(Box::new(a), Box::new(b)),
             },
-            StrAdd(a, b) => match (self.term(*a)?, self.term(*b)?) {
+            StrAdd(a, b) => match (*self.term_box(a)?, *self.term_box(b)?) {
                 (Str(mut a), Str(mut b)) => {
                     a.pop();
                     b.remove(0);
@@ -244,11 +244,11 @@ impl<'a> Normalizer<'a> {
                 }
                 (a, b) => StrAdd(Box::new(a), Box::new(b)),
             },
-            StrEq(a, b) => match (self.term(*a)?, self.term(*b)?) {
+            StrEq(a, b) => match (*self.term_box(a)?, *self.term_box(b)?) {
                 (Str(a), Str(b)) => Term::bool(a == b),
                 (a, b) => StrEq(Box::new(a), Box::new(b)),
             },
-            StrNeq(a, b) => match (self.term(*a)?, self.term(*b)?) {
+            StrNeq(a, b) => match (*self.term_box(a)?, *self.term_box(b)?) {
                 (Str(a), Str(b)) => Term::bool(a != b),
                 (a, b) => StrNeq(Box::new(a), Box::new(b)),
             },
@@ -340,13 +340,14 @@ impl<'a> Normalizer<'a> {
                     (a, b) => NumGt(Box::new(a), Box::new(b)),
                 }
             }
-            NumNeg(a) => {
-                let a = self.term_box(a)?;
-                match *a {
-                    Num(a) => Num(-a),
-                    a => NumNeg(Box::new(a)),
-                }
-            }
+            NumNeg(a) => match *self.term_box(a)? {
+                Num(a) => Num(-a),
+                a => NumNeg(Box::new(a)),
+            },
+            NumToStr(a) => match *self.term_box(a)? {
+                Num(a) => Str(format!("\"{a}\"")),
+                a => NumToStr(Box::new(a)),
+            },
             ArrayIterator(t) => ArrayIterator(self.term_box(t)?),
             ArrIterNext(it) => ArrIterNext(self.term_box(it)?),
             Array(t) => Array(self.term_box(t)?),

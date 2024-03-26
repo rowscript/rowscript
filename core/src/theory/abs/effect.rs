@@ -62,6 +62,7 @@ pub fn has_side_effect(tm: &Term) -> bool {
         Lam(_, a)
         | BoolNot(a)
         | NumNeg(a)
+        | NumToStr(a)
         | Obj(a)
         | Access(a, ..)
         | Down(a, ..)

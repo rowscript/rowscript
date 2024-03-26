@@ -1,3 +1,7 @@
+/*
+const dr = [-1, -1, -1, 0, 0, 1, 1, 1];
+const dc = [-1, 0, 1, -1, 1, -1, 0, 1];
+
 class Minesweeper {
     score: number;
     field: Array<Array<string>>;
@@ -21,13 +25,49 @@ class Minesweeper {
             }
         }
     }
-}
 
-function test() {
-    const a: Array<Array<string>> = [];
-    a[0] = [];
-    a[1] = ["5", "6", "7"];
-    console.log((a[1])[2]);
-}
+    setCell(r: number, c: number, cell: string) {
+        const row = (this.field)[r];
+        row[c] = cell;
+    }
 
-test();
+    getCell(r: number, c: number): string {
+        ((this.field)[r])[c]
+    }
+
+    putMine(r: number, c: number) {
+        this.setCell(r, c, "*");
+    }
+
+    open(r: number, c: number): boolean {
+        const cell = this.getCell(r, c);
+        if (cell != "*" && cell != ".") {
+            return true
+        }
+        const isEmpty = cell == ".";
+        this.score = this.score + ((isEmpty) ? 1 : -1);
+        if (cell == ".") {
+            const nr = this.nrows();
+            const nc = this.ncols();
+            if (1 + 1 == 2) {
+                let cnt = 0;
+                for (let i = 0; i < 8; i = i + 1) {
+                    const r2 = r + dr[i];
+                    const c2 = c + dc[i];
+                    const r2 = r;
+                    const c2 = c;
+                    if (r2 >= 0 && r2 < nr && c2 >= 0 && c2 < nc) {
+                        cnt = cnt + 1;
+                    }
+                }
+                this.setCell(r, c, cnt.toString());
+                return true
+            }
+        }
+        this.setCell(r, c, "X");
+        false
+    }
+}
+*/
+
+console.log("TODO");

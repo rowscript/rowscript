@@ -89,6 +89,7 @@ pub enum Term {
     NumLt(Box<Self>, Box<Self>),
     NumGt(Box<Self>, Box<Self>),
     NumNeg(Box<Self>),
+    NumToStr(Box<Self>),
 
     BigInt,
     Big(String),
@@ -301,6 +302,7 @@ impl Display for Term {
                 NumLt(a, b) => format!("{a} < {b}"),
                 NumGt(a, b) => format!("{a} > {b}"),
                 NumNeg(a) => format!("-{a}"),
+                NumToStr(a) => format!("{a}.toString()"),
                 BigInt => "bigint".to_string(),
                 Big(v) => v.clone(),
                 ArrayIterator(t) => format!("NativeArrayIterator<{t}>"),

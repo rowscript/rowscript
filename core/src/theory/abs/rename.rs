@@ -81,6 +81,7 @@ impl Renamer {
             NumLt(a, b) => NumLt(Box::new(self.term(*a)), Box::new(self.term(*b))),
             NumGt(a, b) => NumGt(Box::new(self.term(*a)), Box::new(self.term(*b))),
             NumNeg(a) => NumNeg(Box::new(self.term(*a))),
+            NumToStr(a) => NumToStr(Box::new(self.term(*a))),
             ArrayIterator(t) => ArrayIterator(Box::new(self.term(*t))),
             ArrIterNext(it) => ArrIterNext(Box::new(self.term(*it))),
             Array(t) => Array(Box::new(self.term(*t))),
