@@ -872,7 +872,12 @@ impl Ecma {
             BoolOr(a, b) => self.bin_expr(sigma, loc, BinaryOp::LogicalOr, a, b)?,
             BoolAnd(a, b) => self.bin_expr(sigma, loc, BinaryOp::LogicalAnd, a, b)?,
             BoolNot(a) => self.unary_expr(sigma, loc, UnaryOp::Bang, a)?,
+            BoolEq(a, b) => self.bin_expr(sigma, loc, BinaryOp::EqEqEq, a, b)?,
+            BoolNeq(a, b) => self.bin_expr(sigma, loc, BinaryOp::NotEqEq, a, b)?,
             Str(s) => Expr::Lit(Lit::Str(Self::js_raw_str(loc, s))),
+            StrAdd(a, b) => self.bin_expr(sigma, loc, BinaryOp::Sub, a, b)?,
+            StrEq(a, b) => self.bin_expr(sigma, loc, BinaryOp::EqEqEq, a, b)?,
+            StrNeq(a, b) => self.bin_expr(sigma, loc, BinaryOp::NotEqEq, a, b)?,
             Num(v) => Expr::Lit(Lit::Num(JsNumber {
                 span: loc.into(),
                 value: *v,
@@ -889,6 +894,7 @@ impl Ecma {
             NumGe(a, b) => self.bin_expr(sigma, loc, BinaryOp::GtEq, a, b)?,
             NumLt(a, b) => self.bin_expr(sigma, loc, BinaryOp::Lt, a, b)?,
             NumGt(a, b) => self.bin_expr(sigma, loc, BinaryOp::Gt, a, b)?,
+            NumNeg(a) => self.unary_expr(sigma, loc, UnaryOp::Minus, a)?,
             Big(v) => Expr::Lit(Lit::BigInt(JsBigInt {
                 span: loc.into(),
                 value: Box::new(BigIntValue::from_str(v).unwrap()),

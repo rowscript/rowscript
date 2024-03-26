@@ -87,6 +87,26 @@ fn parameters<const T: usize, const V: usize>(
     (Term::Ref(tupled), tele)
 }
 
+macro_rules! un_op {
+    ($name:ident, $builtin_name:literal, $typ:ident, $ret:ident, $op:ident) => {
+        fn $name(self) -> Self {
+            let a = Var::new("a");
+            let (tupled, tele) = parameters([], [(a.clone(), Term::$typ)]);
+            self.func(
+                $builtin_name,
+                tele,
+                Term::$ret,
+                explicit_tuple_local1(
+                    a.clone(),
+                    Term::$typ,
+                    tupled,
+                    Term::$op(Box::new(Term::Ref(a))),
+                ),
+            )
+        }
+    };
+}
+
 macro_rules! bin_op {
     ($name:ident, $builtin_name:literal, $typ:ident, $ret:ident, $op:ident) => {
         fn $name(self) -> Self {
@@ -127,6 +147,14 @@ impl Builtins {
             .console_log()
             .unionify()
             .reflect()
+            .boolean_or()
+            .boolean_and()
+            .boolean_not()
+            .boolean_eq()
+            .boolean_neq()
+            .string_add()
+            .string_eq()
+            .string_neq()
             .number_add()
             .number_sub()
             .number_mul()
@@ -138,9 +166,7 @@ impl Builtins {
             .number_ge()
             .number_lt()
             .number_gt()
-            .boolean_or()
-            .boolean_and()
-            .boolean_not()
+            .number_neg()
             .array_iterator_type()
             .array_iterator_next()
             .array_type()
@@ -251,6 +277,16 @@ impl Builtins {
         )
     }
 
+    bin_op!(boolean_or, "boolean#__or__", Boolean, Boolean, BoolOr);
+    bin_op!(boolean_and, "boolean#__and__", Boolean, Boolean, BoolAnd);
+    bin_op!(boolean_eq, "boolean#__eq__", Boolean, Boolean, BoolEq);
+    bin_op!(boolean_neq, "boolean#__neq__", Boolean, Boolean, BoolNeq);
+    un_op!(boolean_not, "boolean#__not__", Boolean, Boolean, BoolNot);
+
+    bin_op!(string_add, "string#__add__", String, String, StrAdd);
+    bin_op!(string_eq, "string#__eq__", String, Boolean, StrEq);
+    bin_op!(string_neq, "string#__neq__", String, Boolean, StrNeq);
+
     bin_op!(number_add, "number#__add__", Number, Number, NumAdd);
     bin_op!(number_sub, "number#__sub__", Number, Number, NumSub);
     bin_op!(number_mul, "number#__mul__", Number, Number, NumMul);
@@ -262,25 +298,7 @@ impl Builtins {
     bin_op!(number_ge, "number#__ge__", Number, Boolean, NumGe);
     bin_op!(number_lt, "number#__lt__", Number, Boolean, NumLt);
     bin_op!(number_gt, "number#__gt__", Number, Boolean, NumGt);
-
-    bin_op!(boolean_or, "boolean#__or__", Boolean, Boolean, BoolOr);
-    bin_op!(boolean_and, "boolean#__and__", Boolean, Boolean, BoolAnd);
-
-    fn boolean_not(self) -> Self {
-        let tupled = Var::tupled();
-        let a = Var::new("a");
-        self.func(
-            "boolean#__not__",
-            vec![tuple_param(tupled.clone(), [(a.clone(), Term::Boolean)])],
-            Term::Boolean,
-            explicit_tuple_local1(
-                a.clone(),
-                Term::Boolean,
-                Term::Ref(tupled),
-                Term::BoolNot(Box::new(Term::Ref(a))),
-            ),
-        )
-    }
+    un_op!(number_neg, "number#__neg__", Number, Number, NumNeg);
 
     fn array_iterator_type(self) -> Self {
         let t = Var::new("T");

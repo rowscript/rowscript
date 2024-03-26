@@ -35,7 +35,7 @@ impl Default for Trans {
                 .op(Op::infix(Rule::infix_mul, Assoc::Left)
                     | Op::infix(Rule::infix_div, Assoc::Left)
                     | Op::infix(Rule::infix_mod, Assoc::Left))
-                .op(Op::prefix(Rule::prefix_not)),
+                .op(Op::prefix(Rule::prefix_not) | Op::prefix(Rule::prefix_neg)),
         }
     }
 }
@@ -900,6 +900,7 @@ impl Trans {
                 let loc = Loc::from(op.as_span());
                 match op.as_rule() {
                     Rule::prefix_not => Self::prefix_app(loc, "__not__", x),
+                    Rule::prefix_neg => Self::prefix_app(loc, "__neg__", x),
                     _ => unreachable!(),
                 }
             })

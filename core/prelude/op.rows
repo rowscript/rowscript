@@ -2,12 +2,28 @@ interface EqOp {
     __eq__(a: EqOp, b: EqOp): boolean;
 }
 
+implements EqOp for string {
+    __eq__(a: string, b: string): boolean { string#__eq__(a, b) }
+}
+
+implements EqOp for boolean {
+    __eq__(a: boolean, b: boolean): boolean { boolean#__eq__(a, b) }
+}
+
 implements EqOp for number {
     __eq__(a: number, b: number): boolean { number#__eq__(a, b) }
 }
 
 interface NeqOp {
     __neq__(a: NeqOp, b: NeqOp): boolean;
+}
+
+implements NeqOp for string {
+    __neq__(a: string, b: string): boolean { string#__neq__(a, b) }
+}
+
+implements NeqOp for boolean {
+    __neq__(a: boolean, b: boolean): boolean { boolean#__neq__(a, b) }
 }
 
 implements NeqOp for number {
@@ -20,6 +36,14 @@ interface NotOp {
 
 implements NotOp for boolean {
     __not__(a: boolean): boolean { boolean#__not__(a) }
+}
+
+interface NegOp {
+    __neg__(a: NegOp): NegOp;
+}
+
+implements NegOp for number {
+    __neg__(a: number): number { number#__neg__(a) }
 }
 
 interface OrOp {
@@ -76,6 +100,10 @@ interface AddOp {
 
 implements AddOp for number {
     __add__(a: number, b: number): number { number#__add__(a, b) }
+}
+
+implements AddOp for string {
+    __add__(a: string, b: string): string { string#__add__(a, b) }
 }
 
 interface SubOp {

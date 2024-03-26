@@ -305,6 +305,7 @@ impl Driver {
 const DEFAULT_RED_ZONE: usize = 512 * 1024;
 const DEFAULT_EXTRA_STACK: usize = 4 * 1024 * 1024;
 
+#[inline(always)]
 pub fn maybe_grow<R, F: FnOnce() -> R>(f: F) -> R {
     stacker::maybe_grow(DEFAULT_RED_ZONE, DEFAULT_EXTRA_STACK, f)
 }

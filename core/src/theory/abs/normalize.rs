@@ -12,11 +12,11 @@ use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedImplicit;
 use crate::theory::NameMap;
 use crate::theory::{Loc, Param, Var};
-use crate::Error;
 use crate::Error::{
     ClassMethodNotImplemented, FieldsNonExtendable, NonExhaustive, UnresolvedField,
     UnresolvedImplementation, UnsatisfiedConstraint,
 };
+use crate::{maybe_grow, Error};
 
 pub struct Normalizer<'a> {
     ubiquitous: &'a NameMap,
@@ -44,7 +44,7 @@ impl<'a> Normalizer<'a> {
     }
 
     pub fn term(&mut self, tm: Term) -> Result<Term, Error> {
-        stacker::maybe_grow(512 * 1024, 4 * 1024 * 1024, move || self.term_impl(tm))
+        maybe_grow(move || self.term_impl(tm))
     }
 
     fn term_box(&mut self, mut tm: Box<Term>) -> Result<Box<Term>, Error> {
@@ -225,6 +225,33 @@ impl<'a> Normalizer<'a> {
                     a => BoolNot(Box::new(a)),
                 }
             }
+            BoolEq(a, b) => match (self.term(*a)?, self.term(*b)?) {
+                (True, True) | (False, False) => True,
+                (True, False) | (False, True) => False,
+                (a, b) => BoolEq(Box::new(a), Box::new(b)),
+            },
+            BoolNeq(a, b) => match (self.term(*a)?, self.term(*b)?) {
+                (True, True) | (False, False) => False,
+                (True, False) | (False, True) => True,
+                (a, b) => BoolNeq(Box::new(a), Box::new(b)),
+            },
+            StrAdd(a, b) => match (self.term(*a)?, self.term(*b)?) {
+                (Str(mut a), Str(mut b)) => {
+                    a.pop();
+                    b.remove(0);
+                    a.push_str(b.as_str());
+                    Str(a)
+                }
+                (a, b) => StrAdd(Box::new(a), Box::new(b)),
+            },
+            StrEq(a, b) => match (self.term(*a)?, self.term(*b)?) {
+                (Str(a), Str(b)) => Term::bool(a == b),
+                (a, b) => StrEq(Box::new(a), Box::new(b)),
+            },
+            StrNeq(a, b) => match (self.term(*a)?, self.term(*b)?) {
+                (Str(a), Str(b)) => Term::bool(a != b),
+                (a, b) => StrNeq(Box::new(a), Box::new(b)),
+            },
             NumAdd(a, b) => {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;
@@ -311,6 +338,13 @@ impl<'a> Normalizer<'a> {
                 match (*a, *b) {
                     (Num(a), Num(b)) => Term::bool(a > b),
                     (a, b) => NumGt(Box::new(a), Box::new(b)),
+                }
+            }
+            NumNeg(a) => {
+                let a = self.term_box(a)?;
+                match *a {
+                    Num(a) => Num(-a),
+                    a => NumNeg(Box::new(a)),
                 }
             }
             ArrayIterator(t) => ArrayIterator(self.term_box(t)?),

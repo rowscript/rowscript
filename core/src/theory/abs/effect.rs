@@ -3,30 +3,6 @@ use crate::theory::abs::data::Term;
 pub fn has_side_effect(tm: &Term) -> bool {
     use Term::*;
     match tm {
-        Local(_, a, b) => has_side_effect(a) || has_side_effect(b),
-        While(p, b, r) => has_side_effect(p) || has_side_effect(b) || has_side_effect(r),
-        Fori(b, r) => has_side_effect(b) || has_side_effect(r),
-        Guard(p, b, r) => has_side_effect(p) || has_side_effect(b) || has_side_effect(r),
-        Lam(_, b) => has_side_effect(b),
-        App(f, _, x) => has_side_effect(f) || has_side_effect(x),
-        Tuple(a, b) => has_side_effect(a) || has_side_effect(b),
-        TupleLocal(_, _, a, b) => has_side_effect(a) || has_side_effect(b),
-        UnitLocal(a, b) => has_side_effect(a) || has_side_effect(b),
-        If(p, a, b) => has_side_effect(p) || has_side_effect(a) || has_side_effect(b),
-        BoolOr(a, b) => has_side_effect(a) || has_side_effect(b),
-        BoolAnd(a, b) => has_side_effect(a) || has_side_effect(b),
-        BoolNot(a) => has_side_effect(a),
-        NumAdd(a, b) => has_side_effect(a) || has_side_effect(b),
-        NumSub(a, b) => has_side_effect(a) || has_side_effect(b),
-        NumMul(a, b) => has_side_effect(a) || has_side_effect(b),
-        NumDiv(a, b) => has_side_effect(a) || has_side_effect(b),
-        NumMod(a, b) => has_side_effect(a) || has_side_effect(b),
-        NumEq(a, b) => has_side_effect(a) || has_side_effect(b),
-        NumNeq(a, b) => has_side_effect(a) || has_side_effect(b),
-        NumLe(a, b) => has_side_effect(a) || has_side_effect(b),
-        NumGe(a, b) => has_side_effect(a) || has_side_effect(b),
-        NumLt(a, b) => has_side_effect(a) || has_side_effect(b),
-        NumGt(a, b) => has_side_effect(a) || has_side_effect(b),
         Fields(fields) => {
             for tm in fields.values() {
                 if has_side_effect(tm) {
@@ -35,13 +11,6 @@ pub fn has_side_effect(tm: &Term) -> bool {
             }
             false
         }
-        Combine(_, a, b) => has_side_effect(a) || has_side_effect(b),
-        Obj(a) => has_side_effect(a),
-        Concat(a, b) => has_side_effect(a) || has_side_effect(b),
-        Access(a, _) => has_side_effect(a),
-        Down(a, _) => has_side_effect(a),
-        Variant(a) => has_side_effect(a),
-        Up(a, ..) => has_side_effect(a),
         Switch(a, b, d) => {
             if has_side_effect(a) {
                 return true;
@@ -58,7 +27,47 @@ pub fn has_side_effect(tm: &Term) -> bool {
             }
             false
         }
-        Find(a, ..) => has_side_effect(a),
+
+        While(a, b, c) | Guard(a, b, c) | If(a, b, c) => {
+            has_side_effect(a) || has_side_effect(b) || has_side_effect(c)
+        }
+
+        Local(_, a, b)
+        | Fori(a, b)
+        | App(a, _, b)
+        | Tuple(a, b)
+        | TupleLocal(_, _, a, b)
+        | UnitLocal(a, b)
+        | BoolOr(a, b)
+        | BoolAnd(a, b)
+        | BoolEq(a, b)
+        | BoolNeq(a, b)
+        | StrAdd(a, b)
+        | StrEq(a, b)
+        | StrNeq(a, b)
+        | NumAdd(a, b)
+        | NumSub(a, b)
+        | NumMul(a, b)
+        | NumDiv(a, b)
+        | NumMod(a, b)
+        | NumEq(a, b)
+        | NumNeq(a, b)
+        | NumLe(a, b)
+        | NumGe(a, b)
+        | NumLt(a, b)
+        | NumGt(a, b)
+        | Combine(_, a, b)
+        | Concat(a, b) => has_side_effect(a) || has_side_effect(b),
+
+        Lam(_, a)
+        | BoolNot(a)
+        | NumNeg(a)
+        | Obj(a)
+        | Access(a, ..)
+        | Down(a, ..)
+        | Variant(a)
+        | Up(a, ..)
+        | Find(a, ..) => has_side_effect(a),
 
         Extern(..) | MetaRef(..) | Undef(..) | LocalSet(..) | LocalUpdate(..) | Return(..)
         | Continue | Break | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..)

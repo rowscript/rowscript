@@ -155,6 +155,7 @@ magic_fn_id =
   | "__lt__"
   | "__gt__"
   | "__not__"
+  | "__neg__"
   | "__getitem__"
   | "__setitem__"
   }
@@ -172,6 +173,14 @@ idref =
 builtin =
   { "error#throw"
   | "console#log"
+  | "boolean#__and__"
+  | "boolean#__or__"
+  | "boolean#__not__"
+  | "boolean#__eq__"
+  | "boolean#__neq__"
+  | "string#__add__"
+  | "string#__eq__"
+  | "string#__neq__"
   | "number#__add__"
   | "number#__sub__"
   | "number#__mul__"
@@ -183,10 +192,7 @@ builtin =
   | "number#__ge__"
   | "number#__lt__"
   | "number#__gt__"
-  | "string#__add__"
-  | "boolean#__and__"
-  | "boolean#__or__"
-  | "boolean#__not__"
+  | "number#__neg__"
   | "arrayIter#next"
   | "array#length"
   | "array#push"
@@ -303,8 +309,10 @@ type_app = { ("(" ~ type_expr ~ ")" | tyref) ~ implicit_args? ~ ("::" ~ type_id)
 expr = { prefix_op* ~ primary_expr ~ (infix_op ~ prefix_op* ~ primary_expr)* }
 prefix_op =
  _{ prefix_not
+  | prefix_neg
   }
 prefix_not = { "!" }
+prefix_neg = { "-" }
 infix_op =
  _{ infix_add
   | infix_sub

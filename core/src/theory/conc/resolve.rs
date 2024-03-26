@@ -344,16 +344,6 @@ impl<'a> Resolver<'a> {
                 let b = Box::new(self.bodied(&[&x, &y], *b)?);
                 TupleLocal(loc, x, y, Box::new(self.expr(*a)?), b)
             }
-            AnnoTupleLocal(loc, p, q, a, b) => {
-                let b = Box::new(self.bodied(&[&p.var, &q.var], *b)?);
-                AnnoTupleLocal(
-                    loc,
-                    self.param(p)?,
-                    self.param(q)?,
-                    Box::new(self.expr(*a)?),
-                    b,
-                )
-            }
             UnitLocal(loc, a, b) => {
                 UnitLocal(loc, Box::new(self.expr(*a)?), Box::new(self.expr(*b)?))
             }

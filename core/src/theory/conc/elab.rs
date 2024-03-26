@@ -522,23 +522,6 @@ impl Elaborator {
                     ),
                 )
             }
-            AnnoTupleLocal(_, p, q, a, b) => {
-                let p_ty = self.check(*p.typ, &Term::Univ)?;
-                let p = Param {
-                    var: p.var,
-                    info: p.info,
-                    typ: Box::new(p_ty),
-                };
-                let q_ty = self.guarded_check(&[&p], *q.typ, &Term::Univ)?;
-                let q = Param {
-                    var: q.var,
-                    info: q.info,
-                    typ: Box::new(q_ty),
-                };
-                let (b, b_ty) = self.guarded_infer(&[&p, &q], *b)?;
-                let a = self.check(*a, &Term::Sigma(p.clone(), q.typ.clone()))?;
-                (Term::TupleLocal(p, q, Box::new(a), Box::new(b)), b_ty)
-            }
             UnitLocal(_, a, b) => {
                 let a = self.check(*a, &Term::Unit)?;
                 let (b, ty) = self.infer(*b)?;
