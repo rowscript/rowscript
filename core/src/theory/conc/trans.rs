@@ -514,6 +514,11 @@ impl Trans {
 
         let ctor_loc = ctor_params.0;
         let ctor_param_vars = ctor_params.unresolved();
+        let could_be_default = ctor_params.1.is_empty();
+        let default_meth_name = name.default();
+        if could_be_default {
+            methods.insert("default".to_string(), default_meth_name.clone());
+        }
         let ctor_tupled_params = Param::from(ctor_params);
         let ctor_body = Method {
             class: name.clone(),
@@ -533,7 +538,7 @@ impl Trans {
         defs.push(Def {
             loc,
             name: name.clone(),
-            tele,
+            tele: tele.clone(),
             ret: Box::new(Univ(loc)),
             body: Class {
                 associated,
@@ -541,13 +546,19 @@ impl Trans {
                 methods,
             },
         });
-        defs.push(Def {
+        let ctor_def = Def {
             loc,
             name: name.ctor(),
             tele: ctor_tele,
             ret: Box::new(ctor_ret),
             body: ctor_body,
-        });
+        };
+        if could_be_default {
+            let mut default_def = ctor_def.clone();
+            default_def.name = default_meth_name;
+            defs.push(default_def);
+        }
+        defs.push(ctor_def);
         defs.extend(method_defs);
         defs
     }

@@ -100,6 +100,10 @@ impl Var {
         Self::new(format!("{self}__new"))
     }
 
+    pub fn default(&self) -> Self {
+        Self::new(format!("{self}__default"))
+    }
+
     pub fn this() -> Self {
         Self::new(THIS)
     }
