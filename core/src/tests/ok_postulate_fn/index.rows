@@ -6,3 +6,5 @@ const a2: number = f2<number>();
 
 function f3<'R>(a: {'R}) where (n: number) keyof 'R;
 f3({n: 42, m: 69});
+
+function a$get(): number;

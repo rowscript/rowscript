@@ -112,27 +112,14 @@ priv_camel_id = @{ "_" ~ pub_camel_id }
 
 lower_id = @{ reserved? ~ ASCII_ALPHA_LOWER+ }
 
+ffi_id = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | ASCII_DIGIT | "_" | "$")* }
+pub_ffi_id = @{ (reserved ~ (ASCII_ALPHA | ASCII_DIGIT | "_" | "$")+) | (!reserved ~ ffi_id) }
+priv_ffi_id = @{ "_" ~ pub_ffi_id }
+
 fn_id = { pub_fn_id | priv_fn_id }
-magic_fn_id =
-  { "__add__"
-  | "__sub__"
-  | "__mul__"
-  | "__div__"
-  | "__mod__"
-  | "__or__"
-  | "__and__"
-  | "__eq__"
-  | "__neq__"
-  | "__le__"
-  | "__ge__"
-  | "__lt__"
-  | "__gt__"
-  | "__not__"
-  | "__getitem__"
-  | "__setitem__"
-  }
 pub_fn_id = _{ pub_camelback_id }
 priv_fn_id = _{ priv_camelback_id }
+postulate_id = { pub_ffi_id | priv_ffi_id }
 row_id = @{ "'" ~ pub_camel_id }
 implicit_id = { pub_camel_id }
 type_id = { pub_type_id | priv_type_id }
@@ -153,7 +140,24 @@ qualifier =
   { (std_pkg_id | vendor_pkg_id) ~ "::" ~ (module_id ~ "::")*
   | root_prefix ~ (module_id ~ "::")+
   }
-root_prefix = { "::" }
+magic_fn_id =
+  { "__add__"
+  | "__sub__"
+  | "__mul__"
+  | "__div__"
+  | "__mod__"
+  | "__or__"
+  | "__and__"
+  | "__eq__"
+  | "__neq__"
+  | "__le__"
+  | "__ge__"
+  | "__lt__"
+  | "__gt__"
+  | "__not__"
+  | "__getitem__"
+  | "__setitem__"
+  }
 
 idref =
   { qualifier ~ idref
@@ -163,6 +167,7 @@ idref =
   | local_id
   | prop_id
   | this_id
+  | postulate_id
   }
 builtin =
   { "error#throw"
@@ -207,6 +212,7 @@ importable = { pub_fn_id | pub_type_id }
 
 hole = { "?" }
 univ = { "type" }
+root_prefix = { "::" }
 
 string = @{ "\"" ~ unquoted_string_part ~ "\"" }
 unquoted_string_part = @{ (unescaped_string_fragment | escaped_string_fragment)* }
@@ -555,7 +561,7 @@ fn_body_ret = { expr? }
 
 fn_postulate =
   { "function"
-  ~ fn_id
+  ~ postulate_id
   ~ implicits?
   ~ params
   ~ (":" ~ type_expr)?
