@@ -71,7 +71,7 @@ impl<'a> Normalizer<'a> {
                 let ret = match &def.body {
                     Meta(_, s) => match s {
                         Some(solved) => {
-                            let mut ret = rename(Term::lam(&def.tele, solved.clone()));
+                            let mut ret = rename(Term::lam(&def.tele, *solved.clone()));
                             for (p, x) in sp {
                                 ret = App(Box::new(ret), p.into(), Box::new(x))
                             }
@@ -79,7 +79,7 @@ impl<'a> Normalizer<'a> {
                         }
                         None => {
                             if let Some(tm) = Self::auto_implicit(&def.ret) {
-                                def.body = Meta(k, Some(tm.clone()));
+                                def.body = Meta(k, Some(Box::new(tm.clone())));
                                 tm
                             } else {
                                 trace!(target: "unify", "cannot solve meta: {x}");

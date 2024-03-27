@@ -173,7 +173,7 @@ impl<'a> Unifier<'a> {
                 if s.is_some() {
                     return Ok(());
                 }
-                d.body = Meta(k.clone(), Some(tm.clone()));
+                d.body = Meta(k.clone(), Some(Box::new(tm.clone())));
             }
             _ => unreachable!(),
         }

@@ -51,10 +51,10 @@ impl Def<Term> {
     pub fn to_term(&self, v: Var) -> Term {
         use Body::*;
         match &self.body {
-            Fn(f) => self.to_lam_term(f.clone()),
+            Fn(f) => self.to_lam_term(*f.clone()),
             Postulate => Term::Extern(v),
-            Alias(t) => self.to_lam_term(t.clone()),
-            Const(_, f) => self.to_lam_term(f.clone()),
+            Alias(t) => self.to_lam_term(*t.clone()),
+            Const(_, f) => self.to_lam_term(*f.clone()),
             Verify(..) => unreachable!(),
 
             Interface { .. } => {
@@ -62,7 +62,7 @@ impl Def<Term> {
                 self.to_lam_term(Term::ImplementsOf(Box::new(r), v))
             }
             Implements { .. } => unreachable!(),
-            ImplementsFn(f) => self.to_lam_term(f.clone()),
+            ImplementsFn(f) => self.to_lam_term(*f.clone()),
             Findable(i) => {
                 let r = Term::Ref(self.tele[0].var.clone());
                 let mut f = Term::Find(Box::new(r), i.clone(), v);
@@ -94,13 +94,13 @@ impl Def<Term> {
                         .collect(),
                 )))),
             }),
-            Associated(t) => self.to_lam_term(t.clone()),
-            Method { f, .. } => self.to_lam_term(f.clone()),
+            Associated(t) => self.to_lam_term(*t.clone()),
+            Method { f, .. } => self.to_lam_term(*f.clone()),
 
             Undefined => Term::Undef(v),
             Meta(_, s) => match s {
                 None => unreachable!(),
-                Some(f) => self.to_lam_term(f.clone()),
+                Some(f) => self.to_lam_term(*f.clone()),
             },
         }
     }
@@ -236,18 +236,18 @@ impl<T: Syntax> Display for Def<T> {
 
 #[derive(Clone, Debug)]
 pub enum Body<T: Syntax> {
-    Fn(T),
+    Fn(Box<T>),
     Postulate,
-    Alias(T),
-    Const(bool, T),
-    Verify(T),
+    Alias(Box<T>),
+    Const(bool, Box<T>),
+    Verify(Box<T>),
 
     Interface {
         fns: Vec<Var>,
         ims: Vec<Var>,
     },
     Implements(Box<ImplementsBody<T>>),
-    ImplementsFn(T),
+    ImplementsFn(Box<T>),
     Findable(Var),
 
     Class {
@@ -255,16 +255,16 @@ pub enum Body<T: Syntax> {
         members: Vec<(Loc, String, T)>,
         methods: HashMap<String, Var>,
     },
-    Associated(T),
+    Associated(Box<T>),
     Method {
         class: Var,
         /// Only usable during name resolving.
         associated: HashMap<String, Var>,
-        f: T,
+        f: Box<T>,
     },
 
     Undefined,
-    Meta(MetaKind, Option<T>),
+    Meta(MetaKind, Option<Box<T>>),
 }
 
 #[derive(Clone, Debug)]

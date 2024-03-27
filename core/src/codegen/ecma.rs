@@ -51,10 +51,10 @@ const JS_ENUM_VAL: &str = "__enumV";
 pub struct Ecma {}
 
 impl Ecma {
-    fn solution<'a>(sigma: &'a Sigma, m: &'a Var) -> Option<&'a Term> {
+    fn solution<'a>(sigma: &'a Sigma, m: &'a Var) -> &'a Option<Box<Term>> {
         use Body::*;
         match &sigma.get(m).unwrap().body {
-            Meta(_, s) => s.as_ref(),
+            Meta(_, s) => s,
             _ => unreachable!(),
         }
     }
@@ -400,7 +400,7 @@ impl Ecma {
                         _ => unreachable!(),
                     };
                     ans = match v {
-                        Some(v) => v.clone(),
+                        Some(v) => *v.clone(),
                         _ => unreachable!(),
                     };
                 }
@@ -1046,7 +1046,7 @@ impl Ecma {
                                 loc,
                             ));
                         }
-                        Some(fields) => match fields {
+                        Some(fields) => match fields.as_ref() {
                             Fields(fields) => fields,
                             _ => unreachable!(),
                         },

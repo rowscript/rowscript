@@ -194,7 +194,7 @@ impl Builtins {
             name: Var::new(name),
             tele,
             ret: Box::new(ret),
-            body: Body::Fn(f),
+            body: Body::Fn(Box::new(f)),
         })
     }
 

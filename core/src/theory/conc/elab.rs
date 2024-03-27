@@ -97,27 +97,27 @@ impl Elaborator {
 
         let mut inferred_ret = None;
         let body = match d.body {
-            Fn(f) => Fn(self.check(f, &ret)?),
+            Fn(f) => Fn(Box::new(self.check(*f, &ret)?)),
             Postulate => Postulate,
-            Alias(t) => Alias(self.check(t, &ret)?),
+            Alias(t) => Alias(Box::new(self.check(*t, &ret)?)),
             Const(anno, f) => Const(
                 anno,
-                if anno {
-                    self.check(f, &ret)?
+                Box::new(if anno {
+                    self.check(*f, &ret)?
                 } else {
-                    let (tm, ty) = self.infer(f)?;
+                    let (tm, ty) = self.infer(*f)?;
                     inferred_ret = Some(Box::new(ty));
                     tm
-                },
+                }),
             ),
             Verify(a) => {
                 let expected = self.sigma.get(&d.name).unwrap().to_type();
-                Verify(self.verify(d.loc, a, expected)?)
+                Verify(Box::new(self.verify(d.loc, *a, expected)?))
             }
 
             Interface { fns, ims } => Interface { fns, ims },
             Implements(body) => Implements(self.check_implements_body(&d.name, *body)?),
-            ImplementsFn(f) => ImplementsFn(self.check(f, &ret)?),
+            ImplementsFn(f) => ImplementsFn(Box::new(self.check(*f, &ret)?)),
             Findable(i) => Findable(i),
 
             Class {
@@ -135,7 +135,7 @@ impl Elaborator {
                     methods,
                 }
             }
-            Associated(t) => Associated(self.check(t, &ret)?),
+            Associated(t) => Associated(Box::new(self.check(*t, &ret)?)),
             Method {
                 class,
                 associated,
@@ -143,11 +143,10 @@ impl Elaborator {
             } => Method {
                 class,
                 associated,
-                f: self.check(f, &ret)?,
+                f: Box::new(self.check(*f, &ret)?),
             },
 
-            Undefined => unreachable!(),
-            Meta(_, _) => unreachable!(),
+            Undefined | Meta(..) => unreachable!(),
         };
 
         for n in checked {

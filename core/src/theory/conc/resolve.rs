@@ -104,11 +104,11 @@ impl<'a> Resolver<'a> {
             tele.push(Param {
                 var: p.var,
                 info: p.info,
-                typ: Box::new(self.expr(*p.typ)?),
+                typ: self.expr(p.typ)?,
             });
         }
         d.tele = tele;
-        d.ret = Box::new(self.expr(*d.ret)?);
+        d.ret = self.expr(d.ret)?;
         d.body = match d.body {
             Fn(f) => Fn(self.self_referencing_fn(&d.name, f)?),
             Postulate => Postulate,
@@ -119,19 +119,19 @@ impl<'a> Resolver<'a> {
             Interface { fns, ims } => Interface { fns, ims },
             Implements(body) => {
                 let loc = d.loc;
-                let i = self.expr(Unresolved(loc, None, body.i.0))?.resolved();
-                let im = self.expr(*body.i.1)?;
+                let i = self
+                    .expr(Box::new(Unresolved(loc, None, body.i.0)))?
+                    .resolved();
+                let im = self.expr(body.i.1)?;
                 let mut fns = HashMap::default();
                 for (i_fn, im_fn) in body.fns {
                     fns.insert(
-                        self.expr(Unresolved(loc, None, i_fn))?.resolved(),
-                        self.expr(Unresolved(loc, None, im_fn))?.resolved(),
+                        self.expr(Box::new(Unresolved(loc, None, i_fn)))?.resolved(),
+                        self.expr(Box::new(Unresolved(loc, None, im_fn)))?
+                            .resolved(),
                     );
                 }
-                Implements(Box::new(ImplementsBody {
-                    i: (i, Box::new(im)),
-                    fns,
-                }))
+                Implements(Box::new(ImplementsBody { i: (i, im), fns }))
             }
             ImplementsFn(f) => ImplementsFn(self.expr(f)?), // FIXME: currently cannot be recursive
             Findable(i) => Findable(i),
@@ -145,7 +145,7 @@ impl<'a> Resolver<'a> {
                 let mut resolved_members = Vec::default();
                 for (loc, id, typ) in members {
                     names.raw(loc, id.clone())?;
-                    resolved_members.push((loc, id, self.expr(typ)?));
+                    resolved_members.push((loc, id, *self.expr(Box::new(typ))?));
                 }
                 Class {
                     associated,
@@ -205,7 +205,7 @@ impl<'a> Resolver<'a> {
         self.names.remove(v.as_str());
     }
 
-    fn bodied(&mut self, vars: &[&Var], e: Expr) -> Result<Expr, Error> {
+    fn bodied(&mut self, vars: &[&Var], e: Box<Expr>) -> Result<Box<Expr>, Error> {
         let mut olds = Vec::default();
 
         for &v in vars {
@@ -228,13 +228,13 @@ impl<'a> Resolver<'a> {
         Ok(Param {
             var: p.var,
             info: p.info,
-            typ: Box::new(self.expr(*p.typ)?),
+            typ: self.expr(p.typ)?,
         })
     }
 
-    fn expr(&mut self, e: Expr) -> Result<Expr, Error> {
+    fn expr(&mut self, #[allow(clippy::boxed_local)] e: Box<Expr>) -> Result<Box<Expr>, Error> {
         use Expr::*;
-        Ok(match e {
+        Ok(Box::new(match *e {
             Unresolved(loc, m, r) => match m {
                 Some(m) => match self.loaded.get(&m, &r.to_string()) {
                     Some(r) => Qualified(loc, m, r.clone()),
@@ -253,17 +253,17 @@ impl<'a> Resolver<'a> {
                 },
             },
             Local(loc, x, typ, a, b) => {
-                let b = self.bodied(&[&x], *b)?;
+                let b = self.bodied(&[&x], b)?;
                 Local(
                     loc,
                     x,
                     if let Some(ty) = typ {
-                        Some(Box::new(self.expr(*ty)?))
+                        Some(self.expr(ty)?)
                     } else {
                         None
                     },
-                    Box::new(self.expr(*a)?),
-                    Box::new(b),
+                    self.expr(a)?,
+                    b,
                 )
             }
             LocalSet(loc, mut x, typ, a, b) => {
@@ -273,144 +273,122 @@ impl<'a> Resolver<'a> {
                         return Err(DuplicateName(loc));
                     }
                 }
-                let b = self.bodied(&[&x], *b)?;
+                let b = self.bodied(&[&x], b)?;
                 LocalSet(
                     loc,
                     x,
                     if let Some(ty) = typ {
-                        Some(Box::new(self.expr(*ty)?))
+                        Some(self.expr(ty)?)
                     } else {
                         None
                     },
-                    Box::new(self.expr(*a)?),
-                    Box::new(b),
+                    self.expr(a)?,
+                    b,
                 )
             }
             LocalUpdate(loc, x, a, b) => match self.names.get(x.local().as_str()) {
-                Some(x) => LocalUpdate(
-                    loc,
-                    x.1.clone(),
-                    Box::new(self.expr(*a)?),
-                    Box::new(self.expr(*b)?),
-                ),
+                Some(x) => LocalUpdate(loc, x.1.clone(), self.expr(a)?, self.expr(b)?),
                 None => return Err(UnresolvedVar(loc)),
             },
-            While(loc, p, b, r) => While(
-                loc,
-                Box::new(self.expr(*p)?),
-                Box::new(self.expr(*b)?),
-                Box::new(self.expr(*r)?),
-            ),
-            Fori(loc, b, r) => Fori(loc, Box::new(self.expr(*b)?), Box::new(self.expr(*r)?)),
-            Guard(loc, p, b, r) => Guard(
-                loc,
-                Box::new(self.expr(*p)?),
-                Box::new(self.expr(*b)?),
-                Box::new(self.expr(*r)?),
-            ),
-            Return(loc, a) => Return(loc, Box::new(self.expr(*a)?)),
+            While(loc, p, b, r) => While(loc, self.expr(p)?, self.expr(b)?, self.expr(r)?),
+            Fori(loc, b, r) => Fori(loc, self.expr(b)?, self.expr(r)?),
+            Guard(loc, p, b, r) => Guard(loc, self.expr(p)?, self.expr(b)?, self.expr(r)?),
+            Return(loc, a) => Return(loc, self.expr(a)?),
             Pi(loc, p, b) => {
-                let b = self.bodied(&[&p.var], *b)?;
-                Pi(loc, self.param(p)?, Box::new(b))
+                let b = self.bodied(&[&p.var], b)?;
+                Pi(loc, self.param(p)?, b)
             }
             TupledLam(loc, vars, b) => {
                 let x = Var::tupled();
-                let wrapped = Box::new(Expr::wrap_tuple_locals(loc, &x, vars, *b));
-                let desugared = Lam(loc, x.clone(), wrapped);
-                self.bodied(&[&x], desugared)?
+                let wrapped = Expr::wrap_tuple_locals(loc, &x, vars, *b);
+                let desugared = Lam(loc, x.clone(), Box::new(wrapped));
+                *self.bodied(&[&x], Box::new(desugared))?
             }
             AnnoLam(loc, p, b) => {
-                let b = Box::new(self.bodied(&[&p.var], *b)?);
+                let b = self.bodied(&[&p.var], b)?;
                 AnnoLam(loc, self.param(p)?, b)
             }
             Lam(loc, x, b) => {
-                let b = Box::new(self.bodied(&[&x], *b)?);
+                let b = self.bodied(&[&x], b)?;
                 Lam(loc, x, b)
             }
-            App(loc, f, i, x) => App(loc, Box::new(self.expr(*f)?), i, Box::new(self.expr(*x)?)),
+            App(loc, f, i, x) => App(loc, self.expr(f)?, i, self.expr(x)?),
             RevApp(loc, f, x) => {
                 let unresolved = f.clone();
-                match self.expr(*f) {
-                    Ok(f) => RevApp(loc, Box::new(f), Box::new(self.expr(*x)?)),
-                    Err(_) => RevApp(loc, unresolved, Box::new(self.expr(*x)?)),
+                match self.expr(f) {
+                    Ok(f) => RevApp(loc, f, self.expr(x)?),
+                    Err(_) => RevApp(loc, unresolved, self.expr(x)?),
                 }
             }
             Sigma(loc, p, b) => {
-                let b = Box::new(self.bodied(&[&p.var], *b)?);
+                let b = self.bodied(&[&p.var], b)?;
                 Sigma(loc, self.param(p)?, b)
             }
-            Tuple(loc, a, b) => Tuple(loc, Box::new(self.expr(*a)?), Box::new(self.expr(*b)?)),
+            Tuple(loc, a, b) => Tuple(loc, self.expr(a)?, self.expr(b)?),
             TupleLocal(loc, x, y, a, b) => {
-                let b = Box::new(self.bodied(&[&x, &y], *b)?);
-                TupleLocal(loc, x, y, Box::new(self.expr(*a)?), b)
+                let b = self.bodied(&[&x, &y], b)?;
+                TupleLocal(loc, x, y, self.expr(a)?, b)
             }
-            UnitLocal(loc, a, b) => {
-                UnitLocal(loc, Box::new(self.expr(*a)?), Box::new(self.expr(*b)?))
-            }
-            If(loc, p, t, e) => If(
-                loc,
-                Box::new(self.expr(*p)?),
-                Box::new(self.expr(*t)?),
-                Box::new(self.expr(*e)?),
-            ),
+            UnitLocal(loc, a, b) => UnitLocal(loc, self.expr(a)?, self.expr(b)?),
+            If(loc, p, t, e) => If(loc, self.expr(p)?, self.expr(t)?, self.expr(e)?),
             Arr(loc, xs) => {
                 let mut resolved = Vec::default();
                 for x in xs {
-                    resolved.push(self.expr(x)?);
+                    resolved.push(*self.expr(Box::new(x))?);
                 }
                 Arr(loc, resolved)
             }
             Kv(loc, xs) => {
                 let mut resolved = Vec::default();
                 for (k, v) in xs {
-                    resolved.push((self.expr(k)?, self.expr(v)?));
+                    resolved.push((*self.expr(Box::new(k))?, *self.expr(Box::new(v))?));
                 }
                 Kv(loc, resolved)
             }
-            Associate(loc, a, n) => Associate(loc, Box::new(self.expr(*a)?), n),
+            Associate(loc, a, n) => Associate(loc, self.expr(a)?, n),
             Fields(loc, fields) => {
                 let mut names = RawNameSet::default();
                 let mut resolved = Vec::default();
                 for (f, typ) in fields {
                     names.raw(loc, f.clone())?;
-                    resolved.push((f, self.expr(typ)?));
+                    resolved.push((f, *self.expr(Box::new(typ))?));
                 }
                 Fields(loc, resolved)
             }
-            Combine(loc, a, b) => Combine(loc, Box::new(self.expr(*a)?), Box::new(self.expr(*b)?)),
-            RowOrd(loc, a, b) => RowOrd(loc, Box::new(self.expr(*a)?), Box::new(self.expr(*b)?)),
-            RowEq(loc, a, b) => RowEq(loc, Box::new(self.expr(*a)?), Box::new(self.expr(*b)?)),
-            Object(loc, a) => Object(loc, Box::new(self.expr(*a)?)),
-            Obj(loc, a) => Obj(loc, Box::new(self.expr(*a)?)),
-            Concat(loc, a, b) => Concat(loc, Box::new(self.expr(*a)?), Box::new(self.expr(*b)?)),
-            Downcast(loc, a) => Downcast(loc, Box::new(self.expr(*a)?)),
-            Enum(loc, a) => Enum(loc, Box::new(self.expr(*a)?)),
-            Variant(loc, n, a) => Variant(loc, n, Box::new(self.expr(*a)?)),
-            Upcast(loc, a) => Upcast(loc, Box::new(self.expr(*a)?)),
+            Combine(loc, a, b) => Combine(loc, self.expr(a)?, self.expr(b)?),
+            RowOrd(loc, a, b) => RowOrd(loc, self.expr(a)?, self.expr(b)?),
+            RowEq(loc, a, b) => RowEq(loc, self.expr(a)?, self.expr(b)?),
+            Object(loc, a) => Object(loc, self.expr(a)?),
+            Obj(loc, a) => Obj(loc, self.expr(a)?),
+            Concat(loc, a, b) => Concat(loc, self.expr(a)?, self.expr(b)?),
+            Downcast(loc, a) => Downcast(loc, self.expr(a)?),
+            Enum(loc, a) => Enum(loc, self.expr(a)?),
+            Variant(loc, n, a) => Variant(loc, n, self.expr(a)?),
+            Upcast(loc, a) => Upcast(loc, self.expr(a)?),
             Switch(loc, a, cs, d) => {
                 let mut names = RawNameSet::default();
                 let mut new = Vec::default();
                 for (n, v, e) in cs {
                     names.raw(loc, n.clone())?;
-                    let e = self.bodied(&[&v], e)?;
-                    new.push((n, v, e));
+                    let e = self.bodied(&[&v], Box::new(e))?;
+                    new.push((n, v, *e));
                 }
                 let d = match d {
                     Some((v, e)) => {
-                        let e = self.bodied(&[&v], *e)?;
-                        Some((v, Box::new(e)))
+                        let e = self.bodied(&[&v], Box::new(*e))?;
+                        Some((v, e))
                     }
                     None => None,
                 };
-                Switch(loc, Box::new(self.expr(*a)?), new, d)
+                Switch(loc, self.expr(a)?, new, d)
             }
-            ImplementsOf(loc, a) => ImplementsOf(loc, Box::new(self.expr(*a)?)),
+            ImplementsOf(loc, a) => ImplementsOf(loc, self.expr(a)?),
 
             e => e,
-        })
+        }))
     }
 
-    fn self_referencing_fn(&mut self, name: &Var, f: Expr) -> Result<Expr, Error> {
+    fn self_referencing_fn(&mut self, name: &Var, f: Box<Expr>) -> Result<Box<Expr>, Error> {
         self.insert(name);
         self.expr(f)
     }

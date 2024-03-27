@@ -171,12 +171,12 @@ impl Trans {
         let untupled_vars = untupled.unresolved();
         let untupled_loc = untupled.0;
         let tupled_param = Param::from(untupled);
-        let body = Fn(Expr::wrap_tuple_locals(
+        let body = Fn(Box::new(Expr::wrap_tuple_locals(
             untupled_loc,
             &tupled_param.var,
             untupled_vars,
             body.unwrap(),
-        ));
+        )));
         tele.push(tupled_param);
         tele.extend(preds);
 
@@ -273,7 +273,7 @@ impl Trans {
             name,
             tele,
             ret: Box::new(Univ(loc)),
-            body: Alias(target.unwrap()),
+            body: Alias(Box::new(target.unwrap())),
         }
     }
 
@@ -415,7 +415,7 @@ impl Trans {
                         name,
                         tele: Default::default(),
                         ret,
-                        body: Const(is_annotated, self.expr(p)),
+                        body: Const(is_annotated, Box::new(self.expr(p))),
                     };
                 }
                 _ => break,
@@ -465,7 +465,7 @@ impl Trans {
                         name: mangled_typ_var,
                         tele: tele.clone(),
                         ret: Box::new(Univ(typ_name_loc)),
-                        body: Associated(typ),
+                        body: Associated(Box::new(typ)),
                     });
                 }
                 Rule::class_member => {
@@ -523,12 +523,12 @@ impl Trans {
         let ctor_body = Method {
             class: name.clone(),
             associated: associated.clone(),
-            f: Expr::wrap_tuple_locals(
+            f: Box::new(Expr::wrap_tuple_locals(
                 ctor_loc,
                 &ctor_tupled_params.var,
                 ctor_param_vars,
                 Obj(loc, Box::new(Fields(loc, ctor_body_obj))),
-            ),
+            )),
         };
         let ctor_ret = Self::wrap_implicit_apps(&tele, Unresolved(loc, None, name.clone()));
         let mut ctor_tele = tele.clone();
@@ -581,7 +581,7 @@ impl Trans {
             name: Var::unbound(),
             tele,
             ret: Box::new(Expr::Univ(loc)),
-            body: Body::Verify(target),
+            body: Body::Verify(Box::new(target)),
         }
     }
 
@@ -595,7 +595,7 @@ impl Trans {
             name: Var::unbound(),
             tele,
             ret,
-            body: Body::Verify(target),
+            body: Body::Verify(Box::new(target)),
         }
     }
 
@@ -1473,7 +1473,7 @@ impl Trans {
             it,
             None,
             it_init,
-            Box::from(Fori(loc, init, Box::new(rest))),
+            Box::new(Fori(loc, init, Box::new(rest))),
         )
     }
 
