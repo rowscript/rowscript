@@ -1,5 +1,3 @@
-function log();
-
 function f0() {
     if (false) {
         return;
@@ -7,11 +5,11 @@ function f0() {
     while (true) {
         const a = 42;
         if (a == 69) {
-            log();
+            console.log("69");
             return;
         }
         if (a == 42) {
-            log();
+            console.log("42");
             break;
         }
         continue;

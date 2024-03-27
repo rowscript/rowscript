@@ -21,3 +21,4 @@ const v9 = "a" != "b";
 const v10 = "a" + "b";
 const v11 = true == false;
 const v12 = true != false;
+const v13 = (42).toString();

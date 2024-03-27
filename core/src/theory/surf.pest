@@ -448,7 +448,7 @@ branch_ignored = { ignored_stmt ~ ";" ~ branch }
 branch_while = { while_stmt_start ~ loop_branch ~ "}" ~ branch }
 branch_fori = { fori_stmt_start ~ loop_branch ~ "}" ~ branch }
 branch_forof = { forof_stmt_start ~ loop_branch ~ "}" ~ branch }
-branch_if = { if_stmt_start ~ branch ~  "}" ~ branch }
+branch_if = { if_stmt_start ~ branch ~ (else_stmt_start ~ branch)? ~ "}" ~ branch }
 loop_branch =
   { loop_branch_const
   | loop_branch_let
@@ -476,7 +476,7 @@ loop_branch_ignored = { ignored_stmt ~ ";" ~ loop_branch }
 loop_branch_while = { while_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
 loop_branch_fori = { fori_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
 loop_branch_forof = { forof_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
-loop_branch_if = { if_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
+loop_branch_if = { if_stmt_start ~ loop_branch ~ (else_stmt_start ~ loop_branch)? ~ "}" ~ loop_branch }
 
 const_stmt = { "const" ~ local_id ~ (":" ~ type_expr)? ~ "=" ~ expr }
 let_stmt = { "let" ~ local_id ~ (":" ~ type_expr)? ~ "=" ~ expr }
@@ -504,6 +504,7 @@ forof_stmt_start = _{ "for" ~ "(" ~ (forof_const | forof_let) ~ local_id ~ "of" 
 forof_const = { "const" }
 forof_let = { "let" }
 if_stmt_start = _{ "if" ~ "(" ~ expr ~ ")" ~ "{" }
+else_stmt_start = _{ "}" ~ "else" ~ "{" }
 ctl_continue = { "continue" ~ ";"? }
 ctl_break = { "break" ~ ";"? }
 ctl_return =  { "return" ~ expr? ~ ";"? }
@@ -565,7 +566,7 @@ fn_body_ignored = { ignored_stmt ~ ";" ~ fn_body }
 fn_body_while = { while_stmt_start ~ loop_branch ~ "}" ~ fn_body }
 fn_body_fori = { fori_stmt_start ~ loop_branch ~ "}" ~ fn_body }
 fn_body_forof = { forof_stmt_start ~ loop_branch ~ "}" ~ fn_body }
-fn_body_if = { if_stmt_start ~ branch ~ "}" ~ fn_body }
+fn_body_if = { if_stmt_start ~ branch ~ (else_stmt_start ~ branch)? ~ "}" ~ fn_body }
 fn_body_ret = { expr? }
 
 fn_postulate =
