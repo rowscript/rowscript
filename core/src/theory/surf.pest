@@ -374,7 +374,7 @@ boolean_if = { "(" ~ expr ~ ")" ~ "?" ~ expr ~ ":" ~ expr }
 rev_app = { ("(" ~ expr ~ ")" | idref | new_expr) ~ rev_app_caller+ }
 rev_app_caller = { "." ~ idref ~ implicit_args? ~ args+ }
 array_literal = { "[]" | "[" ~ expr ~ ("," ~ expr)* ~ "]" }
-item_index = { ("(" ~ expr ~ ")" | idref) ~ "[" ~ expr ~ "]" }
+item_index = { ("(" ~ expr ~ ")" | idref) ~ ("[" ~ expr ~ "]")+ }
 map_literal = { "{}" | "{" ~ map_literal_key ~ ":" ~ expr ~ ("," ~ map_literal_key ~ ":" ~ expr)* ~ "}" }
 map_literal_key =
  _{ string

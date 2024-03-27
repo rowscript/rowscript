@@ -31,7 +31,7 @@ class Minesweeper {
     }
 
     getCell(r: number, c: number): string {
-        ((this.field)[r])[c]
+        (this.field)[r][c]
     }
 
     putMine(r: number, c: number) {

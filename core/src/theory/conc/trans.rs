@@ -994,18 +994,19 @@ impl Trans {
                     Rule::idref => self.maybe_qualified(x),
                     _ => unreachable!(),
                 };
-                let f = Unresolved(loc, None, Var::new("__getitem__"));
-                let k = self.expr(pairs.next().unwrap());
-                App(
-                    loc,
-                    Box::new(f),
-                    UnnamedExplicit,
-                    Box::new(Tuple(
+                const GET_ITEM: &str = "__getitem__";
+                pairs.fold(x, |e, p| {
+                    App(
                         loc,
-                        Box::new(x),
-                        Box::new(Tuple(loc, Box::new(k), Box::new(TT(loc)))),
-                    )),
-                )
+                        Box::new(Unresolved(loc, None, Var::new(GET_ITEM))),
+                        UnnamedExplicit,
+                        Box::new(Tuple(
+                            loc,
+                            Box::new(e),
+                            Box::new(Tuple(loc, Box::new(self.expr(p)), Box::new(TT(loc)))),
+                        )),
+                    )
+                })
             }
             Rule::map_literal => {
                 let mut pairs = p.into_inner();
