@@ -948,7 +948,7 @@ impl Trans {
                 let mut pairs = p.into_inner();
                 If(
                     loc,
-                    Box::new(self.expr(pairs.next().unwrap())),
+                    Box::new(self.chainable_operand(pairs.next().unwrap())),
                     Box::new(self.expr(pairs.next().unwrap())),
                     Box::new(self.expr(pairs.next().unwrap())),
                 )
@@ -1064,7 +1064,7 @@ impl Trans {
                 }
                 TupledLam(loc, vars, Box::new(body.unwrap()))
             }
-            Rule::chainable => self.chainable(p),
+            Rule::secondary_expr => self.secondary_expr(p),
             Rule::app => self.app(p, None),
             Rule::idref => self.maybe_qualified(p),
             Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),
@@ -1072,9 +1072,9 @@ impl Trans {
         }
     }
 
-    fn chainable(&self, c: Pair<Rule>) -> Expr {
+    fn secondary_expr(&self, s: Pair<Rule>) -> Expr {
         use Expr::*;
-        let p = c.into_inner().next().unwrap();
+        let p = s.into_inner().next().unwrap();
         let loc = Loc::from(p.as_span());
         match p.as_rule() {
             Rule::string => Str(loc, p.as_str().to_string()),
@@ -1098,9 +1098,9 @@ impl Trans {
                 let v = pairs.next();
                 let kv = match k {
                     Some(k) => {
-                        let mut kv = vec![(self.chainable(k), self.expr(v.unwrap()))];
+                        let mut kv = vec![(self.secondary_expr(k), self.expr(v.unwrap()))];
                         while let Some(k) = pairs.next() {
-                            kv.push((self.chainable(k), self.expr(pairs.next().unwrap())))
+                            kv.push((self.secondary_expr(k), self.expr(pairs.next().unwrap())))
                         }
                         kv
                     }
@@ -1118,6 +1118,16 @@ impl Trans {
             Rule::hole => Hole(loc),
             Rule::tt => TT(loc),
             Rule::new_expr => self.new_expr(p),
+            _ => unreachable!(),
+        }
+    }
+
+    fn chainable_operand(&self, c: Pair<Rule>) -> Expr {
+        let p = c.into_inner().next().unwrap();
+        match p.as_rule() {
+            Rule::secondary_expr => self.secondary_expr(p),
+            Rule::idref => self.maybe_qualified(p),
+            Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),
             _ => unreachable!(),
         }
     }

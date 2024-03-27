@@ -44,7 +44,7 @@ class Minesweeper {
             return true
         }
         const isEmpty = cell == ".";
-        this.score = this.score + ((isEmpty) ? 1 : -1);
+        this.score = this.score + isEmpty ? 1 : -1;
         if (cell == ".") {
             const nr = this.nrows();
             const nc = this.ncols();

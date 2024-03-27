@@ -353,12 +353,12 @@ primary_expr =
   | enum_cast
   | enum_switch
   | lambda_expr
-  | chainable
+  | secondary_expr
   | app
   | idref
   | paren_expr
   }
-chainable =
+secondary_expr =
   { string
   | number
   | bigint
@@ -372,14 +372,19 @@ chainable =
   | tt
   | new_expr
   }
+chainable_operand =
+  { idref
+  | paren_expr
+  | secondary_expr
+  }
 boolean_false = { "false" }
 boolean_true = { "true" }
 array_literal = { "[]" | "[" ~ expr ~ ("," ~ expr)* ~ "]" }
-map_literal = { "{}" | "{" ~ chainable ~ ":" ~ expr ~ ("," ~ chainable ~ ":" ~ expr)* ~ "}" }
+map_literal = { "{}" | "{" ~ secondary_expr ~ ":" ~ expr ~ ("," ~ secondary_expr ~ ":" ~ expr)* ~ "}" }
 object_literal = { "{" ~ label ~ ("," ~ label)* ~ "}" }
 enum_variant = { variant_id ~ paren_expr? }
 new_expr = { "new " ~ tyref ~ ("<" ~ type_args ~ ">")? ~ args }
-boolean_if = { "(" ~ expr ~ ")" ~ "?" ~ expr ~ ":" ~ expr }
+boolean_if = { chainable_operand ~ "?" ~ expr ~ ":" ~ expr }
 rev_app = { ("(" ~ expr ~ ")" | idref | new_expr) ~ rev_app_caller+ }
 rev_app_caller = { "." ~ idref ~ implicit_args? ~ args+ }
 item_index = { ("(" ~ expr ~ ")" | idref) ~ ("[" ~ expr ~ "]")+ }
