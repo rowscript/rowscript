@@ -944,11 +944,6 @@ impl Trans {
         let p = e.into_inner().next().unwrap();
         let loc = Loc::from(p.as_span());
         match p.as_rule() {
-            Rule::string => Str(loc, p.as_str().to_string()),
-            Rule::number => Num(loc, p.into_inner().next().unwrap().as_str().to_string()),
-            Rule::bigint => Big(loc, p.as_str().to_string()),
-            Rule::boolean_false => False(loc),
-            Rule::boolean_true => True(loc),
             Rule::boolean_if => {
                 let mut pairs = p.into_inner();
                 If(
@@ -976,16 +971,6 @@ impl Trans {
                     )
                     .1
             }
-            Rule::array_literal => App(
-                loc,
-                Box::new(Unresolved(loc, None, Var::new("Array").ctor())),
-                UnnamedExplicit,
-                Box::new(Tuple(
-                    loc,
-                    Box::new(Arr(loc, p.into_inner().map(|e| self.expr(e)).collect())),
-                    Box::new(TT(loc)),
-                )),
-            ),
             Rule::item_index => {
                 let mut pairs = p.into_inner();
                 let x = pairs.next().unwrap();
@@ -1008,31 +993,6 @@ impl Trans {
                     )
                 })
             }
-            Rule::map_literal => {
-                let mut pairs = p.into_inner();
-                let k = pairs.next();
-                let v = pairs.next();
-                let kv = match k {
-                    Some(k) => {
-                        let mut kv = vec![(self.map_literal_key(loc, k), self.expr(v.unwrap()))];
-                        while let Some(k) = pairs.next() {
-                            kv.push((
-                                self.map_literal_key(loc, k),
-                                self.expr(pairs.next().unwrap()),
-                            ))
-                        }
-                        kv
-                    }
-                    None => Default::default(),
-                };
-                App(
-                    loc,
-                    Box::new(Unresolved(loc, None, Var::new("Map").ctor())),
-                    UnnamedExplicit,
-                    Box::new(Tuple(loc, Box::new(Kv(loc, kv)), Box::new(TT(loc)))),
-                )
-            }
-            Rule::object_literal => self.object_literal(p),
             Rule::object_concat => {
                 let mut pairs = p.into_inner();
                 let a = self.object_operand(pairs.next().unwrap());
@@ -1049,7 +1009,6 @@ impl Trans {
                 loc,
                 Box::new(self.object_operand(p.into_inner().next().unwrap())),
             ),
-            Rule::enum_variant => self.enum_variant(p),
             Rule::enum_cast => Upcast(
                 loc,
                 Box::new(self.enum_operand(p.into_inner().next().unwrap())),
@@ -1105,12 +1064,62 @@ impl Trans {
                 }
                 TupledLam(loc, vars, Box::new(body.unwrap()))
             }
-
+            Rule::chainable => self.chainable(p),
             Rule::new_expr => self.new_expr(p),
             Rule::app => self.app(p, None),
             Rule::tt => TT(loc),
             Rule::idref => self.maybe_qualified(p),
             Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),
+            _ => unreachable!(),
+        }
+    }
+
+    fn chainable(&self, c: Pair<Rule>) -> Expr {
+        use Expr::*;
+        let p = c.into_inner().next().unwrap();
+        let loc = Loc::from(p.as_span());
+        match p.as_rule() {
+            Rule::string => Str(loc, p.as_str().to_string()),
+            Rule::number => Num(loc, p.into_inner().next().unwrap().as_str().to_string()),
+            Rule::bigint => Big(loc, p.as_str().to_string()),
+            Rule::boolean_false => False(loc),
+            Rule::boolean_true => True(loc),
+            Rule::array_literal => App(
+                loc,
+                Box::new(Unresolved(loc, None, Var::new("Array").ctor())),
+                UnnamedExplicit,
+                Box::new(Tuple(
+                    loc,
+                    Box::new(Arr(loc, p.into_inner().map(|e| self.expr(e)).collect())),
+                    Box::new(TT(loc)),
+                )),
+            ),
+            Rule::map_literal => {
+                let mut pairs = p.into_inner();
+                let k = pairs.next();
+                let v = pairs.next();
+                let kv = match k {
+                    Some(k) => {
+                        let mut kv = vec![(self.map_literal_key(loc, k), self.expr(v.unwrap()))];
+                        while let Some(k) = pairs.next() {
+                            kv.push((
+                                self.map_literal_key(loc, k),
+                                self.expr(pairs.next().unwrap()),
+                            ))
+                        }
+                        kv
+                    }
+                    None => Default::default(),
+                };
+                App(
+                    loc,
+                    Box::new(Unresolved(loc, None, Var::new("Map").ctor())),
+                    UnnamedExplicit,
+                    Box::new(Tuple(loc, Box::new(Kv(loc, kv)), Box::new(TT(loc)))),
+                )
+            }
+            Rule::object_literal => self.object_literal(p),
+            Rule::enum_variant => self.enum_variant(p),
             Rule::hole => Hole(loc),
             _ => unreachable!(),
         }
