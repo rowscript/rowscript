@@ -1,20 +1,18 @@
-function log<T>(m: T);
-
 function f0() {
     let m = {};
     _ = m.set("key", 42);
-    log(m.has("key"));
-    log(m.get("key"));
-    log(m.delete("key"));
-    log(m.delete("key"));
+    console.log(m.has("key"));
+    console.log(m.get("key"));
+    console.log(m.delete("key"));
+    console.log(m.delete("key"));
     m.clear();
-    log(m);
+    console.log(m);
 }
 f0();
 
 function f1() {
     let m = {42: 69};
-    log(m);
+    console.log(m);
 }
 f1();
 

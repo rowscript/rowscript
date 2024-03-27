@@ -1067,7 +1067,6 @@ impl Trans {
             Rule::chainable => self.chainable(p),
             Rule::new_expr => self.new_expr(p),
             Rule::app => self.app(p, None),
-            Rule::tt => TT(loc),
             Rule::idref => self.maybe_qualified(p),
             Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),
             _ => unreachable!(),
@@ -1100,12 +1099,9 @@ impl Trans {
                 let v = pairs.next();
                 let kv = match k {
                     Some(k) => {
-                        let mut kv = vec![(self.map_literal_key(loc, k), self.expr(v.unwrap()))];
+                        let mut kv = vec![(self.chainable(k), self.expr(v.unwrap()))];
                         while let Some(k) = pairs.next() {
-                            kv.push((
-                                self.map_literal_key(loc, k),
-                                self.expr(pairs.next().unwrap()),
-                            ))
+                            kv.push((self.chainable(k), self.expr(pairs.next().unwrap())))
                         }
                         kv
                     }
@@ -1121,19 +1117,7 @@ impl Trans {
             Rule::object_literal => self.object_literal(p),
             Rule::enum_variant => self.enum_variant(p),
             Rule::hole => Hole(loc),
-            _ => unreachable!(),
-        }
-    }
-
-    fn map_literal_key(&self, loc: Loc, k: Pair<Rule>) -> Expr {
-        use Expr::*;
-        match k.as_rule() {
-            Rule::string => Str(loc, k.as_str().to_string()),
-            Rule::number => Num(loc, k.into_inner().next().unwrap().as_str().to_string()),
-            Rule::bigint => Big(loc, k.as_str().to_string()),
-            Rule::boolean_false => False(loc),
-            Rule::boolean_true => True(loc),
-            Rule::paren_expr => self.expr(k.into_inner().next().unwrap()),
+            Rule::tt => TT(loc),
             _ => unreachable!(),
         }
     }

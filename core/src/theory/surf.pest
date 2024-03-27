@@ -354,7 +354,6 @@ primary_expr =
   | lambda_expr
   | chainable
   | app
-  | tt
   | idref
   | new_expr
   | paren_expr
@@ -370,6 +369,7 @@ chainable =
   | object_literal
   | enum_variant
   | hole
+  | tt
   }
 boolean_false = { "false" }
 boolean_true = { "true" }
@@ -378,15 +378,7 @@ rev_app = { ("(" ~ expr ~ ")" | idref | new_expr) ~ rev_app_caller+ }
 rev_app_caller = { "." ~ idref ~ implicit_args? ~ args+ }
 array_literal = { "[]" | "[" ~ expr ~ ("," ~ expr)* ~ "]" }
 item_index = { ("(" ~ expr ~ ")" | idref) ~ ("[" ~ expr ~ "]")+ }
-map_literal = { "{}" | "{" ~ map_literal_key ~ ":" ~ expr ~ ("," ~ map_literal_key ~ ":" ~ expr)* ~ "}" }
-map_literal_key =
- _{ string
-  | number
-  | bigint
-  | boolean_false
-  | boolean_true
-  | paren_expr
-  }
+map_literal = { "{}" | "{" ~ chainable ~ ":" ~ expr ~ ("," ~ chainable ~ ":" ~ expr)* ~ "}" }
 new_expr = { "new" ~ tyref ~ ("<" ~ type_args ~ ">")? ~ args }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
 lambda_params = _{ "()" | "(" ~ param_id ~ ("," ~ param_id)* ~ ")" }
