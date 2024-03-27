@@ -1065,7 +1065,6 @@ impl Trans {
                 TupledLam(loc, vars, Box::new(body.unwrap()))
             }
             Rule::chainable => self.chainable(p),
-            Rule::new_expr => self.new_expr(p),
             Rule::app => self.app(p, None),
             Rule::idref => self.maybe_qualified(p),
             Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),
@@ -1118,6 +1117,7 @@ impl Trans {
             Rule::enum_variant => self.enum_variant(p),
             Rule::hole => Hole(loc),
             Rule::tt => TT(loc),
+            Rule::new_expr => self.new_expr(p),
             _ => unreachable!(),
         }
     }
