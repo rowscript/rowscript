@@ -687,8 +687,11 @@ impl Elaborator {
                     },
                 ];
                 (
-                    rename(Term::lam(&tele, Term::Access(Box::new(Term::Ref(o)), n))),
-                    rename(Term::pi(&tele, Term::Ref(t))),
+                    *rename(Box::new(Term::lam(
+                        &tele,
+                        Term::Access(Box::new(Term::Ref(o)), n),
+                    ))),
+                    *rename(Box::new(Term::pi(&tele, Term::Ref(t)))),
                 )
             }
             Downcast(loc, a) => {

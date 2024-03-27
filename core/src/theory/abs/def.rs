@@ -106,11 +106,11 @@ impl Def<Term> {
     }
 
     fn to_lam_term(&self, f: Term) -> Term {
-        rename(Term::lam(&self.tele, f))
+        *rename(Box::new(Term::lam(&self.tele, f)))
     }
 
     pub fn to_type(&self) -> Term {
-        rename(Term::pi(&self.tele, *self.ret.clone()))
+        *rename(Box::new(Term::pi(&self.tele, *self.ret.clone())))
     }
 }
 
