@@ -126,13 +126,20 @@ impl<'a> Normalizer<'a> {
             LocalUpdate(p, a, b) => LocalUpdate(p, self.term_box(a)?, self.term_box(b)?),
             While(p, b, r) => While(self.term_box(p)?, self.term_box(b)?, self.term_box(r)?),
             Fori(b, r) => Fori(self.term_box(b)?, self.term_box(r)?),
-            Guard(p, b, r) => {
+            Guard(p, b, e, r) => {
                 let p = self.term_box(p)?;
                 let b = self.term_box(b)?;
+                let e = match e {
+                    Some(e) => Some(self.term_box(e)?),
+                    None => None,
+                };
                 let r = self.term_box(r)?;
                 match *p {
-                    False => *r,
-                    p => Guard(Box::new(p), b, r),
+                    False => match e {
+                        Some(e) => self.term(UnitLocal(e, r))?,
+                        None => *r,
+                    },
+                    p => Guard(Box::new(p), b, e, r),
                 }
             }
             Return(a) => Return(self.term_box(a)?),

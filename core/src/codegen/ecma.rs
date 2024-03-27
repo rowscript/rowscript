@@ -627,13 +627,6 @@ impl Ecma {
         }))
     }
 
-    fn unit_stmt(&mut self, sigma: &Sigma, loc: Loc, tm: &Term) -> Result<Stmt, Error> {
-        Ok(Stmt::Expr(ExprStmt {
-            span: loc.into(),
-            expr: Box::new(self.expr(sigma, loc, tm)?),
-        }))
-    }
-
     fn iife(loc: Loc, b: BlockStmt) -> Expr {
         Expr::Paren(ParenExpr {
             span: loc.into(),
@@ -708,12 +701,23 @@ impl Ecma {
         }))
     }
 
-    fn guard_stmt(&mut self, sigma: &Sigma, loc: Loc, p: &Term, b: &Term) -> Result<Stmt, Error> {
+    fn guard_stmt(
+        &mut self,
+        sigma: &Sigma,
+        loc: Loc,
+        p: &Term,
+        e: &Option<Box<Term>>,
+        b: &Term,
+    ) -> Result<Stmt, Error> {
         Ok(Stmt::If(IfStmt {
             span: loc.into(),
             test: Box::new(self.expr(sigma, loc, p)?),
             cons: Box::new(Stmt::Block(self.block(sigma, loc, b, false)?)),
-            alt: None,
+            alt: if let Some(e) = e {
+                Some(Box::new(Stmt::Block(self.block(sigma, loc, e, false)?)))
+            } else {
+                None
+            },
         }))
     }
 
@@ -767,8 +771,8 @@ impl Ecma {
                     stmts.push(self.fori_stmt(sigma, loc, b)?);
                     tm = r
                 }
-                Guard(p, b, r) => {
-                    stmts.push(self.guard_stmt(sigma, loc, p, b)?);
+                Guard(p, b, e, r) => {
+                    stmts.push(self.guard_stmt(sigma, loc, p, e, b)?);
                     tm = r
                 }
                 Return(a) => {
@@ -788,7 +792,7 @@ impl Ecma {
                 }
                 TupleLocal(..) => unreachable!(),
                 UnitLocal(a, b) => {
-                    stmts.push(self.unit_stmt(sigma, loc, a)?);
+                    stmts.extend(self.block(sigma, loc, a, false)?.stmts);
                     tm = b
                 }
                 _ => {

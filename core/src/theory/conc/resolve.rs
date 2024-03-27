@@ -292,7 +292,17 @@ impl<'a> Resolver<'a> {
             },
             While(loc, p, b, r) => While(loc, self.expr(p)?, self.expr(b)?, self.expr(r)?),
             Fori(loc, b, r) => Fori(loc, self.expr(b)?, self.expr(r)?),
-            Guard(loc, p, b, r) => Guard(loc, self.expr(p)?, self.expr(b)?, self.expr(r)?),
+            Guard(loc, p, b, e, r) => Guard(
+                loc,
+                self.expr(p)?,
+                self.expr(b)?,
+                if let Some(e) = e {
+                    Some(self.expr(e)?)
+                } else {
+                    None
+                },
+                self.expr(r)?,
+            ),
             Return(loc, a) => Return(loc, self.expr(a)?),
             Pi(loc, p, b) => {
                 let b = self.bodied(&[&p.var], b)?;

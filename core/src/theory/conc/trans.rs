@@ -862,12 +862,19 @@ impl Trans {
             }
             Rule::fn_body_if => {
                 let mut pairs = p.into_inner();
-                Guard(
-                    loc,
-                    Box::new(self.expr(pairs.next().unwrap())),
-                    Box::new(self.branch(pairs.next().unwrap(), false)),
-                    Box::new(self.fn_body(pairs.next().unwrap())),
-                )
+                let p = Box::new(self.expr(pairs.next().unwrap()));
+                let b = Box::new(self.branch(pairs.next().unwrap(), false));
+                let else_or_rest = pairs.next();
+                let rest = pairs.next();
+                let (e, r) = if let Some(p) = rest {
+                    (
+                        Some(Box::new(self.branch(else_or_rest.unwrap(), false))),
+                        Box::new(self.fn_body(p)),
+                    )
+                } else {
+                    (None, Box::new(self.fn_body(else_or_rest.unwrap())))
+                };
+                Guard(loc, p, b, e, r)
             }
             Rule::fn_body_ret => p.into_inner().next().map_or(TT(loc), |e| self.expr(e)),
             _ => unreachable!(),
@@ -1243,12 +1250,22 @@ impl Trans {
             }
             Rule::branch_if | Rule::loop_branch_if => {
                 let mut pairs = p.into_inner();
-                Guard(
-                    loc,
-                    Box::new(self.expr(pairs.next().unwrap())),
-                    Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
-                    Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
-                )
+                let p = Box::new(self.expr(pairs.next().unwrap()));
+                let b = Box::new(self.branch(pairs.next().unwrap(), inside_loop));
+                let else_or_rest = pairs.next();
+                let rest = pairs.next();
+                let (e, r) = if let Some(p) = rest {
+                    (
+                        Some(Box::new(self.branch(else_or_rest.unwrap(), inside_loop))),
+                        Box::new(self.branch(p, inside_loop)),
+                    )
+                } else {
+                    (
+                        None,
+                        Box::new(self.branch(else_or_rest.unwrap(), inside_loop)),
+                    )
+                };
+                Guard(loc, p, b, e, r)
             }
             Rule::ctl_return => Return(
                 loc,

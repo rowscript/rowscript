@@ -40,7 +40,7 @@ pub enum Term {
     LocalUpdate(Var, Box<Self>, Box<Self>),
     While(Box<Self>, Box<Self>, Box<Self>),
     Fori(Box<Self>, Box<Self>),
-    Guard(Box<Self>, Box<Self>, Box<Self>),
+    Guard(Box<Self>, Box<Self>, Option<Box<Self>>, Box<Self>),
     Return(Box<Self>),
     Continue,
     Break,
@@ -260,7 +260,13 @@ impl Display for Term {
                 LocalUpdate(v, a, b) => format!("{v} = {a};\n\t{b}"),
                 While(p, b, r) => format!("while ({p}) {{\n\t{b}}}\n{r}"),
                 Fori(b, r) => format!("for {{ {b} }}\n{r}"),
-                Guard(p, b, r) => format!("if ({p}) {{\n\t{b}}}\n{r}"),
+                Guard(p, b, e, r) => {
+                    if let Some(e) = e {
+                        format!("if ({p}) {{\n\t{b}}} else {{\n\t{e}}}\n{r}")
+                    } else {
+                        format!("if ({p}) {{\n\t{b}}}\n{r}")
+                    }
+                }
                 Return(a) => format!("return {a}"),
                 Continue => "continue".to_string(),
                 Break => "break".to_string(),

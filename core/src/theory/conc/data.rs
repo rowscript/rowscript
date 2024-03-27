@@ -25,7 +25,7 @@ pub enum Expr {
     LocalUpdate(Loc, Var, Box<Self>, Box<Self>),
     While(Loc, Box<Self>, Box<Self>, Box<Self>),
     Fori(Loc, Box<Self>, Box<Self>),
-    Guard(Loc, Box<Self>, Box<Self>, Box<Self>),
+    Guard(Loc, Box<Self>, Box<Self>, Option<Box<Self>>, Box<Self>),
     Return(Loc, Box<Self>),
     Continue(Loc),
     Break(Loc),
@@ -248,7 +248,13 @@ impl Display for Expr {
                 LocalUpdate(_, a, v, b) => format!("{a} = {v};\n\t{b}"),
                 While(_, p, b, r) => format!("while ({p}) {{\n\t{b}\n}}\n{r}"),
                 Fori(_, b, r) => format!("for {{ {b} }}\n{r}"),
-                Guard(_, p, b, r) => format!("if ({p}) {{\n\t{b}\n}}\n{r}"),
+                Guard(_, p, b, e, r) => {
+                    if let Some(e) = e {
+                        format!("if ({p}) {{\n\t{b}\n}} else {{\n\t{e}}}\n{r}")
+                    } else {
+                        format!("if ({p}) {{\n\t{b}\n}}\n{r}")
+                    }
+                }
                 Return(_, a) => format!("return {a}"),
                 Continue(_) => "continue".to_string(),
                 Break(_) => "break".to_string(),

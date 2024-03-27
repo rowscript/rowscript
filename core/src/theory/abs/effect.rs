@@ -27,8 +27,15 @@ pub fn has_side_effect(tm: &Term) -> bool {
             }
             false
         }
+        Guard(p, a, e, b) => {
+            let mut has_effect = has_side_effect(p) || has_side_effect(a) || has_side_effect(b);
+            if let Some(e) = e {
+                has_effect = has_effect || has_side_effect(e);
+            }
+            has_effect
+        }
 
-        While(a, b, c) | Guard(a, b, c) | If(a, b, c) => {
+        While(a, b, c) | If(a, b, c) => {
             has_side_effect(a) || has_side_effect(b) || has_side_effect(c)
         }
 

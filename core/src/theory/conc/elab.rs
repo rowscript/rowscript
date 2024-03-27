@@ -271,11 +271,16 @@ impl Elaborator {
                 let r = self.check(*r, ty)?;
                 Term::Fori(Box::new(b), Box::new(r))
             }
-            Guard(_, p, b, r) => {
+            Guard(_, p, b, e, r) => {
                 let p = self.check(*p, &Term::Boolean)?;
                 let b = self.check(*b, &Term::Unit)?;
+                let e = if let Some(e) = e {
+                    Some(Box::new(self.check(*e, &Term::Unit)?))
+                } else {
+                    None
+                };
                 let r = self.check(*r, ty)?;
-                Term::Guard(Box::new(p), Box::new(b), Box::new(r))
+                Term::Guard(Box::new(p), Box::new(b), e, Box::new(r))
             }
             Lam(loc, var, body) => {
                 let pi = self.nf(loc).term(ty.clone())?;

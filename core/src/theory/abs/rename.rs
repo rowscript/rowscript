@@ -29,7 +29,12 @@ impl Renamer {
             LocalUpdate(v, a, b) => LocalUpdate(v, self.term(a), self.term(b)),
             While(p, b, r) => While(self.term(p), self.term(b), self.term(r)),
             Fori(b, r) => Fori(self.term(b), self.term(r)),
-            Guard(p, b, r) => Guard(self.term(p), self.term(b), self.term(r)),
+            Guard(p, b, e, r) => Guard(
+                self.term(p),
+                self.term(b),
+                e.map(|e| self.term(e)),
+                self.term(r),
+            ),
             Return(a) => Return(self.term(a)),
             Pi(p, c) => Pi(self.param(p), self.term(c)),
             Lam(p, b) => Lam(self.param(p), self.term(b)),
