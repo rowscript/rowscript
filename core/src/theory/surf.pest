@@ -343,21 +343,13 @@ infix_gt = { ">" }
 infix_and = { "&&" }
 infix_or = { "||" }
 primary_expr =
-  { string
-  | number
-  | bigint
-  | boolean_false
-  | boolean_true
+  { literal
   | boolean_if
   | rev_app
-  | array_literal
   | item_index
-  | map_literal
-  | object_literal
   | object_concat
   | object_access
   | object_cast
-  | enum_variant
   | enum_cast
   | enum_switch
   | lambda_expr
@@ -365,8 +357,19 @@ primary_expr =
   | tt
   | idref
   | new_expr
-  | hole
   | paren_expr
+  }
+literal =
+ _{ string
+  | number
+  | bigint
+  | boolean_false
+  | boolean_true
+  | array_literal
+  | map_literal
+  | object_literal
+  | enum_variant
+  | hole
   }
 boolean_false = { "false" }
 boolean_true = { "true" }
