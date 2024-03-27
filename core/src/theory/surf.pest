@@ -329,6 +329,7 @@ infix_op =
   | infix_gt
   | infix_and
   | infix_or
+  | infix_concat
   }
 infix_add = { "+" }
 infix_sub = { "-" }
@@ -343,11 +344,11 @@ infix_lt = { "<" }
 infix_gt = { ">" }
 infix_and = { "&&" }
 infix_or = { "||" }
+infix_concat = { "..." }
 primary_expr =
   { boolean_if
   | rev_app
   | item_index
-  | object_concat
   | object_access
   | object_cast
   | enum_cast
@@ -402,7 +403,6 @@ type_arg = { (tyref ~ "=")? ~ type_expr }
 row_args = _{ row_arg ~ ("," ~ row_arg)* }
 row_arg = { (row_id ~ "=")? ~ row_literal }
 args = { "()" | "(" ~ expr ~ ("," ~ expr)* ~ ")" }
-object_concat = { object_operand ~ "..." ~ object_operand }
 object_access = { object_operand ~ "." ~ prop_id }
 object_cast = { "{" ~ "..." ~ object_operand ~ "}" }
 object_operand =

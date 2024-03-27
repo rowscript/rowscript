@@ -35,6 +35,7 @@ impl Default for Trans {
                 .op(Op::infix(Rule::infix_mul, Assoc::Left)
                     | Op::infix(Rule::infix_div, Assoc::Left)
                     | Op::infix(Rule::infix_mod, Assoc::Left))
+                .op(Op::infix(Rule::infix_concat, Assoc::Left))
                 .op(Op::prefix(Rule::prefix_not) | Op::prefix(Rule::prefix_neg)),
         }
     }
@@ -900,6 +901,7 @@ impl Trans {
                     Rule::infix_mul => Self::infix_app(loc, "__mul__", lhs, rhs),
                     Rule::infix_div => Self::infix_app(loc, "__div__", lhs, rhs),
                     Rule::infix_mod => Self::infix_app(loc, "__mod__", lhs, rhs),
+                    Rule::infix_concat => Expr::Concat(loc, Box::new(lhs), Box::new(rhs)),
                     _ => unreachable!(),
                 }
             })
@@ -992,12 +994,6 @@ impl Trans {
                         )),
                     )
                 })
-            }
-            Rule::object_concat => {
-                let mut pairs = p.into_inner();
-                let a = self.object_operand(pairs.next().unwrap());
-                let b = self.object_operand(pairs.next().unwrap());
-                Concat(loc, Box::new(a), Box::new(b))
             }
             Rule::object_access => {
                 let mut pairs = p.into_inner();
