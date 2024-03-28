@@ -1,6 +1,6 @@
 function f(): () -> unit {
-    const id: (n: number) -> number = (n) => n;
-    const a: number = id(42);
+    const id = (n) => n;
+    const a = id(42);
     () => ()
 }
 

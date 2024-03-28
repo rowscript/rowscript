@@ -11,7 +11,7 @@ use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Loc, NameMap, Param, Tele, Var, VarGen};
+use crate::theory::{Loc, NameMap, Param, Tele, Var, VarGen, UNTUPLED_RHS_PREFIX};
 use crate::Error;
 use crate::Error::{
     ExpectedEnum, ExpectedImplementsOf, ExpectedInterface, ExpectedObject, ExpectedPi,
@@ -315,8 +315,7 @@ impl Elaborator {
             TupleLocal(_, x, y, a, b) => {
                 let a_loc = a.loc();
                 let (a, a_ty) = self.infer(*a)?;
-                let sig = self.nf(a_loc).term(a_ty)?;
-                match sig {
+                match a_ty {
                     Term::Sigma(ty_param, typ) => {
                         let x = Param {
                             var: x,
@@ -436,6 +435,39 @@ impl Elaborator {
                 let (b, b_ty) = self.guarded_infer(&[&param], *b)?;
                 (Term::Pi(param, Box::new(b)), b_ty)
             }
+            Lam(loc, var, b) => {
+                let mut typ = Box::new(Term::Unit);
+                let mut body = b.as_ref();
+                // Our lambda parameters are mostly tupled, hence we could cheat here.
+                loop {
+                    match body {
+                        TupleLocal(_, x, y, _, b)
+                            if y.as_str().starts_with(UNTUPLED_RHS_PREFIX) =>
+                        {
+                            typ = Box::new(Term::Sigma(
+                                Param {
+                                    var: x.clone(),
+                                    info: Explicit,
+                                    typ: Box::new(self.insert_meta(loc, InsertedMeta).0),
+                                },
+                                typ,
+                            ));
+                            body = b.as_ref();
+                        }
+                        _ => break,
+                    }
+                }
+                let p = Param {
+                    var,
+                    info: Explicit,
+                    typ,
+                };
+                let (b, b_ty) = self.guarded_infer(&[&p], *b)?;
+                (
+                    Term::Lam(p.clone(), Box::new(b)),
+                    Term::Pi(p, Box::new(b_ty)),
+                )
+            }
             App(_, f, ai, x) => {
                 let f_loc = f.loc();
                 let f_e = f.clone();
@@ -512,6 +544,24 @@ impl Elaborator {
                         Box::new(b_ty),
                     ),
                 )
+            }
+            TupleLocal(_, x, y, a, b) => {
+                let a_loc = a.loc();
+                let x_ty = self.insert_meta(a_loc, InsertedMeta).0;
+                let y_ty = self.insert_meta(a_loc, InsertedMeta).0;
+                let x = Param {
+                    var: x,
+                    info: Explicit,
+                    typ: Box::new(x_ty),
+                };
+                let y = Param {
+                    var: y,
+                    info: Explicit,
+                    typ: Box::new(y_ty.clone()),
+                };
+                let a = self.check(*a, &Term::Sigma(x.clone(), Box::new(y_ty)))?;
+                let (b, b_ty) = self.guarded_infer(&[&x, &y], *b)?;
+                (Term::TupleLocal(x, y, Box::new(a), Box::new(b)), b_ty)
             }
             UnitLocal(_, a, b) => {
                 let a = self.check(*a, &Term::Unit)?;

@@ -2,8 +2,8 @@ function f0() {
     const a = [];
     const m = a.push(42);
     const n = a.push(69);
-    const f: (n: number) -> unit = (n) => console.log(n);
-    a.forEach(f);
+    // FIXME: Code generation goes wrong here.
+    a.forEach((n) => console.log(n));
     console.log(a.length());
 }
 
@@ -25,7 +25,7 @@ function f2(): number {
 const n2 = f2();
 
 function f3(): string {
-    const a: Array<Array<string>> = [["1"]];
+    const a = [["1"]];
     a[0][0]
 }
 
