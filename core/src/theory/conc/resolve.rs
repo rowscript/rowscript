@@ -314,10 +314,6 @@ impl<'a> Resolver<'a> {
                 let desugared = Lam(loc, x.clone(), Box::new(wrapped));
                 *self.bodied(&[&x], Box::new(desugared))?
             }
-            AnnoLam(loc, p, b) => {
-                let b = self.bodied(&[&p.var], b)?;
-                AnnoLam(loc, self.param(p)?, b)
-            }
             Lam(loc, x, b) => {
                 let b = self.bodied(&[&x], b)?;
                 Lam(loc, x, b)

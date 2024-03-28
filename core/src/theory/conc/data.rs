@@ -34,7 +34,6 @@ pub enum Expr {
 
     Pi(Loc, Param<Self>, Box<Self>),
     TupledLam(Loc, Vec<Self>, Box<Self>),
-    AnnoLam(Loc, Param<Self>, Box<Self>),
     Lam(Loc, Var, Box<Self>),
     App(Loc, Box<Self>, ArgInfo, Box<Self>),
     RevApp(Loc, Box<Self>, Box<Self>),
@@ -128,7 +127,6 @@ impl Expr {
             Univ(loc) => loc,
             Pi(loc, ..) => loc,
             TupledLam(loc, ..) => loc,
-            AnnoLam(loc, ..) => loc,
             Lam(loc, ..) => loc,
             App(loc, ..) => loc,
             RevApp(loc, ..) => loc,
@@ -267,7 +265,6 @@ impl Display for Expr {
                         .collect::<Vec<_>>()
                         .join(", ")
                 ),
-                AnnoLam(_, p, b) => format!("{p} => {b}"),
                 Lam(_, v, b) => format!("{v} => {b}"),
                 App(_, f, i, x) => match i {
                     UnnamedExplicit => format!("({f} {x})"),

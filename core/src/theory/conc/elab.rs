@@ -436,19 +436,6 @@ impl Elaborator {
                 let (b, b_ty) = self.guarded_infer(&[&param], *b)?;
                 (Term::Pi(param, Box::new(b)), b_ty)
             }
-            AnnoLam(_, p, b) => {
-                let (p_ty, _) = self.infer(*p.typ)?;
-                let param = Param {
-                    var: p.var,
-                    info: p.info,
-                    typ: Box::new(p_ty),
-                };
-                let (b, b_ty) = self.guarded_infer(&[&param], *b)?;
-                (
-                    Term::Lam(param.clone(), Box::new(b)),
-                    Term::Pi(param, Box::new(b_ty)),
-                )
-            }
             App(_, f, ai, x) => {
                 let f_loc = f.loc();
                 let f_e = f.clone();
