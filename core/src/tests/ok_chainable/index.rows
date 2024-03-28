@@ -1,0 +1,15 @@
+const a0 = {
+    "a": [
+        {
+            b: "c"
+        }
+    ]
+};
+console.log(a0["a"][0].b);
+
+class A {
+    n: Array<number>;
+    getN(): Array<number> { this.n }
+}
+
+console.log(new A([42]).getN()[0]);

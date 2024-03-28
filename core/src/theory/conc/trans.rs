@@ -955,60 +955,18 @@ impl Trans {
                     Box::new(self.expr(pairs.next().unwrap())),
                 )
             }
-            Rule::rev_app => {
-                let mut pairs = p.into_inner();
-                let arg = pairs.next().unwrap();
-                pairs
-                    .fold(
-                        (
-                            Loc::from(arg.as_span()),
-                            match arg.as_rule() {
-                                Rule::expr => self.expr(arg),
-                                Rule::idref => self.maybe_qualified(arg),
-                                Rule::new_expr => self.new_expr(arg),
-                                _ => unreachable!(),
-                            },
-                        ),
-                        |(loc, arg), p| (Loc::from(p.as_span()), self.app(p, Some((loc, arg)))),
-                    )
-                    .1
-            }
-            Rule::item_index => {
-                let mut pairs = p.into_inner();
-                let x = pairs.next().unwrap();
-                let x = match x.as_rule() {
-                    Rule::expr => self.expr(x),
-                    Rule::idref => self.maybe_qualified(x),
-                    _ => unreachable!(),
-                };
-                const GET_ITEM: &str = "__getitem__";
-                pairs.fold(x, |e, p| {
-                    App(
-                        loc,
-                        Box::new(Unresolved(loc, None, Var::new(GET_ITEM))),
-                        UnnamedExplicit,
-                        Box::new(Tuple(
-                            loc,
-                            Box::new(e),
-                            Box::new(Tuple(loc, Box::new(self.expr(p)), Box::new(TT(loc)))),
-                        )),
-                    )
-                })
-            }
-            Rule::object_access => {
-                let mut pairs = p.into_inner();
-                let a = self.object_operand(pairs.next().unwrap());
-                let n = pairs.next().unwrap().as_str().to_string();
-                App(loc, Box::new(Access(loc, n)), UnnamedExplicit, Box::new(a))
-            }
-            Rule::object_cast => Downcast(
-                loc,
-                Box::new(self.object_operand(p.into_inner().next().unwrap())),
-            ),
-            Rule::enum_cast => Upcast(
-                loc,
-                Box::new(self.enum_operand(p.into_inner().next().unwrap())),
-            ),
+            Rule::chainable_expr => self.chainable_expr(p),
+            _ => unreachable!(),
+        }
+    }
+
+    fn chainable_operand(&self, c: Pair<Rule>) -> Expr {
+        use Expr::*;
+        let p = c.into_inner().next().unwrap();
+        let loc = Loc::from(p.as_span());
+        match p.as_rule() {
+            Rule::object_cast => Downcast(loc, Box::new(self.expr(p.into_inner().next().unwrap()))),
+            Rule::enum_cast => Upcast(loc, Box::new(self.expr(p.into_inner().next().unwrap()))),
             Rule::enum_switch => {
                 let mut pairs = p.into_inner();
                 let e = self.expr(pairs.next().unwrap().into_inner().next().unwrap());
@@ -1060,24 +1018,15 @@ impl Trans {
                 }
                 TupledLam(loc, vars, Box::new(body.unwrap()))
             }
-            Rule::secondary_expr => self.secondary_expr(p),
-            Rule::app => self.app(p, None),
-            Rule::idref => self.maybe_qualified(p),
+            Rule::new_expr => self.new_expr(p),
             Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),
-            _ => unreachable!(),
-        }
-    }
-
-    fn secondary_expr(&self, s: Pair<Rule>) -> Expr {
-        use Expr::*;
-        let p = s.into_inner().next().unwrap();
-        let loc = Loc::from(p.as_span());
-        match p.as_rule() {
             Rule::string => Str(loc, p.as_str().to_string()),
             Rule::number => Num(loc, p.into_inner().next().unwrap().as_str().to_string()),
             Rule::bigint => Big(loc, p.as_str().to_string()),
             Rule::boolean_false => False(loc),
             Rule::boolean_true => True(loc),
+            Rule::object_literal => self.object_literal(p),
+            Rule::enum_variant => self.enum_variant(p),
             Rule::array_literal => App(
                 loc,
                 Box::new(Unresolved(loc, None, Var::new("Array").ctor())),
@@ -1094,9 +1043,9 @@ impl Trans {
                 let v = pairs.next();
                 let kv = match k {
                     Some(k) => {
-                        let mut kv = vec![(self.secondary_expr(k), self.expr(v.unwrap()))];
+                        let mut kv = vec![(self.chainable_operand(k), self.expr(v.unwrap()))];
                         while let Some(k) = pairs.next() {
-                            kv.push((self.secondary_expr(k), self.expr(pairs.next().unwrap())))
+                            kv.push((self.chainable_operand(k), self.expr(pairs.next().unwrap())))
                         }
                         kv
                     }
@@ -1109,23 +1058,74 @@ impl Trans {
                     Box::new(Tuple(loc, Box::new(Kv(loc, kv)), Box::new(TT(loc)))),
                 )
             }
-            Rule::object_literal => self.object_literal(p),
-            Rule::enum_variant => self.enum_variant(p),
             Rule::hole => Hole(loc),
             Rule::tt => TT(loc),
-            Rule::new_expr => self.new_expr(p),
+            Rule::idref => self.maybe_qualified(p),
             _ => unreachable!(),
         }
     }
 
-    fn chainable_operand(&self, c: Pair<Rule>) -> Expr {
-        let p = c.into_inner().next().unwrap();
+    fn chainable_expr(&self, e: Pair<Rule>) -> Expr {
+        let mut pairs = e.into_inner();
+        let f = self.chainable_operand(pairs.next().unwrap());
+        pairs.fold(f, |ret, p| {
+            self.chainable_operator(p.into_inner().next().unwrap(), ret)
+        })
+    }
+
+    fn chainable_operator(&self, p: Pair<Rule>, mut f: Expr) -> Expr {
+        use Expr::*;
+        let loc = Loc::from(p.as_span());
         match p.as_rule() {
-            Rule::secondary_expr => self.secondary_expr(p),
-            Rule::idref => self.maybe_qualified(p),
-            Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),
+            Rule::index => {
+                f = App(
+                    loc,
+                    Box::new(Unresolved(loc, None, Var::new("__getitem__"))),
+                    UnnamedExplicit,
+                    Box::new(Tuple(
+                        loc,
+                        Box::new(f),
+                        Box::new(Tuple(
+                            loc,
+                            Box::new(self.expr(p.into_inner().next().unwrap())),
+                            Box::new(TT(loc)),
+                        )),
+                    )),
+                );
+            }
+            Rule::app => {
+                let mut rev_f = None;
+                for x in p.into_inner() {
+                    match x.as_rule() {
+                        Rule::idref => rev_f = Some(self.maybe_qualified(x)),
+                        Rule::row_arg => {
+                            let (i, e) = self.row_arg(x);
+                            f = App(loc, Box::new(f), i, Box::new(e));
+                        }
+                        Rule::type_arg => {
+                            let (i, e) = self.type_arg(x);
+                            f = App(loc, Box::new(f), i, Box::new(e));
+                        }
+                        Rule::args => {
+                            let mut args = self.tupled_args(x);
+                            if let Some(rev_f) = rev_f.clone() {
+                                args = Tuple(loc, Box::new(f), Box::new(args));
+                                f = RevApp(loc, Box::new(rev_f), Box::new(args));
+                            } else {
+                                f = App(loc, Box::new(f), UnnamedExplicit, Box::new(args));
+                            }
+                        }
+                        _ => unreachable!(),
+                    };
+                }
+            }
+            Rule::access => {
+                let n = p.into_inner().next().unwrap().as_str().to_string();
+                f = App(loc, Box::new(Access(loc, n)), UnnamedExplicit, Box::new(f));
+            }
             _ => unreachable!(),
         }
+        f
     }
 
     fn new_expr(&self, e: Pair<Rule>) -> Expr {
@@ -1494,46 +1494,6 @@ impl Trans {
         )
     }
 
-    fn app(&self, a: Pair<Rule>, mut rev_arg: Option<(Loc, Expr)>) -> Expr {
-        use Expr::*;
-
-        let mut pairs = a.into_inner();
-        let f = pairs.next().unwrap();
-        let f = match f.as_rule() {
-            Rule::expr => self.expr(f),
-            Rule::idref => self.maybe_qualified(f),
-            _ => unreachable!(),
-        };
-
-        pairs
-            .map(|arg| {
-                let loc = Loc::from(arg.as_span());
-                let mut is_rev = false;
-                let (i, e) = match arg.as_rule() {
-                    Rule::row_arg => self.row_arg(arg),
-                    Rule::type_arg => self.type_arg(arg),
-                    Rule::args => {
-                        let mut args = self.tupled_args(arg);
-                        if let Some((loc, a)) = &rev_arg {
-                            args = Tuple(*loc, Box::new(a.clone()), Box::new(args));
-                            is_rev = true;
-                        }
-                        rev_arg = None; // only guarantee first reverse application
-                        (UnnamedExplicit, args)
-                    }
-                    _ => unreachable!(),
-                };
-                (loc, is_rev, i, e)
-            })
-            .fold(f, |f, (loc, is_rev, i, x)| {
-                if is_rev {
-                    RevApp(loc, Box::new(f), Box::new(x))
-                } else {
-                    App(loc, Box::new(f), i, Box::new(x))
-                }
-            })
-    }
-
     fn maybe_qualified(&self, p: Pair<Rule>) -> Expr {
         use Expr::*;
         let loc = Loc::from(p.as_span());
@@ -1652,17 +1612,6 @@ impl Trans {
         )
     }
 
-    fn object_operand(&self, o: Pair<Rule>) -> Expr {
-        let p = o.into_inner().next().unwrap();
-        match p.as_rule() {
-            Rule::app => self.app(p, None),
-            Rule::object_literal => self.object_literal(p),
-            Rule::idref => self.maybe_qualified(p),
-            Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),
-            _ => unreachable!(),
-        }
-    }
-
     fn enum_variant(&self, v: Pair<Rule>) -> Expr {
         use Expr::*;
         let loc = Loc::from(v.as_span());
@@ -1672,17 +1621,6 @@ impl Trans {
             .next()
             .map_or(TT(loc), |p| self.expr(p.into_inner().next().unwrap()));
         Variant(loc, n, Box::new(a))
-    }
-
-    fn enum_operand(&self, o: Pair<Rule>) -> Expr {
-        let p = o.into_inner().next().unwrap();
-        match p.as_rule() {
-            Rule::app => self.app(p, None),
-            Rule::enum_variant => self.enum_variant(p),
-            Rule::idref => self.maybe_qualified(p),
-            Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),
-            _ => unreachable!(),
-        }
     }
 
     fn tupled_args(&self, a: Pair<Rule>) -> Expr {

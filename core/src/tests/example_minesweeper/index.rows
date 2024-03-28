@@ -6,11 +6,11 @@ class Minesweeper {
     field: Array<Array<string>>;
 
     nrows(): number {
-        (this.field).length()
+        this.field.length()
     }
 
     ncols(): number {
-        ((this.field)[0]).length()
+        this.field[0].length()
     }
 
     init(r: number, c: number) {
@@ -26,12 +26,12 @@ class Minesweeper {
     }
 
     setCell(r: number, c: number, cell: string) {
-        const row = (this.field)[r];
+        const row = this.field[r];
         row[c] = cell;
     }
 
     getCell(r: number, c: number): string {
-        (this.field)[r][c]
+        this.field[r][c]
     }
 
     putMine(r: number, c: number) {

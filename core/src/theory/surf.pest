@@ -217,6 +217,8 @@ tyref =
   }
 importable = { pub_fn_id | pub_type_id }
 
+boolean_false = { "false" }
+boolean_true = { "true" }
 hole = { "?" }
 univ = { "type" }
 root_prefix = { "::" }
@@ -347,52 +349,51 @@ infix_or = { "||" }
 infix_concat = { "..." }
 primary_expr =
   { boolean_if
-  | rev_app
-  | item_index
-  | object_access
-  | object_cast
+  | chainable_expr
+  }
+boolean_if = { chainable_operand ~ "?" ~ expr ~ ":" ~ expr }
+chainable_expr = { chainable_operand ~ chainable_operator* }
+chainable_operand =
+  { object_cast
   | enum_cast
   | enum_switch
   | lambda_expr
-  | secondary_expr
-  | app
-  | idref
+  | new_expr
   | paren_expr
-  }
-secondary_expr =
-  { string
+  | string
   | number
   | bigint
   | boolean_false
   | boolean_true
-  | array_literal
-  | map_literal
   | object_literal
   | enum_variant
+  | array_literal
+  | map_literal
   | hole
   | tt
-  | new_expr
+  | idref
   }
-chainable_operand =
-  { idref
-  | paren_expr
-  | secondary_expr
-  }
-boolean_false = { "false" }
-boolean_true = { "true" }
-array_literal = { "[]" | "[" ~ expr ~ ("," ~ expr)* ~ "]" }
-map_literal = { "{}" | "{" ~ secondary_expr ~ ":" ~ expr ~ ("," ~ secondary_expr ~ ":" ~ expr)* ~ "}" }
-object_literal = { "{" ~ label ~ ("," ~ label)* ~ "}" }
-enum_variant = { variant_id ~ paren_expr? }
-new_expr = { "new " ~ tyref ~ ("<" ~ type_args ~ ">")? ~ args }
-boolean_if = { chainable_operand ~ "?" ~ expr ~ ":" ~ expr }
-rev_app = { ("(" ~ expr ~ ")" | idref | new_expr) ~ rev_app_caller+ }
-rev_app_caller = { "." ~ idref ~ implicit_args? ~ args+ }
-item_index = { ("(" ~ expr ~ ")" | idref) ~ ("[" ~ expr ~ "]")+ }
+object_cast = { "{" ~ "..." ~ expr ~ "}" }
+enum_switch = { "switch" ~ paren_expr ~ "{" ~ enum_case+ ~ enum_default_case? ~ "}" }
+enum_cast = { "[" ~ "..." ~ expr ~ "]" }
+enum_case = { "case" ~ variant_id ~ ("(" ~ param_id ~ ")")? ~ ":" ~ expr }
+enum_default_case = { "case" ~ local_id ~ ":" ~ expr }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
 lambda_params = _{ "()" | "(" ~ param_id ~ ("," ~ param_id)* ~ ")" }
 lambda_body = { expr | fn_body_block }
-app = { ("(" ~ expr ~ ")" | idref) ~ implicit_args? ~ args+ }
+new_expr = { "new " ~ tyref ~ ("<" ~ type_args ~ ">")? ~ args }
+paren_expr = { "(" ~ expr ~ ")" }
+object_literal = { "{" ~ label ~ ("," ~ label)* ~ "}" }
+enum_variant = { variant_id ~ paren_expr? }
+array_literal = { "[]" | "[" ~ expr ~ ("," ~ expr)* ~ "]" }
+map_literal = { "{}" | "{" ~ chainable_operand ~ ":" ~ expr ~ ("," ~ chainable_operand ~ ":" ~ expr)* ~ "}" }
+chainable_operator =
+  { index
+  | app
+  | access
+  }
+index = { "[" ~ expr ~ "]" }
+app = { ("." ~ idref)? ~ implicit_args? ~ args+ }
 implicit_args =
  _{ "<" ~ row_args ~ ">"
   | "<" ~ type_args ~ ">"
@@ -403,25 +404,7 @@ type_arg = { (tyref ~ "=")? ~ type_expr }
 row_args = _{ row_arg ~ ("," ~ row_arg)* }
 row_arg = { (row_id ~ "=")? ~ row_literal }
 args = { "()" | "(" ~ expr ~ ("," ~ expr)* ~ ")" }
-object_access = { object_operand ~ "." ~ prop_id }
-object_cast = { "{" ~ "..." ~ object_operand ~ "}" }
-object_operand =
-  { app
-  | object_literal
-  | idref
-  | paren_expr
-  }
-enum_cast = { "[" ~ "..." ~ enum_operand ~ "]" }
-enum_operand =
-  { app
-  | enum_variant
-  | idref
-  | paren_expr
-  }
-enum_switch = { "switch" ~ paren_expr ~ "{" ~ enum_case+ ~ enum_default_case? ~ "}" }
-enum_case = { "case" ~ variant_id ~ ("(" ~ param_id ~ ")")? ~ ":" ~ expr }
-enum_default_case = { "case" ~ local_id ~ ":" ~ expr }
-paren_expr = { "(" ~ expr ~ ")" }
+access = { "." ~ prop_id }
 
 branch =
   { branch_const

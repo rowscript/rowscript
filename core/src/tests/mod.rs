@@ -48,6 +48,7 @@ mod ok_array;
 mod ok_array_iter;
 mod ok_bool;
 mod ok_builtin;
+mod ok_chainable;
 mod ok_class;
 mod ok_class_associated;
 mod ok_class_generics;
