@@ -290,7 +290,7 @@ impl Display for Term {
                 BoolEq(a, b) => format!("{a} == {b}"),
                 BoolNeq(a, b) => format!("{a} != {b}"),
                 String => "string".to_string(),
-                Str(v) => format!("\"{v}\""),
+                Str(v) => v.clone(),
                 StrAdd(a, b) => format!("{a} + {b}"),
                 StrEq(a, b) => format!("{a} == {b}"),
                 StrNeq(a, b) => format!("{a} != {b}"),

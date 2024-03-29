@@ -283,7 +283,7 @@ impl Display for Expr {
                 True(_) => "true".to_string(),
                 If(_, p, t, e) => format!("{p} ? {t} : {e}"),
                 String(_) => "string".to_string(),
-                Str(_, v) => format!("\"{v}\""),
+                Str(_, v) => v.clone(),
                 Number(_) => "number".to_string(),
                 Num(_, v) => v.clone(),
                 BigInt(_) => "bigint".to_string(),
