@@ -27,7 +27,7 @@ use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::{UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::Explicit;
-use crate::theory::{Loc, Param, Tele, Var, THIS, TUPLED, UNBOUND, UNTUPLED_RHS_PREFIX};
+use crate::theory::{Loc, Var, THIS, UNBOUND, UNTUPLED_RHS_PREFIX};
 use crate::Error::{NonErasable, UnsolvedMeta};
 use crate::{Error, ModuleFile};
 
@@ -466,7 +466,14 @@ impl Ecma {
 
     fn func(&mut self, sigma: &Sigma, def: &Def<Term>, body: &Term) -> Result<Function, Error> {
         Ok(Function {
-            params: Self::type_erased_params(def.loc, &def.tele),
+            params: Self::type_erased_params(def.loc, body)
+                .into_iter()
+                .map(|pat| JsParam {
+                    span: def.loc.into(),
+                    decorators: Default::default(),
+                    pat,
+                })
+                .collect(),
             decorators: Default::default(),
             span: def.loc.into(),
             body: Some(self.block(sigma, def.loc, body, true)?),
@@ -477,30 +484,19 @@ impl Ecma {
         })
     }
 
-    fn type_erased_param_pat(loc: Loc, p: &Param<Term>) -> Vec<Pat> {
-        let mut pats = Vec::default();
-        let mut tm = &p.typ;
-        while let Term::Sigma(p, b) = tm.as_ref() {
-            pats.push(Self::ident_pat(loc, &p.var));
-            tm = b;
-        }
-        pats
-    }
-
-    fn type_erased_params(loc: Loc, tele: &Tele<Term>) -> Vec<JsParam> {
-        for p in tele {
-            if p.var.as_str() == TUPLED {
-                return Self::type_erased_param_pat(loc, p)
-                    .into_iter()
-                    .map(|pat| JsParam {
-                        span: loc.into(),
-                        decorators: Default::default(),
-                        pat,
-                    })
-                    .collect();
+    fn type_erased_params(loc: Loc, tm: &Term) -> Vec<Pat> {
+        let mut ret = Vec::default();
+        let mut body = tm;
+        dbg!(body);
+        loop {
+            match body {
+                Term::TupleLocal(p, q, _, b) if q.var.as_str().starts_with(UNTUPLED_RHS_PREFIX) => {
+                    ret.push(Self::ident_pat(loc, &p.var));
+                    body = b.as_ref();
+                }
+                _ => return ret,
             }
         }
-        unreachable!()
     }
 
     fn untuple_args(
@@ -843,7 +839,7 @@ impl Ecma {
             Lam(p, b) => match p.info {
                 Explicit => Expr::Arrow(ArrowExpr {
                     span: loc.into(),
-                    params: Self::type_erased_param_pat(loc, p),
+                    params: Self::type_erased_params(loc, b),
                     body: Box::new(BlockStmtOrExpr::BlockStmt(self.block(sigma, loc, b, true)?)),
                     is_async: false,
                     is_generator: false,
