@@ -480,31 +480,27 @@ impl Ecma {
     fn type_erased_param_pat(loc: Loc, p: &Param<Term>) -> Vec<Pat> {
         let mut pats = Vec::default();
         let mut tm = &p.typ;
-        while let Term::Sigma(ref p, ref b) = **tm {
+        while let Term::Sigma(p, b) = tm.as_ref() {
             pats.push(Self::ident_pat(loc, &p.var));
             tm = b;
         }
         pats
     }
 
-    fn type_erased_param_pats(loc: Loc, tele: &Tele<Term>) -> Vec<Pat> {
+    fn type_erased_params(loc: Loc, tele: &Tele<Term>) -> Vec<JsParam> {
         for p in tele {
             if p.var.as_str() == TUPLED {
-                return Self::type_erased_param_pat(loc, p);
+                return Self::type_erased_param_pat(loc, p)
+                    .into_iter()
+                    .map(|pat| JsParam {
+                        span: loc.into(),
+                        decorators: Default::default(),
+                        pat,
+                    })
+                    .collect();
             }
         }
         unreachable!()
-    }
-
-    fn type_erased_params(loc: Loc, tele: &Tele<Term>) -> Vec<JsParam> {
-        Self::type_erased_param_pats(loc, tele)
-            .into_iter()
-            .map(|pat| JsParam {
-                span: loc.into(),
-                decorators: Default::default(),
-                pat,
-            })
-            .collect()
     }
 
     fn untuple_args(
