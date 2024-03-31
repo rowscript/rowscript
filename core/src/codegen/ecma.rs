@@ -487,7 +487,6 @@ impl Ecma {
     fn type_erased_params(loc: Loc, tm: &Term) -> Vec<Pat> {
         let mut ret = Vec::default();
         let mut body = tm;
-        dbg!(body);
         loop {
             match body {
                 Term::TupleLocal(p, q, _, b) if q.var.as_str().starts_with(UNTUPLED_RHS_PREFIX) => {
