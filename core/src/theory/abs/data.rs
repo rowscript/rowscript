@@ -389,24 +389,7 @@ impl Display for Term {
                 ImplementsOf(t, i) => format!("{t} implementsOf {i}"),
                 ImplementsSat => "implementsSat".to_string(),
                 Reflected(a) => format!("Reflected<{a}>"),
-                Cls {
-                    class,
-                    type_args,
-                    associated,
-                    object,
-                } => format!(
-                    "class {class}(type_args={{{}}}, associated={{{}}}, members={object})",
-                    type_args
-                        .iter()
-                        .map(|typ| typ.to_string())
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                    associated
-                        .iter()
-                        .map(|(n, typ)| format!("{n}={typ}"))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                ),
+                Cls { class, .. } => format!("class {class}"),
                 ErrorThrow(a) => format!("throw Error({a})"),
                 ConsoleLog(m) => format!("console.log({m})"),
             }

@@ -240,17 +240,21 @@ impl<'a> Resolver<'a> {
                     Some(r) => Qualified(loc, m, r.clone()),
                     None => return Err(UnresolvedVar(loc)),
                 },
-                None => match self.get(&r) {
-                    Some(v) => {
-                        let k = v.0;
-                        let v = v.1.clone();
-                        match k {
-                            VarKind::InModule => Resolved(loc, v),
-                            VarKind::Imported => Imported(loc, v),
+                None => {
+                    let local = self.get(&r.local());
+                    let global = self.get(&r);
+                    match (local, global) {
+                        (Some(v), _) | (_, Some(v)) => {
+                            let k = v.0;
+                            let v = v.1.clone();
+                            match k {
+                                VarKind::InModule => Resolved(loc, v),
+                                VarKind::Imported => Imported(loc, v),
+                            }
                         }
+                        _ => return Err(UnresolvedVar(loc)),
                     }
-                    None => return Err(UnresolvedVar(loc)),
-                },
+                }
             },
             Local(loc, x, typ, a, b) => {
                 let b = self.bodied(&[&x], b)?;
