@@ -163,12 +163,12 @@ magic_fn_id =
 idref =
   { qualifier ~ idref
   | builtin
+  | postulate_id
   | fn_id
   | param_id
   | local_id
   | prop_id
   | this_id
-  | postulate_id
   }
 builtin =
   { "error#throw"
