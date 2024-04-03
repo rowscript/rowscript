@@ -14,8 +14,7 @@ use swc_ecma_ast::{
     ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleDecl,
     ModuleItem, NewExpr, Number as JsNumber, Number, ObjectLit, Param as JsParam, ParenExpr, Pat,
     Prop, PropName, PropOrSpread, ReturnStmt, SimpleAssignTarget, SpreadElement, Stmt, Str,
-    SwitchCase, SwitchStmt, ThrowStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr,
-    VarDeclarator, WhileStmt,
+    ThrowStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr, VarDeclarator, WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -44,8 +43,6 @@ impl From<Loc> for Span {
 const JS_LIB: &str = "__lib";
 const JS_LIB_PREFIX: &str = "__lib__";
 const JS_ESCAPED_THIS: &str = "__this";
-const JS_ENUM_TAG: &str = "__enumT";
-const JS_ENUM_VAL: &str = "__enumV";
 
 #[derive(Default)]
 pub struct Ecma {}
@@ -150,16 +147,10 @@ impl Ecma {
     fn variant(loc: Loc, tag: &str, v: Expr) -> Expr {
         Expr::Object(ObjectLit {
             span: loc.into(),
-            props: vec![
-                PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                    key: PropName::Str(Self::js_raw_str(loc, JS_ENUM_TAG)),
-                    value: Box::new(Expr::Lit(Lit::Str(Self::js_str(loc, tag)))),
-                }))),
-                PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                    key: PropName::Str(Self::js_raw_str(loc, JS_ENUM_VAL)),
-                    value: Box::new(v),
-                }))),
-            ],
+            props: vec![PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                key: PropName::Str(Self::js_str(loc, tag)),
+                value: Box::new(v),
+            })))],
         })
     }
 
@@ -260,17 +251,10 @@ impl Ecma {
         })
     }
 
-    fn prototype<const N: usize>(
-        &mut self,
-        sigma: &Sigma,
-        loc: Loc,
-        a: &Term,
-        m: &str,
-        args: [Expr; N],
-    ) -> Result<Expr, Error> {
-        Ok(Expr::Call(CallExpr {
+    fn prototype<const N: usize>(loc: Loc, a: Expr, m: &str, args: [Expr; N]) -> Expr {
+        Expr::Call(CallExpr {
             span: loc.into(),
-            callee: Callee::Expr(Box::new(Self::access(loc, self.expr(sigma, loc, a)?, m))),
+            callee: Callee::Expr(Box::new(Self::access(loc, a, m))),
             args: args
                 .into_iter()
                 .map(|e| ExprOrSpread {
@@ -279,7 +263,7 @@ impl Ecma {
                 })
                 .collect(),
             type_args: None,
-        }))
+        })
     }
 
     fn well_known_symbol(
@@ -550,10 +534,22 @@ impl Ecma {
         &mut self,
         sigma: &Sigma,
         loc: Loc,
+        tag: Option<&str>,
         v: &Var,
         tm: &Term,
-    ) -> Result<Vec<Stmt>, Error> {
-        Ok(vec![Stmt::Return(ReturnStmt {
+    ) -> Result<Stmt, Error> {
+        let mut x = Expr::Ident(Self::str_ident(loc, "x"));
+        if let Some(tag) = tag {
+            x = Expr::Member(MemberExpr {
+                span: loc.into(),
+                obj: Box::new(x),
+                prop: MemberProp::Computed(ComputedPropName {
+                    span: loc.into(),
+                    expr: Box::new(Expr::Lit(Lit::Str(Self::js_str(loc, tag)))),
+                }),
+            });
+        }
+        Ok(Stmt::Return(ReturnStmt {
             span: loc.into(),
             arg: Some(Box::new(Self::paren_call(
                 loc,
@@ -568,22 +564,9 @@ impl Ecma {
                     type_params: None,
                     return_type: None,
                 }),
-                Expr::Ident(Self::str_ident(loc, "__v")),
+                x,
             ))),
-        })])
-    }
-
-    fn enum_introspect(loc: Loc, e: &str, v: &str, prop: &str) -> VarDeclarator {
-        VarDeclarator {
-            span: loc.into(),
-            name: Self::str_ident_pat(loc, v),
-            init: Some(Box::new(Expr::Member(MemberExpr {
-                span: loc.into(),
-                obj: Box::new(Expr::Ident(Self::str_ident(loc, e))),
-                prop: MemberProp::Ident(Self::str_ident(loc, prop)),
-            }))),
-            definite: false,
-        }
+        }))
     }
 
     fn local_decl(
@@ -890,15 +873,16 @@ impl Ecma {
             NumLt(a, b) => self.bin_expr(sigma, loc, BinaryOp::Lt, a, b)?,
             NumGt(a, b) => self.bin_expr(sigma, loc, BinaryOp::Gt, a, b)?,
             NumNeg(a) => self.unary_expr(sigma, loc, UnaryOp::Minus, a)?,
-            NumToStr(a) => self.prototype(sigma, loc, a, "toString", [])?,
+            NumToStr(a) => Self::prototype(loc, self.expr(sigma, loc, a)?, "toString", []),
             Big(v) => Expr::Lit(Lit::BigInt(JsBigInt {
                 span: loc.into(),
                 value: Box::new(BigIntValue::from_str(v).unwrap()),
                 raw: None,
             })),
-            ArrIterNext(it) => {
-                Self::optionify_iteration_result(loc, self.prototype(sigma, loc, it, "next", [])?)
-            }
+            ArrIterNext(it) => Self::optionify_iteration_result(
+                loc,
+                Self::prototype(loc, self.expr(sigma, loc, it)?, "next", []),
+            ),
             Arr(xs) => {
                 let mut elems = Vec::default();
                 for x in xs {
@@ -915,15 +899,15 @@ impl Ecma {
             ArrLength(a) => Self::access(loc, self.expr(sigma, loc, a)?, "length"),
             ArrPush(a, v) => {
                 let v = self.expr(sigma, loc, v)?;
-                self.prototype(sigma, loc, a, "push", [v])?
+                Self::prototype(loc, self.expr(sigma, loc, a)?, "push", [v])
             }
             ArrForeach(a, f) => {
                 let f = self.expr(sigma, loc, f)?;
-                self.prototype(sigma, loc, a, "forEach", [f])?
+                Self::prototype(loc, self.expr(sigma, loc, a)?, "forEach", [f])
             }
             ArrAt(a, i) => {
                 let i = self.expr(sigma, loc, i)?;
-                let ret = self.prototype(sigma, loc, a, "at", [i])?;
+                let ret = Self::prototype(loc, self.expr(sigma, loc, a)?, "at", [i]);
                 Self::optionify(loc, ret)
             }
             // void (a[i] = v)
@@ -948,9 +932,10 @@ impl Ecma {
                 })),
             }),
             ArrIter(a) => self.well_known_symbol_call(sigma, loc, a, "iterator")?,
-            MapIterNext(it) => {
-                Self::entryify_iteration_result(loc, self.prototype(sigma, loc, it, "next", [])?)
-            }
+            MapIterNext(it) => Self::entryify_iteration_result(
+                loc,
+                Self::prototype(loc, self.expr(sigma, loc, it)?, "next", []),
+            ),
             Kv(xs) => {
                 let mut elems = Vec::default();
                 for (k, v) in xs {
@@ -978,23 +963,23 @@ impl Ecma {
             }
             MapHas(m, k) => {
                 let k = self.expr(sigma, loc, k)?;
-                self.prototype(sigma, loc, m, "has", [k])?
+                Self::prototype(loc, self.expr(sigma, loc, m)?, "has", [k])
             }
             MapGet(m, k) => {
                 let k = self.expr(sigma, loc, k)?;
-                self.prototype(sigma, loc, m, "get", [k])?
+                Self::prototype(loc, self.expr(sigma, loc, m)?, "get", [k])
             }
             MapSet(m, k, v) => {
                 let k = self.expr(sigma, loc, k)?;
                 let v = self.expr(sigma, loc, v)?;
-                self.prototype(sigma, loc, m, "set", [k, v])?
+                Self::prototype(loc, self.expr(sigma, loc, m)?, "set", [k, v])
             }
             MapDelete(m, k) => {
                 let k = self.expr(sigma, loc, k)?;
-                self.prototype(sigma, loc, m, "delete", [k])?
+                Self::prototype(loc, self.expr(sigma, loc, m)?, "delete", [k])
             }
             MapIter(m) => self.well_known_symbol_call(sigma, loc, m, "iterator")?,
-            MapClear(m) => self.prototype(sigma, loc, m, "clear", [])?,
+            MapClear(m) => Self::prototype(loc, self.expr(sigma, loc, m)?, "clear", []),
             Obj(f) => match f.as_ref() {
                 Fields(fields) => {
                     let mut props = Vec::default();
@@ -1098,34 +1083,32 @@ impl Ecma {
             Up(a, _, _) => self.expr(sigma, loc, a)?,
             Switch(a, cs, d) => {
                 // ((x) => {
-                //      const __t = x.__enumT, __v = x.__enumV;
-                //      switch (__t) {
-                //      case "Ok": return ((a) => { return a + 1; })(__v)
-                //      case "None: return ((_) => { return undefined; })(__v)
-                //      default: return ((d) => { return d; })(__v)
+                //      if ("Ok" in x) {
+                //          return ((a) => { return a + 1; })(x["Ok"]);
                 //      }
+                //      if ("None" in x) {
+                //          return ((_) => { return undefined; })(x["None"]);
+                //      }
+                //      return ((d) => { return d; })(x)
                 // })(x)
 
-                let mut cases = Vec::default();
+                let mut stmts = Vec::default();
                 for (x, (v, tm)) in cs {
-                    cases.push(SwitchCase {
+                    stmts.push(Stmt::If(IfStmt {
                         span: loc.into(),
-                        test: Some(Box::new(Expr::Lit(Lit::Str(Self::js_str(loc, x))))),
-                        cons: self.enum_case_consequent(sigma, loc, v, tm)?,
-                    });
+                        test: Box::new(Expr::Bin(BinExpr {
+                            span: loc.into(),
+                            op: BinaryOp::In,
+                            left: Box::new(Expr::Lit(Lit::Str(Self::js_str(loc, x)))),
+                            right: Box::new(Expr::Ident(Self::str_ident(loc, "x"))),
+                        })),
+                        cons: Box::new(self.enum_case_consequent(sigma, loc, Some(x), v, tm)?),
+                        alt: None,
+                    }));
                 }
                 if let Some((v, tm)) = d {
-                    cases.push(SwitchCase {
-                        span: loc.into(),
-                        test: None,
-                        cons: self.enum_case_consequent(sigma, loc, v, tm)?,
-                    })
+                    stmts.push(self.enum_case_consequent(sigma, loc, None, v, tm)?)
                 }
-                let matcher = Stmt::Switch(SwitchStmt {
-                    span: loc.into(),
-                    discriminant: Box::new(Expr::Ident(Self::str_ident(loc, "__t"))),
-                    cases,
-                });
 
                 Self::paren_call(
                     loc,
@@ -1134,18 +1117,7 @@ impl Ecma {
                         params: vec![Self::str_ident_pat(loc, "x")],
                         body: Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
                             span: loc.into(),
-                            stmts: vec![
-                                Stmt::Decl(Decl::Var(Box::new(VarDecl {
-                                    span: loc.into(),
-                                    kind: VarDeclKind::Const,
-                                    declare: false,
-                                    decls: vec![
-                                        Self::enum_introspect(loc, "x", "__t", JS_ENUM_TAG),
-                                        Self::enum_introspect(loc, "x", "__v", JS_ENUM_VAL),
-                                    ],
-                                }))),
-                                matcher,
-                            ],
+                            stmts,
                         })),
                         is_async: false,
                         is_generator: false,
@@ -1155,11 +1127,17 @@ impl Ecma {
                     self.expr(sigma, loc, a)?,
                 )
             }
-            Unionify(a) => Expr::Member(MemberExpr {
-                span: loc.into(),
-                obj: Box::new(self.expr(sigma, loc, a)?),
-                prop: MemberProp::Ident(Self::special_ident(JS_ENUM_VAL)),
-            }),
+            // Object.values(a)[0]
+            Unionify(a) => Self::index(
+                loc,
+                Self::prototype(
+                    loc,
+                    Expr::Ident(Self::special_ident("Object")),
+                    "values",
+                    [self.expr(sigma, loc, a)?],
+                ),
+                0.0,
+            ),
             ErrorThrow(a) => Self::iife(
                 loc,
                 BlockStmt {
