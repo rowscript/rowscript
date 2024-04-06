@@ -26,7 +26,7 @@ function dfs(queens: Array<number>, n: number, dep: number): number {
 }
 
 function nqueens(n: number): number {
-    ([]).dfs(n, 0)
+    [].dfs(n, 0)
 }
 
-console.log(nqueens(8));
+console.log(8.nqueens());

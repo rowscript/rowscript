@@ -89,19 +89,19 @@ impl Var {
     }
 
     pub fn method(&self, m: Self) -> Self {
-        Self::new(format!("{self}__{m}"))
+        Self::new(format!("{self}${m}"))
     }
 
     pub fn associated(&self, m: Self) -> Self {
-        Self::new(format!("{self}::{m}"))
+        Self::new(format!("{self}${m}"))
     }
 
     pub fn ctor(&self) -> Self {
-        Self::new(format!("{self}__new"))
+        Self::new(format!("{self}$new"))
     }
 
     pub fn default(&self) -> Self {
-        Self::new(format!("{self}__default"))
+        Self::new(format!("{self}$default"))
     }
 
     pub fn this() -> Self {

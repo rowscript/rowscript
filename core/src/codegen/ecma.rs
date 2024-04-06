@@ -41,7 +41,7 @@ impl From<Loc> for Span {
 }
 
 const JS_LIB: &str = "__lib";
-const JS_LIB_PREFIX: &str = "__lib__";
+const JS_LIB_PREFIX: &str = "__lib$";
 const JS_ESCAPED_THIS: &str = "__this";
 
 #[derive(Default)]
