@@ -175,6 +175,7 @@ impl<T: Syntax> Display for Def<T> {
                     associated,
                     members,
                     methods,
+                    ..
                 } => format!(
                     "class {}{} {{\n{}\n{}\n\n{}\n}}",
                     self.name,
@@ -251,6 +252,7 @@ pub enum Body<T: Syntax> {
     Findable(Var),
 
     Class {
+        ctor: Var,
         associated: HashMap<String, Var>,
         members: Vec<(Loc, String, T)>,
         methods: HashMap<String, Var>,

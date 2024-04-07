@@ -52,6 +52,7 @@ mod ok_chainable;
 mod ok_class;
 mod ok_class_associated;
 mod ok_class_generics;
+mod ok_class_helper;
 mod ok_class_interface;
 mod ok_const;
 mod ok_ctl;

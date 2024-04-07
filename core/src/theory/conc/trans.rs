@@ -521,6 +521,7 @@ impl Trans {
             methods.insert("default".to_string(), default_meth_name.clone());
         }
         let ctor_tupled_params = Param::from(ctor_params);
+        let ctor_name = name.ctor();
         let ctor_body = Method {
             class: name.clone(),
             associated: associated.clone(),
@@ -542,6 +543,7 @@ impl Trans {
             tele: tele.clone(),
             ret: Box::new(Univ(loc)),
             body: Class {
+                ctor: ctor_name.clone(),
                 associated,
                 members,
                 methods,
@@ -549,7 +551,7 @@ impl Trans {
         });
         let ctor_def = Def {
             loc,
-            name: name.ctor(),
+            name: ctor_name,
             tele: ctor_tele,
             ret: Box::new(ctor_ret),
             body: ctor_body,

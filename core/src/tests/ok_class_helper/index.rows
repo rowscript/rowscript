@@ -1,0 +1,3 @@
+from .foo import _;
+function hello();
+hello();

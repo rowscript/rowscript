@@ -1,8 +1,6 @@
-function log<T>(n: T);
-
 class Foo<T> {
     n: T;
-    update() { log(this.n) }
+    update() { console.log(this.n) }
 }
 
 interface Updater<T> {

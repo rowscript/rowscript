@@ -121,6 +121,7 @@ impl Elaborator {
             Findable(i) => Findable(i),
 
             Class {
+                ctor,
                 associated,
                 members,
                 methods,
@@ -130,6 +131,7 @@ impl Elaborator {
                     checked_members.push((loc, id, self.check(typ, &ret)?));
                 }
                 Class {
+                    ctor,
                     associated,
                     members: checked_members,
                     methods,

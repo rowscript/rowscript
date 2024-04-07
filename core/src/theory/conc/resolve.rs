@@ -137,6 +137,7 @@ impl<'a> Resolver<'a> {
             Findable(i) => Findable(i),
 
             Class {
+                ctor,
                 associated,
                 members,
                 methods,
@@ -148,6 +149,7 @@ impl<'a> Resolver<'a> {
                     resolved_members.push((loc, id, *self.expr(Box::new(typ))?));
                 }
                 Class {
+                    ctor,
                     associated,
                     members: resolved_members,
                     methods,

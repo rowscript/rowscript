@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str::FromStr;
@@ -11,10 +12,11 @@ use swc_ecma_ast::{
     BindingIdent, BlockStmt, BlockStmtOrExpr, Bool, BreakStmt, CallExpr, Callee, ComputedPropName,
     CondExpr, ContinueStmt, Decl, ExportDecl, Expr, ExprOrSpread, ExprStmt, FnDecl, ForStmt,
     Function, Ident, IfStmt, ImportDecl, ImportNamedSpecifier, ImportSpecifier,
-    ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, Module, ModuleDecl,
-    ModuleItem, NewExpr, Number as JsNumber, Number, ObjectLit, Param as JsParam, ParenExpr, Pat,
-    Prop, PropName, PropOrSpread, ReturnStmt, SimpleAssignTarget, SpreadElement, Stmt, Str,
-    ThrowStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr, VarDeclarator, WhileStmt,
+    ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, MethodProp, Module,
+    ModuleDecl, ModuleItem, NewExpr, Number as JsNumber, Number, ObjectLit, Param as JsParam,
+    ParenExpr, Pat, Prop, PropName, PropOrSpread, ReturnStmt, SimpleAssignTarget, SpreadElement,
+    Stmt, Str, ThrowStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr, VarDeclarator,
+    WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -45,7 +47,9 @@ const JS_LIB_PREFIX: &str = "__lib$";
 const JS_ESCAPED_THIS: &str = "__this";
 
 #[derive(Default)]
-pub struct Ecma {}
+pub struct Ecma {
+    not_escaping_this: bool,
+}
 
 impl Ecma {
     fn solution<'a>(sigma: &'a Sigma, m: &'a Var) -> &'a Option<Box<Term>> {
@@ -78,6 +82,14 @@ impl Ecma {
 
     fn ident(loc: Loc, v: &Var) -> Ident {
         Self::str_ident(loc, v.as_str())
+    }
+
+    fn asis_ident(loc: Loc, v: &Var) -> Ident {
+        Ident {
+            span: loc.into(),
+            sym: v.as_str().into(),
+            optional: false,
+        }
     }
 
     fn ident_pat(loc: Loc, v: &Var) -> Pat {
@@ -450,14 +462,7 @@ impl Ecma {
 
     fn func(&mut self, sigma: &Sigma, def: &Def<Term>, body: &Term) -> Result<Function, Error> {
         Ok(Function {
-            params: Self::type_erased_params(def.loc, body)
-                .into_iter()
-                .map(|pat| JsParam {
-                    span: def.loc.into(),
-                    decorators: Default::default(),
-                    pat,
-                })
-                .collect(),
+            params: Self::type_erased_params(def.loc, body),
             decorators: Default::default(),
             span: def.loc.into(),
             body: Some(self.block(sigma, def.loc, body, true)?),
@@ -468,18 +473,30 @@ impl Ecma {
         })
     }
 
-    fn type_erased_params(loc: Loc, tm: &Term) -> Vec<Pat> {
+    fn type_erased_pats(loc: Loc, tm: &Term) -> Vec<Pat> {
         let mut ret = Vec::default();
         let mut body = tm;
         loop {
-            match body {
-                Term::TupleLocal(p, q, _, b) if q.var.as_str().starts_with(UNTUPLED_RHS_PREFIX) => {
+            if let Term::TupleLocal(p, q, _, b) = body {
+                if q.var.as_str().starts_with(UNTUPLED_RHS_PREFIX) {
                     ret.push(Self::ident_pat(loc, &p.var));
                     body = b.as_ref();
+                    continue;
                 }
-                _ => return ret,
             }
+            return ret;
         }
+    }
+
+    fn type_erased_params(loc: Loc, tm: &Term) -> Vec<JsParam> {
+        Self::type_erased_pats(loc, tm)
+            .into_iter()
+            .map(|pat| JsParam {
+                span: loc.into(),
+                decorators: Default::default(),
+                pat,
+            })
+            .collect()
     }
 
     fn untuple_args(
@@ -804,6 +821,7 @@ impl Ecma {
             }
             UnitLocal(a, b) => self.lambda_encoded_let(sigma, loc, None, a, b)?,
 
+            Ref(r) if self.not_escaping_this => Expr::Ident(Self::asis_ident(loc, r)),
             Ref(r) | Undef(r) => Expr::Ident(Self::ident(loc, r)),
             Extern(r) => Expr::Member(MemberExpr {
                 span: loc.into(),
@@ -821,7 +839,7 @@ impl Ecma {
             Lam(p, b) => match p.info {
                 Explicit => Expr::Arrow(ArrowExpr {
                     span: loc.into(),
-                    params: Self::type_erased_params(loc, b),
+                    params: Self::type_erased_pats(loc, b),
                     body: Box::new(BlockStmtOrExpr::BlockStmt(self.block(sigma, loc, b, true)?)),
                     is_async: false,
                     is_generator: false,
@@ -1275,10 +1293,15 @@ impl Ecma {
         for def in defs {
             debug!(target: "codegen", "generating definition: {def}");
             match match &def.body {
-                Fn(f) => self.func_decl(&mut items, sigma, &def, f),
+                Fn(f) | Method { f, .. } => self.func_decl(&mut items, sigma, &def, f),
                 Postulate => self.postulate_decl(&mut items, &def),
                 Const(_, f) => self.const_decl(&mut items, sigma, &def, f),
-                Method { f, .. } => self.func_decl(&mut items, sigma, &def, f),
+                Class { ctor, methods, .. } => {
+                    self.not_escaping_this = true;
+                    let ret = self.ctor_helper_decl(&mut items, sigma, &def.name, ctor, methods);
+                    self.not_escaping_this = false;
+                    ret
+                }
                 Undefined => unreachable!(),
                 _ => continue,
             } {
@@ -1373,6 +1396,121 @@ impl Ecma {
                 })),
             ),
         });
+        Ok(())
+    }
+
+    fn ctor_helper_decl(
+        &mut self,
+        items: &mut Vec<ModuleItem>,
+        sigma: &Sigma,
+        name: &Var,
+        ctor: &Var,
+        methods: &HashMap<String, Var>,
+    ) -> Result<(), Error> {
+        let ctor_def = sigma.get(ctor).unwrap();
+        let mut ctor_func = match &ctor_def.body {
+            Body::Method { f, .. } => self.func(sigma, ctor_def, f)?,
+            _ => unreachable!(),
+        };
+
+        let mut meths = Vec::default();
+        for (short, m) in methods {
+            let meth_def = sigma.get(m).unwrap();
+            let meth = match &meth_def.body {
+                Body::Method { f, .. } => f,
+                _ => unreachable!(),
+            };
+
+            let mut params = Self::type_erased_params(meth_def.loc, meth);
+            if params.is_empty() {
+                continue; // looks like a static method
+            }
+            params.remove(0); // strips `this`
+
+            let mut args = vec![ExprOrSpread {
+                spread: None,
+                expr: Box::new(Expr::Ident(Self::special_ident(THIS))),
+            }];
+            for x in &params {
+                args.push(ExprOrSpread {
+                    spread: None,
+                    expr: Box::new(Expr::Ident(match &x.pat {
+                        Pat::Ident(binding) => binding.id.clone(),
+                        _ => unreachable!(),
+                    })),
+                });
+            }
+
+            // Simply a proxy call.
+            meths.push(Prop::Method(MethodProp {
+                key: PropName::Ident(Self::str_ident(meth_def.loc, short)),
+                function: Box::new(Function {
+                    params,
+                    decorators: Default::default(),
+                    span: meth_def.loc.into(),
+                    body: Some(BlockStmt {
+                        span: meth_def.loc.into(),
+                        stmts: vec![Stmt::Return(ReturnStmt {
+                            span: meth_def.loc.into(),
+                            arg: Some(Box::new(Expr::Call(CallExpr {
+                                span: meth_def.loc.into(),
+                                callee: Callee::Expr(Box::new(Expr::Ident(Self::ident(
+                                    meth_def.loc,
+                                    m,
+                                )))),
+                                args,
+                                type_args: None,
+                            }))),
+                        })],
+                    }),
+                    is_generator: false,
+                    is_async: false,
+                    type_params: None,
+                    return_type: None,
+                }),
+            }))
+        }
+
+        ctor_func.body = Some(BlockStmt {
+            span: ctor_def.loc.into(),
+            stmts: {
+                let mut stmts = Vec::default();
+                for stmt in ctor_func.body.unwrap().stmts {
+                    let (span, obj) = match stmt {
+                        Stmt::Return(ReturnStmt { span, arg }) => (span, *arg.unwrap()),
+                        stmt => {
+                            stmts.push(stmt);
+                            continue;
+                        }
+                    };
+                    let obj = match obj {
+                        Expr::Paren(ParenExpr { expr, .. }) => *expr,
+                        e => e,
+                    };
+                    let arg = Some(Box::new(match obj {
+                        Expr::Object(ObjectLit { span, mut props }) => {
+                            for prop in meths {
+                                props.push(PropOrSpread::Prop(Box::new(prop)));
+                            }
+                            Expr::Object(ObjectLit { span, props })
+                        }
+                        e => e,
+                    }));
+                    stmts.push(Stmt::Return(ReturnStmt { span, arg }));
+                    break;
+                }
+                stmts
+            },
+        });
+
+        items.push(Self::try_export_decl(
+            ctor_def,
+            Decl::Fn(FnDecl {
+                ident: Self::ident(ctor_def.loc, name),
+                declare: false,
+                function: Box::new(ctor_func),
+            }),
+        ));
         Ok(())
     }
 }
