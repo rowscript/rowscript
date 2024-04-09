@@ -226,7 +226,10 @@ tt = { "()" }
 
 string = @{ "\"" ~ unquoted_string_part ~ "\"" }
 unquoted_string_part = @{ (unescaped_string_fragment | escaped_string_fragment)* }
-unescaped_string_fragment = @{ (!("\"" | "\\") ~ ANY)+ }
+unescaped_string_fragment = @{ (!("\"" | "\\" | NEWLINE) ~ ANY)+ }
+multiline_string = @{ "`" ~ unquoted_multiline_string_part ~ "`" }
+unquoted_multiline_string_part = @{ (unescaped_multiline_string_fragment | escaped_string_fragment)* }
+unescaped_multiline_string_fragment = @{ (!("`" | "\\") ~ ANY)+ }
 escaped_string_fragment =
  @{ "\\"
   ~ ( !("x" | "u" | ASCII_OCT_DIGIT)
@@ -361,6 +364,7 @@ chainable_operand =
   | new_expr
   | paren_expr
   | string
+  | multiline_string
   | number
   | bigint
   | boolean_false

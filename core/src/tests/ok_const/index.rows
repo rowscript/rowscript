@@ -13,3 +13,7 @@ const b: string = "hello";
 function f2(): string {
     b
 }
+
+const c = `
+wow it's awesome
+`;

@@ -1022,7 +1022,7 @@ impl Trans {
             }
             Rule::new_expr => self.new_expr(p),
             Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),
-            Rule::string => Str(loc, p.as_str().to_string()),
+            Rule::string | Rule::multiline_string => Str(loc, p.as_str().to_string()),
             Rule::number => Num(loc, p.into_inner().next().unwrap().as_str().to_string()),
             Rule::bigint => Big(loc, p.as_str().to_string()),
             Rule::boolean_false => False(loc),
