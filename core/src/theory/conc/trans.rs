@@ -160,6 +160,9 @@ impl Trans {
                 Rule::implicit_id => tele.push(Self::implicit_param(p)),
                 Rule::hkt_param => tele.push(Self::hkt_param(p)),
                 Rule::param => untupled.push(Loc::from(p.as_span()), self.param(p)),
+                Rule::variadic_param => {
+                    untupled.push(Loc::from(p.as_span()), self.variadic_param(p))
+                }
                 Rule::type_expr => ret = Box::new(self.type_expr(p)),
                 Rule::fn_body => {
                     body = Some(self.fn_body(p));
@@ -202,6 +205,9 @@ impl Trans {
                 Rule::implicit_id => tele.push(Self::implicit_param(p)),
                 Rule::hkt_param => tele.push(Self::hkt_param(p)),
                 Rule::param => untupled.push(Loc::from(p.as_span()), self.param(p)),
+                Rule::variadic_param => {
+                    untupled.push(Loc::from(p.as_span()), self.variadic_param(p))
+                }
                 Rule::type_expr => ret = Box::new(self.type_expr(p)),
                 Rule::pred => preds.push(self.pred(p)),
                 _ => unreachable!(),
@@ -614,6 +620,9 @@ impl Trans {
                 for fp in ps {
                     match fp.as_rule() {
                         Rule::param => untupled.push(Loc::from(fp.as_span()), self.param(fp)),
+                        Rule::variadic_param => {
+                            untupled.push(Loc::from(fp.as_span()), self.variadic_param(fp))
+                        }
                         Rule::type_expr => {
                             return Pi(loc, Param::from(untupled), Box::new(self.type_expr(fp)));
                         }
@@ -1572,6 +1581,13 @@ impl Trans {
         }
     }
 
+    fn variadic_param(&self, p: Pair<Rule>) -> Param<Expr> {
+        use Expr::*;
+        let mut p = self.param(p.into_inner().next().unwrap());
+        p.typ = Box::new(VarArr(p.typ.loc(), p.typ));
+        p
+    }
+
     fn param(&self, p: Pair<Rule>) -> Param<Expr> {
         let mut pairs = p.into_inner();
         Param {
@@ -1673,8 +1689,8 @@ impl UntupledParams {
         Self(loc, Default::default())
     }
 
-    fn push(&mut self, loc: Loc, param: Param<Expr>) {
-        self.1.push((loc, param))
+    fn push(&mut self, loc: Loc, p: Param<Expr>) {
+        self.1.push((loc, p))
     }
 
     fn unresolved(&self) -> Vec<Expr> {
@@ -1689,9 +1705,10 @@ impl UntupledParams {
 impl From<UntupledParams> for Param<Expr> {
     fn from(ps: UntupledParams) -> Self {
         use Expr::*;
-        let mut ret = Unit(ps.0);
-        for p in ps.1.into_iter().rev() {
-            ret = Sigma(p.0, p.1, Box::new(ret));
+        let UntupledParams(loc, ps) = ps;
+        let mut ret = Unit(loc);
+        for (loc, p) in ps.into_iter().rev() {
+            ret = Sigma(loc, p, Box::new(ret));
         }
         Self {
             var: Var::tupled(),

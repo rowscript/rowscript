@@ -44,6 +44,8 @@ pub enum Error {
     ExpectedSigma(Term, Loc),
     #[error("expected object type, got \"{0}\"")]
     ExpectedObject(Term, Loc),
+    #[error("expected array type for variadic parameters, got \"{0}\"")]
+    NonVariadic(Term, Loc),
     #[error("expected enum type, got \"{0}\"")]
     ExpectedEnum(Term, Loc),
     #[error("cannot extend with fields \"{0}\"")]
@@ -109,30 +111,28 @@ fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
             (range, PARSER_FAILED, Some(e.variant.message().to_string()))
         }
 
-        UnresolvedVar(loc) => simple_message(&e, loc, RESOLVER_FAILED),
-        DuplicateName(loc) => simple_message(&e, loc, RESOLVER_FAILED),
+        UnresolvedVar(loc) | DuplicateName(loc) => simple_message(&e, loc, RESOLVER_FAILED),
 
-        UnresolvedImplicitParam(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
-        ExpectedPi(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
-        ExpectedSigma(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
-        ExpectedObject(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
-        ExpectedEnum(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
-        FieldsNonExtendable(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
-        NonExhaustive(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
-        UnresolvedField(_, _, loc) => simple_message(&e, loc, CHECKER_FAILED),
-        ExpectedInterface(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
-        ExpectedAlias(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
-        UnsatisfiedConstraint(_, _, loc) => simple_message(&e, loc, CHECKER_FAILED),
-        ClassMethodNotImplemented(_, _, _, loc) => simple_message(&e, loc, CHECKER_FAILED),
-        UnresolvedImplementation(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
-        ExpectedImplementsOf(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
-        ExpectedReflectable(_, loc) => simple_message(&e, loc, CHECKER_FAILED),
+        UnresolvedImplicitParam(.., loc)
+        | ExpectedPi(.., loc)
+        | ExpectedSigma(.., loc)
+        | ExpectedObject(.., loc)
+        | NonVariadic(.., loc)
+        | ExpectedEnum(.., loc)
+        | FieldsNonExtendable(.., loc)
+        | NonExhaustive(.., loc)
+        | UnresolvedField(.., loc)
+        | ExpectedInterface(.., loc)
+        | ExpectedAlias(.., loc)
+        | UnsatisfiedConstraint(.., loc)
+        | ClassMethodNotImplemented(.., loc)
+        | UnresolvedImplementation(.., loc)
+        | ExpectedImplementsOf(.., loc)
+        | ExpectedReflectable(.., loc) => simple_message(&e, loc, CHECKER_FAILED),
 
-        NonUnifiable(_, _, loc) => simple_message(&e, loc, UNIFIER_FAILED),
-        NonRowSat(_, _, loc) => simple_message(&e, loc, UNIFIER_FAILED),
+        NonUnifiable(.., loc) | NonRowSat(.., loc) => simple_message(&e, loc, UNIFIER_FAILED),
 
-        UnsolvedMeta(_, loc) => simple_message(&e, loc, CODEGEN_FAILED),
-        NonErasable(_, loc) => simple_message(&e, loc, CODEGEN_FAILED),
+        UnsolvedMeta(.., loc) | NonErasable(.., loc) => simple_message(&e, loc, CODEGEN_FAILED),
 
         #[cfg(test)]
         CodegenTest => (Default::default(), CODEGEN_FAILED, None),

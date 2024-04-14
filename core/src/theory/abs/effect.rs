@@ -88,6 +88,7 @@ pub fn has_side_effect(tm: &Term) -> bool {
         | Univ
         | Pi(..)
         | Sigma(..)
+        | VarArr(..)
         | Unit
         | TT
         | Boolean

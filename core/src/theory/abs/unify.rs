@@ -78,6 +78,9 @@ impl<'a> Unifier<'a> {
             (Cls { object, .. }, b) => self.unify(object, b),
             (a, Cls { object, .. }) => self.unify(a, object),
 
+            (a, VarArr(b)) => self.unify(a, b),
+            (VarArr(a), b) => self.unify(a, b),
+
             (Local(p, a, b), Local(q, x, y)) => {
                 self.unify(&p.typ, &q.typ)?;
                 self.unify(a, x)?;

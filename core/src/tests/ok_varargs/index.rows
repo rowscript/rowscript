@@ -1,0 +1,8 @@
+function f0(s: string, ...ns: Array<number>) {
+    console.log(s);
+    for (const n of ns) {
+        console.log(n);
+    }
+}
+f0("t0", 1, 2, 3);
+//f0("t1", ...[1, 2, 3]);

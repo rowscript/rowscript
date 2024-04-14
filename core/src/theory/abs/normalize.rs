@@ -157,6 +157,7 @@ impl<'a> Normalizer<'a> {
                 }
             }
             Sigma(p, b) => Sigma(self.param(p)?, self.term_box(b)?),
+            VarArr(r) => VarArr(self.term_box(r)?),
             Tuple(a, b) => Tuple(self.term_box(a)?, self.term_box(b)?),
             TupleLocal(p, q, a, b) => {
                 let p = self.param(p)?;

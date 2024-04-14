@@ -272,7 +272,12 @@ hkt_param = { implicit_id ~ ":" ~ hkt_expr }
 hkt_expr = _{ univ ~ ("->" ~ univ)* }
 
 param = { param_id ~ ":" ~ type_expr }
-params = _{ "()" | "(" ~ param ~ ("," ~ param)* ~ ")" }
+variadic_param = { "..." ~ param }
+params =
+ _{ "()"
+  | "(" ~ variadic_param ~ ")"
+  | "(" ~ param ~ ("," ~ param)* ~ ("," ~ variadic_param)? ~ ")"
+  }
 
 field = { field_id ~ ":" ~ type_expr }
 pub_field = { pub_field_id ~ ":" ~ type_expr }

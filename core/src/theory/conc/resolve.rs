@@ -336,6 +336,7 @@ impl<'a> Resolver<'a> {
                 let b = self.bodied(&[&p.var], b)?;
                 Sigma(loc, self.param(p)?, b)
             }
+            VarArr(loc, a) => VarArr(loc, self.expr(a)?),
             Tuple(loc, a, b) => Tuple(loc, self.expr(a)?, self.expr(b)?),
             TupleLocal(loc, x, y, a, b) => {
                 let b = self.bodied(&[&x, &y], b)?;

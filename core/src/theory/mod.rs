@@ -73,6 +73,8 @@ pub const THIS: &str = "this";
 pub const ITER: &str = "__it";
 pub const ITER_RET: &str = "__r";
 
+pub const ARRAY: &str = "Array";
+
 impl Var {
     fn new<S: Into<String>>(name: S) -> Self {
         Self {

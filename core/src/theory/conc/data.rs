@@ -39,6 +39,7 @@ pub enum Expr {
     RevApp(Loc, Box<Self>, Box<Self>),
 
     Sigma(Loc, Param<Self>, Box<Self>),
+    VarArr(Loc, Box<Self>),
     Tuple(Loc, Box<Self>, Box<Self>),
     TupleLocal(Loc, Var, Var, Box<Self>, Box<Self>),
 
@@ -155,6 +156,7 @@ impl Expr {
             RowOrd(loc, ..) => loc,
             RowEq(loc, ..) => loc,
             Object(loc, ..) => loc,
+            VarArr(loc, ..) => loc,
             Obj(loc, ..) => loc,
             Concat(loc, ..) => loc,
             Access(loc, ..) => loc,
@@ -273,6 +275,7 @@ impl Display for Expr {
                 },
                 RevApp(_, f, x) => format!("({x}.{f})"),
                 Sigma(_, p, b) => format!("{p} * {b}"),
+                VarArr(_, t) => format!("...Array<{t}>"),
                 Tuple(_, a, b) => format!("[{a}, {b}]"),
                 TupleLocal(_, x, y, a, b) => format!("const [{x}, {y}] = {a};\n\t{b}"),
                 Unit(_) => "unit".to_string(),

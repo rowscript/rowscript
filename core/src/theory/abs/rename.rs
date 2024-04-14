@@ -40,6 +40,7 @@ impl Renamer {
             Lam(p, b) => Lam(self.param(p), self.term(b)),
             App(f, i, x) => App(self.term(f), i, self.term(x)),
             Sigma(p, c) => Sigma(self.param(p), self.term(c)),
+            VarArr(f) => VarArr(self.term(f)),
             Tuple(a, b) => Tuple(self.term(a), self.term(b)),
             TupleLocal(x, y, a, b) => {
                 TupleLocal(self.param(x), self.param(y), self.term(a), self.term(b))

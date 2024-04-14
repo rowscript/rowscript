@@ -128,6 +128,7 @@ pub enum Term {
     RowRefl,
 
     Object(Box<Self>),
+    VarArr(Box<Self>),
     Obj(Box<Self>),
     Concat(Box<Self>, Box<Self>),
     Access(Box<Self>, String),
@@ -207,8 +208,8 @@ impl Term {
                     } => (type_args.clone(), associated.clone(), methods.clone()),
                     _ => unreachable!(),
                 },
-                Pi(_, body) | Lam(_, body) => {
-                    x = body.as_ref();
+                VarArr(tm) | Pi(_, tm) | Lam(_, tm) => {
+                    x = tm.as_ref();
                     continue;
                 }
                 _ => return None,
@@ -365,6 +366,7 @@ impl Display for Term {
                 RowEq(a, b) => format!("{a} = {b}"),
                 RowRefl => "refl".to_string(),
                 Object(r) => format!("{{{r}}}"),
+                VarArr(t) => format!("varArr({t})"),
                 Obj(r) => format!("{{{r}}}"),
                 Concat(a, b) => format!("{a}...{b}"),
                 Access(a, n) => format!("{a}.{n}"),

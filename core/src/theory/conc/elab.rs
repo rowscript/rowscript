@@ -11,11 +11,12 @@ use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Loc, NameMap, Param, Tele, Var, VarGen, UNTUPLED_RHS_PREFIX};
+use crate::theory::{Loc, NameMap, Param, Tele, Var, VarGen, ARRAY, UNTUPLED_RHS_PREFIX};
 use crate::Error;
 use crate::Error::{
     ExpectedEnum, ExpectedImplementsOf, ExpectedInterface, ExpectedObject, ExpectedPi,
-    ExpectedSigma, NonExhaustive, UnresolvedField, UnresolvedImplicitParam, UnresolvedVar,
+    ExpectedSigma, NonExhaustive, NonVariadic, UnresolvedField, UnresolvedImplicitParam,
+    UnresolvedVar,
 };
 
 #[derive(Debug)]
@@ -305,12 +306,41 @@ impl Elaborator {
             Tuple(loc, a, b) => {
                 let sig = self.nf(loc).term(ty.clone())?;
                 match sig {
-                    Term::Sigma(ty_param, ty_body) => {
-                        let a = self.check(*a, &ty_param.typ)?;
-                        let body_type = self.nf(loc).with(&[(&ty_param.var, &a)], *ty_body)?;
-                        let b = self.check(*b, &body_type)?;
-                        Term::Tuple(Box::new(a), Box::new(b))
-                    }
+                    Term::Sigma(p, body) => match p.typ.as_ref() {
+                        Term::VarArr(t) => {
+                            let mut args = vec![*a];
+                            let mut rest = b;
+                            loop {
+                                match *rest {
+                                    TT(..) => break,
+                                    Tuple(.., arg, body) => {
+                                        args.push(*arg);
+                                        rest = body;
+                                    }
+                                    _ => unreachable!(),
+                                }
+                            }
+                            let args = self.check(
+                                App(
+                                    loc,
+                                    Box::new(self.array_ctor_ref(loc)),
+                                    UnnamedExplicit,
+                                    Box::new(Tuple(
+                                        loc,
+                                        Box::new(Arr(loc, args)),
+                                        Box::new(TT(loc)),
+                                    )),
+                                ),
+                                t,
+                            )?;
+                            Term::Tuple(Box::new(args), Box::new(Term::TT))
+                        }
+                        _ => {
+                            let a = self.check(*a, &p.typ)?;
+                            let body = self.nf(loc).with(&[(&p.var, &a)], *body)?;
+                            Term::Tuple(Box::new(a), Box::new(self.check(*b, &body)?))
+                        }
+                    },
                     ty => return Err(ExpectedSigma(ty, loc)),
                 }
             }
@@ -651,6 +681,13 @@ impl Elaborator {
                 let r = self.check(*r, &Term::Row)?;
                 (Term::Object(Box::new(r)), Term::Univ)
             }
+            VarArr(loc, t) => {
+                let t = self.check(*t, &Term::Univ)?;
+                if !self.is_variadic(&t) {
+                    return Err(NonVariadic(t, loc));
+                }
+                (Term::VarArr(Box::new(t)), Term::Univ)
+            }
             Obj(_, r) => match *r {
                 Fields(_, fields) => {
                     let mut tm_fields = FieldMap::default();
@@ -977,6 +1014,21 @@ impl Elaborator {
         });
         let ty = self.nf(loc).apply_type(ty, args.as_ref())?;
         Ok((tm, ty))
+    }
+
+    fn is_variadic(&self, tm: &Term) -> bool {
+        let name = match tm {
+            Term::Cls { class, .. } => class,
+            _ => return false,
+        };
+        self.ubiquitous
+            .get(ARRAY)
+            .map_or(Default::default(), |a| name == &a.1)
+    }
+
+    fn array_ctor_ref(&self, loc: Loc) -> Expr {
+        let name = Var::new(ARRAY).ctor();
+        Expr::Resolved(loc, self.ubiquitous.get(name.as_str()).unwrap().1.clone())
     }
 }
 
