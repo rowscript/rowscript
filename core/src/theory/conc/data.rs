@@ -39,7 +39,6 @@ pub enum Expr {
     RevApp(Loc, Box<Self>, Box<Self>),
 
     Sigma(Loc, Param<Self>, Box<Self>),
-    VarArr(Loc, Box<Self>),
     Tuple(Loc, Box<Self>, Box<Self>),
     TupleLocal(Loc, Var, Var, Box<Self>, Box<Self>),
 
@@ -90,6 +89,9 @@ pub enum Expr {
     ),
 
     ImplementsOf(Loc, Box<Self>),
+
+    VarArr(Loc, Box<Self>),
+    Spread(Loc, Box<Self>),
 }
 
 impl Expr {
@@ -110,62 +112,63 @@ impl Expr {
     pub fn loc(&self) -> Loc {
         use Expr::*;
         *match self {
-            Unresolved(loc, ..) => loc,
-            Resolved(loc, ..) => loc,
-            Imported(loc, ..) => loc,
-            Qualified(loc, ..) => loc,
-            Hole(loc) => loc,
-            InsertedHole(loc) => loc,
-            Local(loc, ..) => loc,
-            LocalSet(loc, ..) => loc,
-            LocalUpdate(loc, ..) => loc,
-            While(loc, ..) => loc,
-            Fori(loc, ..) => loc,
-            Guard(loc, ..) => loc,
-            Return(loc, ..) => loc,
-            Continue(loc) => loc,
-            Break(loc) => loc,
-            Univ(loc) => loc,
-            Pi(loc, ..) => loc,
-            TupledLam(loc, ..) => loc,
-            Lam(loc, ..) => loc,
-            App(loc, ..) => loc,
-            RevApp(loc, ..) => loc,
-            Sigma(loc, ..) => loc,
-            Tuple(loc, ..) => loc,
-            TupleLocal(loc, ..) => loc,
-            Unit(loc) => loc,
-            TT(loc) => loc,
-            UnitLocal(loc, ..) => loc,
-            Boolean(loc) => loc,
-            False(loc) => loc,
-            True(loc) => loc,
-            If(loc, ..) => loc,
-            String(loc) => loc,
-            Str(loc, ..) => loc,
-            Number(loc) => loc,
-            Num(loc, ..) => loc,
-            BigInt(loc) => loc,
-            Big(loc, ..) => loc,
-            Arr(loc, ..) => loc,
-            Kv(loc, ..) => loc,
-            Row(loc) => loc,
-            Associate(loc, ..) => loc,
-            Fields(loc, ..) => loc,
-            Combine(loc, ..) => loc,
-            RowOrd(loc, ..) => loc,
-            RowEq(loc, ..) => loc,
-            Object(loc, ..) => loc,
-            VarArr(loc, ..) => loc,
-            Obj(loc, ..) => loc,
-            Concat(loc, ..) => loc,
-            Access(loc, ..) => loc,
-            Downcast(loc, ..) => loc,
-            Enum(loc, ..) => loc,
-            Variant(loc, ..) => loc,
-            Upcast(loc, ..) => loc,
-            Switch(loc, ..) => loc,
-            ImplementsOf(loc, ..) => loc,
+            Unresolved(loc, ..)
+            | Resolved(loc, ..)
+            | Imported(loc, ..)
+            | Qualified(loc, ..)
+            | Hole(loc)
+            | InsertedHole(loc)
+            | Local(loc, ..)
+            | LocalSet(loc, ..)
+            | LocalUpdate(loc, ..)
+            | While(loc, ..)
+            | Fori(loc, ..)
+            | Guard(loc, ..)
+            | Return(loc, ..)
+            | Continue(loc)
+            | Break(loc)
+            | Univ(loc)
+            | Pi(loc, ..)
+            | TupledLam(loc, ..)
+            | Lam(loc, ..)
+            | App(loc, ..)
+            | RevApp(loc, ..)
+            | Sigma(loc, ..)
+            | Tuple(loc, ..)
+            | TupleLocal(loc, ..)
+            | Unit(loc)
+            | TT(loc)
+            | UnitLocal(loc, ..)
+            | Boolean(loc)
+            | False(loc)
+            | True(loc)
+            | If(loc, ..)
+            | String(loc)
+            | Str(loc, ..)
+            | Number(loc)
+            | Num(loc, ..)
+            | BigInt(loc)
+            | Big(loc, ..)
+            | Arr(loc, ..)
+            | Kv(loc, ..)
+            | Row(loc)
+            | Associate(loc, ..)
+            | Fields(loc, ..)
+            | Combine(loc, ..)
+            | RowOrd(loc, ..)
+            | RowEq(loc, ..)
+            | Object(loc, ..)
+            | Obj(loc, ..)
+            | Concat(loc, ..)
+            | Access(loc, ..)
+            | Downcast(loc, ..)
+            | Enum(loc, ..)
+            | Variant(loc, ..)
+            | Upcast(loc, ..)
+            | Switch(loc, ..)
+            | ImplementsOf(loc, ..)
+            | VarArr(loc, ..)
+            | Spread(loc, ..) => loc,
         }
     }
 
@@ -275,7 +278,6 @@ impl Display for Expr {
                 },
                 RevApp(_, f, x) => format!("({x}.{f})"),
                 Sigma(_, p, b) => format!("{p} * {b}"),
-                VarArr(_, t) => format!("...Array<{t}>"),
                 Tuple(_, a, b) => format!("[{a}, {b}]"),
                 TupleLocal(_, x, y, a, b) => format!("const [{x}, {y}] = {a};\n\t{b}"),
                 Unit(_) => "unit".to_string(),
@@ -336,6 +338,8 @@ impl Display for Expr {
                     return write!(f, "}}");
                 }
                 ImplementsOf(_, a) => a.to_string(),
+                VarArr(_, t) => format!("...Array<{t}>"),
+                Spread(_, a) => format!("...{a}"),
             }
             .as_str(),
         )

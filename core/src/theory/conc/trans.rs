@@ -1645,9 +1645,18 @@ impl Trans {
         use Expr::*;
         let loc = Loc::from(a.as_span());
         a.into_inner()
-            .map(|pair| match pair.as_rule() {
-                Rule::expr => (Loc::from(pair.as_span()), self.expr(pair)),
-                _ => unreachable!(),
+            .map(|pair| {
+                let loc = Loc::from(pair.as_span());
+                (
+                    loc,
+                    match pair.as_rule() {
+                        Rule::expr => self.expr(pair),
+                        Rule::spread_arg => {
+                            Spread(loc, Box::new(self.expr(pair.into_inner().next().unwrap())))
+                        }
+                        _ => unreachable!(),
+                    },
+                )
             })
             .rfold(TT(loc), |a, (loc, x)| Tuple(loc, Box::new(x), Box::new(a)))
     }

@@ -157,7 +157,6 @@ impl<'a> Normalizer<'a> {
                 }
             }
             Sigma(p, b) => Sigma(self.param(p)?, self.term_box(b)?),
-            VarArr(r) => VarArr(self.term_box(r)?),
             Tuple(a, b) => Tuple(self.term_box(a)?, self.term_box(b)?),
             TupleLocal(p, q, a, b) => {
                 let p = self.param(p)?;
@@ -550,6 +549,8 @@ impl<'a> Normalizer<'a> {
                 }
                 ImplementsOf(a, i)
             }
+            VarArr(t) => VarArr(self.term_box(t)?),
+            Spread(a) => Spread(self.term_box(a)?),
             Find(ty, i, f) => {
                 let ty = self.term_box(ty)?;
                 match *ty {

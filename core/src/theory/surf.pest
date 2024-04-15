@@ -412,7 +412,12 @@ type_args = _{ type_arg ~ ("," ~ type_arg)* }
 type_arg = { (tyref ~ "=")? ~ type_expr }
 row_args = _{ row_arg ~ ("," ~ row_arg)* }
 row_arg = { (row_id ~ "=")? ~ row_literal }
-args = { "()" | "(" ~ expr ~ ("," ~ expr)* ~ ")" }
+args =
+  { "()"
+  | "(" ~ spread_arg ~ ")"
+  | "(" ~ expr ~ ("," ~ expr)* ~ ("," ~ spread_arg)? ~ ")"
+  }
+spread_arg = { "..." ~ expr }
 access = { "." ~ prop_id }
 
 branch =

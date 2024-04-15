@@ -128,7 +128,6 @@ pub enum Term {
     RowRefl,
 
     Object(Box<Self>),
-    VarArr(Box<Self>),
     Obj(Box<Self>),
     Concat(Box<Self>, Box<Self>),
     Access(Box<Self>, String),
@@ -145,6 +144,9 @@ pub enum Term {
     Find(Box<Self>, Var, Var),
     ImplementsOf(Box<Self>, Var),
     ImplementsSat,
+
+    VarArr(Box<Self>),
+    Spread(Box<Self>),
 
     Reflected(Box<Self>),
 
@@ -366,7 +368,6 @@ impl Display for Term {
                 RowEq(a, b) => format!("{a} = {b}"),
                 RowRefl => "refl".to_string(),
                 Object(r) => format!("{{{r}}}"),
-                VarArr(t) => format!("varArr({t})"),
                 Obj(r) => format!("{{{r}}}"),
                 Concat(a, b) => format!("{a}...{b}"),
                 Access(a, n) => format!("{a}.{n}"),
@@ -390,6 +391,8 @@ impl Display for Term {
                 Find(ty, i, f) => format!("{i}.{f}<{ty}>"),
                 ImplementsOf(t, i) => format!("{t} implementsOf {i}"),
                 ImplementsSat => "implementsSat".to_string(),
+                VarArr(t) => format!("...Array<{t}>"),
+                Spread(a) => format!("...{a}"),
                 Reflected(a) => format!("Reflected<{a}>"),
                 Cls { class, .. } => format!("class {class}"),
                 ErrorThrow(a) => format!("throw Error({a})"),

@@ -336,7 +336,6 @@ impl<'a> Resolver<'a> {
                 let b = self.bodied(&[&p.var], b)?;
                 Sigma(loc, self.param(p)?, b)
             }
-            VarArr(loc, a) => VarArr(loc, self.expr(a)?),
             Tuple(loc, a, b) => Tuple(loc, self.expr(a)?, self.expr(b)?),
             TupleLocal(loc, x, y, a, b) => {
                 let b = self.bodied(&[&x, &y], b)?;
@@ -396,6 +395,8 @@ impl<'a> Resolver<'a> {
                 Switch(loc, self.expr(a)?, new, d)
             }
             ImplementsOf(loc, a) => ImplementsOf(loc, self.expr(a)?),
+            VarArr(loc, a) => VarArr(loc, self.expr(a)?),
+            Spread(loc, a) => Spread(loc, self.expr(a)?),
 
             e => e,
         }))

@@ -40,7 +40,6 @@ impl Renamer {
             Lam(p, b) => Lam(self.param(p), self.term(b)),
             App(f, i, x) => App(self.term(f), i, self.term(x)),
             Sigma(p, c) => Sigma(self.param(p), self.term(c)),
-            VarArr(f) => VarArr(self.term(f)),
             Tuple(a, b) => Tuple(self.term(a), self.term(b)),
             TupleLocal(x, y, a, b) => {
                 TupleLocal(self.param(x), self.param(y), self.term(a), self.term(b))
@@ -123,6 +122,8 @@ impl Renamer {
             Unionify(a) => Unionify(self.term(a)),
             Find(ty, i, f) => Find(self.term(ty), i, f),
             ImplementsOf(a, i) => ImplementsOf(self.term(a), i),
+            VarArr(t) => VarArr(self.term(t)),
+            Spread(a) => Spread(self.term(a)),
             Reflected(a) => Reflected(self.term(a)),
             Cls {
                 class,

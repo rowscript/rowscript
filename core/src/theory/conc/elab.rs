@@ -308,29 +308,35 @@ impl Elaborator {
                 match sig {
                     Term::Sigma(p, body) => match p.typ.as_ref() {
                         Term::VarArr(t) => {
-                            let mut args = vec![*a];
-                            let mut rest = b;
-                            loop {
-                                match *rest {
-                                    TT(..) => break,
-                                    Tuple(.., arg, body) => {
-                                        args.push(*arg);
-                                        rest = body;
-                                    }
-                                    _ => unreachable!(),
-                                }
-                            }
                             let args = self.check(
-                                App(
-                                    loc,
-                                    Box::new(self.array_ctor_ref(loc)),
-                                    UnnamedExplicit,
-                                    Box::new(Tuple(
-                                        loc,
-                                        Box::new(Arr(loc, args)),
-                                        Box::new(TT(loc)),
-                                    )),
-                                ),
+                                match *a {
+                                    Spread(_, a) => *a,
+                                    a => {
+                                        let mut args = vec![a];
+                                        let mut rest = b;
+                                        loop {
+                                            match *rest {
+                                                TT(..) => break,
+                                                Tuple(.., arg, body) => {
+                                                    args.push(*arg);
+                                                    rest = body;
+                                                }
+                                                _ => unreachable!(),
+                                            }
+                                        }
+
+                                        App(
+                                            loc,
+                                            Box::new(self.array_ctor_ref(loc)),
+                                            UnnamedExplicit,
+                                            Box::new(Tuple(
+                                                loc,
+                                                Box::new(Arr(loc, args)),
+                                                Box::new(TT(loc)),
+                                            )),
+                                        )
+                                    }
+                                },
                                 t,
                             )?;
                             Term::Tuple(Box::new(args), Box::new(Term::TT))
@@ -681,13 +687,6 @@ impl Elaborator {
                 let r = self.check(*r, &Term::Row)?;
                 (Term::Object(Box::new(r)), Term::Univ)
             }
-            VarArr(loc, t) => {
-                let t = self.check(*t, &Term::Univ)?;
-                if !self.is_variadic(&t) {
-                    return Err(NonVariadic(t, loc));
-                }
-                (Term::VarArr(Box::new(t)), Term::Univ)
-            }
             Obj(_, r) => match *r {
                 Fields(_, fields) => {
                     let mut tm_fields = FieldMap::default();
@@ -874,6 +873,20 @@ impl Elaborator {
                     Term::ImplementsOf(a, i) => (Term::ImplementsOf(a, i), ty),
                     tm => return Err(ExpectedImplementsOf(tm, loc)),
                 }
+            }
+            VarArr(loc, t) => {
+                let t = self.check(*t, &Term::Univ)?;
+                if !self.is_variadic(&t) {
+                    return Err(NonVariadic(t, loc));
+                }
+                (Term::VarArr(Box::new(t)), Term::Univ)
+            }
+            Spread(loc, a) => {
+                let (a, ty) = self.infer(*a)?;
+                if !self.is_variadic(&ty) {
+                    return Err(NonVariadic(ty, loc));
+                }
+                (Term::Spread(Box::new(a)), ty)
             }
 
             Univ(_) => (Term::Univ, Term::Univ),

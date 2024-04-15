@@ -43,7 +43,7 @@ pub fn has_side_effect(tm: &Term) -> bool {
         | Fori(a, b)
         | App(a, _, b)
         | Tuple(a, b)
-        | TupleLocal(_, _, a, b)
+        | TupleLocal(.., a, b)
         | UnitLocal(a, b)
         | BoolOr(a, b)
         | BoolAnd(a, b)
@@ -63,10 +63,10 @@ pub fn has_side_effect(tm: &Term) -> bool {
         | NumGe(a, b)
         | NumLt(a, b)
         | NumGt(a, b)
-        | Combine(_, a, b)
+        | Combine(.., a, b)
         | Concat(a, b) => has_side_effect(a) || has_side_effect(b),
 
-        Lam(_, a)
+        Lam(.., a)
         | BoolNot(a)
         | NumNeg(a)
         | NumToStr(a)
@@ -75,7 +75,8 @@ pub fn has_side_effect(tm: &Term) -> bool {
         | Down(a, ..)
         | Variant(a)
         | Up(a, ..)
-        | Find(a, ..) => has_side_effect(a),
+        | Find(a, ..)
+        | Spread(a) => has_side_effect(a),
 
         Extern(..) | MetaRef(..) | Undef(..) | LocalSet(..) | LocalUpdate(..) | Return(..)
         | Continue | Break | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..)
@@ -88,7 +89,6 @@ pub fn has_side_effect(tm: &Term) -> bool {
         | Univ
         | Pi(..)
         | Sigma(..)
-        | VarArr(..)
         | Unit
         | TT
         | Boolean
@@ -116,6 +116,7 @@ pub fn has_side_effect(tm: &Term) -> bool {
         | Upcast(..)
         | ImplementsOf(..)
         | ImplementsSat
+        | VarArr(..)
         | Reflected(..)
         | Cls { .. } => false,
     }
