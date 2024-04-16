@@ -1,0 +1,4 @@
+//function f0<Args>(s: string, ...: Args);
+//function f1<Args>(...: Args);
+//f0("t0", 42, true);
+//f1("t1", 69, false);

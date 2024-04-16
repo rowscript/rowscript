@@ -86,6 +86,7 @@ mod ok_typeclassopedia_stuck;
 mod ok_unit;
 mod ok_unreflect;
 mod ok_varargs;
+mod ok_varargs_hetero;
 mod ok_verify;
 
 #[cfg(not(feature = "codegen-ecma"))]
