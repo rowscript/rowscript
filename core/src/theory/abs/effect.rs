@@ -116,7 +116,8 @@ pub fn has_side_effect(tm: &Term) -> bool {
         | Upcast(..)
         | ImplementsOf(..)
         | ImplementsSat
-        | VarArr(..)
+        | Varargs(..)
+        | AnonVarargs(..)
         | Reflected(..)
         | Cls { .. } => false,
     }

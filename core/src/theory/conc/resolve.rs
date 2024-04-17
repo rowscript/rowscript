@@ -395,7 +395,8 @@ impl<'a> Resolver<'a> {
                 Switch(loc, self.expr(a)?, new, d)
             }
             ImplementsOf(loc, a) => ImplementsOf(loc, self.expr(a)?),
-            VarArr(loc, a) => VarArr(loc, self.expr(a)?),
+            Varargs(loc, a) => Varargs(loc, self.expr(a)?),
+            AnonVarargs(loc, a) => AnonVarargs(loc, self.expr(a)?),
             Spread(loc, a) => Spread(loc, self.expr(a)?),
 
             e => e,

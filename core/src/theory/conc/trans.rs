@@ -138,6 +138,7 @@ impl Trans {
 
         let mut tele = Tele::default();
         let mut untupled = UntupledParams::new(loc);
+        let mut untupled_ends = None;
         let mut preds = Tele::default();
         let mut ret = Box::new(Unit(loc));
         let mut body = None;
@@ -160,9 +161,10 @@ impl Trans {
                 Rule::implicit_id => tele.push(Self::implicit_param(p)),
                 Rule::hkt_param => tele.push(Self::hkt_param(p)),
                 Rule::param => untupled.push(Loc::from(p.as_span()), self.param(p)),
-                Rule::variadic_param => {
-                    untupled.push(Loc::from(p.as_span()), self.variadic_param(p))
-                }
+                Rule::variadic_param => match self.variadic_param(p) {
+                    VariadicParam::Named(loc, p) => untupled.push(loc, p),
+                    VariadicParam::Unnamed(t) => untupled_ends = Some(t),
+                },
                 Rule::type_expr => ret = Box::new(self.type_expr(p)),
                 Rule::fn_body => {
                     body = Some(self.fn_body(p));
@@ -174,7 +176,7 @@ impl Trans {
         }
         let untupled_vars = untupled.unresolved();
         let untupled_loc = untupled.0;
-        let tupled_param = Param::from(untupled);
+        let tupled_param = untupled.param(untupled_ends);
         let body = Fn(Box::new(Expr::wrap_tuple_locals(
             untupled_loc,
             &tupled_param.var,
@@ -196,6 +198,7 @@ impl Trans {
     fn fn_signature(&self, pairs: Pairs<Rule>, loc: Loc) -> (Tele<Expr>, Box<Expr>) {
         let mut tele = Tele::default();
         let mut untupled = UntupledParams::new(loc);
+        let mut untupled_ends = None;
         let mut preds = Tele::default();
         let mut ret = Box::new(Expr::Unit(loc));
 
@@ -205,15 +208,16 @@ impl Trans {
                 Rule::implicit_id => tele.push(Self::implicit_param(p)),
                 Rule::hkt_param => tele.push(Self::hkt_param(p)),
                 Rule::param => untupled.push(Loc::from(p.as_span()), self.param(p)),
-                Rule::variadic_param => {
-                    untupled.push(Loc::from(p.as_span()), self.variadic_param(p))
-                }
+                Rule::variadic_param => match self.variadic_param(p) {
+                    VariadicParam::Named(loc, p) => untupled.push(loc, p),
+                    VariadicParam::Unnamed(t) => untupled_ends = Some(t),
+                },
                 Rule::type_expr => ret = Box::new(self.type_expr(p)),
                 Rule::pred => preds.push(self.pred(p)),
                 _ => unreachable!(),
             }
         }
-        tele.push(Param::from(untupled));
+        tele.push(untupled.param(untupled_ends));
         tele.extend(preds);
 
         (tele, ret)
@@ -526,7 +530,7 @@ impl Trans {
         if could_be_default {
             methods.insert("default".to_string(), default_meth_name.clone());
         }
-        let ctor_tupled_params = Param::from(ctor_params);
+        let ctor_tupled_params = ctor_params.param(None);
         let ctor_name = name.ctor();
         let ctor_body = Method {
             class: name.clone(),
@@ -617,14 +621,20 @@ impl Trans {
             Rule::fn_type => {
                 let ps = p.into_inner();
                 let mut untupled = UntupledParams::new(loc);
+                let mut untupled_ends = None;
                 for fp in ps {
                     match fp.as_rule() {
                         Rule::param => untupled.push(Loc::from(fp.as_span()), self.param(fp)),
-                        Rule::variadic_param => {
-                            untupled.push(Loc::from(fp.as_span()), self.variadic_param(fp))
-                        }
+                        Rule::variadic_param => match self.variadic_param(fp) {
+                            VariadicParam::Named(loc, p) => untupled.push(loc, p),
+                            VariadicParam::Unnamed(t) => untupled_ends = Some(t),
+                        },
                         Rule::type_expr => {
-                            return Pi(loc, Param::from(untupled), Box::new(self.type_expr(fp)));
+                            return Pi(
+                                loc,
+                                untupled.param(untupled_ends),
+                                Box::new(self.type_expr(fp)),
+                            );
                         }
                         _ => unreachable!(),
                     }
@@ -1581,11 +1591,22 @@ impl Trans {
         }
     }
 
-    fn variadic_param(&self, p: Pair<Rule>) -> Param<Expr> {
+    fn variadic_param(&self, p: Pair<Rule>) -> VariadicParam {
         use Expr::*;
-        let mut p = self.param(p.into_inner().next().unwrap());
-        p.typ = Box::new(VarArr(p.typ.loc(), p.typ));
-        p
+        let loc = Loc::from(p.as_span());
+        let mut pairs = p.into_inner();
+        let id = pairs.next().unwrap();
+        match pairs.next() {
+            Some(p) => VariadicParam::Named(
+                loc,
+                Param {
+                    var: Var::from(id),
+                    info: Explicit,
+                    typ: Box::new(Varargs(loc, Box::new(self.type_expr(p)))),
+                },
+            ),
+            None => VariadicParam::Unnamed(AnonVarargs(loc, Box::new(self.type_expr(id)))),
+        }
     }
 
     fn param(&self, p: Pair<Rule>) -> Param<Expr> {
@@ -1709,20 +1730,23 @@ impl UntupledParams {
             .map(|(loc, p)| Unresolved(*loc, None, p.var.clone()))
             .collect()
     }
-}
 
-impl From<UntupledParams> for Param<Expr> {
-    fn from(ps: UntupledParams) -> Self {
+    fn param(self, ends: Option<Expr>) -> Param<Expr> {
         use Expr::*;
-        let UntupledParams(loc, ps) = ps;
-        let mut ret = Unit(loc);
+        let UntupledParams(loc, ps) = self;
+        let mut ret = ends.unwrap_or(Unit(loc));
         for (loc, p) in ps.into_iter().rev() {
             ret = Sigma(loc, p, Box::new(ret));
         }
-        Self {
+        Param {
             var: Var::tupled(),
             info: Explicit,
             typ: Box::new(ret),
         }
     }
+}
+
+enum VariadicParam {
+    Named(Loc, Param<Expr>),
+    Unnamed(Expr),
 }

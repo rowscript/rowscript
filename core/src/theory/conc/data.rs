@@ -90,7 +90,8 @@ pub enum Expr {
 
     ImplementsOf(Loc, Box<Self>),
 
-    VarArr(Loc, Box<Self>),
+    Varargs(Loc, Box<Self>),
+    AnonVarargs(Loc, Box<Self>),
     Spread(Loc, Box<Self>),
 }
 
@@ -167,7 +168,8 @@ impl Expr {
             | Upcast(loc, ..)
             | Switch(loc, ..)
             | ImplementsOf(loc, ..)
-            | VarArr(loc, ..)
+            | Varargs(loc, ..)
+            | AnonVarargs(loc, ..)
             | Spread(loc, ..) => loc,
         }
     }
@@ -338,7 +340,8 @@ impl Display for Expr {
                     return write!(f, "}}");
                 }
                 ImplementsOf(_, a) => a.to_string(),
-                VarArr(_, t) => format!("...Array<{t}>"),
+                Varargs(_, t) => format!("...Array<{t}>"),
+                AnonVarargs(_, t) => format!("...{t}"),
                 Spread(_, a) => format!("...{a}"),
             }
             .as_str(),

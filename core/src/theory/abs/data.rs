@@ -145,7 +145,8 @@ pub enum Term {
     ImplementsOf(Box<Self>, Var),
     ImplementsSat,
 
-    VarArr(Box<Self>),
+    Varargs(Box<Self>),
+    AnonVarargs(Box<Self>),
     Spread(Box<Self>),
 
     Reflected(Box<Self>),
@@ -210,7 +211,7 @@ impl Term {
                     } => (type_args.clone(), associated.clone(), methods.clone()),
                     _ => unreachable!(),
                 },
-                VarArr(tm) | Pi(_, tm) | Lam(_, tm) => {
+                Varargs(tm) | Pi(_, tm) | Lam(_, tm) => {
                     x = tm.as_ref();
                     continue;
                 }
@@ -391,7 +392,8 @@ impl Display for Term {
                 Find(ty, i, f) => format!("{i}.{f}<{ty}>"),
                 ImplementsOf(t, i) => format!("{t} implementsOf {i}"),
                 ImplementsSat => "implementsSat".to_string(),
-                VarArr(t) => format!("...Array<{t}>"),
+                Varargs(t) => format!("...Array<{t}>"),
+                AnonVarargs(t) => format!("...{t}"),
                 Spread(a) => format!("...{a}"),
                 Reflected(a) => format!("Reflected<{a}>"),
                 Cls { class, .. } => format!("class {class}"),

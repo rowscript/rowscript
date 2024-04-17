@@ -549,7 +549,8 @@ impl<'a> Normalizer<'a> {
                 }
                 ImplementsOf(a, i)
             }
-            VarArr(t) => VarArr(self.term_box(t)?),
+            Varargs(t) => Varargs(self.term_box(t)?),
+            AnonVarargs(t) => AnonVarargs(self.term_box(t)?),
             Spread(a) => Spread(self.term_box(a)?),
             Find(ty, i, f) => {
                 let ty = self.term_box(ty)?;
