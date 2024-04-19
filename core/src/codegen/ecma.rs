@@ -1551,7 +1551,14 @@ impl Target for Ecma {
         includes: &[PathBuf],
         file: ModuleFile,
     ) -> Result<(), Error> {
-        let mut body = self.imports(file.imports)?;
+        let mut body = vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+            span: DUMMY_SP,
+            expr: Box::new(Expr::Lit(Lit::Str(Self::js_str(
+                Default::default(),
+                "use strict",
+            )))),
+        }))];
+        body.extend(self.imports(file.imports)?);
         body.extend(self.includes(includes)?);
         body.extend(self.decls(sigma, file.defs)?);
 
