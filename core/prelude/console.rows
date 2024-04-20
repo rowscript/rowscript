@@ -1,9 +1,10 @@
 class Console {
     empty: unit;
 
-    // TODO: `T` should have constraints, e.g. `ToString`.
     log<T>(m: T) {
         console#log(m);
+//    log<Args>(...: Args) {
+//        console#log(...);
     }
 }
 

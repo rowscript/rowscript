@@ -174,25 +174,33 @@ impl Expr {
         }
     }
 
-    pub fn wrap_tuple_locals(loc: Loc, x: &Var, vars: Vec<Self>, b: Self) -> Self {
+    pub fn wrap_tuple_locals(loc: Loc, tupled: &Var, vars: Vec<Self>, b: Self) -> Self {
         use Expr::*;
 
-        let mut untupled_vars = Vec::default();
-        for x in vars.iter().rev() {
-            untupled_vars.push(match x {
-                Unresolved(l, _, r) => Unresolved(*l, None, r.untupled_rhs()),
+        let mut untupled_rhs = Vec::default();
+        for (i, x) in vars.iter().rev().enumerate() {
+            untupled_rhs.push(match x {
+                Unresolved(l, _, r) => Unresolved(
+                    *l,
+                    None,
+                    if i == 0 {
+                        Var::untupled_ends()
+                    } else {
+                        r.untupled_rhs()
+                    },
+                ),
                 _ => unreachable!(),
             });
         }
-        untupled_vars.push(Unresolved(loc, None, x.clone()));
+        untupled_rhs.push(Unresolved(loc, None, tupled.clone()));
 
         let mut wrapped = b;
         for (i, v) in vars.into_iter().rev().enumerate() {
-            let (loc, lhs, rhs) = match (v, untupled_vars.get(i).unwrap()) {
+            let (loc, lhs, rhs) = match (v, untupled_rhs.get(i).unwrap()) {
                 (Unresolved(loc, _, lhs), Unresolved(_, _, rhs)) => (loc, lhs, rhs),
                 _ => unreachable!(),
             };
-            let tm = untupled_vars.get(i + 1).unwrap();
+            let tm = untupled_rhs.get(i + 1).unwrap();
             wrapped = TupleLocal(
                 loc,
                 lhs,

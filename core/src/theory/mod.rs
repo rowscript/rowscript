@@ -65,6 +65,7 @@ pub const UNBOUND: &str = "_";
 
 pub const TUPLED: &str = "__tupled";
 pub const UNTUPLED_RHS_PREFIX: &str = "__untupled_";
+pub const UNTUPLED_ENDS: &str = "__untupled___ends";
 
 pub const LOCALS: &str = "__locals_";
 
@@ -112,6 +113,10 @@ impl Var {
 
     pub fn untupled_rhs(&self) -> Self {
         Self::new(format!("{UNTUPLED_RHS_PREFIX}{self}"))
+    }
+
+    pub fn untupled_ends() -> Self {
+        Self::new(UNTUPLED_ENDS)
     }
 
     pub fn local(&self) -> Self {
