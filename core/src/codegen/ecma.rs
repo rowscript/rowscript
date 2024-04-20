@@ -14,9 +14,9 @@ use swc_ecma_ast::{
     Function, Ident, IfStmt, ImportDecl, ImportNamedSpecifier, ImportSpecifier,
     ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, MethodProp, Module,
     ModuleDecl, ModuleItem, NewExpr, Number as JsNumber, Number, ObjectLit, Param as JsParam,
-    ParenExpr, Pat, Prop, PropName, PropOrSpread, ReturnStmt, SimpleAssignTarget, SpreadElement,
-    Stmt, Str, ThrowStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr, VarDeclarator,
-    WhileStmt,
+    ParenExpr, Pat, Prop, PropName, PropOrSpread, RestPat, ReturnStmt, SimpleAssignTarget,
+    SpreadElement, Stmt, Str, ThrowStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr,
+    VarDeclarator, WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -28,7 +28,7 @@ use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::{UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::Explicit;
-use crate::theory::{Loc, Var, THIS, UNBOUND, UNTUPLED_RHS_PREFIX};
+use crate::theory::{Loc, Tele, Var, THIS, UNBOUND, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX};
 use crate::Error::{NonErasable, UnsolvedMeta};
 use crate::{Error, ModuleFile};
 
@@ -462,7 +462,7 @@ impl Ecma {
 
     fn func(&mut self, sigma: &Sigma, def: &Def<Term>, body: &Term) -> Result<Function, Error> {
         Ok(Function {
-            params: Self::type_erased_params(def.loc, body),
+            params: Self::type_erased_params(def.loc, &def.tele, body),
             decorators: Default::default(),
             span: def.loc.into(),
             body: Some(self.block(sigma, def.loc, body, true)?),
@@ -473,7 +473,7 @@ impl Ecma {
         })
     }
 
-    fn type_erased_pats(loc: Loc, tm: &Term) -> Vec<Pat> {
+    fn type_erased_pats(loc: Loc, tele: Option<&Tele<Term>>, tm: &Term) -> Vec<Pat> {
         let mut ret = Vec::default();
         let mut body = tm;
         loop {
@@ -484,12 +484,36 @@ impl Ecma {
                     continue;
                 }
             }
-            return ret;
+            break;
         }
+        if let Some(tele) = tele {
+            let mut param_typ = tele
+                .iter()
+                .find(|p| p.info == Explicit)
+                .unwrap()
+                .typ
+                .as_ref();
+            loop {
+                match param_typ {
+                    Term::Sigma(.., b) => param_typ = b.as_ref(),
+                    Term::Unit => break,
+                    _ => {
+                        ret.push(Pat::Rest(RestPat {
+                            span: loc.into(),
+                            dot3_token: loc.into(),
+                            arg: Box::new(Self::str_ident_pat(loc, UNTUPLED_ENDS)),
+                            type_ann: None,
+                        }));
+                        break;
+                    }
+                }
+            }
+        }
+        ret
     }
 
-    fn type_erased_params(loc: Loc, tm: &Term) -> Vec<JsParam> {
-        Self::type_erased_pats(loc, tm)
+    fn type_erased_params(loc: Loc, tele: &Tele<Term>, tm: &Term) -> Vec<JsParam> {
+        Self::type_erased_pats(loc, Some(tele), tm)
             .into_iter()
             .map(|pat| JsParam {
                 span: loc.into(),
@@ -518,6 +542,13 @@ impl Ecma {
                     tm = b
                 }
                 TT => break,
+                Ref(v) if v.as_str() == UNTUPLED_ENDS => {
+                    ret.push(ExprOrSpread {
+                        spread: Some(loc.into()),
+                        expr: Box::new(self.expr(sigma, loc, tm)?),
+                    });
+                    break;
+                }
                 _ => unreachable!(),
             }
         }
@@ -839,7 +870,7 @@ impl Ecma {
             Lam(p, b) => match p.info {
                 Explicit => Expr::Arrow(ArrowExpr {
                     span: loc.into(),
-                    params: Self::type_erased_pats(loc, b),
+                    params: Self::type_erased_pats(loc, None, b),
                     body: Box::new(BlockStmtOrExpr::BlockStmt(self.block(sigma, loc, b, true)?)),
                     is_async: false,
                     is_generator: false,
@@ -1421,7 +1452,7 @@ impl Ecma {
                 _ => unreachable!(),
             };
 
-            let mut params = Self::type_erased_params(meth_def.loc, meth);
+            let mut params = Self::type_erased_params(meth_def.loc, &meth_def.tele, meth);
             if params.is_empty() {
                 continue; // looks like a static method
             }

@@ -1664,22 +1664,23 @@ impl Trans {
 
     fn tupled_args(&self, a: Pair<Rule>) -> Expr {
         use Expr::*;
-        let loc = Loc::from(a.as_span());
-        a.into_inner()
-            .map(|pair| {
-                let loc = Loc::from(pair.as_span());
-                (
-                    loc,
-                    match pair.as_rule() {
-                        Rule::expr => self.expr(pair),
-                        Rule::spread_arg => {
-                            Spread(loc, Box::new(self.expr(pair.into_inner().next().unwrap())))
-                        }
-                        _ => unreachable!(),
-                    },
-                )
-            })
-            .rfold(TT(loc), |a, (loc, x)| Tuple(loc, Box::new(x), Box::new(a)))
+        let mut ends = TT(Loc::from(a.as_span()));
+        let mut args = Vec::default();
+        for pair in a.into_inner() {
+            let loc = Loc::from(pair.as_span());
+            match pair.as_rule() {
+                Rule::expr => args.push((loc, self.expr(pair))),
+                Rule::spread_arg => match pair.into_inner().next() {
+                    Some(p) => args.push((loc, Spread(loc, Box::new(self.expr(p))))),
+                    None => ends = Unresolved(loc, None, Var::untupled_ends()),
+                },
+                _ => unreachable!(),
+            }
+        }
+        for (loc, x) in args.into_iter().rev() {
+            ends = Tuple(loc, Box::new(x), Box::new(ends))
+        }
+        ends
     }
 
     fn call3(f: Expr, a0: Expr, a1: Expr, a2: Expr) -> Expr {

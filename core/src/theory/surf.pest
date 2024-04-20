@@ -417,7 +417,7 @@ args =
   | "(" ~ spread_arg ~ ")"
   | "(" ~ expr ~ ("," ~ expr)* ~ ("," ~ spread_arg)? ~ ")"
   }
-spread_arg = { "..." ~ expr }
+spread_arg = { "..." ~ expr? }
 access = { "." ~ prop_id }
 
 branch =

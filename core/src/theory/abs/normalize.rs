@@ -167,14 +167,20 @@ impl<'a> Normalizer<'a> {
                         let mut tms = vec![(p, x)];
                         let mut tm = *y;
                         let mut body = *b;
+                        let mut rhs_param = q;
                         loop {
                             match (tm, body) {
-                                (Tuple(x, y), TupleLocal(p, _, _, b)) => {
+                                (Tuple(x, y), TupleLocal(p, q, _, b)) => {
                                     tms.push((p, x));
                                     tm = *y;
                                     body = *b;
+                                    rhs_param = q;
                                 }
-                                (_, b) => {
+                                (a, b) => {
+                                    if !matches!(a, TT) {
+                                        // Anonymous variadic arguments.
+                                        tms.push((rhs_param, Box::new(a)));
+                                    }
                                     body = b;
                                     break;
                                 }

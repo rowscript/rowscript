@@ -3,7 +3,7 @@ function f1<Args>(...: Args);
 f0("t0", 42, true);
 f1("t1", 69, false);
 
-//function f2<Args>(s: string, ...: Args) {
-//    f1(s, ...)
-//}
-//f2("t2", 69, false);
+function f2<Args>(s: string, ...: Args) {
+    f1(s, ...)
+}
+f2("t2", 114514, false);
