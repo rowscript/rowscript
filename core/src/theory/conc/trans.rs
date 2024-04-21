@@ -1672,7 +1672,7 @@ impl Trans {
                 Rule::expr => args.push((loc, self.expr(pair))),
                 Rule::spread_arg => match pair.into_inner().next() {
                     Some(p) => args.push((loc, Spread(loc, Box::new(self.expr(p))))),
-                    None => ends = Unresolved(loc, None, Var::untupled_ends()),
+                    None => ends = AnonSpread(loc),
                 },
                 _ => unreachable!(),
             }

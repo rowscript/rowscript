@@ -1,10 +1,8 @@
 class Console {
     empty: unit;
 
-    log<T>(m: T) {
-        console#log(m);
-//    log<Args>(...: Args) {
-//        console#log(...);
+    log<Args>(...: Args) {
+        console#log(...)
     }
 }
 

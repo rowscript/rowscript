@@ -48,6 +48,11 @@ impl<'a> Unifier<'a> {
                 Ok(())
             }
 
+            (a, Varargs(b)) => self.unify(a, b),
+            (Varargs(a), b) => self.unify(a, b),
+            (a, AnonVarargs(b)) => self.unify(a, b),
+            (AnonVarargs(a), b) => self.unify(a, b),
+
             (Ref(a), Ref(b)) if a == b => Ok(()),
             (Qualified(_, a), Qualified(_, b)) if a == b => Ok(()),
 
@@ -77,11 +82,6 @@ impl<'a> Unifier<'a> {
             ) if m == n => self.unify(a, b),
             (Cls { object, .. }, b) => self.unify(object, b),
             (a, Cls { object, .. }) => self.unify(a, object),
-
-            (a, Varargs(b)) => self.unify(a, b),
-            (Varargs(a), b) => self.unify(a, b),
-            (a, AnonVarargs(b)) => self.unify(a, b),
-            (AnonVarargs(a), b) => self.unify(a, b),
 
             (Local(p, a, b), Local(q, x, y)) => {
                 self.unify(&p.typ, &q.typ)?;

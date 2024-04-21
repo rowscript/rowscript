@@ -6,4 +6,6 @@ f1("t1", 69, false);
 function f2<Args>(s: string, ...: Args) {
     f1(s, ...)
 }
-f2("t2", 114514, false);
+f2("t2", 114, false);
+
+console.log("t3", 514, true);

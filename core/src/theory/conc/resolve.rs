@@ -1,11 +1,15 @@
 use std::collections::HashMap;
 
+use log::debug;
+
 use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, ImplementsBody};
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::conc::load::{Import, ImportedDefs, Loaded};
-use crate::theory::{NameMap, Param, RawNameSet, ResolvedVar, Tele, Var, VarKind, UNBOUND};
+use crate::theory::{
+    NameMap, Param, RawNameSet, ResolvedVar, Tele, Var, VarKind, TUPLED, UNBOUND, UNTUPLED_ENDS,
+};
 use crate::Error;
 use crate::Error::{DuplicateName, UnresolvedVar};
 
@@ -67,7 +71,9 @@ impl<'a> Resolver<'a> {
                 }
                 names.var(d.loc, &d.name)?;
             }
-            ret.push(self.def(d)?);
+            let resolved = self.def(d)?;
+            debug!(target: "resolve", "definition resolved successfully: {resolved}");
+            ret.push(resolved);
         }
         Ok(ret)
     }
@@ -398,6 +404,13 @@ impl<'a> Resolver<'a> {
             Varargs(loc, a) => Varargs(loc, self.expr(a)?),
             AnonVarargs(loc, a) => AnonVarargs(loc, self.expr(a)?),
             Spread(loc, a) => Spread(loc, self.expr(a)?),
+            AnonSpread(loc) => Resolved(
+                loc,
+                match self.names.get(UNTUPLED_ENDS) {
+                    Some(v) => v.1.clone(),
+                    None => self.names.get(TUPLED).unwrap().1.clone(),
+                },
+            ),
 
             e => e,
         }))

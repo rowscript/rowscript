@@ -230,7 +230,11 @@ impl Elaborator {
     }
 
     fn check(&mut self, e: Expr, ty: &Term) -> Result<Term, Error> {
-        maybe_grow(move || self.check_impl(e, ty))
+        maybe_grow(move || {
+            self.check_impl(e, ty).inspect(|tm| {
+                debug!(target: "elab", "expression checked successfully: tm={tm}, ty={ty}");
+            })
+        })
     }
 
     fn check_impl(&mut self, e: Expr, ty: &Term) -> Result<Term, Error> {
@@ -427,7 +431,12 @@ impl Elaborator {
     }
 
     fn infer(&mut self, e: Expr) -> Result<(Term, Term), Error> {
-        maybe_grow(move || self.infer_impl(e))
+        maybe_grow(move || {
+            self.infer_impl(e).map(|(tm, ty)| {
+                debug!(target: "elab", "expression inferred successfully: tm={tm}, ty={ty}");
+                Term::unwrap_solved_implicit_lambda(tm, ty)
+            })
+        })
     }
 
     fn infer_impl(&mut self, e: Expr) -> Result<(Term, Term), Error> {

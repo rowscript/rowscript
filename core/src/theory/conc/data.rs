@@ -93,6 +93,7 @@ pub enum Expr {
     Varargs(Loc, Box<Self>),
     AnonVarargs(Loc, Box<Self>),
     Spread(Loc, Box<Self>),
+    AnonSpread(Loc),
 }
 
 impl Expr {
@@ -170,7 +171,8 @@ impl Expr {
             | ImplementsOf(loc, ..)
             | Varargs(loc, ..)
             | AnonVarargs(loc, ..)
-            | Spread(loc, ..) => loc,
+            | Spread(loc, ..)
+            | AnonSpread(loc) => loc,
         }
     }
 
@@ -351,6 +353,7 @@ impl Display for Expr {
                 Varargs(_, t) => format!("...Array<{t}>"),
                 AnonVarargs(_, t) => format!("...{t}"),
                 Spread(_, a) => format!("...{a}"),
+                AnonSpread(..) => "...".to_string(),
             }
             .as_str(),
         )

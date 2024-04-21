@@ -4,6 +4,7 @@ use std::fmt::{Display, Formatter};
 use crate::theory::abs::def::{Body, Sigma};
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::load::ModuleID;
+use crate::theory::ParamInfo::Implicit;
 use crate::theory::{Param, ParamInfo, Syntax, Tele, Var};
 
 pub type Spine = Vec<(ParamInfo, Term)>;
@@ -232,6 +233,40 @@ impl Term {
                 associated,
                 methods,
             });
+        }
+    }
+
+    pub fn auto_implicit(&self) -> Option<Self> {
+        use Term::*;
+        match self {
+            RowEq(..) => Some(RowRefl),
+            RowOrd(..) => Some(RowSat),
+            ImplementsOf(..) => Some(ImplementsSat),
+            _ => None,
+        }
+    }
+
+    fn is_unsolved(&self) -> bool {
+        use Term::*;
+        matches!(self, Ref(..)) || matches!(self, MetaRef(..))
+    }
+
+    fn is_solved_auto_implicit(&self) -> bool {
+        use Term::*;
+        match self {
+            RowEq(a, b) | RowOrd(a, b) => !a.is_unsolved() && !b.is_unsolved(),
+            ImplementsOf(a, ..) => !a.is_unsolved(),
+            _ => false,
+        }
+    }
+
+    pub fn unwrap_solved_implicit_lambda(tm: Self, ty: Self) -> (Self, Self) {
+        use Term::*;
+        match (tm, ty) {
+            (Lam(p, b), Pi(.., body)) if p.info == Implicit && p.typ.is_solved_auto_implicit() => {
+                (*b, *body)
+            }
+            ret => ret,
         }
     }
 }

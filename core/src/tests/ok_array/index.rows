@@ -2,7 +2,6 @@ function f0() {
     const a = [];
     const m = a.push(42);
     const n = a.push(69);
-    // FIXME: Code generation goes wrong here.
     a.forEach((n) => console.log(n));
     console.log(a.length());
 }

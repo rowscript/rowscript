@@ -229,20 +229,20 @@ impl Builtins {
     }
 
     fn console_log(self) -> Self {
-        let t = Var::new("T");
-        let m = Var::new("m");
-        let m_ty = Term::Ref(t.clone());
-        let (tupled, tele) = parameters([t.clone()], [(m.clone(), m_ty.clone())]);
+        let varargs = Var::new("Args");
+        let tupled = Var::tupled();
         self.func(
             "console#log",
-            tele,
+            vec![
+                type_param(varargs.clone()),
+                Param {
+                    var: tupled.clone(),
+                    info: Explicit,
+                    typ: Box::new(Term::AnonVarargs(Box::new(Term::Ref(varargs)))),
+                },
+            ],
             Term::Unit,
-            explicit_tuple_local1(
-                m.clone(),
-                m_ty,
-                tupled,
-                Term::ConsoleLog(Box::new(Term::Ref(m))),
-            ),
+            Term::ConsoleLog(Box::new(Term::Ref(tupled))),
         )
     }
 

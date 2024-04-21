@@ -28,7 +28,7 @@ use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::{UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::Explicit;
-use crate::theory::{Loc, Tele, Var, THIS, UNBOUND, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX};
+use crate::theory::{Loc, Tele, Var, THIS, TUPLED, UNBOUND, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX};
 use crate::Error::{NonErasable, UnsolvedMeta};
 use crate::{Error, ModuleFile};
 
@@ -493,15 +493,23 @@ impl Ecma {
                 .unwrap()
                 .typ
                 .as_ref();
+            let mut is_first = true;
             loop {
                 match param_typ {
-                    Term::Sigma(.., b) => param_typ = b.as_ref(),
+                    Term::Sigma(.., b) => {
+                        param_typ = b.as_ref();
+                        is_first = false;
+                    }
                     Term::Unit => break,
                     _ => {
+                        let arg = Box::new(Self::str_ident_pat(
+                            loc,
+                            if is_first { TUPLED } else { UNTUPLED_ENDS },
+                        ));
                         ret.push(Pat::Rest(RestPat {
                             span: loc.into(),
                             dot3_token: loc.into(),
-                            arg: Box::new(Self::str_ident_pat(loc, UNTUPLED_ENDS)),
+                            arg,
                             type_ann: None,
                         }));
                         break;
@@ -851,6 +859,32 @@ impl Ecma {
                 self.lambda_encoded_let(sigma, loc, Some(&p.var), a, b)?
             }
             UnitLocal(a, b) => self.lambda_encoded_let(sigma, loc, None, a, b)?,
+
+            // Tuple here should only be used as anonymous variadic arguments.
+            Tuple(a, b) => {
+                let mut elems = vec![Some(ExprOrSpread {
+                    spread: None,
+                    expr: Box::new(self.expr(sigma, loc, a)?),
+                })];
+                let mut body = b.as_ref();
+                loop {
+                    match body {
+                        Tuple(arg, b) => {
+                            body = b.as_ref();
+                            elems.push(Some(ExprOrSpread {
+                                spread: None,
+                                expr: Box::new(self.expr(sigma, loc, arg)?),
+                            }));
+                        }
+                        TT => break,
+                        _ => unreachable!(),
+                    }
+                }
+                Expr::Array(ArrayLit {
+                    span: loc.into(),
+                    elems,
+                })
+            }
 
             Ref(r) if self.not_escaping_this => Expr::Ident(Self::asis_ident(loc, r)),
             Ref(r) | Undef(r) => Expr::Ident(Self::ident(loc, r)),
@@ -1208,10 +1242,13 @@ impl Ecma {
                     obj: Box::new(Expr::Ident(Self::special_ident("console"))),
                     prop: MemberProp::Ident(Self::special_ident("log")),
                 }))),
-                args: vec![ExprOrSpread {
-                    spread: None,
-                    expr: Box::new(self.expr(sigma, loc, m)?),
-                }],
+                args: match m.as_ref() {
+                    Tuple(..) => self.untuple_args(sigma, loc, m)?,
+                    m => vec![ExprOrSpread {
+                        spread: Some(loc.into()),
+                        expr: Box::new(self.expr(sigma, loc, m)?),
+                    }],
+                },
                 type_args: None,
             }),
 

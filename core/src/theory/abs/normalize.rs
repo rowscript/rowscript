@@ -78,7 +78,7 @@ impl<'a> Normalizer<'a> {
                             self.term(ret)?
                         }
                         None => {
-                            if let Some(tm) = Self::auto_implicit(&def.ret) {
+                            if let Some(tm) = def.ret.auto_implicit() {
                                 def.body = Meta(k, Some(Box::new(tm.clone())));
                                 tm
                             } else {
@@ -632,16 +632,6 @@ impl<'a> Normalizer<'a> {
             }
         }
         Ok(cs)
-    }
-
-    fn auto_implicit(tm: &Term) -> Option<Term> {
-        use Term::*;
-        match tm {
-            RowEq(..) => Some(RowRefl),
-            RowOrd(..) => Some(RowSat),
-            ImplementsOf(..) => Some(ImplementsSat),
-            _ => None,
-        }
     }
 
     fn check_constraint(&mut self, x: &Term, i: &Var) -> Result<(), Error> {
