@@ -550,7 +550,7 @@ impl Ecma {
                     tm = b
                 }
                 TT => break,
-                Ref(v) if v.as_str() == UNTUPLED_ENDS => {
+                Ref(v) if v.as_str() == TUPLED || v.as_str() == UNTUPLED_ENDS => {
                     ret.push(ExprOrSpread {
                         spread: Some(loc.into()),
                         expr: Box::new(self.expr(sigma, loc, tm)?),
@@ -1244,6 +1244,7 @@ impl Ecma {
                 }))),
                 args: match m.as_ref() {
                     Tuple(..) => self.untuple_args(sigma, loc, m)?,
+                    TT => Default::default(),
                     m => vec![ExprOrSpread {
                         spread: Some(loc.into()),
                         expr: Box::new(self.expr(sigma, loc, m)?),

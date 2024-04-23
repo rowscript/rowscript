@@ -44,7 +44,11 @@ impl<'a> Normalizer<'a> {
     }
 
     pub fn term(&mut self, tm: Term) -> Result<Term, Error> {
-        maybe_grow(move || self.term_impl(tm))
+        maybe_grow(move || {
+            self.term_impl(tm).inspect(|tm| {
+                trace!(target: "normalize", "term normalized successfully: {tm}");
+            })
+        })
     }
 
     fn term_box(&mut self, mut tm: Box<Term>) -> Result<Box<Term>, Error> {
@@ -177,10 +181,7 @@ impl<'a> Normalizer<'a> {
                                     rhs_param = q;
                                 }
                                 (a, b) => {
-                                    if !matches!(a, TT) {
-                                        // Anonymous variadic arguments.
-                                        tms.push((rhs_param, Box::new(a)));
-                                    }
+                                    tms.push((rhs_param, Box::new(a))); // for anonymous variadic arguments
                                     body = b;
                                     break;
                                 }

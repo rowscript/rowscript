@@ -406,10 +406,11 @@ impl<'a> Resolver<'a> {
             Spread(loc, a) => Spread(loc, self.expr(a)?),
             AnonSpread(loc) => Resolved(
                 loc,
-                match self.names.get(UNTUPLED_ENDS) {
-                    Some(v) => v.1.clone(),
-                    None => self.names.get(TUPLED).unwrap().1.clone(),
-                },
+                self.names
+                    .get(UNTUPLED_ENDS)
+                    .unwrap_or_else(|| self.names.get(TUPLED).unwrap())
+                    .1
+                    .clone(),
             ),
 
             e => e,

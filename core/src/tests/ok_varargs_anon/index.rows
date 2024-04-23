@@ -9,3 +9,4 @@ function f2<Args>(s: string, ...: Args) {
 f2("t2", 114, false);
 
 console.log("t3", 514, true);
+console.log();
