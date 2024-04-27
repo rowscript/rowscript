@@ -1,4 +1,12 @@
 use crate::theory::abs::data::Term;
+use crate::theory::abs::data::Term::{
+    AnonVarargs, ArrAt, ArrForeach, ArrInsert, ArrIter, ArrIterNext, ArrLength, ArrPush, Array,
+    ArrayIterator, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean, ConsoleLog, Enum,
+    ErrorThrow, Fields, Map, MapClear, MapDelete, MapGet, MapHas, MapIter, MapIterNext,
+    MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt, NumMod, NumMul, NumNeg,
+    NumNeq, NumSub, NumToStr, Number, Object, Pi, Ref, Reflected, Row, SetTimeout, StrAdd, StrEq,
+    StrNeq, String, TupleLocal, Unionify, Unit, Univ,
+};
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{NameMap, Param, ResolvedVar, Var};
@@ -13,11 +21,11 @@ fn implicit(var: Var, typ: Term) -> Param<Term> {
 }
 
 fn type_param(var: Var) -> Param<Term> {
-    implicit(var, Term::Univ)
+    implicit(var, Univ)
 }
 
 fn row_param(var: Var) -> Param<Term> {
-    implicit(var, Term::Row)
+    implicit(var, Row)
 }
 
 fn explicit(var: Var, typ: Term) -> Param<Term> {
@@ -28,16 +36,28 @@ fn explicit(var: Var, typ: Term) -> Param<Term> {
     }
 }
 
+fn explicit_pi(p: (Var, Term), b: Term) -> Term {
+    Pi(explicit(p.0, p.1), Box::new(b))
+}
+
+fn unbound_explicit_pi(a: Term, b: Term) -> Term {
+    explicit_pi((Var::unbound(), a), b)
+}
+
 fn explicit_sigma(p: (Var, Term), b: Term) -> Term {
     Term::Sigma(explicit(p.0, p.1), Box::new(b))
 }
 
+fn unbound_explicit_sigma(a: Term, b: Term) -> Term {
+    explicit_sigma((Var::unbound(), a), b)
+}
+
 fn explicit_sigma1(p: Var, ty: Term) -> Term {
-    explicit_sigma((p, ty), Term::Unit)
+    explicit_sigma((p, ty), Unit)
 }
 
 fn explicit_tuple_local(p: (Var, Term), q: (Var, Term), a: Term, b: Term) -> Term {
-    Term::TupleLocal(
+    TupleLocal(
         explicit(p.0, p.1),
         explicit(q.0, q.1),
         Box::new(a),
@@ -46,11 +66,11 @@ fn explicit_tuple_local(p: (Var, Term), q: (Var, Term), a: Term, b: Term) -> Ter
 }
 
 fn explicit_tuple_local1(p: Var, ty: Term, a: Term, b: Term) -> Term {
-    explicit_tuple_local((p, ty), (Var::unbound(), Term::Unit), a, b)
+    explicit_tuple_local((p, ty), (Var::unbound(), Unit), a, b)
 }
 
 fn tuple_param<const N: usize>(var: Var, tele: [(Var, Term); N]) -> Param<Term> {
-    let mut ty = Term::Unit;
+    let mut ty = Unit;
     for (var, typ) in tele.into_iter().rev() {
         ty = Term::Sigma(explicit(var, typ), Box::new(ty));
     }
@@ -62,15 +82,15 @@ fn tuple_param<const N: usize>(var: Var, tele: [(Var, Term); N]) -> Param<Term> 
 }
 
 fn option_type(t: Term) -> Term {
-    Term::Enum(Box::new(Term::Fields(
-        [("Ok".to_string(), t), ("None".to_string(), Term::Unit)]
+    Enum(Box::new(Fields(
+        [("Ok".to_string(), t), ("None".to_string(), Unit)]
             .into_iter()
             .collect(),
     )))
 }
 
 fn entry_type(k: Term, v: Term) -> Term {
-    Term::Object(Box::new(Term::Fields(
+    Object(Box::new(Fields(
         [("key".to_string(), k), ("value".to_string(), v)]
             .into_iter()
             .collect(),
@@ -84,24 +104,19 @@ fn parameters<const T: usize, const V: usize>(
     let tupled = Var::tupled();
     let mut tele: Tele<_> = types.into_iter().map(type_param).collect();
     tele.push(tuple_param(tupled.clone(), params));
-    (Term::Ref(tupled), tele)
+    (Ref(tupled), tele)
 }
 
 macro_rules! un_op {
     ($name:ident, $builtin_name:literal, $typ:ident, $ret:ident, $op:ident) => {
         fn $name(self) -> Self {
             let a = Var::new("a");
-            let (tupled, tele) = parameters([], [(a.clone(), Term::$typ)]);
+            let (tupled, tele) = parameters([], [(a.clone(), $typ)]);
             self.func(
                 $builtin_name,
                 tele,
-                Term::$ret,
-                explicit_tuple_local1(
-                    a.clone(),
-                    Term::$typ,
-                    tupled,
-                    Term::$op(Box::new(Term::Ref(a))),
-                ),
+                $ret,
+                explicit_tuple_local1(a.clone(), $typ, tupled, $op(Box::new(Ref(a)))),
             )
         }
     };
@@ -113,20 +128,20 @@ macro_rules! bin_op {
             let a = Var::new("a");
             let a_rhs = a.untupled_rhs();
             let b = Var::new("b");
-            let (tupled, tele) = parameters([], [(a.clone(), Term::$typ), (b.clone(), Term::$typ)]);
+            let (tupled, tele) = parameters([], [(a.clone(), $typ), (b.clone(), $typ)]);
             self.func(
                 $builtin_name,
                 tele,
-                Term::$ret,
+                $ret,
                 explicit_tuple_local(
-                    (a.clone(), Term::$typ),
-                    (a_rhs.clone(), explicit_sigma1(b.clone(), Term::$typ)),
+                    (a.clone(), $typ),
+                    (a_rhs.clone(), explicit_sigma1(b.clone(), $typ)),
                     tupled,
                     explicit_tuple_local1(
                         b.clone(),
-                        Term::$typ,
-                        Term::Ref(a_rhs),
-                        Term::$op(Box::new(Term::Ref(a)), Box::new(Term::Ref(b))),
+                        $typ,
+                        Ref(a_rhs),
+                        $op(Box::new(Ref(a)), Box::new(Ref(b))),
                     ),
                 ),
             )
@@ -145,6 +160,7 @@ impl Builtins {
         Self::default()
             .error_throw()
             .console_log()
+            .set_timeout()
             .unionify()
             .reflect()
             .boolean_or()
@@ -211,20 +227,15 @@ impl Builtins {
         let t = Var::new("T");
         let tupled = Var::tupled();
         let m = Var::new("m");
-        let m_ty = Term::String;
+        let m_ty = String;
         self.func(
             "error#throw",
             vec![
                 type_param(t.clone()),
                 tuple_param(tupled.clone(), [(m.clone(), m_ty.clone())]),
             ],
-            Term::Ref(t),
-            explicit_tuple_local1(
-                m.clone(),
-                m_ty,
-                Term::Ref(tupled),
-                Term::ErrorThrow(Box::new(Term::Ref(m))),
-            ),
+            Ref(t),
+            explicit_tuple_local1(m.clone(), m_ty, Ref(tupled), ErrorThrow(Box::new(Ref(m)))),
         )
     }
 
@@ -235,21 +246,62 @@ impl Builtins {
             "console#log",
             vec![
                 type_param(varargs.clone()),
-                Param {
-                    var: tupled.clone(),
-                    info: Explicit,
-                    typ: Box::new(Term::AnonVarargs(Box::new(Term::Ref(varargs)))),
-                },
+                explicit(tupled.clone(), AnonVarargs(Box::new(Ref(varargs)))),
             ],
-            Term::Unit,
-            Term::ConsoleLog(Box::new(Term::Ref(tupled))),
+            Unit,
+            ConsoleLog(Box::new(Ref(tupled))),
+        )
+    }
+
+    fn set_timeout(self) -> Self {
+        let varargs = Var::new("Args");
+        let t = Var::new("T");
+        let tupled = Var::tupled();
+        let f = Var::new("f");
+        let f_rhs = f.untupled_rhs();
+        let d = Var::new("d");
+        let ends = Var::untupled_ends();
+        self.func(
+            "setTimeout",
+            vec![
+                type_param(varargs.clone()),
+                type_param(t.clone()),
+                explicit(
+                    tupled.clone(),
+                    unbound_explicit_sigma(
+                        unbound_explicit_pi(
+                            AnonVarargs(Box::new(Ref(varargs.clone()))),
+                            Ref(t.clone()),
+                        ),
+                        unbound_explicit_sigma(Number, Ref(varargs.clone())),
+                    ),
+                ),
+            ],
+            Unit,
+            explicit_tuple_local(
+                (
+                    f.clone(),
+                    unbound_explicit_pi(AnonVarargs(Box::new(Ref(varargs.clone()))), Ref(t)),
+                ),
+                (
+                    f_rhs.clone(),
+                    unbound_explicit_sigma(Number, Ref(varargs.clone())),
+                ),
+                Ref(tupled),
+                explicit_tuple_local(
+                    (d.clone(), Number),
+                    (ends.clone(), Ref(varargs)),
+                    Ref(f_rhs),
+                    SetTimeout(Box::new(Ref(f)), Box::new(Ref(d)), Box::new(Ref(ends))),
+                ),
+            ),
         )
     }
 
     fn unionify(self) -> Self {
         let r = Var::new("'R");
         let a = Var::new("a");
-        let a_ty = Term::Enum(Box::new(Term::Ref(r.clone())));
+        let a_ty = Enum(Box::new(Ref(r.clone())));
         let tupled = Var::tupled();
         let tele = vec![
             row_param(r),
@@ -259,12 +311,7 @@ impl Builtins {
             "unionify",
             tele,
             a_ty.clone(),
-            explicit_tuple_local1(
-                a.clone(),
-                a_ty,
-                Term::Ref(tupled),
-                Term::Unionify(Box::new(Term::Ref(a))),
-            ),
+            explicit_tuple_local1(a.clone(), a_ty, Ref(tupled), Unionify(Box::new(Ref(a)))),
         )
     }
 
@@ -272,9 +319,9 @@ impl Builtins {
         let t = Var::new("T");
         self.func(
             "Reflected",
-            vec![implicit(t.clone(), Term::Univ)],
-            Term::Univ,
-            Term::Reflected(Box::new(Term::Ref(t))),
+            vec![implicit(t.clone(), Univ)],
+            Univ,
+            Reflected(Box::new(Ref(t))),
         )
     }
 
@@ -312,26 +359,26 @@ impl Builtins {
         let t = Var::new("T");
         self.func(
             "NativeArrayIterator",
-            vec![implicit(t.clone(), Term::Univ)],
-            Term::Univ,
-            Term::ArrayIterator(Box::new(Term::Ref(t))),
+            vec![implicit(t.clone(), Univ)],
+            Univ,
+            ArrayIterator(Box::new(Ref(t))),
         )
     }
 
     fn array_iterator_next(self) -> Self {
         let t = Var::new("T");
         let a = Var::new("a");
-        let a_ty = Term::ArrayIterator(Box::new(Term::Ref(t.clone())));
+        let a_ty = ArrayIterator(Box::new(Ref(t.clone())));
         let (tupled, tele) = parameters([t.clone()], [(a.clone(), a_ty.clone())]);
         self.func(
             "arrayIter#next",
             tele,
-            option_type(Term::Ref(t)),
+            option_type(Ref(t)),
             explicit_tuple_local1(
                 a.clone(),
                 a_ty.clone(),
                 tupled,
-                Term::ArrIterNext(Box::new(Term::Ref(a))),
+                ArrIterNext(Box::new(Ref(a))),
             ),
         )
     }
@@ -341,8 +388,8 @@ impl Builtins {
         self.func(
             "NativeArray",
             vec![type_param(t.clone())],
-            Term::Univ,
-            Term::Array(Box::new(Term::Ref(t))),
+            Univ,
+            Array(Box::new(Ref(t))),
         )
     }
 
@@ -350,19 +397,19 @@ impl Builtins {
         let t = Var::new("T");
         let tupled = Var::tupled();
         let a = Var::new("a");
-        let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
+        let a_ty = Array(Box::new(Ref(t.clone())));
         self.func(
             "array#length",
             vec![
                 type_param(t),
                 tuple_param(tupled.clone(), [(a.clone(), a_ty.clone())]),
             ],
-            Term::Number,
+            Number,
             explicit_tuple_local1(
                 a.clone(),
                 a_ty.clone(),
-                Term::Ref(tupled),
-                Term::ArrLength(Box::new(Term::Ref(a))),
+                Ref(tupled),
+                ArrLength(Box::new(Ref(a))),
             ),
         )
     }
@@ -371,10 +418,10 @@ impl Builtins {
         let t = Var::new("T");
         let tupled = Var::tupled();
         let a = Var::new("a");
-        let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
+        let a_ty = Array(Box::new(Ref(t.clone())));
         let a_rhs = a.untupled_rhs();
         let v = Var::new("v");
-        let v_ty = Term::Ref(t.clone());
+        let v_ty = Ref(t.clone());
         self.func(
             "array#push",
             vec![
@@ -384,16 +431,16 @@ impl Builtins {
                     [(a.clone(), a_ty.clone()), (v.clone(), v_ty.clone())],
                 ),
             ],
-            Term::Number,
+            Number,
             explicit_tuple_local(
                 (a.clone(), a_ty),
                 (a_rhs.clone(), explicit_sigma1(v.clone(), v_ty.clone())),
-                Term::Ref(tupled),
+                Ref(tupled),
                 explicit_tuple_local1(
                     v.clone(),
                     v_ty,
-                    Term::Ref(a_rhs),
-                    Term::ArrPush(Box::new(Term::Ref(a)), Box::new(Term::Ref(v))),
+                    Ref(a_rhs),
+                    ArrPush(Box::new(Ref(a)), Box::new(Ref(v))),
                 ),
             ),
         )
@@ -403,12 +450,12 @@ impl Builtins {
         let t = Var::new("T");
         let tupled = Var::tupled();
         let a = Var::new("a");
-        let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
+        let a_ty = Array(Box::new(Ref(t.clone())));
         let a_rhs = a.untupled_rhs();
         let f = Var::new("f");
-        let f_ty = Term::Pi(
-            tuple_param(Var::unbound(), [(Var::new("v"), Term::Ref(t.clone()))]),
-            Box::new(Term::Unit),
+        let f_ty = Pi(
+            tuple_param(Var::unbound(), [(Var::new("v"), Ref(t.clone()))]),
+            Box::new(Unit),
         );
         self.func(
             "array#forEach",
@@ -419,16 +466,16 @@ impl Builtins {
                     [(a.clone(), a_ty.clone()), (f.clone(), f_ty.clone())],
                 ),
             ],
-            Term::Unit,
+            Unit,
             explicit_tuple_local(
                 (a.clone(), a_ty),
                 (a_rhs.clone(), explicit_sigma1(f.clone(), f_ty.clone())),
-                Term::Ref(tupled),
+                Ref(tupled),
                 explicit_tuple_local1(
                     f.clone(),
                     f_ty,
-                    Term::Ref(a_rhs),
-                    Term::ArrForeach(Box::new(Term::Ref(a)), Box::new(Term::Ref(f))),
+                    Ref(a_rhs),
+                    ArrForeach(Box::new(Ref(a)), Box::new(Ref(f))),
                 ),
             ),
         )
@@ -437,10 +484,10 @@ impl Builtins {
     fn array_at(self) -> Self {
         let t = Var::new("T");
         let a = Var::new("a");
-        let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
+        let a_ty = Array(Box::new(Ref(t.clone())));
         let a_rhs = a.untupled_rhs();
         let i = Var::new("i");
-        let i_ty = Term::Number;
+        let i_ty = Number;
         let (tupled, tele) = parameters(
             [t.clone()],
             [(a.clone(), a_ty.clone()), (i.clone(), i_ty.clone())],
@@ -448,7 +495,7 @@ impl Builtins {
         self.func(
             "array#at",
             tele,
-            option_type(Term::Ref(t)),
+            option_type(Ref(t)),
             explicit_tuple_local(
                 (a.clone(), a_ty),
                 (a_rhs.clone(), explicit_sigma1(i.clone(), i_ty.clone())),
@@ -456,8 +503,8 @@ impl Builtins {
                 explicit_tuple_local1(
                     i.clone(),
                     i_ty,
-                    Term::Ref(a_rhs),
-                    Term::ArrAt(Box::new(Term::Ref(a)), Box::new(Term::Ref(i))),
+                    Ref(a_rhs),
+                    ArrAt(Box::new(Ref(a)), Box::new(Ref(i))),
                 ),
             ),
         )
@@ -466,13 +513,13 @@ impl Builtins {
     fn array_set(self) -> Self {
         let t = Var::new("T");
         let a = Var::new("a");
-        let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
+        let a_ty = Array(Box::new(Ref(t.clone())));
         let a_rhs = a.untupled_rhs();
         let i = Var::new("i");
-        let i_ty = Term::Number;
+        let i_ty = Number;
         let i_rhs = i.untupled_rhs();
         let v = Var::new("v");
-        let v_ty = Term::Ref(t.clone());
+        let v_ty = Ref(t.clone());
         let (tupled, tele) = parameters(
             [t],
             [
@@ -484,7 +531,7 @@ impl Builtins {
         self.func(
             "array#set",
             tele,
-            Term::Unit,
+            Unit,
             explicit_tuple_local(
                 (a.clone(), a_ty),
                 (
@@ -498,16 +545,12 @@ impl Builtins {
                 explicit_tuple_local(
                     (i.clone(), i_ty),
                     (i_rhs.clone(), explicit_sigma1(v.clone(), v_ty.clone())),
-                    Term::Ref(a_rhs),
+                    Ref(a_rhs),
                     explicit_tuple_local1(
                         v.clone(),
                         v_ty,
-                        Term::Ref(i_rhs),
-                        Term::ArrInsert(
-                            Box::new(Term::Ref(a)),
-                            Box::new(Term::Ref(i)),
-                            Box::new(Term::Ref(v)),
-                        ),
+                        Ref(i_rhs),
+                        ArrInsert(Box::new(Ref(a)), Box::new(Ref(i)), Box::new(Ref(v))),
                     ),
                 ),
             ),
@@ -518,20 +561,15 @@ impl Builtins {
         let t = Var::new("T");
         let tupled = Var::tupled();
         let a = Var::new("a");
-        let a_ty = Term::Array(Box::new(Term::Ref(t.clone())));
+        let a_ty = Array(Box::new(Ref(t.clone())));
         self.func(
             "array#iter",
             vec![
                 type_param(t.clone()),
                 tuple_param(tupled.clone(), [(a.clone(), a_ty.clone())]),
             ],
-            Term::ArrayIterator(Box::new(Term::Ref(t))),
-            explicit_tuple_local1(
-                a.clone(),
-                a_ty,
-                Term::Ref(tupled),
-                Term::ArrIter(Box::new(Term::Ref(a))),
-            ),
+            ArrayIterator(Box::new(Ref(t))),
+            explicit_tuple_local1(a.clone(), a_ty, Ref(tupled), ArrIter(Box::new(Ref(a)))),
         )
     }
 
@@ -540,26 +578,21 @@ impl Builtins {
         self.func(
             "NativeMapIterator",
             vec![type_param(t.clone())],
-            Term::Univ,
-            Term::MapIterator(Box::new(Term::Ref(t))),
+            Univ,
+            MapIterator(Box::new(Ref(t))),
         )
     }
 
     fn map_iterator_next(self) -> Self {
         let t = Var::new("T");
         let m = Var::new("m");
-        let m_ty = Term::MapIterator(Box::new(Term::Ref(t.clone())));
+        let m_ty = MapIterator(Box::new(Ref(t.clone())));
         let (tupled, tele) = parameters([t.clone()], [(m.clone(), m_ty.clone())]);
         self.func(
             "mapIter#next",
             tele,
-            option_type(Term::Ref(t)),
-            explicit_tuple_local1(
-                m.clone(),
-                m_ty,
-                tupled,
-                Term::MapIterNext(Box::new(Term::Ref(m))),
-            ),
+            option_type(Ref(t)),
+            explicit_tuple_local1(m.clone(), m_ty, tupled, MapIterNext(Box::new(Ref(m)))),
         )
     }
 
@@ -569,8 +602,8 @@ impl Builtins {
         self.func(
             "NativeMap",
             vec![type_param(k.clone()), type_param(v.clone())],
-            Term::Univ,
-            Term::Map(Box::new(Term::Ref(k)), Box::new(Term::Ref(v))),
+            Univ,
+            Map(Box::new(Ref(k)), Box::new(Ref(v))),
         )
     }
 
@@ -579,13 +612,10 @@ impl Builtins {
         let v = Var::new("V");
         let tupled = Var::tupled();
         let m = Var::new("m");
-        let m_ty = Term::Map(
-            Box::new(Term::Ref(k.clone())),
-            Box::new(Term::Ref(v.clone())),
-        );
+        let m_ty = Map(Box::new(Ref(k.clone())), Box::new(Ref(v.clone())));
         let m_rhs = m.untupled_rhs();
         let key = Var::new("k");
-        let key_ty = Term::Ref(k.clone());
+        let key_ty = Ref(k.clone());
         self.func(
             "map#has",
             vec![
@@ -596,16 +626,16 @@ impl Builtins {
                     [(m.clone(), m_ty.clone()), (key.clone(), key_ty.clone())],
                 ),
             ],
-            Term::Boolean,
+            Boolean,
             explicit_tuple_local(
                 (m.clone(), m_ty),
                 (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
-                Term::Ref(tupled),
+                Ref(tupled),
                 explicit_tuple_local1(
                     key.clone(),
                     key_ty,
-                    Term::Ref(m_rhs),
-                    Term::MapHas(Box::new(Term::Ref(m)), Box::new(Term::Ref(key))),
+                    Ref(m_rhs),
+                    MapHas(Box::new(Ref(m)), Box::new(Ref(key))),
                 ),
             ),
         )
@@ -615,13 +645,10 @@ impl Builtins {
         let k = Var::new("K");
         let v = Var::new("V");
         let m = Var::new("m");
-        let m_ty = Term::Map(
-            Box::new(Term::Ref(k.clone())),
-            Box::new(Term::Ref(v.clone())),
-        );
+        let m_ty = Map(Box::new(Ref(k.clone())), Box::new(Ref(v.clone())));
         let m_rhs = m.untupled_rhs();
         let key = Var::new("k");
-        let key_ty = Term::Ref(k.clone());
+        let key_ty = Ref(k.clone());
         let (tupled, tele) = parameters(
             [k, v.clone()],
             [(m.clone(), m_ty.clone()), (key.clone(), key_ty.clone())],
@@ -629,7 +656,7 @@ impl Builtins {
         self.func(
             "map#get",
             tele,
-            Term::Ref(v),
+            Ref(v),
             explicit_tuple_local(
                 (m.clone(), m_ty),
                 (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
@@ -637,8 +664,8 @@ impl Builtins {
                 explicit_tuple_local1(
                     key.clone(),
                     key_ty,
-                    Term::Ref(m_rhs),
-                    Term::MapGet(Box::new(Term::Ref(m)), Box::new(Term::Ref(key))),
+                    Ref(m_rhs),
+                    MapGet(Box::new(Ref(m)), Box::new(Ref(key))),
                 ),
             ),
         )
@@ -648,16 +675,13 @@ impl Builtins {
         let k = Var::new("K");
         let v = Var::new("T");
         let m = Var::new("m");
-        let m_ty = Term::Map(
-            Box::new(Term::Ref(k.clone())),
-            Box::new(Term::Ref(v.clone())),
-        );
+        let m_ty = Map(Box::new(Ref(k.clone())), Box::new(Ref(v.clone())));
         let m_rhs = m.untupled_rhs();
         let key = Var::new("k");
-        let key_ty = Term::Ref(k.clone());
+        let key_ty = Ref(k.clone());
         let key_rhs = key.untupled_rhs();
         let val = Var::new("v");
-        let val_ty = Term::Ref(v.clone());
+        let val_ty = Ref(v.clone());
         let (tupled, tele) = parameters(
             [k.clone(), v.clone()],
             [
@@ -669,7 +693,7 @@ impl Builtins {
         self.func(
             "map#set",
             tele,
-            Term::Unit,
+            Unit,
             explicit_tuple_local(
                 (m.clone(), m_ty),
                 (
@@ -686,16 +710,12 @@ impl Builtins {
                         key_rhs.clone(),
                         explicit_sigma1(val.clone(), val_ty.clone()),
                     ),
-                    Term::Ref(m_rhs),
+                    Ref(m_rhs),
                     explicit_tuple_local1(
                         val.clone(),
                         val_ty,
-                        Term::Ref(key_rhs),
-                        Term::MapSet(
-                            Box::new(Term::Ref(m)),
-                            Box::new(Term::Ref(key)),
-                            Box::new(Term::Ref(val)),
-                        ),
+                        Ref(key_rhs),
+                        MapSet(Box::new(Ref(m)), Box::new(Ref(key)), Box::new(Ref(val))),
                     ),
                 ),
             ),
@@ -706,13 +726,10 @@ impl Builtins {
         let k = Var::new("K");
         let v = Var::new("V");
         let m = Var::new("m");
-        let m_ty = Term::Map(
-            Box::new(Term::Ref(k.clone())),
-            Box::new(Term::Ref(v.clone())),
-        );
+        let m_ty = Map(Box::new(Ref(k.clone())), Box::new(Ref(v.clone())));
         let m_rhs = m.untupled_rhs();
         let key = Var::new("k");
-        let key_ty = Term::Ref(k.clone());
+        let key_ty = Ref(k.clone());
         let (tupled, tele) = parameters(
             [k, v],
             [(m.clone(), m_ty.clone()), (key.clone(), key_ty.clone())],
@@ -720,7 +737,7 @@ impl Builtins {
         self.func(
             "map#delete",
             tele,
-            Term::Boolean,
+            Boolean,
             explicit_tuple_local(
                 (m.clone(), m_ty),
                 (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
@@ -728,8 +745,8 @@ impl Builtins {
                 explicit_tuple_local1(
                     key.clone(),
                     key_ty,
-                    Term::Ref(m_rhs),
-                    Term::MapDelete(Box::new(Term::Ref(m)), Box::new(Term::Ref(key))),
+                    Ref(m_rhs),
+                    MapDelete(Box::new(Ref(m)), Box::new(Ref(key))),
                 ),
             ),
         )
@@ -739,21 +756,13 @@ impl Builtins {
         let k = Var::new("K");
         let v = Var::new("V");
         let m = Var::new("m");
-        let m_ty = Term::Map(
-            Box::new(Term::Ref(k.clone())),
-            Box::new(Term::Ref(v.clone())),
-        );
+        let m_ty = Map(Box::new(Ref(k.clone())), Box::new(Ref(v.clone())));
         let (tupled, tele) = parameters([k.clone(), v.clone()], [(m.clone(), m_ty.clone())]);
         self.func(
             "map#clear",
             tele,
-            Term::Unit,
-            explicit_tuple_local1(
-                m.clone(),
-                m_ty,
-                tupled,
-                Term::MapClear(Box::new(Term::Ref(m))),
-            ),
+            Unit,
+            explicit_tuple_local1(m.clone(), m_ty, tupled, MapClear(Box::new(Ref(m)))),
         )
     }
 
@@ -761,21 +770,13 @@ impl Builtins {
         let k = Var::new("K");
         let v = Var::new("V");
         let m = Var::new("m");
-        let m_ty = Term::Map(
-            Box::new(Term::Ref(k.clone())),
-            Box::new(Term::Ref(v.clone())),
-        );
+        let m_ty = Map(Box::new(Ref(k.clone())), Box::new(Ref(v.clone())));
         let (tupled, tele) = parameters([k.clone(), v.clone()], [(m.clone(), m_ty.clone())]);
         self.func(
             "map#iter",
             tele,
-            Term::MapIterator(Box::new(entry_type(Term::Ref(k), Term::Ref(v)))),
-            explicit_tuple_local1(
-                m.clone(),
-                m_ty,
-                tupled,
-                Term::MapIter(Box::new(Term::Ref(m))),
-            ),
+            MapIterator(Box::new(entry_type(Ref(k), Ref(v)))),
+            explicit_tuple_local1(m.clone(), m_ty, tupled, MapIter(Box::new(Ref(m)))),
         )
     }
 }

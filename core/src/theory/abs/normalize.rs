@@ -580,6 +580,9 @@ impl<'a> Normalizer<'a> {
             }
             ErrorThrow(a) => ErrorThrow(self.term_box(a)?),
             ConsoleLog(m) => ConsoleLog(self.term_box(m)?),
+            SetTimeout(f, d, x) => {
+                SetTimeout(self.term_box(f)?, self.term_box(d)?, self.term_box(x)?)
+            }
             tm => tm,
         })
     }
@@ -727,6 +730,9 @@ impl<'a> Normalizer<'a> {
     }
 
     fn is_reflector(&self, i: &Var) -> bool {
-        return &self.ubiquitous.get("Reflector").unwrap().1 == i;
+        return self
+            .ubiquitous
+            .get("Reflector")
+            .map_or(false, |v| &v.1 == i);
     }
 }

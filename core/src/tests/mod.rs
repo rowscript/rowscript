@@ -81,6 +81,7 @@ mod ok_postulate_type;
 mod ok_reflect;
 mod ok_reflected;
 mod ok_rev_app;
+mod ok_time;
 mod ok_typeclassopedia;
 mod ok_typeclassopedia_stuck;
 mod ok_unit;
