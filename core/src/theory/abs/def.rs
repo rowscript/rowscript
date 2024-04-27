@@ -17,6 +17,7 @@ pub fn gamma_to_tele(g: &Gamma) -> Tele<Term> {
         .map(|(v, typ)| Param {
             var: v.clone(),
             info: Explicit,
+            eff: Default::default(),
             typ: typ.clone(),
         })
         .collect()

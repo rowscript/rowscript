@@ -202,9 +202,24 @@ impl From<ParamInfo> for ArgInfo {
 }
 
 #[derive(Debug, Clone)]
+pub enum Effect<T: Syntax> {
+    Pure,
+    Throw(Box<T>),
+    Async,
+    Cap,
+}
+
+impl<T: Syntax> Default for Effect<T> {
+    fn default() -> Self {
+        Self::Pure
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Param<T: Syntax> {
     pub var: Var,
     pub info: ParamInfo,
+    pub eff: Effect<T>,
     pub typ: Box<T>,
 }
 

@@ -149,6 +149,7 @@ impl Trans {
                 Param {
                     var: Var::this(),
                     info: Explicit,
+                    eff: Default::default(),
                     typ: Box::new(Self::wrap_implicit_apps(&implicits, ty)),
                 },
             );
@@ -330,6 +331,7 @@ impl Trans {
                     let mut tele = vec![Param {
                         var: name.clone(),
                         info: Implicit,
+                        eff: Default::default(),
                         typ: Box::new(alias_type(name_loc, &im_tele)),
                     }];
                     tele.extend(d.tele);
@@ -349,6 +351,7 @@ impl Trans {
             tele: vec![Param {
                 var: name,
                 info: Implicit,
+                eff: Default::default(),
                 typ: Box::new(alias_type(name_loc, &im_tele)),
             }],
             ret,
@@ -492,6 +495,7 @@ impl Trans {
                                 Param {
                                     var: m.clone(),
                                     info: Explicit,
+                                    eff: Default::default(),
                                     typ: Box::new(typ),
                                 },
                             );
@@ -710,6 +714,7 @@ impl Trans {
         Param {
             var: Var::unbound(),
             info: Implicit,
+            eff: Default::default(),
             typ: Box::new(match p.as_rule() {
                 Rule::row_ord => {
                     let mut p = p.into_inner();
@@ -1556,6 +1561,7 @@ impl Trans {
         Param {
             var: Var::from(p),
             info: Implicit,
+            eff: Default::default(),
             typ: Box::new(Row(loc)),
         }
     }
@@ -1566,6 +1572,7 @@ impl Trans {
         Param {
             var: Var::from(p),
             info: Implicit,
+            eff: Default::default(),
             typ: Box::new(Univ(loc)),
         }
     }
@@ -1580,6 +1587,7 @@ impl Trans {
             let p = Param {
                 var: Var::unbound(),
                 info: Implicit,
+                eff: Default::default(),
                 typ: Box::new(Univ(loc)),
             };
             Box::new(Pi(loc, p, a))
@@ -1587,6 +1595,7 @@ impl Trans {
         Param {
             var,
             info: Implicit,
+            eff: Default::default(),
             typ,
         }
     }
@@ -1602,6 +1611,7 @@ impl Trans {
                 Param {
                     var: Var::from(id),
                     info: Explicit,
+                    eff: Default::default(),
                     typ: Box::new(Varargs(loc, Box::new(self.type_expr(p)))),
                 },
             ),
@@ -1614,6 +1624,7 @@ impl Trans {
         Param {
             var: Var::from(pairs.next().unwrap()),
             info: Explicit,
+            eff: Default::default(),
             typ: Box::new(self.type_expr(pairs.next().unwrap())),
         }
     }
@@ -1742,6 +1753,7 @@ impl UntupledParams {
         Param {
             var: Var::tupled(),
             info: Explicit,
+            eff: Default::default(),
             typ: Box::new(ret),
         }
     }

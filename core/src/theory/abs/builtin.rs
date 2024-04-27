@@ -16,6 +16,7 @@ fn implicit(var: Var, typ: Term) -> Param<Term> {
     Param {
         var,
         info: Implicit,
+        eff: Default::default(),
         typ: Box::new(typ),
     }
 }
@@ -32,6 +33,7 @@ fn explicit(var: Var, typ: Term) -> Param<Term> {
     Param {
         var,
         info: Explicit,
+        eff: Default::default(),
         typ: Box::new(typ),
     }
 }
@@ -77,6 +79,7 @@ fn tuple_param<const N: usize>(var: Var, tele: [(Var, Term); N]) -> Param<Term> 
     Param {
         var,
         info: Explicit,
+        eff: Default::default(),
         typ: Box::new(ty),
     }
 }
