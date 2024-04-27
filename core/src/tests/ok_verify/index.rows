@@ -5,4 +5,4 @@ function f<T>(v: Foo<T>): number {
 }
 
 declare Foo<T>;
-declare function f<T>(v: Foo<T>): number;
+declare f<T>(v: Foo<T>): number;

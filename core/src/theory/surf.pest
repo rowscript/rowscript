@@ -654,7 +654,6 @@ type_verify =
 
 fn_verify =
   { "declare"
-  ~ "function"
   ~ idref
   ~ implicits?
   ~ params
