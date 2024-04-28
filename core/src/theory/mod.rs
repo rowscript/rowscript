@@ -242,6 +242,7 @@ pub struct ResolvedVar(pub VarKind, pub Var);
 
 pub type NameMap = HashMap<String, ResolvedVar>;
 
+#[derive(Debug, Clone)]
 pub enum Effect<T: Syntax> {
     Pure,
     Throw(Box<T>),
@@ -252,5 +253,16 @@ pub enum Effect<T: Syntax> {
 impl<T: Syntax> Default for Effect<T> {
     fn default() -> Self {
         Self::Pure
+    }
+}
+
+impl<T: Syntax> Display for Effect<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Pure => Ok(()),
+            Self::Throw(t) => write!(f, "<{t}>"),
+            Self::Async => write!(f, "async"),
+            Self::IO => write!(f, "io"),
+        }
     }
 }

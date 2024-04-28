@@ -132,6 +132,7 @@ impl<'a> Reflector<'a> {
         let x = Var::new("x");
         Ok(Box::new(Lam(
             Self::tupled_param(tupled.clone(), ty.clone()),
+            Default::default(),
             Box::new(TupleLocal(
                 Param {
                     var: x.clone(),
@@ -248,6 +249,7 @@ impl<'a> Reflector<'a> {
         let x = Var::new("x");
         Box::new(Lam(
             Self::tupled_param(tupled.clone(), ty.clone()),
+            Default::default(),
             Box::new(TupleLocal(
                 Param {
                     var: x.clone(),

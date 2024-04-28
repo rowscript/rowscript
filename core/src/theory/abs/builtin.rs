@@ -37,7 +37,7 @@ fn explicit(var: Var, typ: Term) -> Param<Term> {
 }
 
 fn explicit_pi(p: (Var, Term), b: Term) -> Term {
-    Pi(explicit(p.0, p.1), Box::new(b))
+    Pi(explicit(p.0, p.1), Default::default(), Box::new(b))
 }
 
 fn unbound_explicit_pi(a: Term, b: Term) -> Term {
@@ -455,6 +455,7 @@ impl Builtins {
         let f = Var::new("f");
         let f_ty = Pi(
             tuple_param(Var::unbound(), [(Var::new("v"), Ref(t.clone()))]),
+            Default::default(),
             Box::new(Unit),
         );
         self.func(

@@ -147,13 +147,13 @@ impl<'a> Normalizer<'a> {
                 }
             }
             Return(a) => Return(self.term_box(a)?),
-            Pi(p, b) => Pi(self.param(p)?, self.term_box(b)?),
-            Lam(p, b) => Lam(self.param(p)?, self.term_box(b)?),
+            Pi(p, e, b) => Pi(self.param(p)?, e, self.term_box(b)?),
+            Lam(p, e, b) => Lam(self.param(p)?, e, self.term_box(b)?),
             App(f, ai, x) => {
                 let f = self.term_box(f)?;
                 let x = self.term_box(x)?;
                 match *f {
-                    Lam(p, b) if !has_side_effect(x.as_ref()) => {
+                    Lam(p, _, b) if !has_side_effect(x.as_ref()) => {
                         self.rho.insert(p.var, x);
                         self.term(*b)?
                     }
@@ -599,7 +599,7 @@ impl<'a> Normalizer<'a> {
         let mut ret = f;
         for x in args {
             match ret {
-                Lam(p, b) => {
+                Lam(p, _, b) => {
                     ret = self.with(&[(&p.var, x)], *b)?;
                 }
                 _ => ret = App(Box::new(ret), ai.clone(), Box::new(x.clone())),
@@ -613,7 +613,7 @@ impl<'a> Normalizer<'a> {
         let mut ret = f;
         for x in args {
             match ret {
-                Pi(p, b) => {
+                Pi(p, _, b) => {
                     ret = self.with(&[(&p.var, x)], *b)?;
                 }
                 _ => unreachable!(),
@@ -676,7 +676,7 @@ impl<'a> Normalizer<'a> {
             }
 
             let f_ty = match self.sigma.get(&f).unwrap().to_type() {
-                Pi(p, body) => self.with(&[(&p.var, x)], *body)?,
+                Pi(p, _, body) => self.with(&[(&p.var, x)], *body)?,
                 _ => unreachable!(),
             };
 

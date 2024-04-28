@@ -4,8 +4,8 @@ use std::fmt::{Display, Formatter};
 use crate::theory::abs::def::{Body, Sigma};
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::load::ModuleID;
-use crate::theory::ParamInfo::Implicit;
-use crate::theory::{Param, ParamInfo, Syntax, Tele, Var};
+use crate::theory::ParamInfo::{Explicit, Implicit};
+use crate::theory::{Effect, Param, ParamInfo, Syntax, Tele, Var};
 
 pub type Spine = Vec<(ParamInfo, Term)>;
 
@@ -48,8 +48,8 @@ pub enum Term {
 
     Univ,
 
-    Pi(Param<Self>, Box<Self>),
-    Lam(Param<Self>, Box<Self>),
+    Pi(Param<Self>, Effect<Self>, Box<Self>),
+    Lam(Param<Self>, Effect<Self>, Box<Self>),
     App(Box<Self>, ArgInfo, Box<Self>),
 
     Sigma(Param<Self>, Box<Self>),
@@ -173,13 +173,15 @@ pub struct PartialClass {
 
 impl Term {
     pub fn lam(tele: &Tele<Self>, tm: Self) -> Self {
-        tele.iter()
-            .rfold(tm, |b, p| Term::Lam(p.clone(), Box::new(b)))
+        tele.iter().rfold(tm, |b, p| {
+            Term::Lam(p.clone(), Default::default(), Box::new(b))
+        })
     }
 
     pub fn pi(tele: &Tele<Self>, tm: Self) -> Self {
-        tele.iter()
-            .rfold(tm, |b, p| Term::Pi(p.clone(), Box::new(b)))
+        tele.iter().rfold(tm, |b, p| {
+            Term::Pi(p.clone(), Default::default(), Box::new(b))
+        })
     }
 
     pub fn tele_to_spine(tele: &Tele<Self>) -> Spine {
@@ -213,7 +215,7 @@ impl Term {
                     } => (type_args.clone(), associated.clone(), methods.clone()),
                     _ => unreachable!(),
                 },
-                Varargs(tm) | Pi(_, tm) | Lam(_, tm) => {
+                Varargs(tm) | Pi(.., tm) | Lam(.., tm) => {
                     x = tm.as_ref();
                     continue;
                 }
@@ -264,7 +266,9 @@ impl Term {
     pub fn unwrap_solved_implicit_lambda(tm: Self, ty: Self) -> (Self, Self) {
         use Term::*;
         match (tm, ty) {
-            (Lam(p, b), Pi(.., body)) if p.info == Implicit && p.typ.is_solved_auto_implicit() => {
+            (Lam(p, _, b), Pi(.., body))
+                if p.info == Implicit && p.typ.is_solved_auto_implicit() =>
+            {
                 (*b, *body)
             }
             ret => ret,
@@ -287,8 +291,8 @@ impl Display for Term {
                     s.extend(
                         sp.iter()
                             .map(|(i, tm)| match i {
-                                ParamInfo::Explicit => tm.to_string(),
-                                ParamInfo::Implicit => format!("{{{tm}}}"),
+                                Explicit => tm.to_string(),
+                                Implicit => format!("{{{tm}}}"),
                             })
                             .collect::<Vec<_>>(),
                     );
@@ -311,8 +315,8 @@ impl Display for Term {
                 Continue => "continue".to_string(),
                 Break => "break".to_string(),
                 Univ => "type".to_string(),
-                Pi(p, b) => format!("{p} -> {b}"),
-                Lam(p, b) => format!("{p} => {b}"),
+                Pi(p, e, b) => format!("{p} -> {e}{b}"),
+                Lam(p, e, b) => format!("{p} => {e}{b}"),
                 App(f, _, x) => format!("({f} {x})"),
                 Sigma(p, b) => format!("{p} * {b}"),
                 Tuple(a, b) => format!("[{a}, {b}]"),

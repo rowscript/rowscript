@@ -88,13 +88,13 @@ impl<'a> Unifier<'a> {
                 self.unify(a, x)?;
                 self.unify(b, y)
             }
-            (Pi(p, a), Pi(q, b)) => {
+            (Pi(p, _, a), Pi(q, _, b)) => {
                 self.unify(&p.typ, &q.typ)?;
                 let rho = &[(&q.var, &Ref(p.var.clone()))];
                 let b = self.nf().with(rho, *b.clone())?;
                 self.unify(a, &b)
             }
-            (Lam(p, a), Lam(_, _)) => {
+            (Lam(p, _, a), Lam(..)) => {
                 let b = self
                     .nf()
                     .apply(rhs.clone(), p.info.into(), &[Ref(p.var.clone())])?;

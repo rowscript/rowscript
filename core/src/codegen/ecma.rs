@@ -908,7 +908,7 @@ impl Ecma {
                 ))),
                 prop: MemberProp::Ident(Self::ident(loc, r)),
             }),
-            Lam(p, b) => match p.info {
+            Lam(p, _, b) => match p.info {
                 Explicit => Expr::Arrow(ArrowExpr {
                     span: loc.into(),
                     params: Self::type_erased_pats(loc, None, b),
