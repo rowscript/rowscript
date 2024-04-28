@@ -153,7 +153,6 @@ impl Renamer {
         Param {
             var,
             info: p.info,
-            eff: Default::default(),
             typ: self.term(p.typ),
         }
     }

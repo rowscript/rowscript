@@ -139,3 +139,11 @@ class Map<K, V> {
         new MapIterator(map#iter(this.m))
     }
 }
+
+// Effects.
+//
+// TODO: Well these below should be somewhere else but not here.
+
+interface Throw {
+    throw<T>(e: T);
+}

@@ -74,7 +74,6 @@ impl Elaborator {
             tele.push(Param {
                 var,
                 info: p.info,
-                eff: Default::default(),
                 typ,
             })
         }
@@ -247,7 +246,6 @@ impl Elaborator {
                 let param = Param {
                     var,
                     info: Explicit,
-                    eff: Default::default(),
                     typ: Box::new(typ),
                 };
                 let body = self.guarded_check(&[&param], *b, ty)?;
@@ -258,7 +256,6 @@ impl Elaborator {
                 let param = Param {
                     var,
                     info: Explicit,
-                    eff: Default::default(),
                     typ: Box::new(typ),
                 };
                 let body = self.guarded_check(&[&param], *b, ty)?;
@@ -299,7 +296,6 @@ impl Elaborator {
                         let param = Param {
                             var: var.clone(),
                             info: Explicit,
-                            eff: Default::default(),
                             typ: ty_param.typ.clone(),
                         };
                         let body_type = self
@@ -367,13 +363,11 @@ impl Elaborator {
                         let x = Param {
                             var: x,
                             info: Explicit,
-                            eff: Default::default(),
                             typ: ty_param.typ,
                         };
                         let y = Param {
                             var: y,
                             info: Explicit,
-                            eff: Default::default(),
                             typ,
                         };
                         let b = self.guarded_check(&[&x, &y], *b, ty)?;
@@ -484,7 +478,6 @@ impl Elaborator {
                 let param = Param {
                     var: p.var,
                     info: p.info,
-                    eff: Default::default(),
                     typ: Box::new(param_ty),
                 };
                 let (b, b_ty) = self.guarded_infer(&[&param], *b)?;
@@ -503,7 +496,6 @@ impl Elaborator {
                                 Param {
                                     var: x.clone(),
                                     info: Explicit,
-                                    eff: Default::default(),
                                     typ: Box::new(self.insert_meta(loc, InsertedMeta).0),
                                 },
                                 typ,
@@ -516,7 +508,6 @@ impl Elaborator {
                 let p = Param {
                     var,
                     info: Explicit,
-                    eff: Default::default(),
                     typ,
                 };
                 let (b, b_ty) = self.guarded_infer(&[&p], *b)?;
@@ -540,7 +531,6 @@ impl Elaborator {
                             &[&Param {
                                 var: p.var.clone(),
                                 info: p.info,
-                                eff: Default::default(),
                                 typ: p.typ.clone(),
                             }],
                             *x,
@@ -583,7 +573,6 @@ impl Elaborator {
                 let param = Param {
                     var: p.var,
                     info: p.info,
-                    eff: Default::default(),
                     typ: Box::new(param_ty),
                 };
                 let (b, b_ty) = self.guarded_infer(&[&param], *b)?;
@@ -598,7 +587,6 @@ impl Elaborator {
                         Param {
                             var: Var::unbound(),
                             info: Explicit,
-                            eff: Default::default(),
                             typ: Box::new(a_ty),
                         },
                         Box::new(b_ty),
@@ -612,13 +600,11 @@ impl Elaborator {
                 let x = Param {
                     var: x,
                     info: Explicit,
-                    eff: Default::default(),
                     typ: Box::new(x_ty),
                 };
                 let y = Param {
                     var: y,
                     info: Explicit,
-                    eff: Default::default(),
                     typ: Box::new(y_ty.clone()),
                 };
                 let a = self.check(*a, &Term::Sigma(x.clone(), Box::new(y_ty)))?;
@@ -766,25 +752,21 @@ impl Elaborator {
                     Param {
                         var: t.clone(),
                         info: Implicit,
-                        eff: Default::default(),
                         typ: Box::new(Term::Univ),
                     },
                     Param {
                         var: a.clone(),
                         info: Implicit,
-                        eff: Default::default(),
                         typ: Box::new(Term::Row),
                     },
                     Param {
                         var: o.clone(),
                         info: Explicit,
-                        eff: Default::default(),
                         typ: Box::new(Term::Object(Box::new(Term::Ref(a.clone())))),
                     },
                     Param {
                         var: Var::unbound(),
                         info: Implicit,
-                        eff: Default::default(),
                         typ: Box::new(Term::RowOrd(
                             Box::new(Term::Fields(FieldMap::from([(
                                 n.clone(),
@@ -863,7 +845,6 @@ impl Elaborator {
                     let pat = Param {
                         var: v.clone(),
                         info: Explicit,
-                        eff: Default::default(),
                         typ: Box::new(ty),
                     };
                     let tm = match &ret_ty {
@@ -885,7 +866,6 @@ impl Elaborator {
                         let p = Param {
                             var: v.clone(),
                             info: Explicit,
-                            eff: Default::default(),
                             typ,
                         };
                         Some((

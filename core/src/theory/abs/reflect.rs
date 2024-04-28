@@ -136,13 +136,11 @@ impl<'a> Reflector<'a> {
                 Param {
                     var: x.clone(),
                     info: ParamInfo::Explicit,
-                    eff: Default::default(),
                     typ: Box::new(ty.clone()),
                 },
                 Param {
                     var: Var::unbound(),
                     info: ParamInfo::Explicit,
-                    eff: Default::default(),
                     typ: Box::new(Unit),
                 },
                 Box::new(Ref(tupled)),
@@ -254,13 +252,11 @@ impl<'a> Reflector<'a> {
                 Param {
                     var: x.clone(),
                     info: ParamInfo::Explicit,
-                    eff: Default::default(),
                     typ: Box::new(ty),
                 },
                 Param {
                     var: Var::unbound(),
                     info: ParamInfo::Explicit,
-                    eff: Default::default(),
                     typ: Box::new(Unit),
                 },
                 Box::new(Ref(tupled)),
@@ -274,12 +270,10 @@ impl<'a> Reflector<'a> {
         Param {
             var,
             info: ParamInfo::Explicit,
-            eff: Default::default(),
             typ: Box::new(Sigma(
                 Param {
                     var: Var::unbound(),
                     info: ParamInfo::Explicit,
-                    eff: Default::default(),
                     typ: Box::new(ty),
                 },
                 Box::new(Unit),

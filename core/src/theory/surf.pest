@@ -29,7 +29,6 @@ reserved =
   | "super"
   | "switch"
   | "this"
-  | "throw"
   | "true"
   | "try"
   | "typeof"
@@ -101,6 +100,7 @@ reserved =
   //| "set"
   //| "delete"
   //| "default"
+  //| "throw"
   }
 
 camelback_id = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | ASCII_DIGIT)* }

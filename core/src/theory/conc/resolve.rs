@@ -110,7 +110,6 @@ impl<'a> Resolver<'a> {
             tele.push(Param {
                 var: p.var,
                 info: p.info,
-                eff: Default::default(),
                 typ: self.expr(p.typ)?,
             });
         }
@@ -237,7 +236,6 @@ impl<'a> Resolver<'a> {
         Ok(Param {
             var: p.var,
             info: p.info,
-            eff: Default::default(),
             typ: self.expr(p.typ)?,
         })
     }
