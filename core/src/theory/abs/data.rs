@@ -48,8 +48,8 @@ pub enum Term {
 
     Univ,
 
-    Pi(Param<Self>, Effect<Self>, Box<Self>),
-    Lam(Param<Self>, Effect<Self>, Box<Self>),
+    Pi(Param<Self>, Effect, Box<Self>),
+    Lam(Param<Self>, Effect, Box<Self>),
     App(Box<Self>, ArgInfo, Box<Self>),
 
     Sigma(Param<Self>, Box<Self>),

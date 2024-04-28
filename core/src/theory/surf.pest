@@ -29,6 +29,7 @@ reserved =
   | "super"
   | "switch"
   | "this"
+  | "throw"
   | "true"
   | "try"
   | "typeof"
@@ -43,7 +44,7 @@ reserved =
   | "yield"
 
   // Contextual reserved words.
-  | "await"
+  //| "await"
 
   // Future reserved words.
   | "enum"
@@ -96,11 +97,11 @@ reserved =
   | "type"
 
   // RowScript accepts these for fun.
+  //| "await"
   //| "get"
   //| "set"
   //| "delete"
   //| "default"
-  //| "throw"
   }
 
 camelback_id = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
