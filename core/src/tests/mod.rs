@@ -46,6 +46,7 @@ mod ok_issue93;
 mod ok_alias;
 mod ok_array;
 mod ok_array_iter;
+mod ok_async;
 mod ok_bool;
 mod ok_builtin;
 mod ok_chainable;

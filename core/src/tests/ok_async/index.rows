@@ -1,0 +1,3 @@
+async function wait(d: Duration) {
+    await((next) => { setTimeout(next, d, Ok); }).unwrap()
+}

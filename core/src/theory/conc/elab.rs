@@ -98,7 +98,10 @@ impl Elaborator {
 
         let mut inferred_ret = None;
         let body = match d.body {
-            Fn(f) => Fn(Box::new(self.check(*f, &ret)?)),
+            Fn { is_async, f } => Fn {
+                is_async,
+                f: Box::new(self.check(*f, &ret)?),
+            },
             Postulate => Postulate,
             Alias(t) => Alias(Box::new(self.check(*t, &ret)?)),
             Const(anno, f) => Const(

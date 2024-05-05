@@ -210,7 +210,10 @@ impl Builtins {
             name: Var::new(name),
             tele,
             ret: Box::new(ret),
-            body: Body::Fn(Box::new(f)),
+            body: Body::Fn {
+                is_async: false,
+                f: Box::new(f),
+            },
         })
     }
 

@@ -134,7 +134,17 @@ impl Trans {
         let loc = Loc::from(f.as_span());
         let mut pairs = f.into_inner();
 
-        let name = Var::from(pairs.next().unwrap());
+        let mut is_async = false;
+        let name = Var::from({
+            let p = pairs.next().unwrap();
+            match p.as_rule() {
+                Rule::is_async => {
+                    is_async = true;
+                    pairs.next().unwrap()
+                }
+                _ => p,
+            }
+        });
 
         let mut tele = Tele::default();
         let mut untupled = UntupledParams::new(loc);
@@ -177,12 +187,15 @@ impl Trans {
         let untupled_vars = untupled.unresolved();
         let untupled_loc = untupled.0;
         let tupled_param = untupled.param(untupled_ends);
-        let body = Fn(Box::new(Expr::wrap_tuple_locals(
-            untupled_loc,
-            &tupled_param.var,
-            untupled_vars,
-            body.unwrap(),
-        )));
+        let body = Fn {
+            is_async,
+            f: Box::new(Expr::wrap_tuple_locals(
+                untupled_loc,
+                &tupled_param.var,
+                untupled_vars,
+                body.unwrap(),
+            )),
+        };
         tele.push(tupled_param);
         tele.extend(preds);
 
@@ -387,7 +400,7 @@ impl Trans {
             fns.insert(def.name.clone(), fn_name.clone());
             def.name = fn_name;
             def.body = match def.body {
-                Fn(f) => ImplementsFn(f),
+                Fn { f, .. } => ImplementsFn(f),
                 _ => unreachable!(),
             };
             defs.push(def);
@@ -509,7 +522,7 @@ impl Trans {
                     let method_var = name.method(m.name);
                     m.name = method_var.clone();
                     m.body = match m.body {
-                        Fn(f) => Method {
+                        Fn { f, .. } => Method {
                             class: name.clone(),
                             associated: associated.clone(),
                             f,

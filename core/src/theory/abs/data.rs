@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter};
 use crate::theory::abs::def::{Body, Sigma};
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::load::ModuleID;
-use crate::theory::ParamInfo::{Explicit, Implicit};
+use crate::theory::ParamInfo::Implicit;
 use crate::theory::{Effect, Param, ParamInfo, Syntax, Tele, Var};
 
 pub type Spine = Vec<(ParamInfo, Term)>;
@@ -286,18 +286,7 @@ impl Display for Term {
                 Ref(r) => r.to_string(),
                 Extern(r) => r.to_string(),
                 Qualified(m, r) => format!("{m}::{r}"),
-                MetaRef(k, r, sp) => {
-                    let mut s = vec![format!("{k}{r}")];
-                    s.extend(
-                        sp.iter()
-                            .map(|(i, tm)| match i {
-                                Explicit => tm.to_string(),
-                                Implicit => format!("{{{tm}}}"),
-                            })
-                            .collect::<Vec<_>>(),
-                    );
-                    format!("({})", s.join(" "))
-                }
+                MetaRef(k, r, ..) => format!("{k}{r}"),
                 Undef(r) => r.to_string(),
                 Local(p, a, b) => format!("const {p} = {a};\n\t{b}"),
                 LocalSet(p, a, b) => format!("let {p} = {a};\n\t{b}"),

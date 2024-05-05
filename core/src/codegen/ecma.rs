@@ -1376,7 +1376,7 @@ impl Ecma {
         for def in defs {
             debug!(target: "codegen", "generating definition: {def}");
             match match &def.body {
-                Fn(f) | Method { f, .. } => self.func_decl(&mut items, sigma, &def, f),
+                Fn { f, .. } | Method { f, .. } => self.func_decl(&mut items, sigma, &def, f),
                 Postulate => self.postulate_decl(&mut items, &def),
                 Const(_, f) => self.const_decl(&mut items, sigma, &def, f),
                 Class { ctor, methods, .. } => {
