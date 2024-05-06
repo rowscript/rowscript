@@ -44,7 +44,7 @@ reserved =
   | "yield"
 
   // Contextual reserved words.
-  //| "await"
+  | "await"
 
   // Future reserved words.
   | "enum"
@@ -97,7 +97,6 @@ reserved =
   | "type"
 
   // RowScript accepts these for fun.
-  //| "await"
   //| "get"
   //| "set"
   //| "delete"
@@ -324,9 +323,11 @@ expr = { prefix_op* ~ primary_expr ~ (infix_op ~ prefix_op* ~ primary_expr)* }
 prefix_op =
  _{ prefix_not
   | prefix_neg
+  | prefix_await
   }
 prefix_not = { "!" }
 prefix_neg = { "-" }
+prefix_await = { "await " }
 infix_op =
  _{ infix_add
   | infix_sub

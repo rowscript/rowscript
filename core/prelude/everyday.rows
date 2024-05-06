@@ -142,6 +142,6 @@ class Map<K, V> {
 
 // Effects.
 
-interface Async {
-    await<T, E>(e: (next: (r: Result<T, E>) -> unit) -> unit): Result<T, E>;
+interface Awaiter {
+    awaitHere<T, E>(here: (there: (hereResult: Result<T, E>) -> unit) -> unit): Result<T, E>;
 }

@@ -36,7 +36,8 @@ impl Default for Trans {
                     | Op::infix(Rule::infix_div, Assoc::Left)
                     | Op::infix(Rule::infix_mod, Assoc::Left))
                 .op(Op::infix(Rule::infix_concat, Assoc::Left))
-                .op(Op::prefix(Rule::prefix_not) | Op::prefix(Rule::prefix_neg)),
+                .op(Op::prefix(Rule::prefix_not) | Op::prefix(Rule::prefix_neg))
+                .op(Op::prefix(Rule::prefix_await)),
         }
     }
 }
@@ -944,6 +945,7 @@ impl Trans {
                 match op.as_rule() {
                     Rule::prefix_not => Self::prefix_app(loc, "__not__", x),
                     Rule::prefix_neg => Self::prefix_app(loc, "__neg__", x),
+                    Rule::prefix_await => todo!(),
                     _ => unreachable!(),
                 }
             })
