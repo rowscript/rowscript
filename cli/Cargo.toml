@@ -12,7 +12,7 @@ path = "../core"
 default-features = false
 
 [dependencies.clap]
-version = "4.5.3"
+version = "4.5.4"
 features = ["derive"]
 
 [dependencies]

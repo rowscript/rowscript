@@ -1,9 +1,6 @@
-// It's actually not working, no CPS transformation, no effects propagated.
-function badDelay(d: Duration) {
-    awaitHere((next) => { setTimeout(next, d, Ok); }).unwrap()
-}
-
-// This works.
 //async function delay(d: Duration) {
-//    (await (next) => { setTimeout(next, d, Ok); }).unwrap()
+//    (await (next) of setTimeout(next, d, Ok)).unwrap()
 //}
+
+// Gonna work on CPS and call/cc.
+console.log("oops");

@@ -142,6 +142,6 @@ class Map<K, V> {
 
 // Effects.
 
-interface Awaiter {
-    awaitHere<T, E>(here: (there: (hereResult: Result<T, E>) -> unit) -> unit): Result<T, E>;
+interface Await {
+    __await__<T, E>(here: (there: (hereResult: Result<T, E>) -> unit) -> unit): Result<T, E>;
 }
