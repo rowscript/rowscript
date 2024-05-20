@@ -1,6 +1,11 @@
-//async function delay(d: Duration) {
-//    (await (next) of setTimeout(next, d, Ok)).unwrap()
-//}
+async function delay(d: Duration) {
+    // TODO
+//    await { setTimeout(resolve, d, Ok) }
+}
 
-// Gonna work on CPS and call/cc.
-console.log("oops");
+async function f0() {
+    // TODO
+//    const a = await 42;
+}
+
+//await { const x = a(), let y = b()};
