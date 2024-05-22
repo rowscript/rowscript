@@ -142,18 +142,19 @@ class Map<K, V> {
 
 // Effects.
 
-interface Await {
+interface Async {
     __await__<T>(task: (resolve: (v: T) -> unit) -> unit): T;
 }
 
-interface AwaitAll {
+interface AsyncAll {
     __await_all__<T>(tasks: Array<(resolve: (v: T) -> unit) -> unit>): Array<T>;
 }
 
-interface AwaitAny {
-    __await_any__<T>(tasks: Array<(resolve: (v: T) -> unit) -> unit>): T;
-}
+// TODO: Sigma-encoded return type.
+//interface AsyncLet {
+//    __await_let__<Args>(...: Args): ...;
+//}
 
-interface AwaitRace {
-    __await_race__<T>(tasks: Array<(resolve: (v: T) -> unit) -> unit>): T;
+interface AsyncAny {
+    __await_any__<T>(tasks: Array<(resolve: (v: T) -> unit) -> unit>): T;
 }

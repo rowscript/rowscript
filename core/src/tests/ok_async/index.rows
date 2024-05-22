@@ -7,5 +7,3 @@ async function f0() {
     // TODO
 //    const a = await 42;
 }
-
-//await { const x = a(), let y = b()};

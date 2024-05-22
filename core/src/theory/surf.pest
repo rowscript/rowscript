@@ -160,8 +160,8 @@ magic_fn_id =
   | "__setitem__"
   | "__await__"
   | "__await_all__"
+  | "__await_let__"
   | "__await_any__"
-  | "__await_race__"
   }
 
 idref =
