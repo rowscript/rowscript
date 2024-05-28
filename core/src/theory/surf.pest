@@ -327,11 +327,9 @@ expr = { prefix_op* ~ primary_expr ~ (infix_op ~ prefix_op* ~ primary_expr)* }
 prefix_op =
  _{ prefix_not
   | prefix_neg
-  | prefix_await
   }
 prefix_not = { "!" }
 prefix_neg = { "-" }
-prefix_await = { "await " }
 infix_op =
  _{ infix_add
   | infix_sub
@@ -372,6 +370,8 @@ chainable_operand =
   { object_cast
   | enum_cast
   | enum_switch
+  | await_lambda_expr
+  | await_expr
   | lambda_expr
   | new_expr
   | paren_expr
@@ -394,6 +394,8 @@ enum_switch = { "switch" ~ paren_expr ~ "{" ~ enum_case+ ~ enum_default_case? ~ 
 enum_cast = { "[" ~ "..." ~ expr ~ "]" }
 enum_case = { "case" ~ variant_id ~ ("(" ~ param_id ~ ")")? ~ ":" ~ expr }
 enum_default_case = { "case" ~ local_id ~ ":" ~ expr }
+await_lambda_expr = { "await" ~ fn_body_block }
+await_expr = { "await " ~ expr }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
 lambda_params = _{ "()" | "(" ~ param_id ~ ("," ~ param_id)* ~ ")" }
 lambda_body = { expr | fn_body_block }

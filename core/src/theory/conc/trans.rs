@@ -36,8 +36,7 @@ impl Default for Trans {
                     | Op::infix(Rule::infix_div, Assoc::Left)
                     | Op::infix(Rule::infix_mod, Assoc::Left))
                 .op(Op::infix(Rule::infix_concat, Assoc::Left))
-                .op(Op::prefix(Rule::prefix_not) | Op::prefix(Rule::prefix_neg))
-                .op(Op::prefix(Rule::prefix_await)),
+                .op(Op::prefix(Rule::prefix_not) | Op::prefix(Rule::prefix_neg)),
         }
     }
 }
@@ -945,7 +944,6 @@ impl Trans {
                 match op.as_rule() {
                     Rule::prefix_not => Self::prefix_app(loc, "__not__", x),
                     Rule::prefix_neg => Self::prefix_app(loc, "__neg__", x),
-                    Rule::prefix_await => todo!(),
                     _ => unreachable!(),
                 }
             })
@@ -1033,6 +1031,8 @@ impl Trans {
                 }
                 Switch(loc, Box::new(e), cases, default_case)
             }
+            Rule::await_lambda_expr => todo!(),
+            Rule::await_expr => todo!(),
             Rule::lambda_expr => {
                 let pairs = p.into_inner();
                 let mut vars = Vec::default();
