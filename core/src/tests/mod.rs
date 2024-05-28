@@ -89,6 +89,7 @@ mod ok_unit;
 mod ok_unreflect;
 mod ok_varargs;
 mod ok_varargs_anon;
+mod ok_varargs_anon_ret;
 mod ok_verify;
 
 #[cfg(not(feature = "codegen-ecma"))]

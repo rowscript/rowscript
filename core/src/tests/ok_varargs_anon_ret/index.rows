@@ -1,0 +1,20 @@
+//function f0<Args>(s: string, ...: Args): ...;
+//function f1<Args>(...: Args): ...;
+
+//const (a0, b0) = f0("t0", 42, true);
+//console.log("a0", a0);
+//console.log("b0", b0);
+
+//const (a1, b1) = f1("t1", 42, true);
+//console.log("a1", a1);
+//console.log("b1", b1);
+
+//function f2<Args>(s: string, ...: Args): ... {
+//    f1(s, ...f0())
+//}
+
+//const (a2, b2) = f2("t2", 42, true);
+//console.log("a2", a2);
+//console.log("b2", b2);
+
+console.log("Let's go!");

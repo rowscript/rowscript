@@ -57,6 +57,7 @@ impl Trans {
                 Rule::interface_def => defs.extend(self.interface_def(d)),
                 Rule::implements_def => defs.extend(self.implements_def(d)),
                 Rule::const_def => defs.push(self.const_def(d)),
+                Rule::const_variadic_def => todo!(),
                 Rule::class_def => defs.extend(self.class_def(d)),
                 Rule::type_verify => defs.push(self.type_verify(d)),
                 Rule::fn_verify => defs.push(self.fn_verify(d)),
@@ -176,6 +177,7 @@ impl Trans {
                     VariadicParam::Unnamed(t) => untupled_ends = Some(t),
                 },
                 Rule::type_expr => ret = Box::new(self.type_expr(p)),
+                Rule::variadic_return => todo!(),
                 Rule::fn_body => {
                     body = Some(self.fn_body(p));
                     break;
@@ -227,6 +229,7 @@ impl Trans {
                 },
                 Rule::type_expr => ret = Box::new(self.type_expr(p)),
                 Rule::pred => preds.push(self.pred(p)),
+                Rule::variadic_return => todo!(),
                 _ => unreachable!(),
             }
         }

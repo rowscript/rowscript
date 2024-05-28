@@ -228,6 +228,7 @@ univ = { "type" }
 root_prefix = { "::" }
 tt = { "()" }
 is_async = { "async" }
+variadic_return = { "..." }
 
 string = @{ "\"" ~ unquoted_string_part ~ "\"" }
 unquoted_string_part = @{ (unescaped_string_fragment | escaped_string_fragment)* }
@@ -432,6 +433,8 @@ access = { "." ~ prop_id }
 branch =
   { branch_const
   | branch_let
+  | branch_const_variadic
+  | branch_let_variadic
   | branch_local_assign
   | branch_object_assign
   | branch_item_assign
@@ -446,6 +449,8 @@ branch =
   }
 branch_const = { const_stmt ~ ";" ~ branch }
 branch_let = { let_stmt ~ ";" ~ branch }
+branch_const_variadic = { const_variadic_stmt ~ ";" ~ branch }
+branch_let_variadic = { let_variadic_stmt ~ ";" ~ branch }
 branch_object_assign = { object_assign_stmt ~ ";" ~ branch }
 branch_item_assign = { item_assign_stmt ~ ";" ~ branch }
 branch_local_assign = { local_assign_stmt ~ ";" ~ branch }
@@ -458,6 +463,8 @@ branch_if = { if_stmt_start ~ branch ~ (else_stmt_start ~ branch)? ~ "}" ~ branc
 loop_branch =
   { loop_branch_const
   | loop_branch_let
+  | loop_const_variadic
+  | loop_let_variadic
   | loop_branch_local_assign
   | loop_branch_object_assign
   | loop_branch_item_assign
@@ -474,6 +481,8 @@ loop_branch =
   }
 loop_branch_const = { const_stmt ~ ";" ~ loop_branch }
 loop_branch_let = { let_stmt ~ ";" ~ loop_branch }
+loop_const_variadic = { const_variadic_stmt ~ ";" ~ loop_branch }
+loop_let_variadic = { let_variadic_stmt ~ ";" ~ loop_branch }
 loop_branch_object_assign = { object_assign_stmt ~ ";" ~ loop_branch }
 loop_branch_item_assign = { item_assign_stmt ~ ";" ~ loop_branch }
 loop_branch_local_assign = { local_assign_stmt ~ ";" ~ loop_branch }
@@ -484,8 +493,12 @@ loop_branch_fori = { fori_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
 loop_branch_forof = { forof_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
 loop_branch_if = { if_stmt_start ~ loop_branch ~ (else_stmt_start ~ loop_branch)? ~ "}" ~ loop_branch }
 
-const_stmt = { "const" ~ local_id ~ (":" ~ type_expr)? ~ "=" ~ expr }
-let_stmt = { "let" ~ local_id ~ (":" ~ type_expr)? ~ "=" ~ expr }
+const_stmt = { "const" ~ assign }
+let_stmt = { "let" ~ assign }
+assign = _{ local_id ~ (":" ~ type_expr)? ~ "=" ~ expr }
+const_variadic_stmt = { "const" ~ variadic_assign }
+let_variadic_stmt = { "let" ~ variadic_assign }
+variadic_assign = _{ ("()" | "(" ~ local_id ~ ("," ~ local_id)* ~ ")") ~ "=" ~ expr }
 object_assign_stmt = { (local_id | this_id) ~ "." ~ prop_id ~ "=" ~ expr }
 item_assign_stmt = { local_id ~ "[" ~ expr ~ "]" ~ "=" ~ expr }
 local_assign_stmt = { local_id ~ "=" ~ expr }
@@ -544,7 +557,7 @@ fn_def =
   ~ fn_id
   ~ implicits?
   ~ params
-  ~ (":" ~ type_expr)?
+  ~ (":" ~ (type_expr | variadic_return))?
   ~ preds?
   ~ fn_body_block
   }
@@ -552,6 +565,8 @@ fn_body_block = _{ "{" ~ fn_body ~ "}" }
 fn_body =
   { fn_body_const
   | fn_body_let
+  | fn_body_const_variadic
+  | fn_body_let_variadic
   | fn_body_object_assign
   | fn_body_item_assign
   | fn_body_local_assign
@@ -565,6 +580,8 @@ fn_body =
   }
 fn_body_const = { const_stmt ~ ";" ~ fn_body }
 fn_body_let = { let_stmt ~ ";" ~ fn_body }
+fn_body_const_variadic = { const_variadic_stmt ~ ";" ~ fn_body }
+fn_body_let_variadic = { let_variadic_stmt ~ ";" ~ fn_body }
 fn_body_object_assign = { object_assign_stmt ~ ";" ~ fn_body }
 fn_body_item_assign = { item_assign_stmt ~ ";" ~ fn_body }
 fn_body_local_assign = { local_assign_stmt ~ ";" ~ fn_body }
@@ -581,7 +598,7 @@ fn_postulate =
   ~ postulate_id
   ~ implicits?
   ~ params
-  ~ (":" ~ type_expr)?
+  ~ (":" ~ (type_expr | variadic_return))?
   ~ preds?
   ~ ";"
   }
@@ -609,7 +626,7 @@ interface_fn =
   { (fn_id | magic_fn_id)
   ~ implicits?
   ~ params
-  ~ (":" ~ type_expr)?
+  ~ (":" ~ (type_expr | variadic_return))?
   ~ preds?
   ~ ";"
   }
@@ -627,11 +644,13 @@ implements_fn =
   { (fn_id | magic_fn_id)
   ~ implicits?
   ~ params
-  ~ (":" ~ type_expr)?
+  ~ (":" ~ (type_expr | variadic_return))?
   ~ fn_body_block
   }
 
 const_def = { ("const" ~ fn_id ~ (":" ~ type_expr)? ~ "=")? ~ expr ~ ";" }
+
+const_variadic_def = { "const" ~ ("()" | "(" ~ fn_id ~ ("," ~ fn_id)* ~ ")") ~ "=" ~ expr ~ ";" }
 
 class_def =
   { "class"
@@ -649,7 +668,7 @@ class_method =
   { (fn_id | magic_fn_id)
   ~ implicits?
   ~ params
-  ~ (":" ~ type_expr)?
+  ~ (":" ~ (type_expr | variadic_return))?
   ~ preds?
   ~ fn_body_block
   }
@@ -667,7 +686,7 @@ fn_verify =
   ~ idref
   ~ implicits?
   ~ params
-  ~ (":" ~ type_expr)?
+  ~ (":" ~ (type_expr | variadic_return))?
   ~ preds?
   ~ ";"
   }
@@ -680,6 +699,7 @@ def =
   | interface_def
   | implements_def
   | const_def
+  | const_variadic_def
   | class_def
   | type_verify
   | fn_verify
