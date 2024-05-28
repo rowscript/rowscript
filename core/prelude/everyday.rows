@@ -142,12 +142,14 @@ class Map<K, V> {
 
 // Effects.
 
+type Executor<T> = (resolve: (value: T) -> unit) -> unit;
+
 interface Async {
-    __await__<T>(task: (resolve: (v: T) -> unit) -> unit): T;
+    __await__<T>(executor: Executor<T>): T;
 }
 
 interface AsyncAll {
-    __await_all__<T>(tasks: Array<(resolve: (v: T) -> unit) -> unit>): Array<T>;
+    __await_all__<T>(tasks: Array<Executor<T>>): Array<T>;
 }
 
 // TODO: Sigma-encoded return type.
@@ -156,5 +158,5 @@ interface AsyncAll {
 //}
 
 interface AsyncAny {
-    __await_any__<T>(tasks: Array<(resolve: (v: T) -> unit) -> unit>): T;
+    __await_any__<T>(tasks: Array<Executor<T>>): T;
 }
