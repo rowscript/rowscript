@@ -228,7 +228,6 @@ univ = { "type" }
 root_prefix = { "::" }
 tt = { "()" }
 is_async = { "async" }
-variadic_return = { "..." }
 
 string = @{ "\"" ~ unquoted_string_part ~ "\"" }
 unquoted_string_part = @{ (unescaped_string_fragment | escaped_string_fragment)* }
@@ -557,7 +556,7 @@ fn_def =
   ~ fn_id
   ~ implicits?
   ~ params
-  ~ (":" ~ (type_expr | variadic_return))?
+  ~ (":" ~ type_expr)?
   ~ preds?
   ~ fn_body_block
   }
@@ -598,7 +597,7 @@ fn_postulate =
   ~ postulate_id
   ~ implicits?
   ~ params
-  ~ (":" ~ (type_expr | variadic_return))?
+  ~ (":" ~ type_expr)?
   ~ preds?
   ~ ";"
   }
@@ -626,7 +625,7 @@ interface_fn =
   { (fn_id | magic_fn_id)
   ~ implicits?
   ~ params
-  ~ (":" ~ (type_expr | variadic_return))?
+  ~ (":" ~ type_expr)?
   ~ preds?
   ~ ";"
   }
@@ -644,7 +643,7 @@ implements_fn =
   { (fn_id | magic_fn_id)
   ~ implicits?
   ~ params
-  ~ (":" ~ (type_expr | variadic_return))?
+  ~ (":" ~ type_expr)?
   ~ fn_body_block
   }
 
@@ -668,7 +667,7 @@ class_method =
   { (fn_id | magic_fn_id)
   ~ implicits?
   ~ params
-  ~ (":" ~ (type_expr | variadic_return))?
+  ~ (":" ~ type_expr)?
   ~ preds?
   ~ fn_body_block
   }
@@ -686,7 +685,7 @@ fn_verify =
   ~ idref
   ~ implicits?
   ~ params
-  ~ (":" ~ (type_expr | variadic_return))?
+  ~ (":" ~ type_expr)?
   ~ preds?
   ~ ";"
   }

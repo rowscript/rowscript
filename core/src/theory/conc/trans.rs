@@ -177,7 +177,6 @@ impl Trans {
                     VariadicParam::Unnamed(t) => untupled_ends = Some(t),
                 },
                 Rule::type_expr => ret = Box::new(self.type_expr(p)),
-                Rule::variadic_return => todo!(),
                 Rule::fn_body => {
                     body = Some(self.fn_body(p));
                     break;
@@ -229,7 +228,6 @@ impl Trans {
                 },
                 Rule::type_expr => ret = Box::new(self.type_expr(p)),
                 Rule::pred => preds.push(self.pred(p)),
-                Rule::variadic_return => todo!(),
                 _ => unreachable!(),
             }
         }
