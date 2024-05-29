@@ -1,8 +1,8 @@
 function f0<Args>(s: string, ...: Args): Args;
 function f1<Args>(...: Args): Args;
-//function f2<Args>(s: string, ...: Args): Args {
-//    f0(s, ...f1())
-//}
+function f2<Args>(s: string, ...: Args): Args {
+    f0(s, ...f1(...))
+}
 
 //function t0() {
 //    const (a0, b0) = f0("t0", 42, true);
