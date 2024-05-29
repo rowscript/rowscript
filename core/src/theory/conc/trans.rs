@@ -57,7 +57,6 @@ impl Trans {
                 Rule::interface_def => defs.extend(self.interface_def(d)),
                 Rule::implements_def => defs.extend(self.implements_def(d)),
                 Rule::const_def => defs.push(self.const_def(d)),
-                Rule::const_variadic_def => todo!(),
                 Rule::class_def => defs.extend(self.class_def(d)),
                 Rule::type_verify => defs.push(self.type_verify(d)),
                 Rule::fn_verify => defs.push(self.fn_verify(d)),
@@ -824,6 +823,8 @@ impl Trans {
                     Box::new(self.fn_body(pairs.next().unwrap())),
                 )
             }
+            Rule::fn_body_const_variadic => todo!(),
+            Rule::fn_body_let_variadic => todo!(),
             Rule::fn_body_unit_const => {
                 let mut pairs = p.into_inner();
                 UnitLocal(
@@ -1213,6 +1214,8 @@ impl Trans {
                     Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
                 )
             }
+            Rule::branch_const_variadic | Rule::loop_branch_const_variadic => todo!(),
+            Rule::branch_let_variadic | Rule::loop_branch_let_variadic => todo!(),
             Rule::branch_unit_const | Rule::loop_branch_unit_const => {
                 let mut pairs = p.into_inner();
                 UnitLocal(

@@ -462,8 +462,8 @@ branch_if = { if_stmt_start ~ branch ~ (else_stmt_start ~ branch)? ~ "}" ~ branc
 loop_branch =
   { loop_branch_const
   | loop_branch_let
-  | loop_const_variadic
-  | loop_let_variadic
+  | loop_branch_const_variadic
+  | loop_branch_let_variadic
   | loop_branch_local_assign
   | loop_branch_object_assign
   | loop_branch_item_assign
@@ -480,8 +480,8 @@ loop_branch =
   }
 loop_branch_const = { const_stmt ~ ";" ~ loop_branch }
 loop_branch_let = { let_stmt ~ ";" ~ loop_branch }
-loop_const_variadic = { const_variadic_stmt ~ ";" ~ loop_branch }
-loop_let_variadic = { let_variadic_stmt ~ ";" ~ loop_branch }
+loop_branch_const_variadic = { const_variadic_stmt ~ ";" ~ loop_branch }
+loop_branch_let_variadic = { let_variadic_stmt ~ ";" ~ loop_branch }
 loop_branch_object_assign = { object_assign_stmt ~ ";" ~ loop_branch }
 loop_branch_item_assign = { item_assign_stmt ~ ";" ~ loop_branch }
 loop_branch_local_assign = { local_assign_stmt ~ ";" ~ loop_branch }
@@ -649,8 +649,6 @@ implements_fn =
 
 const_def = { ("const" ~ fn_id ~ (":" ~ type_expr)? ~ "=")? ~ expr ~ ";" }
 
-const_variadic_def = { "const" ~ ("()" | "(" ~ fn_id ~ ("," ~ fn_id)* ~ ")") ~ "=" ~ expr ~ ";" }
-
 class_def =
   { "class"
   ~ type_id
@@ -698,7 +696,6 @@ def =
   | interface_def
   | implements_def
   | const_def
-  | const_variadic_def
   | class_def
   | type_verify
   | fn_verify
