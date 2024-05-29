@@ -4,6 +4,8 @@ function f2<Args>(s: string, ...: Args): Args {
     f0(s, ...f1(...))
 }
 
+console.log(f2("f2"));
+
 //function t0() {
 //    const (a0, b0) = f0("t0", 42, true);
 //    console.log("a0", a0);
