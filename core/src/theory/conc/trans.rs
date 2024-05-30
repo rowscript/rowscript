@@ -824,7 +824,6 @@ impl Trans {
                 )
             }
             Rule::fn_body_const_variadic => todo!(),
-            Rule::fn_body_let_variadic => todo!(),
             Rule::fn_body_unit_const => {
                 let mut pairs = p.into_inner();
                 UnitLocal(
@@ -1215,7 +1214,6 @@ impl Trans {
                 )
             }
             Rule::branch_const_variadic | Rule::loop_branch_const_variadic => todo!(),
-            Rule::branch_let_variadic | Rule::loop_branch_let_variadic => todo!(),
             Rule::branch_unit_const | Rule::loop_branch_unit_const => {
                 let mut pairs = p.into_inner();
                 UnitLocal(

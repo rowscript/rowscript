@@ -433,7 +433,6 @@ branch =
   { branch_const
   | branch_let
   | branch_const_variadic
-  | branch_let_variadic
   | branch_local_assign
   | branch_object_assign
   | branch_item_assign
@@ -449,7 +448,6 @@ branch =
 branch_const = { const_stmt ~ ";" ~ branch }
 branch_let = { let_stmt ~ ";" ~ branch }
 branch_const_variadic = { const_variadic_stmt ~ ";" ~ branch }
-branch_let_variadic = { let_variadic_stmt ~ ";" ~ branch }
 branch_object_assign = { object_assign_stmt ~ ";" ~ branch }
 branch_item_assign = { item_assign_stmt ~ ";" ~ branch }
 branch_local_assign = { local_assign_stmt ~ ";" ~ branch }
@@ -463,7 +461,6 @@ loop_branch =
   { loop_branch_const
   | loop_branch_let
   | loop_branch_const_variadic
-  | loop_branch_let_variadic
   | loop_branch_local_assign
   | loop_branch_object_assign
   | loop_branch_item_assign
@@ -481,7 +478,6 @@ loop_branch =
 loop_branch_const = { const_stmt ~ ";" ~ loop_branch }
 loop_branch_let = { let_stmt ~ ";" ~ loop_branch }
 loop_branch_const_variadic = { const_variadic_stmt ~ ";" ~ loop_branch }
-loop_branch_let_variadic = { let_variadic_stmt ~ ";" ~ loop_branch }
 loop_branch_object_assign = { object_assign_stmt ~ ";" ~ loop_branch }
 loop_branch_item_assign = { item_assign_stmt ~ ";" ~ loop_branch }
 loop_branch_local_assign = { local_assign_stmt ~ ";" ~ loop_branch }
@@ -495,9 +491,7 @@ loop_branch_if = { if_stmt_start ~ loop_branch ~ (else_stmt_start ~ loop_branch)
 const_stmt = { "const" ~ assign }
 let_stmt = { "let" ~ assign }
 assign = _{ local_id ~ (":" ~ type_expr)? ~ "=" ~ expr }
-const_variadic_stmt = { "const" ~ variadic_assign }
-let_variadic_stmt = { "let" ~ variadic_assign }
-variadic_assign = _{ ("()" | "(" ~ local_id ~ ("," ~ local_id)* ~ ")") ~ "=" ~ expr }
+const_variadic_stmt = { "const" ~ ("()" | "(" ~ local_id ~ ("," ~ local_id)* ~ ")") ~ "=" ~ expr }
 object_assign_stmt = { (local_id | this_id) ~ "." ~ prop_id ~ "=" ~ expr }
 item_assign_stmt = { local_id ~ "[" ~ expr ~ "]" ~ "=" ~ expr }
 local_assign_stmt = { local_id ~ "=" ~ expr }
@@ -565,7 +559,6 @@ fn_body =
   { fn_body_const
   | fn_body_let
   | fn_body_const_variadic
-  | fn_body_let_variadic
   | fn_body_object_assign
   | fn_body_item_assign
   | fn_body_local_assign
@@ -580,7 +573,6 @@ fn_body =
 fn_body_const = { const_stmt ~ ";" ~ fn_body }
 fn_body_let = { let_stmt ~ ";" ~ fn_body }
 fn_body_const_variadic = { const_variadic_stmt ~ ";" ~ fn_body }
-fn_body_let_variadic = { let_variadic_stmt ~ ";" ~ fn_body }
 fn_body_object_assign = { object_assign_stmt ~ ";" ~ fn_body }
 fn_body_item_assign = { item_assign_stmt ~ ";" ~ fn_body }
 fn_body_local_assign = { local_assign_stmt ~ ";" ~ fn_body }
