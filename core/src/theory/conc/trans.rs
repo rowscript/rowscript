@@ -191,7 +191,7 @@ impl Trans {
             is_async,
             f: Box::new(Expr::wrap_tuple_locals(
                 untupled_loc,
-                &tupled_param.var,
+                tupled_param.var.clone(),
                 untupled_vars,
                 body.unwrap(),
             )),
@@ -550,7 +550,7 @@ impl Trans {
             associated: associated.clone(),
             f: Box::new(Expr::wrap_tuple_locals(
                 ctor_loc,
-                &ctor_tupled_params.var,
+                ctor_tupled_params.var.clone(),
                 ctor_param_vars,
                 Obj(loc, Box::new(Fields(loc, ctor_body_obj))),
             )),
@@ -823,7 +823,10 @@ impl Trans {
                     Box::new(self.fn_body(pairs.next().unwrap())),
                 )
             }
-            Rule::fn_body_const_variadic => todo!(),
+            Rule::fn_body_const_variadic => {
+                let mut pairs = p.into_inner();
+                self.multi_local_stmt(pairs.next().unwrap(), self.fn_body(pairs.next().unwrap()))
+            }
             Rule::fn_body_unit_const => {
                 let mut pairs = p.into_inner();
                 UnitLocal(
@@ -1213,7 +1216,13 @@ impl Trans {
                     Box::new(self.branch(pairs.next().unwrap(), inside_loop)),
                 )
             }
-            Rule::branch_const_variadic | Rule::loop_branch_const_variadic => todo!(),
+            Rule::branch_const_variadic | Rule::loop_branch_const_variadic => {
+                let mut pairs = p.into_inner();
+                self.multi_local_stmt(
+                    pairs.next().unwrap(),
+                    self.branch(pairs.next().unwrap(), inside_loop),
+                )
+            }
             Rule::branch_unit_const | Rule::loop_branch_unit_const => {
                 let mut pairs = p.into_inner();
                 UnitLocal(
@@ -1330,6 +1339,35 @@ impl Trans {
             _ => unreachable!(),
         };
         (id, typ, tm)
+    }
+
+    /// From:
+    ///
+    /// ```ts
+    /// const (a, b, c, d) = expr;
+    /// rest
+    /// ```
+    ///
+    /// Into:
+    ///
+    /// ```ts
+    /// const (a, __untupled_a) = expr;
+    /// const (b, __untupled_b) = __untupled_a;
+    /// const (c, d) = untupled_b;
+    /// rest
+    /// ```
+    fn multi_local_stmt(&self, s: Pair<Rule>, rest: Expr) -> Expr {
+        let pairs = s.into_inner();
+        let mut ids = Vec::default();
+        let mut expr = None;
+        for p in pairs {
+            match p.as_rule() {
+                Rule::local_id => ids.push(self.maybe_qualified(p)),
+                Rule::expr => expr = Some(self.expr(p)),
+                _ => unreachable!(),
+            }
+        }
+        Expr::wrap_expr_tuple_locals(expr.unwrap(), ids, rest)
     }
 
     fn expr_stmt(&self, s: Pair<Rule>) -> Expr {

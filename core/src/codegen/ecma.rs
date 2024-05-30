@@ -8,10 +8,10 @@ use num_bigint::BigInt as BigIntValue;
 use swc_atoms::js_word;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
-    ArrayLit, ArrowExpr, AssignExpr, AssignOp, AssignTarget, BigInt as JsBigInt, BinExpr, BinaryOp,
-    BindingIdent, BlockStmt, BlockStmtOrExpr, Bool, BreakStmt, CallExpr, Callee, ComputedPropName,
-    CondExpr, ContinueStmt, Decl, ExportDecl, Expr, ExprOrSpread, ExprStmt, FnDecl, ForStmt,
-    Function, Ident, IfStmt, ImportDecl, ImportNamedSpecifier, ImportSpecifier,
+    ArrayLit, ArrayPat, ArrowExpr, AssignExpr, AssignOp, AssignTarget, BigInt as JsBigInt, BinExpr,
+    BinaryOp, BindingIdent, BlockStmt, BlockStmtOrExpr, Bool, BreakStmt, CallExpr, Callee,
+    ComputedPropName, CondExpr, ContinueStmt, Decl, ExportDecl, Expr, ExprOrSpread, ExprStmt,
+    FnDecl, ForStmt, Function, Ident, IfStmt, ImportDecl, ImportNamedSpecifier, ImportSpecifier,
     ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, MethodProp, Module,
     ModuleDecl, ModuleItem, NewExpr, Number as JsNumber, Number, ObjectLit, Param as JsParam,
     ParenExpr, Pat, Prop, PropName, PropOrSpread, RestPat, ReturnStmt, SimpleAssignTarget,
@@ -758,15 +758,23 @@ impl Ecma {
     ) -> Result<BlockStmt, Error> {
         fn strip_untupled_lets(mut tm: &Term) -> &Term {
             use Term::*;
-            loop {
-                match tm {
-                    TupleLocal(_, q, _, b) => {
-                        if q.var.as_str().starts_with(UNTUPLED_RHS_PREFIX) {
-                            tm = b
-                        }
-                    }
-                    tm => return tm,
+
+            // Only strip the tupled lets from the parameters.
+            if let TupleLocal(_, _, a, _) = tm {
+                match a.as_ref() {
+                    Ref(v) if v.as_str() == TUPLED => {}
+                    _ => return tm,
                 }
+            }
+
+            loop {
+                if let TupleLocal(_, q, _, b) = tm {
+                    if q.var.as_str().starts_with(UNTUPLED_RHS_PREFIX) {
+                        tm = b;
+                        continue;
+                    }
+                }
+                return tm;
             }
         }
 
@@ -818,7 +826,29 @@ impl Ecma {
                     stmts.push(Stmt::Break(BreakStmt { span, label: None }));
                     tm = &TT
                 }
-                TupleLocal(..) => unreachable!(),
+                // Only valid on syntax like `const (a, b, c, d) = expr`.
+                TupleLocal(p, q, a, b) => {
+                    stmts.push(Stmt::Decl(Decl::Var(Box::new(VarDecl {
+                        span,
+                        kind: VarDeclKind::Var,
+                        declare: false,
+                        decls: vec![VarDeclarator {
+                            span,
+                            name: Pat::Array(ArrayPat {
+                                span,
+                                elems: vec![
+                                    Some(Self::ident_pat(loc, &p.var)),
+                                    Some(Self::ident_pat(loc, &q.var)),
+                                ],
+                                optional: false,
+                                type_ann: None,
+                            }),
+                            init: Some(Box::new(self.expr(sigma, loc, a)?)),
+                            definite: false,
+                        }],
+                    }))));
+                    tm = b
+                }
                 UnitLocal(a, b) => {
                     stmts.extend(self.block(sigma, loc, a, false)?.stmts);
                     tm = b

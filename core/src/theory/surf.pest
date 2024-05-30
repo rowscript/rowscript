@@ -491,7 +491,7 @@ loop_branch_if = { if_stmt_start ~ loop_branch ~ (else_stmt_start ~ loop_branch)
 const_stmt = { "const" ~ assign }
 let_stmt = { "let" ~ assign }
 assign = _{ local_id ~ (":" ~ type_expr)? ~ "=" ~ expr }
-const_variadic_stmt = { "const" ~ ("()" | "(" ~ local_id ~ ("," ~ local_id)* ~ ")") ~ "=" ~ expr }
+const_variadic_stmt = { "const" ~ "(" ~ local_id ~ ("," ~ local_id)* ~ ")" ~ "=" ~ expr }
 object_assign_stmt = { (local_id | this_id) ~ "." ~ prop_id ~ "=" ~ expr }
 item_assign_stmt = { local_id ~ "[" ~ expr ~ "]" ~ "=" ~ expr }
 local_assign_stmt = { local_id ~ "=" ~ expr }

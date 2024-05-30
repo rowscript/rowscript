@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 
+use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::conc::load::ModuleID;
 use crate::theory::{Loc, Param, Syntax, Tele, Var};
 
@@ -176,7 +177,11 @@ impl Expr {
         }
     }
 
-    pub fn wrap_tuple_locals(loc: Loc, tupled: &Var, vars: Vec<Self>, b: Self) -> Self {
+    pub fn wrap_tuple_locals(loc: Loc, tupled: Var, vars: Vec<Self>, b: Self) -> Self {
+        Self::wrap_expr_tuple_locals(Unresolved(loc, None, tupled), vars, b)
+    }
+
+    pub fn wrap_expr_tuple_locals(tupled: Self, vars: Vec<Self>, b: Self) -> Self {
         use Expr::*;
 
         let mut untupled_rhs = Vec::default();
@@ -194,7 +199,7 @@ impl Expr {
                 _ => unreachable!(),
             });
         }
-        untupled_rhs.push(Unresolved(loc, None, tupled.clone()));
+        untupled_rhs.push(tupled);
 
         let mut wrapped = b;
         for (i, v) in vars.into_iter().rev().enumerate() {
