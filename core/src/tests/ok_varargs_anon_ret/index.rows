@@ -1,10 +1,5 @@
 function f0<Args>(s: string, ...: Args): Args;
 function f1<Args>(...: Args): Args;
-function f2<Args>(s: string, ...: Args): Args {
-    f0(s, ...f1(...))
-}
-
-console.log(f2("f2"));
 
 function t0() {
     const (a0, b0) = f0("t0", 42, true);
@@ -14,17 +9,10 @@ function t0() {
 t0();
 
 function t1() {
-    const (a1, b1) = f1("t1", 42, true);
-    console.log("a1", a1);
-    console.log("b1", b1);
-}
-t1();
-
-function t2() {
     if (true) {
-        const (a2, b2) = f2("t2", 42, true);
-        console.log("a2", a2);
-        console.log("b2", b2);
+        const (a1, b1) = f1("t1", 42, true);
+        console.log("a1", a1);
+        console.log("b1", b1);
     }
 }
-t2();
+t1();

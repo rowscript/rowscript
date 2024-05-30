@@ -351,13 +351,7 @@ impl Elaborator {
                         }
                     },
                     Term::AnonVarargs(ty) => {
-                        let (a, a_ty) = self.infer(match a.as_ref() {
-                            // Spread and untuple the Sigma value from a multi-return function.
-                            //
-                            // From `(1, (2, (...f(), ()))` into `(1, (2, ...f()))`.
-                            Spread(..) => *a,
-                            _ => Tuple(loc, a, b),
-                        })?;
+                        let (a, a_ty) = self.infer(Tuple(loc, a, b))?;
                         self.unifier(loc).unify(&ty, &a_ty)?;
                         a
                     }
@@ -904,8 +898,11 @@ impl Elaborator {
                 Term::AnonVarargs(Box::new(self.check(*t, &Term::Univ)?)),
                 Term::Univ,
             ),
-            Spread(_, a) => {
+            Spread(loc, a) => {
                 let (a, ty) = self.infer(*a)?;
+                if !self.is_variadic(&ty) {
+                    return Err(NonVariadicType(ty, loc));
+                }
                 (Term::Spread(Box::new(a)), ty)
             }
 

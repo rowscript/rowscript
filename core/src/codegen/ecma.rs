@@ -551,10 +551,6 @@ impl Ecma {
                     ret.push(self.spread_expr(sigma, loc, tm)?);
                     break;
                 }
-                Spread(a) => {
-                    ret.push(self.spread_expr(sigma, loc, a)?);
-                    break;
-                }
                 _ => unreachable!(),
             }
         }
