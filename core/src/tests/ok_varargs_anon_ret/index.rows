@@ -16,3 +16,14 @@ function t1() {
     }
 }
 t1();
+
+function f2<Args>(...: Args): Args;
+function t2() {
+    const (a1) = f2(1);
+    console.log("t2a1", a1);
+    const (a3, b3, c3) = f2(1, 2, 3);
+    console.log("t2a3", a3, b3, c3);
+    const (a4, b4, c4, d4) = f2(1, 2, 3, 4);
+    console.log("t2a4", a4, b4, c4, d4);
+}
+t2();

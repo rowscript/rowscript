@@ -5,3 +5,7 @@ export function f0(m, ...args) {
 export function f1(...args) {
     return [1, "1"]
 }
+
+export function f2(...args) {
+    return args.reduce((prev, a) => [a, prev], undefined)
+}
