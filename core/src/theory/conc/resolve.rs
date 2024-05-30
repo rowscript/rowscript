@@ -11,12 +11,13 @@ use crate::theory::{
     NameMap, Param, RawNameSet, ResolvedVar, Tele, Var, VarKind, TUPLED, UNBOUND, UNTUPLED_ENDS,
 };
 use crate::Error;
-use crate::Error::{DuplicateName, UnresolvedVar};
+use crate::Error::{DuplicateName, NonAnonVariadicDef, UnresolvedVar};
 
 pub struct Resolver<'a> {
     ubiquitous: &'a NameMap,
     loaded: &'a Loaded,
     names: NameMap,
+    is_def_anon_variadic: bool,
 }
 
 impl<'a> Resolver<'a> {
@@ -25,6 +26,7 @@ impl<'a> Resolver<'a> {
             ubiquitous,
             loaded,
             names: Default::default(),
+            is_def_anon_variadic: Default::default(),
         }
     }
 
@@ -81,6 +83,7 @@ impl<'a> Resolver<'a> {
     fn def(&mut self, mut d: Def<Expr>) -> Result<Def<Expr>, Error> {
         use Body::*;
 
+        self.is_def_anon_variadic = false;
         let mut recoverable = Vec::default();
         let mut removable = Vec::default();
 
@@ -102,6 +105,9 @@ impl<'a> Resolver<'a> {
 
         let mut tele = Tele::default();
         for p in d.tele {
+            if matches!(p.typ.as_ref(), Expr::AnonVarargs(..)) {
+                self.is_def_anon_variadic = true;
+            }
             if let Some(old) = self.insert(&p.var) {
                 recoverable.push(old);
             } else {
@@ -409,11 +415,13 @@ impl<'a> Resolver<'a> {
             Spread(loc, a) => Spread(loc, self.expr(a)?),
             AnonSpread(loc) => Resolved(
                 loc,
-                self.names
-                    .get(UNTUPLED_ENDS)
-                    .unwrap_or_else(|| self.names.get(TUPLED).unwrap())
-                    .1
-                    .clone(),
+                match self.names.get(UNTUPLED_ENDS) {
+                    Some(v) => v,
+                    None if self.is_def_anon_variadic => self.names.get(TUPLED).unwrap(),
+                    _ => return Err(NonAnonVariadicDef(loc)),
+                }
+                .1
+                .clone(),
             ),
 
             e => e,

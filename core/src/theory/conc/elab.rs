@@ -15,7 +15,7 @@ use crate::theory::{Loc, NameMap, Param, Tele, Var, VarGen, ARRAY, UNTUPLED_RHS_
 use crate::Error;
 use crate::Error::{
     ExpectedEnum, ExpectedImplementsOf, ExpectedInterface, ExpectedObject, ExpectedPi,
-    ExpectedSigma, NonExhaustive, NonVariadic, UnresolvedField, UnresolvedImplicitParam,
+    ExpectedSigma, NonExhaustive, NonVariadicType, UnresolvedField, UnresolvedImplicitParam,
     UnresolvedVar,
 };
 
@@ -896,7 +896,7 @@ impl Elaborator {
             Varargs(loc, t) => {
                 let t = self.check(*t, &Term::Univ)?;
                 if !self.is_variadic(&t) {
-                    return Err(NonVariadic(t, loc));
+                    return Err(NonVariadicType(t, loc));
                 }
                 (Term::Varargs(Box::new(t)), Term::Univ)
             }

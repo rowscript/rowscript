@@ -1457,6 +1457,7 @@ impl Trans {
     /// for (const /* or let */ v of a) {
     ///     /* b */
     /// }
+    /// /* rest */
     /// ```
     ///
     /// Into:
@@ -1467,6 +1468,7 @@ impl Trans {
     ///     const /* or let */ v = __r.unwrap();
     ///     /* b */
     /// }
+    /// /* rest */
     /// ```
     fn forof(
         &self,

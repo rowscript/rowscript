@@ -45,7 +45,9 @@ pub enum Error {
     #[error("expected object type, got \"{0}\"")]
     ExpectedObject(Term, Loc),
     #[error("expected array type for variadic parameters, got \"{0}\"")]
-    NonVariadic(Term, Loc),
+    NonVariadicType(Term, Loc),
+    #[error("expected definition with anonymous variadic parameters")]
+    NonAnonVariadicDef(Loc),
     #[error("expected enum type, got \"{0}\"")]
     ExpectedEnum(Term, Loc),
     #[error("cannot extend with fields \"{0}\"")]
@@ -117,7 +119,8 @@ fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
         | ExpectedPi(.., loc)
         | ExpectedSigma(.., loc)
         | ExpectedObject(.., loc)
-        | NonVariadic(.., loc)
+        | NonVariadicType(.., loc)
+        | NonAnonVariadicDef(loc)
         | ExpectedEnum(.., loc)
         | FieldsNonExtendable(.., loc)
         | NonExhaustive(.., loc)
