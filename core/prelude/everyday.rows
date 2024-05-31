@@ -148,15 +148,14 @@ interface Async {
     __await__<T>(executor: Executor<T>): T;
 }
 
-interface AsyncAll {
-    __await_all__<T>(tasks: Array<Executor<T>>): Array<T>;
+interface AsyncMul {
+    __await_mul__<Args>(...: Args): Args;
 }
 
-// TODO: Sigma-encoded return type.
-//interface AsyncLet {
-//    __await_let__<Args>(...: Args): ...;
-//}
+interface AsyncAll {
+    __await_all__<T>(executors: Array<Executor<T>>): Array<T>;
+}
 
 interface AsyncAny {
-    __await_any__<T>(tasks: Array<Executor<T>>): T;
+    __await_any__<T>(executors: Array<Executor<T>>): T;
 }
