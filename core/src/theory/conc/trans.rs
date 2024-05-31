@@ -134,17 +134,7 @@ impl Trans {
         let loc = Loc::from(f.as_span());
         let mut pairs = f.into_inner();
 
-        let mut is_async = false;
-        let name = Var::from({
-            let p = pairs.next().unwrap();
-            match p.as_rule() {
-                Rule::is_async => {
-                    is_async = true;
-                    pairs.next().unwrap()
-                }
-                _ => p,
-            }
-        });
+        let name = Var::from(pairs.next().unwrap());
 
         let mut tele = Tele::default();
         let mut untupled = UntupledParams::new(loc);
@@ -188,7 +178,6 @@ impl Trans {
         let untupled_loc = untupled.0;
         let tupled_param = untupled.param(untupled_ends);
         let body = Fn {
-            is_async,
             f: Box::new(Expr::wrap_tuple_locals(
                 untupled_loc,
                 tupled_param.var.clone(),

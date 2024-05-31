@@ -227,7 +227,6 @@ hole = { "?" }
 univ = { "type" }
 root_prefix = { "::" }
 tt = { "()" }
-is_async = { "async" }
 
 string = @{ "\"" ~ unquoted_string_part ~ "\"" }
 unquoted_string_part = @{ (unescaped_string_fragment | escaped_string_fragment)* }
@@ -545,8 +544,7 @@ paren_row_expr = { "(" ~ row_expr ~ ")" }
 interface_constraint = { tyref ~ implicit_args }
 
 fn_def =
-  { is_async?
-  ~ "function"
+  { "function"
   ~ fn_id
   ~ implicits?
   ~ params
