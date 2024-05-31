@@ -119,8 +119,9 @@ impl<T: Syntax> Display for Def<T> {
         use Body::*;
         f.write_str(
             match &self.body {
-                Fn { f } => format!(
-                    "function {} {}: {} {{\n\t{f}\n}}",
+                Fn { is_async, f } => format!(
+                    "{}function {} {}: {} {{\n\t{f}\n}}",
+                    if *is_async { "async " } else { "" },
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
@@ -238,6 +239,7 @@ impl<T: Syntax> Display for Def<T> {
 #[derive(Clone, Debug)]
 pub enum Body<T: Syntax> {
     Fn {
+        is_async: bool,
         f: Box<T>,
     },
     Postulate,
