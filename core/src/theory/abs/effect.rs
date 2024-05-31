@@ -114,8 +114,8 @@ pub fn has_side_effect(tm: &Term) -> bool {
         | Downcast(..)
         | Enum(..)
         | Upcast(..)
-        | ImplementsOf(..)
-        | ImplementsSat
+        | Instanceof(..)
+        | InstanceofSat
         | Varargs(..)
         | AnonVarargs(..)
         | Reflected(..)

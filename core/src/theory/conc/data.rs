@@ -89,7 +89,7 @@ pub enum Expr {
         Option<(Var, Box<Self>)>,
     ),
 
-    ImplementsOf(Loc, Box<Self>),
+    Instanceof(Loc, Box<Self>),
 
     Varargs(Loc, Box<Self>),
     AnonVarargs(Loc, Box<Self>),
@@ -169,7 +169,7 @@ impl Expr {
             | Variant(loc, ..)
             | Upcast(loc, ..)
             | Switch(loc, ..)
-            | ImplementsOf(loc, ..)
+            | Instanceof(loc, ..)
             | Varargs(loc, ..)
             | AnonVarargs(loc, ..)
             | Spread(loc, ..)
@@ -354,7 +354,7 @@ impl Display for Expr {
                     }
                     return write!(f, "}}");
                 }
-                ImplementsOf(_, a) => a.to_string(),
+                Instanceof(_, a) => a.to_string(),
                 Varargs(_, t) => format!("...Array<{t}>"),
                 AnonVarargs(_, t) => format!("...{t}"),
                 Spread(_, a) => format!("...{a}"),

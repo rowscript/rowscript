@@ -64,10 +64,10 @@ pub enum Error {
     UnsatisfiedConstraint(Var, Term, Loc),
     #[error("class method \"{0}\" from \"{1}\" not implemented, got \"{2}\"")]
     ClassMethodNotImplemented(Var, Var, Term, Loc),
-    #[error("unresolved implementation, got \"{0}\"")]
-    UnresolvedImplementation(Term, Loc),
+    #[error("unresolved instance, got \"{0}\"")]
+    UnresolvedInstance(Term, Loc),
     #[error("expected constraint, got \"{0}\"")]
-    ExpectedImplementsOf(Term, Loc),
+    ExpectedInstanceof(Term, Loc),
     #[error("expected reflectable type, got \"{0}\"")]
     ExpectedReflectable(Term, Loc),
 
@@ -129,8 +129,8 @@ fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
         | ExpectedAlias(.., loc)
         | UnsatisfiedConstraint(.., loc)
         | ClassMethodNotImplemented(.., loc)
-        | UnresolvedImplementation(.., loc)
-        | ExpectedImplementsOf(.., loc)
+        | UnresolvedInstance(.., loc)
+        | ExpectedInstanceof(.., loc)
         | ExpectedReflectable(.., loc) => simple_message(&e, loc, CHECKER_FAILED),
 
         NonUnifiable(.., loc) | NonRowSat(.., loc) => simple_message(&e, loc, UNIFIER_FAILED),

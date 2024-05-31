@@ -143,8 +143,8 @@ pub enum Term {
     Unionify(Box<Self>),
 
     Find(Box<Self>, Var, Var),
-    ImplementsOf(Box<Self>, Var),
-    ImplementsSat,
+    Instanceof(Box<Self>, Var),
+    InstanceofSat,
 
     Varargs(Box<Self>),
     AnonVarargs(Box<Self>),
@@ -244,7 +244,7 @@ impl Term {
         match self {
             RowEq(..) => Some(RowRefl),
             RowOrd(..) => Some(RowSat),
-            ImplementsOf(..) => Some(ImplementsSat),
+            Instanceof(..) => Some(InstanceofSat),
             _ => None,
         }
     }
@@ -258,7 +258,7 @@ impl Term {
         use Term::*;
         match self {
             RowEq(a, b) | RowOrd(a, b) => !a.is_unsolved() && !b.is_unsolved(),
-            ImplementsOf(a, ..) => !a.is_unsolved(),
+            Instanceof(a, ..) => !a.is_unsolved(),
             _ => false,
         }
     }
@@ -419,8 +419,8 @@ impl Display for Term {
                 }
                 Unionify(a) => format!("unionify({a})"),
                 Find(ty, i, f) => format!("{i}.{f}<{ty}>"),
-                ImplementsOf(t, i) => format!("{t} implementsOf {i}"),
-                ImplementsSat => "implementsSat".to_string(),
+                Instanceof(t, i) => format!("{t} instanceof {i}"),
+                InstanceofSat => "instanceofSat".to_string(),
                 Varargs(t) => format!("...Array<{t}>"),
                 AnonVarargs(t) => format!("...{t}"),
                 Spread(a) => format!("...{a}"),

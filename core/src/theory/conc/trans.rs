@@ -5,7 +5,7 @@ use pest::iterators::{Pair, Pairs};
 use pest::pratt_parser::{Assoc, Op, PrattParser};
 
 use crate::theory::abs::def::Def;
-use crate::theory::abs::def::{Body, ImplementsBody};
+use crate::theory::abs::def::{Body, InstanceBody};
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::conc::load::ImportedPkg::Vendor;
@@ -55,7 +55,7 @@ impl Trans {
                 Rule::type_postulate => defs.push(self.type_postulate(d)),
                 Rule::type_alias => defs.push(self.type_alias(d)),
                 Rule::interface_def => defs.extend(self.interface_def(d)),
-                Rule::implements_def => defs.extend(self.implements_def(d)),
+                Rule::instance_def => defs.extend(self.instance_def(d)),
                 Rule::const_def => defs.push(self.const_def(d)),
                 Rule::class_def => defs.extend(self.class_def(d)),
                 Rule::type_verify => defs.push(self.type_verify(d)),
@@ -331,19 +331,19 @@ impl Trans {
         let ret = Box::new(Univ(Loc::from(name_pair.as_span())));
         let name = Var::from(name_pair);
 
-        let mut im_tele = Tele::default();
+        let mut inst_tele = Tele::default();
         let mut fn_defs = Vec::default();
         let mut fns = Vec::default();
         for p in pairs {
             match p.as_rule() {
-                Rule::row_id => im_tele.push(Self::row_param(p)),
-                Rule::implicit_id => im_tele.push(Self::implicit_param(p)),
+                Rule::row_id => inst_tele.push(Self::row_param(p)),
+                Rule::implicit_id => inst_tele.push(Self::implicit_param(p)),
                 Rule::interface_fn => {
                     let mut d = self.fn_postulate(p);
                     let mut tele = vec![Param {
                         var: name.clone(),
                         info: Implicit,
-                        typ: Box::new(alias_type(name_loc, &im_tele)),
+                        typ: Box::new(alias_type(name_loc, &inst_tele)),
                     }];
                     tele.extend(d.tele);
                     d.tele = tele;
@@ -362,19 +362,19 @@ impl Trans {
             tele: vec![Param {
                 var: name,
                 info: Implicit,
-                typ: Box::new(alias_type(name_loc, &im_tele)),
+                typ: Box::new(alias_type(name_loc, &inst_tele)),
             }],
             ret,
             body: Interface {
                 fns,
-                ims: Default::default(),
+                instances: Default::default(),
             },
         }];
         defs.extend(fn_defs);
         defs
     }
 
-    fn implements_def(&self, i: Pair<Rule>) -> Vec<Def<Expr>> {
+    fn instance_def(&self, i: Pair<Rule>) -> Vec<Def<Expr>> {
         use Body::*;
         use Expr::*;
 
@@ -384,7 +384,7 @@ impl Trans {
         let mut defs = Vec::default();
 
         let i = Var::from(pairs.next().unwrap());
-        let im = {
+        let inst = {
             let p = pairs.next().unwrap();
             match p.as_rule() {
                 Rule::tyref => Self::unresolved(p),
@@ -396,11 +396,11 @@ impl Trans {
         let mut fns = HashMap::default();
         for p in pairs {
             let mut def = self.fn_def(p, None);
-            let fn_name = def.name.implement_func(&i, &im);
+            let fn_name = def.name.instance_fn(&i, &inst);
             fns.insert(def.name.clone(), fn_name.clone());
             def.name = fn_name;
             def.body = match def.body {
-                Fn { f, .. } => ImplementsFn(f),
+                Fn { f, .. } => InstanceFn(f),
                 _ => unreachable!(),
             };
             defs.push(def);
@@ -408,11 +408,11 @@ impl Trans {
 
         defs.push(Def {
             loc,
-            name: i.implements(&im),
+            name: i.instance(&inst),
             tele: Default::default(),
             ret: Box::new(Univ(loc)),
-            body: Implements(Box::new(ImplementsBody {
-                i: (i, Box::new(im)),
+            body: Instance(Box::new(InstanceBody {
+                i: (i, Box::new(inst)),
                 fns,
             })),
         });
@@ -736,7 +736,7 @@ impl Trans {
                     let rhs = self.row_expr(p.next().unwrap());
                     RowEq(loc, Box::new(lhs), Box::new(rhs))
                 }
-                Rule::interface_constraint => ImplementsOf(loc, Box::new(self.type_app(p))),
+                Rule::interface_constraint => Instanceof(loc, Box::new(self.type_app(p))),
                 _ => unreachable!(),
             }),
         }

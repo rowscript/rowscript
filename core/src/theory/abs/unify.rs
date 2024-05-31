@@ -65,8 +65,8 @@ impl<'a> Unifier<'a> {
                 None => self.unify_err(lhs, rhs),
             },
 
-            (ImplementsOf(a, _), b) => self.unify(a, b),
-            (a, ImplementsOf(b, _)) => self.unify(a, b),
+            (Instanceof(a, _), b) => self.unify(a, b),
+            (a, Instanceof(b, _)) => self.unify(a, b),
 
             (
                 Cls {

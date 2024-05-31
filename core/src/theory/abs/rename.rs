@@ -121,7 +121,7 @@ impl Renamer {
             }
             Unionify(a) => Unionify(self.term(a)),
             Find(ty, i, f) => Find(self.term(ty), i, f),
-            ImplementsOf(a, i) => ImplementsOf(self.term(a), i),
+            Instanceof(a, i) => Instanceof(self.term(a), i),
             Varargs(t) => Varargs(self.term(t)),
             AnonVarargs(t) => AnonVarargs(self.term(t)),
             Spread(a) => Spread(self.term(a)),

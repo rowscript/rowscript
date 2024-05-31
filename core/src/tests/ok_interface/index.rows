@@ -8,7 +8,7 @@ interface NatLike {
     mul(a: NatLike, b: NatLike): NatLike;
 }
 
-implements NatLike for Foo {
+instanceof NatLike for Foo {
     add(a: Foo, b: Foo): Foo {
         {n: numAdd(a.n, b.n)}
     }
@@ -27,6 +27,6 @@ function f1(): number {
 }
 
 interface Pure { pure(): Pure; }
-implements Pure for Foo { pure(): Foo { {n: 0} } }
+instanceof Pure for Foo { pure(): Foo { {n: 0} } }
 function g0(): Foo { pure() }
 function g1(): Foo { g0() }

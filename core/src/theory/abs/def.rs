@@ -59,10 +59,10 @@ impl Def<Term> {
 
             Interface { .. } => {
                 let r = Term::Ref(self.tele[0].var.clone());
-                self.to_lam_term(Term::ImplementsOf(Box::new(r), v))
+                self.to_lam_term(Term::Instanceof(Box::new(r), v))
             }
-            Implements { .. } => unreachable!(),
-            ImplementsFn(f) => self.to_lam_term(*f.clone()),
+            Instance { .. } => unreachable!(),
+            InstanceFn(f) => self.to_lam_term(*f.clone()),
             Findable(i) => {
                 let r = Term::Ref(self.tele[0].var.clone());
                 let mut f = Term::Find(Box::new(r), i.clone(), v);
@@ -150,7 +150,7 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     self.ret
                 ),
-                Interface { fns, ims } => format!(
+                Interface { fns, instances } => format!(
                     "interface {} {}: {} {{\n{}\n{}}}",
                     self.name,
                     Param::tele_to_string(&self.tele),
@@ -159,14 +159,15 @@ impl<T: Syntax> Display for Def<T> {
                         .map(|f| format!("\t{f};\n"))
                         .collect::<Vec<_>>()
                         .concat(),
-                    ims.iter()
+                    instances
+                        .iter()
                         .map(|f| format!("\t{f};\n"))
                         .collect::<Vec<_>>()
                         .concat()
                 ),
-                Implements(body) => body.to_string(),
-                ImplementsFn(f) => format!(
-                    "implements function {} {}: {} {{\n\t{f}\n}}",
+                Instance(body) => body.to_string(),
+                InstanceFn(f) => format!(
+                    "instanceof function {} {}: {} {{\n\t{f}\n}}",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
@@ -249,10 +250,10 @@ pub enum Body<T: Syntax> {
 
     Interface {
         fns: Vec<Var>,
-        ims: Vec<Var>,
+        instances: Vec<Var>,
     },
-    Implements(Box<ImplementsBody<T>>),
-    ImplementsFn(Box<T>),
+    Instance(Box<InstanceBody<T>>),
+    InstanceFn(Box<T>),
     Findable(Var),
 
     Class {
@@ -274,40 +275,40 @@ pub enum Body<T: Syntax> {
 }
 
 #[derive(Clone, Debug)]
-pub struct ImplementsBody<T: Syntax> {
+pub struct InstanceBody<T: Syntax> {
     pub i: (Var, Box<T>),
     pub fns: HashMap<Var, Var>,
 }
 
-impl ImplementsBody<Term> {
-    pub fn implementor_type(&self, sigma: &Sigma) -> Result<Term, Error> {
+impl InstanceBody<Term> {
+    pub fn instance_type(&self, sigma: &Sigma) -> Result<Term, Error> {
         use Body::*;
         use Error::*;
         use Term::*;
         Ok(match self.i.1.as_ref() {
-            Ref(im) => {
-                let im = im.clone();
-                let def = sigma.get(&im).unwrap();
+            Ref(inst) => {
+                let inst = inst.clone();
+                let def = sigma.get(&inst).unwrap();
                 if !matches!(def.body, Alias(_)) {
-                    return Err(ExpectedAlias(Ref(im), def.loc));
+                    return Err(ExpectedAlias(Ref(inst), def.loc));
                 }
-                def.to_term(im.clone())
+                def.to_term(inst.clone())
             }
             tm => tm.clone(),
         })
     }
 }
 
-impl<T: Syntax> Display for ImplementsBody<T> {
+impl<T: Syntax> Display for InstanceBody<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "implements {} for {} {{\n{}}}",
+            "instanceof {} for {} {{\n{}}}",
             self.i.0,
             self.i.1,
             self.fns
                 .iter()
-                .map(|(i, im)| format!("\t{i}; {im};\n"))
+                .map(|(i, inst)| format!("\t{i}; {inst};\n"))
                 .collect::<Vec<_>>()
                 .concat()
         )

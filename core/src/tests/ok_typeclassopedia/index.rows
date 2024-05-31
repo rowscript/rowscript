@@ -4,7 +4,7 @@ interface Functor<T> {
 
 type Foo<T> = {n: T};
 
-implements Functor for Foo {
+instanceof Functor for Foo {
     map<A, B>(f: (a: A) -> B, x: Foo<A>): Foo<B> {
         {n: f(x.n)}
     }
@@ -12,7 +12,7 @@ implements Functor for Foo {
 
 type Bar<T> = {m: T};
 
-implements Functor for Bar {
+instanceof Functor for Bar {
     map<A, B>(f: (a: A) -> B, x: Bar<A>): Bar<B> {
         {m: f(x.m)}
     }

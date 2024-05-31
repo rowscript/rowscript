@@ -123,12 +123,12 @@ impl Var {
         Self::new(format!("{LOCALS}{self}"))
     }
 
-    pub fn implements(&self, im: &Expr) -> Self {
-        Self::new(format!("{self}__for__{im}"))
+    pub fn instance(&self, inst: &Expr) -> Self {
+        Self::new(format!("{self}__for__{inst}"))
     }
 
-    pub fn implement_func(&self, i: &Self, im: &Expr) -> Self {
-        Self::new(format!("{i}__for__{im}__{self}"))
+    pub fn instance_fn(&self, i: &Self, inst: &Expr) -> Self {
+        Self::new(format!("{i}__for__{inst}__{self}"))
     }
 
     pub fn iterator() -> Self {

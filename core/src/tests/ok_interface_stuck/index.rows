@@ -6,14 +6,14 @@ interface NatLike {
     add(a: NatLike, b: NatLike): NatLike;
 }
 
-implements NatLike for Foo {
+instanceof NatLike for Foo {
     add(a: Foo, b: Foo): Foo {
         {n: numAdd(a.n, b.n)}
     }
 }
 
 type Bar = {m: number};
-implements NatLike for Bar {
+instanceof NatLike for Bar {
     add(a: Bar, b: Bar): Bar { {m: numAdd(a.m, b.m)} }
 }
 

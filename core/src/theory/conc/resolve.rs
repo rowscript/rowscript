@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use log::debug;
 
 use crate::theory::abs::def::Def;
-use crate::theory::abs::def::{Body, ImplementsBody};
+use crate::theory::abs::def::{Body, InstanceBody};
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::conc::load::{Import, ImportedDefs, Loaded};
@@ -131,24 +131,30 @@ impl<'a> Resolver<'a> {
             Const(anno, f) => Const(anno, self.expr(f)?),
             Verify(a) => Verify(self.expr(a)?),
 
-            Interface { fns, ims } => Interface { fns, ims },
-            Implements(body) => {
+            Interface {
+                fns,
+                instances: ims,
+            } => Interface {
+                fns,
+                instances: ims,
+            },
+            Instance(body) => {
                 let loc = d.loc;
                 let i = self
                     .expr(Box::new(Unresolved(loc, None, body.i.0)))?
                     .resolved();
-                let im = self.expr(body.i.1)?;
+                let inst = self.expr(body.i.1)?;
                 let mut fns = HashMap::default();
-                for (i_fn, im_fn) in body.fns {
+                for (i_fn, inst_fn) in body.fns {
                     fns.insert(
                         self.expr(Box::new(Unresolved(loc, None, i_fn)))?.resolved(),
-                        self.expr(Box::new(Unresolved(loc, None, im_fn)))?
+                        self.expr(Box::new(Unresolved(loc, None, inst_fn)))?
                             .resolved(),
                     );
                 }
-                Implements(Box::new(ImplementsBody { i: (i, im), fns }))
+                Instance(Box::new(InstanceBody { i: (i, inst), fns }))
             }
-            ImplementsFn(f) => ImplementsFn(self.expr(f)?), // FIXME: currently cannot be recursive
+            InstanceFn(f) => InstanceFn(self.expr(f)?), // FIXME: currently cannot be recursive
             Findable(i) => Findable(i),
 
             Class {
@@ -409,7 +415,7 @@ impl<'a> Resolver<'a> {
                 };
                 Switch(loc, self.expr(a)?, new, d)
             }
-            ImplementsOf(loc, a) => ImplementsOf(loc, self.expr(a)?),
+            Instanceof(loc, a) => Instanceof(loc, self.expr(a)?),
             Varargs(loc, a) => Varargs(loc, self.expr(a)?),
             AnonVarargs(loc, a) => AnonVarargs(loc, self.expr(a)?),
             Spread(loc, a) => Spread(loc, self.expr(a)?),

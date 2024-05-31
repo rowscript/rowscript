@@ -401,7 +401,7 @@ impl Ecma {
                     };
                 }
                 match ans {
-                    RowSat | RowRefl | ImplementsSat => return self.expr(sigma, loc, f),
+                    RowSat | RowRefl | InstanceofSat => return self.expr(sigma, loc, f),
                     _ => unreachable!(),
                 }
             }

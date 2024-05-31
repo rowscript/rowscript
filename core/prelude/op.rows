@@ -2,15 +2,15 @@ interface EqOp {
     __eq__(a: EqOp, b: EqOp): boolean;
 }
 
-implements EqOp for string {
+instanceof EqOp for string {
     __eq__(a: string, b: string): boolean { string#__eq__(a, b) }
 }
 
-implements EqOp for boolean {
+instanceof EqOp for boolean {
     __eq__(a: boolean, b: boolean): boolean { boolean#__eq__(a, b) }
 }
 
-implements EqOp for number {
+instanceof EqOp for number {
     __eq__(a: number, b: number): boolean { number#__eq__(a, b) }
 }
 
@@ -18,15 +18,15 @@ interface NeqOp {
     __neq__(a: NeqOp, b: NeqOp): boolean;
 }
 
-implements NeqOp for string {
+instanceof NeqOp for string {
     __neq__(a: string, b: string): boolean { string#__neq__(a, b) }
 }
 
-implements NeqOp for boolean {
+instanceof NeqOp for boolean {
     __neq__(a: boolean, b: boolean): boolean { boolean#__neq__(a, b) }
 }
 
-implements NeqOp for number {
+instanceof NeqOp for number {
     __neq__(a: number, b: number): boolean { number#__neq__(a, b) }
 }
 
@@ -34,7 +34,7 @@ interface NotOp {
     __not__(a: NotOp): NotOp;
 }
 
-implements NotOp for boolean {
+instanceof NotOp for boolean {
     __not__(a: boolean): boolean { boolean#__not__(a) }
 }
 
@@ -42,7 +42,7 @@ interface NegOp {
     __neg__(a: NegOp): NegOp;
 }
 
-implements NegOp for number {
+instanceof NegOp for number {
     __neg__(a: number): number { number#__neg__(a) }
 }
 
@@ -50,7 +50,7 @@ interface OrOp {
     __or__(a: OrOp, b: OrOp): OrOp;
 }
 
-implements OrOp for boolean {
+instanceof OrOp for boolean {
     __or__(a: boolean, b: boolean): boolean { boolean#__or__(a, b) }
 }
 
@@ -58,7 +58,7 @@ interface AndOp {
     __and__(a: AndOp, b: AndOp): AndOp;
 }
 
-implements AndOp for boolean {
+instanceof AndOp for boolean {
     __and__(a: boolean, b: boolean): boolean { boolean#__and__(a, b) }
 }
 
@@ -66,7 +66,7 @@ interface LeOp {
     __le__(a: LeOp, b: LeOp): boolean;
 }
 
-implements LeOp for number {
+instanceof LeOp for number {
     __le__(a: number, b: number): boolean { number#__le__(a, b) }
 }
 
@@ -74,7 +74,7 @@ interface GeOp {
     __ge__(a: GeOp, b: GeOp): boolean;
 }
 
-implements GeOp for number {
+instanceof GeOp for number {
     __ge__(a: number, b: number): boolean { number#__ge__(a, b) }
 }
 
@@ -82,7 +82,7 @@ interface LtOp {
     __lt__(a: LtOp, b: LtOp): boolean;
 }
 
-implements LtOp for number {
+instanceof LtOp for number {
     __lt__(a: number, b: number): boolean { number#__lt__(a, b) }
 }
 
@@ -90,7 +90,7 @@ interface GtOp {
     __gt__(a: GtOp, b: GtOp): boolean;
 }
 
-implements GtOp for number {
+instanceof GtOp for number {
     __gt__(a: number, b: number): boolean { number#__gt__(a, b) }
 }
 
@@ -98,11 +98,11 @@ interface AddOp {
     __add__(a: AddOp, b: AddOp): AddOp;
 }
 
-implements AddOp for number {
+instanceof AddOp for number {
     __add__(a: number, b: number): number { number#__add__(a, b) }
 }
 
-implements AddOp for string {
+instanceof AddOp for string {
     __add__(a: string, b: string): string { string#__add__(a, b) }
 }
 
@@ -110,7 +110,7 @@ interface SubOp {
     __sub__(a: SubOp, b: SubOp): SubOp;
 }
 
-implements SubOp for number {
+instanceof SubOp for number {
     __sub__(a: number, b: number): number { number#__sub__(a, b) }
 }
 
@@ -118,7 +118,7 @@ interface MulOp {
     __mul__(a: MulOp, b: MulOp): MulOp;
 }
 
-implements MulOp for number {
+instanceof MulOp for number {
     __mul__(a: number, b: number): number { number#__mul__(a, b) }
 }
 
@@ -126,7 +126,7 @@ interface DivOp {
     __div__(a: DivOp, b: DivOp): DivOp;
 }
 
-implements DivOp for number {
+instanceof DivOp for number {
     __div__(a: number, b: number): number { number#__div__(a, b) }
 }
 
@@ -134,7 +134,7 @@ interface ModOp {
     __mod__(a: ModOp, b: ModOp): ModOp;
 }
 
-implements ModOp for number {
+instanceof ModOp for number {
     __mod__(a: number, b: number): number { number#__mod__(a, b) }
 }
 
@@ -150,19 +150,19 @@ interface Default {
     default(): Default;
 }
 
-implements Default for number {
+instanceof Default for number {
     default(): number {
         0
     }
 }
 
-implements Default for string {
+instanceof Default for string {
     default(): string {
         ""
     }
 }
 
-implements Default for boolean {
+instanceof Default for boolean {
     default(): boolean {
         false
     }
@@ -172,7 +172,7 @@ interface ToString {
     toString(a: ToString): string;
 }
 
-implements ToString for number {
+instanceof ToString for number {
     toString(a: number): string {
         number#toString(a)
     }

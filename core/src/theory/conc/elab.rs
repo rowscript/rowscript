@@ -3,7 +3,7 @@ use log::{debug, info, trace};
 use crate::maybe_grow;
 use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, PartialClass, Term};
-use crate::theory::abs::def::{gamma_to_tele, tele_to_refs, Body, ImplementsBody};
+use crate::theory::abs::def::{gamma_to_tele, tele_to_refs, Body, InstanceBody};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
@@ -14,9 +14,8 @@ use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, NameMap, Param, Tele, Var, VarGen, ARRAY, UNTUPLED_RHS_PREFIX};
 use crate::Error;
 use crate::Error::{
-    ExpectedEnum, ExpectedImplementsOf, ExpectedInterface, ExpectedObject, ExpectedPi,
-    ExpectedSigma, NonExhaustive, NonVariadicType, UnresolvedField, UnresolvedImplicitParam,
-    UnresolvedVar,
+    ExpectedEnum, ExpectedInstanceof, ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedSigma,
+    NonExhaustive, NonVariadicType, UnresolvedField, UnresolvedImplicitParam, UnresolvedVar,
 };
 
 #[derive(Debug)]
@@ -119,9 +118,9 @@ impl Elaborator {
                 Verify(Box::new(self.verify(d.loc, *a, expected)?))
             }
 
-            Interface { fns, ims } => Interface { fns, ims },
-            Implements(body) => Implements(self.check_implements_body(&d.name, *body)?),
-            ImplementsFn(f) => ImplementsFn(Box::new(self.check(*f, &ret)?)),
+            Interface { fns, instances } => Interface { fns, instances },
+            Instance(body) => Instance(self.check_instance_body(&d.name, *body)?),
+            InstanceFn(f) => InstanceFn(Box::new(self.check(*f, &ret)?)),
             Findable(i) => Findable(i),
 
             Class {
@@ -172,41 +171,41 @@ impl Elaborator {
         Ok(checked.clone())
     }
 
-    fn check_implements_body(
+    fn check_instance_body(
         &mut self,
         d: &Var,
-        body: ImplementsBody<Expr>,
-    ) -> Result<Box<ImplementsBody<Term>>, Error> {
+        body: InstanceBody<Expr>,
+    ) -> Result<Box<InstanceBody<Term>>, Error> {
         use Body::*;
         use Expr::*;
 
-        let (i, im) = body.i;
-        let ret = Box::new(ImplementsBody {
-            i: (i, Box::new(self.infer(*im)?.0)),
+        let (i, inst) = body.i;
+        let ret = Box::new(InstanceBody {
+            i: (i, Box::new(self.infer(*inst)?.0)),
             fns: body.fns,
         });
-        let im_tm = ret.implementor_type(&self.sigma)?;
+        let inst_tm = ret.instance_type(&self.sigma)?;
 
         let i_def = self.sigma.get_mut(&ret.i.0).unwrap();
         let i_def_loc = i_def.loc;
         match &mut i_def.body {
-            Interface { fns, ims, .. } => {
-                ims.push(d.clone());
+            Interface { fns, instances } => {
+                instances.push(d.clone());
                 for f in fns {
                     if ret.fns.contains_key(f) {
                         continue;
                     }
-                    return Err(NonExhaustive(im_tm, i_def_loc));
+                    return Err(NonExhaustive(inst_tm, i_def_loc));
                 }
             }
             _ => return Err(ExpectedInterface(Term::Ref(ret.i.0.clone()), i_def_loc)),
         };
 
-        for (i_fn, im_fn) in &ret.fns {
+        for (i_fn, inst_fn) in &ret.fns {
             let i_fn_def = self.sigma.get(i_fn).unwrap();
 
             let i_loc = i_fn_def.loc;
-            let im_loc = self.sigma.get(im_fn).unwrap().loc;
+            let inst_loc = self.sigma.get(inst_fn).unwrap().loc;
 
             let (i_fn_ty_p, i_fn_ty_b) = match i_fn_def.to_type() {
                 Term::Pi(p, _, b) => (p, b),
@@ -214,10 +213,11 @@ impl Elaborator {
             };
             let i_fn_ty_applied = self
                 .nf(i_loc)
-                .with(&[(&i_fn_ty_p.var, &im_tm)], *i_fn_ty_b)?;
-            let (_, im_fn_ty) = self.infer(Resolved(im_loc, im_fn.clone()))?;
+                .with(&[(&i_fn_ty_p.var, &inst_tm)], *i_fn_ty_b)?;
+            let (_, inst_fn_ty) = self.infer(Resolved(inst_loc, inst_fn.clone()))?;
 
-            self.unifier(im_loc).unify(&i_fn_ty_applied, &im_fn_ty)?;
+            self.unifier(inst_loc)
+                .unify(&i_fn_ty_applied, &inst_fn_ty)?;
         }
 
         Ok(ret)
@@ -880,11 +880,11 @@ impl Elaborator {
                 };
                 (Term::Switch(Box::new(a), m, d), ret_ty.unwrap())
             }
-            ImplementsOf(loc, a) => {
+            Instanceof(loc, a) => {
                 let (tm, ty) = self.infer(*a)?;
                 match tm {
-                    Term::ImplementsOf(a, i) => (Term::ImplementsOf(a, i), ty),
-                    tm => return Err(ExpectedImplementsOf(tm, loc)),
+                    Term::Instanceof(a, i) => (Term::Instanceof(a, i), ty),
+                    tm => return Err(ExpectedInstanceof(tm, loc)),
                 }
             }
             Varargs(loc, t) => {

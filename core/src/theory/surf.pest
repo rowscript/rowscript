@@ -622,16 +622,16 @@ interface_fn =
   ~ ";"
   }
 
-implements_def =
-  { "implements"
+instance_def =
+  { "instanceof"
   ~ type_id
   ~ "for"
   ~ (tyref | primitive_type)
   ~ "{"
-  ~ implements_fn+
+  ~ instance_fn+
   ~ "}"
   }
-implements_fn =
+instance_fn =
   { (fn_id | magic_fn_id)
   ~ implicits?
   ~ params
@@ -686,7 +686,7 @@ def =
   | type_postulate
   | type_alias
   | interface_def
-  | implements_def
+  | instance_def
   | const_def
   | class_def
   | type_verify

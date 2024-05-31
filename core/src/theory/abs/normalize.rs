@@ -14,7 +14,7 @@ use crate::theory::NameMap;
 use crate::theory::{Loc, Param, Var};
 use crate::Error::{
     ClassMethodNotImplemented, FieldsNonExtendable, NonExhaustive, UnresolvedField,
-    UnresolvedImplementation, UnsatisfiedConstraint,
+    UnresolvedInstance, UnsatisfiedConstraint,
 };
 use crate::{maybe_grow, Error};
 
@@ -549,12 +549,12 @@ impl<'a> Normalizer<'a> {
                 }
             }
             Unionify(a) => Unionify(self.term_box(a)?),
-            ImplementsOf(a, i) => {
+            Instanceof(a, i) => {
                 let a = self.term_box(a)?;
                 if !matches!(*a, Ref(_) | MetaRef(_, _, _)) {
                     self.check_constraint(&a, &i)?;
                 }
-                ImplementsOf(a, i)
+                Instanceof(a, i)
             }
             Varargs(t) => Varargs(self.term_box(t)?),
             AnonVarargs(t) => AnonVarargs(self.term_box(t)?),
@@ -571,7 +571,7 @@ impl<'a> Normalizer<'a> {
                             _ => unreachable!(),
                         }
                     }
-                    ty => self.find_implementation(ty, i, f)?,
+                    ty => self.find_instance(ty, i, f)?,
                 }
             }
             Reflected(a) => {
@@ -642,14 +642,14 @@ impl<'a> Normalizer<'a> {
         use Body::*;
         use Term::*;
 
-        let (fns, ims) = match &self.sigma.get(i).unwrap().body {
-            Interface { fns, ims } => (fns.clone(), ims.clone()),
+        let (fns, instances) = match &self.sigma.get(i).unwrap().body {
+            Interface { fns, instances } => (fns.clone(), instances.clone()),
             _ => unreachable!(),
         };
 
-        for im in ims {
-            let y = match &self.sigma.get(&im).unwrap().body {
-                Implements(body) => body.implementor_type(self.sigma)?,
+        for inst in instances {
+            let y = match &self.sigma.get(&inst).unwrap().body {
+                Instance(body) => body.instance_type(self.sigma)?,
                 _ => unreachable!(),
             };
             match self.unifier().unify(&y, x) {
@@ -689,28 +689,28 @@ impl<'a> Normalizer<'a> {
         Ok(())
     }
 
-    fn find_implementation(&mut self, ty: Term, i: Var, f: Var) -> Result<Term, Error> {
+    fn find_instance(&mut self, ty: Term, i: Var, f: Var) -> Result<Term, Error> {
         use Body::*;
 
-        let ims = match &self.sigma.get(&i).unwrap().body {
-            Interface { ims, .. } => ims.clone(),
+        let instances = match &self.sigma.get(&i).unwrap().body {
+            Interface { instances, .. } => instances.clone(),
             _ => unreachable!(),
         };
 
-        for im in ims.into_iter().rev() {
-            let (im_ty, im_fn) = match &self.sigma.get(&im).unwrap().body {
-                Implements(body) => (
-                    body.implementor_type(self.sigma)?,
+        for inst in instances.into_iter().rev() {
+            let (inst_ty, inst_fn) = match &self.sigma.get(&inst).unwrap().body {
+                Instance(body) => (
+                    body.instance_type(self.sigma)?,
                     body.fns.get(&f).unwrap().clone(),
                 ),
                 _ => unreachable!(),
             };
 
-            if self.unifier().unify(&ty, &im_ty).is_err() {
+            if self.unifier().unify(&ty, &inst_ty).is_err() {
                 continue;
             }
 
-            return Ok(self.sigma.get(&im_fn).unwrap().to_term(im_fn));
+            return Ok(self.sigma.get(&inst_fn).unwrap().to_term(inst_fn));
         }
 
         let (args, meth_ref) = match ty.class_methods(self.sigma) {
@@ -719,7 +719,7 @@ impl<'a> Normalizer<'a> {
                 methods,
                 ..
             }) => (applied_types, methods.get(f.as_str()).unwrap().clone()),
-            None => return Err(UnresolvedImplementation(ty, self.loc)),
+            None => return Err(UnresolvedInstance(ty, self.loc)),
         };
         let mut meth = self.sigma.get(&meth_ref).unwrap().to_term(meth_ref);
         if !args.is_empty() {
