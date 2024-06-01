@@ -906,8 +906,8 @@ impl Elaborator {
                 (Term::Spread(Box::new(a)), ty)
             }
             EmitAsync(_, a) => {
-                let tm = self.infer(*a)?.0;
-                todo!("{tm}")
+                let (tm, ty) = self.infer(*a)?;
+                (Term::EmitAsync(Box::new(tm)), ty)
             }
 
             Univ(_) => (Term::Univ, Term::Univ),

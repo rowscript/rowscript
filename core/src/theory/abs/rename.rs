@@ -143,6 +143,7 @@ impl Renamer {
             ErrorThrow(a) => ErrorThrow(self.term(a)),
             ConsoleLog(m) => ConsoleLog(self.term(m)),
             SetTimeout(f, d, x) => SetTimeout(self.term(f), self.term(d), self.term(x)),
+            EmitAsync(a) => EmitAsync(self.term(a)),
             tm => tm,
         })
     }

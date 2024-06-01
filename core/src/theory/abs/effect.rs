@@ -82,7 +82,7 @@ pub fn has_side_effect(tm: &Term) -> bool {
         | Continue | Break | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..)
         | ArrForeach(..) | ArrAt(..) | ArrInsert(..) | ArrIter(..) | MapIterNext(..) | Kv(..)
         | MapHas(..) | MapGet(..) | MapSet(..) | MapDelete(..) | MapClear(..) | MapIter(..)
-        | Unionify(..) | ErrorThrow(..) | ConsoleLog(..) | SetTimeout(..) => true,
+        | Unionify(..) | ErrorThrow(..) | ConsoleLog(..) | SetTimeout(..) | EmitAsync(..) => true,
 
         Ref(..)
         | Qualified(..)

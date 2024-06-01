@@ -1296,8 +1296,15 @@ impl Ecma {
                     type_args: None,
                 })
             }
+            EmitAsync(a) => self.expr(sigma, loc, a)?,
 
-            Find(_, _, f) => return Err(NonErasable(Ref(f.clone()), loc)),
+            Find(_, i, f) => match i.as_str() {
+                "Async" => todo!(),
+                "AsyncMul" => todo!(),
+                "AsyncAll" => todo!(),
+                "AsyncAny" => todo!(),
+                _ => return Err(NonErasable(Ref(f.clone()), loc)),
+            },
 
             tm if matches!(tm, Fori(..) | While(..) | Guard(..)) => {
                 Self::iife(loc, self.block(sigma, loc, tm, true)?)

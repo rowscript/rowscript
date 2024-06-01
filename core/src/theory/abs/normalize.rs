@@ -583,6 +583,7 @@ impl<'a> Normalizer<'a> {
             SetTimeout(f, d, x) => {
                 SetTimeout(self.term_box(f)?, self.term_box(d)?, self.term_box(x)?)
             }
+            EmitAsync(a) => EmitAsync(self.term_box(a)?),
             tm => tm,
         })
     }

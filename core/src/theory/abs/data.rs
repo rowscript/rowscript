@@ -162,6 +162,8 @@ pub enum Term {
     ErrorThrow(Box<Self>),
     ConsoleLog(Box<Self>),
     SetTimeout(Box<Self>, Box<Self>, Box<Self>),
+
+    EmitAsync(Box<Self>),
 }
 
 pub struct PartialClass {
@@ -429,6 +431,7 @@ impl Display for Term {
                 ErrorThrow(a) => format!("throw Error({a})"),
                 ConsoleLog(m) => format!("console.log({m})"),
                 SetTimeout(f, d, x) => format!("setTimeout({f}, {d}, {x})"),
+                EmitAsync(a) => format!("await {a}"),
             }
             .as_str(),
         )
