@@ -246,7 +246,7 @@ pub type NameMap = HashMap<String, ResolvedVar>;
 pub enum Effect {
     Pure,
     Async,
-    IO,
+    Capture,
 }
 
 impl Default for Effect {
@@ -263,7 +263,7 @@ impl Display for Effect {
             match self {
                 Self::Pure => return Ok(()),
                 Self::Async => "<async>",
-                Self::IO => "<io>",
+                Self::Capture => "<capture>",
             }
         )
     }

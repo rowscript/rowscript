@@ -956,26 +956,12 @@ impl Trans {
 
     fn infix_app(loc: Loc, r: &'static str, lhs: Expr, rhs: Expr) -> Expr {
         use Expr::*;
-        App(
-            loc,
-            Box::new(Unresolved(loc, None, Var::new(r))),
-            UnnamedExplicit,
-            Box::new(Tuple(
-                lhs.loc(),
-                Box::new(lhs),
-                Box::new(Tuple(rhs.loc(), Box::new(rhs), Box::new(TT(loc)))),
-            )),
-        )
+        Self::call2(Unresolved(loc, None, Var::new(r)), lhs, rhs)
     }
 
     fn prefix_app(loc: Loc, r: &'static str, x: Expr) -> Expr {
         use Expr::*;
-        App(
-            loc,
-            Box::new(Unresolved(loc, None, Var::new(r))),
-            UnnamedExplicit,
-            Box::new(Tuple(x.loc(), Box::new(x), Box::new(TT(loc)))),
-        )
+        Self::call1(Unresolved(loc, None, Var::new(r)), x)
     }
 
     fn primary_expr(&self, e: Pair<Rule>) -> Expr {
@@ -1036,7 +1022,13 @@ impl Trans {
                 Switch(loc, Box::new(e), cases, default_case)
             }
             Rule::await_lambda_expr => todo!(),
-            Rule::await_expr => todo!(),
+            Rule::await_expr => EmitAsync(
+                loc,
+                Box::new(Self::call1(
+                    Unresolved(loc, None, Var::new("__await__")),
+                    Self::executor_shorthand(loc, self.expr(p.into_inner().next().unwrap())),
+                )),
+            ),
             Rule::lambda_expr => {
                 let pairs = p.into_inner();
                 let mut vars = Vec::default();
@@ -1067,15 +1059,9 @@ impl Trans {
             Rule::boolean_true => True(loc),
             Rule::object_literal => self.object_literal(p),
             Rule::enum_variant => self.enum_variant(p),
-            Rule::array_literal => App(
-                loc,
-                Box::new(Unresolved(loc, None, Var::new("Array").ctor())),
-                UnnamedExplicit,
-                Box::new(Tuple(
-                    loc,
-                    Box::new(Arr(loc, p.into_inner().map(|e| self.expr(e)).collect())),
-                    Box::new(TT(loc)),
-                )),
+            Rule::array_literal => Self::call1(
+                Unresolved(loc, None, Var::new("Array").ctor()),
+                Arr(loc, p.into_inner().map(|e| self.expr(e)).collect()),
             ),
             Rule::map_literal => {
                 let mut pairs = p.into_inner();
@@ -1091,12 +1077,7 @@ impl Trans {
                     }
                     None => Default::default(),
                 };
-                App(
-                    loc,
-                    Box::new(Unresolved(loc, None, Var::new("Map").ctor())),
-                    UnnamedExplicit,
-                    Box::new(Tuple(loc, Box::new(Kv(loc, kv)), Box::new(TT(loc)))),
-                )
+                Self::call1(Unresolved(loc, None, Var::new("Map").ctor()), Kv(loc, kv))
             }
             Rule::hole => Hole(loc),
             Rule::tt => TT(loc),
@@ -1118,19 +1099,10 @@ impl Trans {
         let loc = Loc::from(p.as_span());
         match p.as_rule() {
             Rule::index => {
-                f = App(
-                    loc,
-                    Box::new(Unresolved(loc, None, Var::new("__getitem__"))),
-                    UnnamedExplicit,
-                    Box::new(Tuple(
-                        loc,
-                        Box::new(f),
-                        Box::new(Tuple(
-                            loc,
-                            Box::new(self.expr(p.into_inner().next().unwrap())),
-                            Box::new(TT(loc)),
-                        )),
-                    )),
+                f = Self::call2(
+                    Unresolved(loc, None, Var::new("__getitem__")),
+                    f,
+                    self.expr(p.into_inner().next().unwrap()),
                 );
             }
             Rule::app => {
@@ -1740,20 +1712,46 @@ impl Trans {
         ends
     }
 
-    fn call3(f: Expr, a0: Expr, a1: Expr, a2: Expr) -> Expr {
+    fn call1(f: Expr, x: Expr) -> Expr {
         use Expr::*;
-        let tt = Box::new(TT(a2.loc()));
+        let tt = Box::new(TT(x.loc()));
+        App(
+            f.loc(),
+            Box::new(f),
+            UnnamedExplicit,
+            Box::new(Tuple(x.loc(), Box::new(x), tt)),
+        )
+    }
+
+    fn call2(f: Expr, x: Expr, y: Expr) -> Expr {
+        use Expr::*;
+        let tt = Box::new(TT(y.loc()));
         App(
             f.loc(),
             Box::new(f),
             UnnamedExplicit,
             Box::new(Tuple(
-                a0.loc(),
-                Box::new(a0),
+                x.loc(),
+                Box::new(x),
+                Box::new(Tuple(y.loc(), Box::new(y), tt)),
+            )),
+        )
+    }
+
+    fn call3(f: Expr, x: Expr, y: Expr, z: Expr) -> Expr {
+        use Expr::*;
+        let tt = Box::new(TT(z.loc()));
+        App(
+            f.loc(),
+            Box::new(f),
+            UnnamedExplicit,
+            Box::new(Tuple(
+                x.loc(),
+                Box::new(x),
                 Box::new(Tuple(
-                    a1.loc(),
-                    Box::new(a1),
-                    Box::new(Tuple(a2.loc(), Box::new(a2), tt)),
+                    y.loc(),
+                    Box::new(y),
+                    Box::new(Tuple(z.loc(), Box::new(z), tt)),
                 )),
             )),
         )
@@ -1766,6 +1764,27 @@ impl Trans {
             f.loc(),
             Box::new(f),
             Box::new(Tuple(a0.loc(), Box::new(a0), tt)),
+        )
+    }
+
+    /// From:
+    ///
+    /// ```ts
+    /// expr
+    /// ```
+    ///
+    /// Into:
+    ///
+    /// ```ts
+    /// (resolve) => { resolve(expr) }
+    /// ```
+    fn executor_shorthand(loc: Loc, e: Expr) -> Expr {
+        use Expr::*;
+        let resolve = Unresolved(loc, None, Var::new("resolve"));
+        TupledLam(
+            loc,
+            vec![resolve.clone()],
+            Box::new(Self::call1(resolve, e)),
         )
     }
 }

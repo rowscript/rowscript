@@ -429,6 +429,7 @@ impl<'a> Resolver<'a> {
                 .1
                 .clone(),
             ),
+            EmitAsync(loc, a) => EmitAsync(loc, self.expr(a)?),
 
             e => e,
         }))
