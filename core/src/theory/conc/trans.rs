@@ -1021,13 +1021,13 @@ impl Trans {
                 }
                 Switch(loc, Box::new(e), cases, default_case)
             }
-            Rule::await_lambda_expr => todo!(),
-            Rule::await_expr => EmitAsync(
+            Rule::await_lambda_expr => Self::await_executor(
                 loc,
-                Box::new(Self::call1(
-                    Unresolved(loc, None, Var::new("__await__")),
-                    Self::executor_shorthand(loc, self.expr(p.into_inner().next().unwrap())),
-                )),
+                Self::executor(loc, self.fn_body(p.into_inner().next().unwrap())),
+            ),
+            Rule::await_expr => Self::await_executor(
+                loc,
+                Self::executor_shorthand(loc, self.expr(p.into_inner().next().unwrap())),
             ),
             Rule::lambda_expr => {
                 let pairs = p.into_inner();
@@ -1767,6 +1767,16 @@ impl Trans {
         )
     }
 
+    fn await_executor(loc: Loc, e: Expr) -> Expr {
+        Expr::EmitAsync(
+            loc,
+            Box::new(Self::call1(
+                Expr::Unresolved(loc, None, Var::new("__await__")),
+                e,
+            )),
+        )
+    }
+
     /// From:
     ///
     /// ```ts
@@ -1779,12 +1789,28 @@ impl Trans {
     /// (resolve) => { resolve(expr) }
     /// ```
     fn executor_shorthand(loc: Loc, e: Expr) -> Expr {
-        use Expr::*;
-        let resolve = Unresolved(loc, None, Var::new("resolve"));
-        TupledLam(
+        Self::executor(
             loc,
-            vec![resolve.clone()],
-            Box::new(Self::call1(resolve, e)),
+            Self::call1(Expr::Unresolved(loc, None, Var::new("resolve")), e),
+        )
+    }
+
+    /// From:
+    ///
+    /// ```ts
+    /// { expr }
+    /// ```
+    ///
+    /// Into:
+    ///
+    /// ```ts
+    /// (resolve) => { expr }
+    /// ```
+    fn executor(loc: Loc, e: Expr) -> Expr {
+        Expr::TupledLam(
+            loc,
+            vec![Expr::Unresolved(loc, None, Var::new("resolve"))],
+            Box::new(e),
         )
     }
 }

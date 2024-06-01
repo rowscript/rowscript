@@ -1,9 +1,7 @@
 async function delay(d: Duration) {
-    // TODO
-//    await { setTimeout(resolve, d, Ok) }
+    await { setTimeout(resolve, d, ()) }
 }
 
 async function f0() {
-    // TODO
-//    const a = await 42;
+    const a = await 42;
 }

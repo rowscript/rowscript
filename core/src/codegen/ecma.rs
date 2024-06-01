@@ -8,15 +8,15 @@ use num_bigint::BigInt as BigIntValue;
 use swc_atoms::js_word;
 use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
 use swc_ecma_ast::{
-    ArrayLit, ArrayPat, ArrowExpr, AssignExpr, AssignOp, AssignTarget, BigInt as JsBigInt, BinExpr,
-    BinaryOp, BindingIdent, BlockStmt, BlockStmtOrExpr, Bool, BreakStmt, CallExpr, Callee,
-    ComputedPropName, CondExpr, ContinueStmt, Decl, ExportDecl, Expr, ExprOrSpread, ExprStmt,
-    FnDecl, ForStmt, Function, Ident, IfStmt, ImportDecl, ImportNamedSpecifier, ImportSpecifier,
-    ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr, MemberProp, MethodProp, Module,
-    ModuleDecl, ModuleItem, NewExpr, Number as JsNumber, Number, ObjectLit, Param as JsParam,
-    ParenExpr, Pat, Prop, PropName, PropOrSpread, RestPat, ReturnStmt, SimpleAssignTarget,
-    SpreadElement, Stmt, Str, ThrowStmt, UnaryExpr, UnaryOp, VarDecl, VarDeclKind, VarDeclOrExpr,
-    VarDeclarator, WhileStmt,
+    ArrayLit, ArrayPat, ArrowExpr, AssignExpr, AssignOp, AssignTarget, AwaitExpr,
+    BigInt as JsBigInt, BinExpr, BinaryOp, BindingIdent, BlockStmt, BlockStmtOrExpr, Bool,
+    BreakStmt, CallExpr, Callee, ComputedPropName, CondExpr, ContinueStmt, Decl, ExportDecl, Expr,
+    ExprOrSpread, ExprStmt, FnDecl, ForStmt, Function, Ident, IfStmt, ImportDecl,
+    ImportNamedSpecifier, ImportSpecifier, ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr,
+    MemberProp, MethodProp, Module, ModuleDecl, ModuleItem, NewExpr, Number as JsNumber, Number,
+    ObjectLit, Param as JsParam, ParenExpr, Pat, Prop, PropName, PropOrSpread, RestPat, ReturnStmt,
+    SimpleAssignTarget, SpreadElement, Stmt, Str, ThrowStmt, UnaryExpr, UnaryOp, VarDecl,
+    VarDeclKind, VarDeclOrExpr, VarDeclarator, WhileStmt,
 };
 use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
@@ -221,6 +221,10 @@ impl Ecma {
         })
     }
 
+    fn is_findable_async(i: &Var) -> bool {
+        matches!(i.as_str(), "Async" | "AsyncMul" | "AsyncAll" | "AsyncAny")
+    }
+
     /// ```ts
     /// ((x) => x.done ? None : Ok({key: x.value[0], value: x.value[1]}))(e)
     /// ```
@@ -377,6 +381,18 @@ impl Ecma {
         )
     }
 
+    fn await_executor(loc: Loc, args: Vec<ExprOrSpread>) -> Expr {
+        Expr::Await(AwaitExpr {
+            span: loc.into(),
+            arg: Box::new(Expr::New(NewExpr {
+                span: loc.into(),
+                callee: Box::new(Expr::Ident(Self::special_ident("Promise"))),
+                args: Some(args),
+                type_args: None,
+            })),
+        })
+    }
+
     fn app(
         &mut self,
         sigma: &Sigma,
@@ -387,10 +403,11 @@ impl Ecma {
     ) -> Result<Expr, Error> {
         use Term::*;
 
+        // Try erasing the trailing predicate proofs.
         match (i, x) {
-            (UnnamedImplicit, tm) => {
-                let mut ans = tm.clone();
-                if let MetaRef(_, v, _) = tm {
+            (UnnamedImplicit, arg) => {
+                let mut ans = arg.clone();
+                if let MetaRef(_, v, _) = arg {
                     let v = match &sigma.get(v).unwrap().body {
                         Body::Meta(_, v) => v,
                         _ => unreachable!(),
@@ -409,14 +426,28 @@ impl Ecma {
             _ => unreachable!(),
         }
 
+        // Try erasing the implicit type arguments.
         loop {
-            if let App(ff, ii, _) = f {
-                if !matches!(ii, UnnamedExplicit) {
-                    f = ff;
+            if let App(func, ai, _) = f {
+                if !matches!(ai, UnnamedExplicit) {
+                    f = func;
                     continue;
                 }
             }
             break;
+        }
+
+        // Try transforming await expressions.
+        let args = self.untuple_args(sigma, loc, x)?;
+
+        if let Find(_, i, _) = f {
+            match i.as_str() {
+                "Async" => return Ok(Self::await_executor(loc, args)),
+                "AsyncMul" => todo!(),
+                "AsyncAll" => todo!(),
+                "AsyncAny" => todo!(),
+                _ => {}
+            }
         }
 
         Ok(Expr::Call(CallExpr {
@@ -425,7 +456,7 @@ impl Ecma {
                 span: loc.into(),
                 expr: Box::new(self.expr(sigma, loc, f)?),
             }))),
-            args: self.untuple_args(sigma, loc, x)?,
+            args,
             type_args: None,
         }))
     }
@@ -1298,13 +1329,9 @@ impl Ecma {
             }
             EmitAsync(a) => self.expr(sigma, loc, a)?,
 
-            Find(_, i, f) => match i.as_str() {
-                "Async" => todo!(),
-                "AsyncMul" => todo!(),
-                "AsyncAll" => todo!(),
-                "AsyncAny" => todo!(),
-                _ => return Err(NonErasable(Ref(f.clone()), loc)),
-            },
+            Find(_, i, f) if !Self::is_findable_async(i) => {
+                return Err(NonErasable(Ref(f.clone()), loc))
+            }
 
             tm if matches!(tm, Fori(..) | While(..) | Guard(..)) => {
                 Self::iife(loc, self.block(sigma, loc, tm, true)?)
