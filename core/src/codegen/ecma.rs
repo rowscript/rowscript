@@ -213,6 +213,18 @@ impl Ecma {
         matches!(i.as_str(), "Async" | "AsyncMul" | "AsyncAll" | "AsyncAny")
     }
 
+    fn short_arrow(loc: Loc, params: Vec<Pat>, e: Expr) -> Expr {
+        Expr::Arrow(ArrowExpr {
+            span: loc.into(),
+            params,
+            body: Box::new(BlockStmtOrExpr::Expr(Box::new(e))),
+            is_async: false,
+            is_generator: false,
+            type_params: None,
+            return_type: None,
+        })
+    }
+
     /// ```ts
     /// ((x) => x.done ? None : Ok({key: x.value[0], value: x.value[1]}))(e)
     /// ```
@@ -222,10 +234,10 @@ impl Ecma {
         let v = Self::index(loc, item, 1.0);
         Self::paren_call(
             loc,
-            Expr::Arrow(ArrowExpr {
-                span: loc.into(),
-                params: vec![Self::str_ident_pat(loc, "x")],
-                body: Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Cond(CondExpr {
+            Self::short_arrow(
+                loc,
+                vec![Self::str_ident_pat(loc, "x")],
+                Expr::Cond(CondExpr {
                     span: loc.into(),
                     test: Box::new(Self::access(
                         loc,
@@ -234,12 +246,8 @@ impl Ecma {
                     )),
                     cons: Box::new(Self::none(loc)),
                     alt: Box::new(Self::ok(loc, Self::entry(loc, k, v))),
-                })))),
-                is_async: false,
-                is_generator: false,
-                type_params: None,
-                return_type: None,
-            }),
+                }),
+            ),
             e,
         )
     }
@@ -309,10 +317,10 @@ impl Ecma {
     fn optionify_iteration_result(loc: Loc, e: Expr) -> Expr {
         Self::paren_call(
             loc,
-            Expr::Arrow(ArrowExpr {
-                span: loc.into(),
-                params: vec![Self::str_ident_pat(loc, "x")],
-                body: Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Cond(CondExpr {
+            Self::short_arrow(
+                loc,
+                vec![Self::str_ident_pat(loc, "x")],
+                Expr::Cond(CondExpr {
                     span: loc.into(),
                     test: Box::new(Self::access(
                         loc,
@@ -324,12 +332,8 @@ impl Ecma {
                         loc,
                         Self::access(loc, Expr::Ident(Self::str_ident(loc, "x")), "value"),
                     )),
-                })))),
-                is_async: false,
-                is_generator: false,
-                type_params: None,
-                return_type: None,
-            }),
+                }),
+            ),
             e,
         )
     }
@@ -340,10 +344,10 @@ impl Ecma {
     fn optionify(loc: Loc, e: Expr) -> Expr {
         Self::paren_call(
             loc,
-            Expr::Arrow(ArrowExpr {
-                span: loc.into(),
-                params: vec![Self::str_ident_pat(loc, "x")],
-                body: Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Cond(CondExpr {
+            Self::short_arrow(
+                loc,
+                vec![Self::str_ident_pat(loc, "x")],
+                Expr::Cond(CondExpr {
                     span: loc.into(),
                     test: Box::new(Expr::Bin(BinExpr {
                         span: loc.into(),
@@ -353,21 +357,17 @@ impl Ecma {
                     })),
                     cons: Box::new(Self::none(loc)),
                     alt: Box::new(Self::ok(loc, Expr::Ident(Self::str_ident(loc, "x")))),
-                })))),
-                is_async: false,
-                is_generator: false,
-                type_params: None,
-                return_type: None,
-            }),
+                }),
+            ),
             e,
         )
     }
 
-    fn new_promise(loc: Loc, args: Option<Vec<ExprOrSpread>>) -> Expr {
+    fn new_promise(loc: Loc, args: Vec<ExprOrSpread>) -> Expr {
         Expr::New(NewExpr {
             span: loc.into(),
             callee: Box::new(Expr::Ident(Self::special_ident("Promise"))),
-            args,
+            args: Some(args),
             type_args: None,
         })
     }
@@ -375,7 +375,7 @@ impl Ecma {
     fn await_executor(loc: Loc, args: Vec<ExprOrSpread>) -> Expr {
         Expr::Await(AwaitExpr {
             span: loc.into(),
-            arg: Box::new(Self::new_promise(loc, Some(args))),
+            arg: Box::new(Self::new_promise(loc, args)),
         })
     }
 
@@ -396,20 +396,14 @@ impl Ecma {
             loc,
             *executors.expr,
             "map",
-            [Expr::Arrow(ArrowExpr {
-                span: loc.into(),
-                params: vec![Self::str_ident_pat(loc, "e")],
-                body: Box::new(BlockStmtOrExpr::Expr(Box::new(Self::new_promise(
+            [Self::short_arrow(
+                loc,
+                vec![Self::str_ident_pat(loc, "e")],
+                Self::new_promise(
                     loc,
-                    Some(vec![Self::non_spread(Expr::Ident(Self::str_ident(
-                        loc, "e",
-                    )))]),
-                )))),
-                is_async: false,
-                is_generator: false,
-                type_params: None,
-                return_type: None,
-            })],
+                    vec![Self::non_spread(Expr::Ident(Self::str_ident(loc, "e")))],
+                ),
+            )],
         )
     }
 
@@ -1227,28 +1221,24 @@ impl Ecma {
                     }))))
                 }
 
-                let body = BlockStmtOrExpr::Expr(Box::new(Expr::Paren(ParenExpr {
+                let body = Expr::Paren(ParenExpr {
                     span: loc.into(),
                     expr: Box::new(Expr::Object(ObjectLit {
                         span: loc.into(),
                         props,
                     })),
-                })));
+                });
 
                 Self::paren_call(
                     loc,
-                    Expr::Arrow(ArrowExpr {
-                        span: loc.into(),
-                        params: vec![Pat::Ident(BindingIdent {
+                    Self::short_arrow(
+                        loc,
+                        vec![Pat::Ident(BindingIdent {
                             id: x,
                             type_ann: None,
                         })],
-                        body: Box::new(body),
-                        is_async: false,
-                        is_generator: false,
-                        type_params: None,
-                        return_type: None,
-                    }),
+                        body,
+                    ),
                     self.expr(sigma, loc, a)?,
                 )
             }
