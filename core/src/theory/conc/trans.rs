@@ -1021,6 +1021,7 @@ impl Trans {
                 }
                 Switch(loc, Box::new(e), cases, default_case)
             }
+            Rule::await_multi_expr => todo!(),
             Rule::await_lambda_expr => Self::await_executor(
                 loc,
                 Self::executor(loc, self.fn_body(p.into_inner().next().unwrap())),

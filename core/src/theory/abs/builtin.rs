@@ -1,11 +1,11 @@
 use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{
     AnonVarargs, App, ArrAt, ArrForeach, ArrInsert, ArrIter, ArrIterNext, ArrLength, ArrPush,
-    Array, ArrayIterator, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean, ConsoleLog, Enum,
-    ErrorThrow, Fields, Find, Map, MapClear, MapDelete, MapGet, MapHas, MapIter, MapIterNext,
-    MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt, NumMod, NumMul, NumNeg,
-    NumNeq, NumSub, NumToStr, Number, Object, Pi, Ref, Reflected, Row, SetTimeout, StrAdd, StrEq,
-    StrNeq, String, TupleLocal, Unionify, Unit, Univ,
+    Array, ArrayIterator, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean, ConsoleLog,
+    EmitAsync, Enum, ErrorThrow, Fields, Find, Map, MapClear, MapDelete, MapGet, MapHas, MapIter,
+    MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt, NumMod,
+    NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object, Pi, Ref, Reflected, Row, SetTimeout,
+    StrAdd, StrEq, StrNeq, String, TupleLocal, Unionify, Unit, Univ,
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
@@ -828,7 +828,7 @@ impl Builtins {
                 ArgInfo::UnnamedImplicit,
                 Box::new(Ref(t)),
             ),
-            App(
+            EmitAsync(Box::new(App(
                 // All unbound, only the string content matters here.
                 Box::new(Find(
                     Box::new(Ref(Var::unbound())),
@@ -837,7 +837,7 @@ impl Builtins {
                 )),
                 ArgInfo::UnnamedExplicit,
                 Box::new(tupled),
-            ),
+            ))),
         )
     }
 
@@ -850,7 +850,7 @@ impl Builtins {
             "await#any",
             tele,
             Ref(t),
-            App(
+            EmitAsync(Box::new(App(
                 // All unbound, only the string content matters here.
                 Box::new(Find(
                     Box::new(Ref(Var::unbound())),
@@ -859,7 +859,7 @@ impl Builtins {
                 )),
                 ArgInfo::UnnamedExplicit,
                 Box::new(tupled),
-            ),
+            ))),
         )
     }
 }

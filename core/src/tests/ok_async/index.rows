@@ -4,15 +4,21 @@ async function delay(d: Duration) {
 
 async function f0() {
     const a = await 42;
+    console.log(a);
 }
 
-async function f1(): Array<number> {
+//async function f1() {
+//    const (a, b, c) = await (42, "foo", true);
+//    console.log(a, b, c);
+//}
+
+async function f2(): Array<number> {
     const a: Executor<number> = (resolve) => { resolve(42) };
     const b: Executor<number> = (resolve) => { resolve(69) };
     awaits.all([a, b])
 }
 
-async function f2(): number {
+async function f3(): number {
     const a: Executor<number> = (resolve) => { resolve(42) };
     const b: Executor<number> = (resolve) => { resolve(69) };
     awaits.any([a, b])
