@@ -1,13 +1,14 @@
 use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{
-    AnonVarargs, ArrAt, ArrForeach, ArrInsert, ArrIter, ArrIterNext, ArrLength, ArrPush, Array,
-    ArrayIterator, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean, ConsoleLog, Enum,
-    ErrorThrow, Fields, Map, MapClear, MapDelete, MapGet, MapHas, MapIter, MapIterNext,
+    AnonVarargs, App, ArrAt, ArrForeach, ArrInsert, ArrIter, ArrIterNext, ArrLength, ArrPush,
+    Array, ArrayIterator, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean, ConsoleLog, Enum,
+    ErrorThrow, Fields, Find, Map, MapClear, MapDelete, MapGet, MapHas, MapIter, MapIterNext,
     MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt, NumMod, NumMul, NumNeg,
     NumNeq, NumSub, NumToStr, Number, Object, Pi, Ref, Reflected, Row, SetTimeout, StrAdd, StrEq,
     StrNeq, String, TupleLocal, Unionify, Unit, Univ,
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
+use crate::theory::conc::data::ArgInfo;
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{NameMap, Param, ResolvedVar, Var};
 use crate::theory::{Tele, VarKind};
@@ -202,6 +203,8 @@ impl Builtins {
             .map_delete()
             .map_clear()
             .map_iter()
+            .await_all()
+            .await_any()
     }
 
     fn func(self, name: &str, tele: Tele<Term>, ret: Term, f: Term) -> Self {
@@ -224,6 +227,11 @@ impl Builtins {
         );
         self.sigma.insert(def.name.clone(), def);
         self
+    }
+
+    fn defined(&self, name: &str) -> Term {
+        let var = self.ubiquitous.get(name).unwrap().1.clone();
+        self.sigma.get(&var).unwrap().to_term(var)
     }
 
     fn error_throw(self) -> Self {
@@ -781,6 +789,77 @@ impl Builtins {
             tele,
             MapIterator(Box::new(entry_type(Ref(k), Ref(v)))),
             explicit_tuple_local1(m.clone(), m_ty, tupled, MapIter(Box::new(Ref(m)))),
+        )
+    }
+
+    fn executors_type(&self, v_ty: Term) -> Term {
+        App(
+            Box::new(self.defined("NativeArray")),
+            ArgInfo::UnnamedImplicit,
+            Box::new(Pi(
+                tuple_param(
+                    Var::tupled(),
+                    [(
+                        Var::new("resolve"),
+                        Pi(
+                            tuple_param(Var::tupled(), [(Var::new("value"), v_ty)]),
+                            Default::default(),
+                            Box::new(Unit),
+                        ),
+                    )],
+                ),
+                Default::default(),
+                Box::new(Unit),
+            )),
+        )
+    }
+
+    fn await_all(self) -> Self {
+        let t = Var::new("T");
+        let executors_ty = self.executors_type(Ref(t.clone()));
+        let array_ty = self.defined("NativeArray");
+        let e = Var::new("executors");
+        let (tupled, tele) = parameters([t.clone()], [(e.clone(), executors_ty)]);
+        self.func(
+            "await#all",
+            tele,
+            App(
+                Box::new(array_ty),
+                ArgInfo::UnnamedImplicit,
+                Box::new(Ref(t)),
+            ),
+            App(
+                // All unbound, only the string content matters here.
+                Box::new(Find(
+                    Box::new(Ref(Var::unbound())),
+                    Var::new("AsyncAll"),
+                    Var::unbound(),
+                )),
+                ArgInfo::UnnamedExplicit,
+                Box::new(tupled),
+            ),
+        )
+    }
+
+    fn await_any(self) -> Self {
+        let t = Var::new("T");
+        let executors_ty = self.executors_type(Ref(t.clone()));
+        let e = Var::new("executors");
+        let (tupled, tele) = parameters([t.clone()], [(e.clone(), executors_ty)]);
+        self.func(
+            "await#any",
+            tele,
+            Ref(t),
+            App(
+                // All unbound, only the string content matters here.
+                Box::new(Find(
+                    Box::new(Ref(Var::unbound())),
+                    Var::new("AsyncAny"),
+                    Var::unbound(),
+                )),
+                ArgInfo::UnnamedExplicit,
+                Box::new(tupled),
+            ),
         )
     }
 }

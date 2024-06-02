@@ -153,9 +153,23 @@ interface AsyncMul {
 }
 
 interface AsyncAll {
-    __await_all__<T>(executors: Array<Executor<T>>): Array<T>;
+    __await_all__<T>(executors: NativeArray<Executor<T>>): NativeArray<T>;
 }
 
 interface AsyncAny {
-    __await_any__<T>(executors: Array<Executor<T>>): T;
+    __await_any__<T>(executors: NativeArray<Executor<T>>): T;
 }
+
+class Awaits {
+    empty: unit;
+
+    all<T>(executors: Array<Executor<T>>): Array<T> {
+        new Array(await#all(executors.a))
+    }
+
+    any<T>(executors: Array<Executor<T>>): T {
+        await#any(executors.a)
+    }
+}
+
+const awaits = new Awaits(());

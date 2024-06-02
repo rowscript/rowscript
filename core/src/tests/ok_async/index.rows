@@ -5,3 +5,15 @@ async function delay(d: Duration) {
 async function f0() {
     const a = await 42;
 }
+
+async function f1(): Array<number> {
+    const a: Executor<number> = (resolve) => { resolve(42) };
+    const b: Executor<number> = (resolve) => { resolve(69) };
+    awaits.all([a, b])
+}
+
+async function f2(): number {
+    const a: Executor<number> = (resolve) => { resolve(42) };
+    const b: Executor<number> = (resolve) => { resolve(69) };
+    awaits.any([a, b])
+}

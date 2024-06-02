@@ -43,3 +43,6 @@ declare map#set<K, V>(m: NativeMap<K, V>, key: K, value: V);
 declare map#delete<K, V>(m: NativeMap<K, V>, key: K): boolean;
 declare map#clear<K, V>(m: NativeMap<K, V>);
 declare map#iter<K, V>(m: NativeMap<K, V>): NativeMapIterator<{key: K, value: V}>;
+
+declare await#all<T>(executors: NativeArray<(resolve: (value: T) -> unit) -> unit>): NativeArray<T>;
+declare await#any<T>(executors: NativeArray<(resolve: (value: T) -> unit) -> unit>): T;

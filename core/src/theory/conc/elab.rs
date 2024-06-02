@@ -1032,8 +1032,9 @@ impl Elaborator {
         }
         #[cfg(test)]
         {
+            let actual = self.nf(loc).term(ty)?;
             let expected = self.nf(loc).term(expected)?;
-            self.unifier(loc).unify(&ty, &expected)?;
+            self.unifier(loc).unify(&actual, &expected)?;
         }
         Ok(tm)
     }

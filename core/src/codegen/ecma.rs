@@ -381,15 +381,65 @@ impl Ecma {
         )
     }
 
+    fn new_promise(loc: Loc, args: Option<Vec<ExprOrSpread>>) -> Expr {
+        Expr::New(NewExpr {
+            span: loc.into(),
+            callee: Box::new(Expr::Ident(Self::special_ident("Promise"))),
+            args,
+            type_args: None,
+        })
+    }
+
     fn await_executor(loc: Loc, args: Vec<ExprOrSpread>) -> Expr {
         Expr::Await(AwaitExpr {
             span: loc.into(),
-            arg: Box::new(Expr::New(NewExpr {
+            arg: Box::new(Self::new_promise(loc, Some(args))),
+        })
+    }
+
+    /// From:
+    ///
+    /// ```ts
+    /// expr
+    /// ```
+    ///
+    /// Into:
+    ///
+    /// ```ts
+    /// expr.map(e => new Promise(e))
+    /// ```
+    fn executors_to_promises(loc: Loc, args: Vec<ExprOrSpread>) -> Expr {
+        let executors = args.into_iter().next().unwrap();
+        Self::prototype(
+            loc,
+            *executors.expr,
+            "map",
+            [Expr::Arrow(ArrowExpr {
                 span: loc.into(),
-                callee: Box::new(Expr::Ident(Self::special_ident("Promise"))),
-                args: Some(args),
-                type_args: None,
-            })),
+                params: vec![Self::str_ident_pat(loc, "e")],
+                body: Box::new(BlockStmtOrExpr::Expr(Box::new(Self::new_promise(
+                    loc,
+                    Some(vec![ExprOrSpread {
+                        spread: None,
+                        expr: Box::new(Expr::Ident(Self::str_ident(loc, "e"))),
+                    }]),
+                )))),
+                is_async: false,
+                is_generator: false,
+                type_params: None,
+                return_type: None,
+            })],
+        )
+    }
+
+    fn await_executors(loc: Loc, awaiter: &str, executors: Vec<ExprOrSpread>) -> Expr {
+        Expr::Await(AwaitExpr {
+            span: loc.into(),
+            arg: Box::new(Self::paren_call(
+                loc,
+                Expr::Ident(Self::special_ident(awaiter)),
+                Self::executors_to_promises(loc, executors),
+            )),
         })
     }
 
@@ -444,8 +494,8 @@ impl Ecma {
             match i.as_str() {
                 "Async" => return Ok(Self::await_executor(loc, args)),
                 "AsyncMul" => todo!(),
-                "AsyncAll" => todo!(),
-                "AsyncAny" => todo!(),
+                "AsyncAll" => return Ok(Self::await_executors(loc, "Promise.all", args)),
+                "AsyncAny" => return Ok(Self::await_executors(loc, "Promise.any", args)),
                 _ => {}
             }
         }
@@ -1330,7 +1380,7 @@ impl Ecma {
             EmitAsync(a) => self.expr(sigma, loc, a)?,
 
             Find(_, i, f) if !Self::is_findable_async(i) => {
-                return Err(NonErasable(Ref(f.clone()), loc))
+                return Err(NonErasable(Ref(f.clone()), loc));
             }
 
             tm if matches!(tm, Fori(..) | While(..) | Guard(..)) => {
