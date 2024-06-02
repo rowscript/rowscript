@@ -7,5 +7,5 @@ export function f1(...args) {
 }
 
 export function f2(...args) {
-    return args.reduce((prev, a) => [a, prev], undefined)
+    return args
 }

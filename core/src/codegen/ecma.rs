@@ -885,7 +885,18 @@ impl Ecma {
                     tm = &TT
                 }
                 // Only valid on syntax like `const (a, b, c, d) = expr`.
-                TupleLocal(p, q, a, b) => {
+                TupleLocal(p, _, a, b) => {
+                    // Collect all tupled lets to form `const [a, b, c, d] = expr` in JS.
+                    let mut elems = vec![Some(Self::ident_pat(loc, &p.var))];
+                    let mut body = b.as_ref();
+                    loop {
+                        if let TupleLocal(p_next, _, _, b_next) = body {
+                            elems.push(Some(Self::ident_pat(loc, &p_next.var)));
+                            body = b_next;
+                            continue;
+                        }
+                        break;
+                    }
                     stmts.push(Stmt::Decl(Decl::Var(Box::new(VarDecl {
                         span,
                         kind: VarDeclKind::Var,
@@ -894,10 +905,7 @@ impl Ecma {
                             span,
                             name: Pat::Array(ArrayPat {
                                 span,
-                                elems: vec![
-                                    Some(Self::ident_pat(loc, &p.var)),
-                                    Some(Self::ident_pat(loc, &q.var)),
-                                ],
+                                elems,
                                 optional: false,
                                 type_ann: None,
                             }),
@@ -905,7 +913,7 @@ impl Ecma {
                             definite: false,
                         }],
                     }))));
-                    tm = b
+                    tm = body;
                 }
                 UnitLocal(a, b) => {
                     stmts.extend(self.block(sigma, loc, a, false)?.stmts);
