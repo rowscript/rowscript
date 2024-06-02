@@ -474,7 +474,10 @@ impl Ecma {
         if let Find(_, i, _) = f {
             match i.as_str() {
                 "Async" => return Ok(Self::await_executor(loc, args)),
-                "AsyncMul" => todo!(),
+                "AsyncMul" => {
+                    dbg!(args);
+                    todo!()
+                }
                 "AsyncAll" => return Ok(Self::await_executors(loc, "Promise.all", args)),
                 "AsyncAny" => return Ok(Self::await_executors(loc, "Promise.any", args)),
                 _ => {}

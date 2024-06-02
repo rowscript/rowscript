@@ -1021,7 +1021,9 @@ impl Trans {
                 }
                 Switch(loc, Box::new(e), cases, default_case)
             }
-            Rule::await_multi_expr => todo!(),
+            Rule::await_multi_expr => {
+                Self::await_executors(loc, p.into_inner().map(|e| self.expr(e)).collect())
+            }
             Rule::await_lambda_expr => Self::await_executor(
                 loc,
                 Self::executor(loc, self.fn_body(p.into_inner().next().unwrap())),
@@ -1769,11 +1771,26 @@ impl Trans {
     }
 
     fn await_executor(loc: Loc, e: Expr) -> Expr {
-        Expr::EmitAsync(
+        use Expr::*;
+        EmitAsync(
             loc,
-            Box::new(Self::call1(
-                Expr::Unresolved(loc, None, Var::new("__await__")),
-                e,
+            Box::new(Self::call1(Unresolved(loc, None, Var::new("__await__")), e)),
+        )
+    }
+
+    fn await_executors(loc: Loc, e: Vec<Expr>) -> Expr {
+        use Expr::*;
+        EmitAsync(
+            loc,
+            Box::new(App(
+                loc,
+                Box::new(Unresolved(loc, None, Var::new("__await_mul__"))),
+                UnnamedExplicit,
+                Box::new(
+                    e.into_iter()
+                        .rev()
+                        .rfold(TT(loc), |ret, e| Tuple(loc, Box::new(e), Box::new(ret))),
+                ),
             )),
         )
     }
