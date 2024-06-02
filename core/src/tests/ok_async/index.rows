@@ -7,10 +7,10 @@ async function f0() {
     console.log(a);
 }
 
-//async function f1() {
-//    const (a, b, c) = await (42, "foo", true);
-//    console.log(a, b, c);
-//}
+async function f1() {
+    const (a, b, c) = await (42, "foo", true);
+    console.log(a, b, c);
+}
 
 async function f2(): Array<number> {
     const a: Executor<number> = (resolve) => { resolve(42) };

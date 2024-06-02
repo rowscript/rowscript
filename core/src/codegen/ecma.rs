@@ -419,6 +419,43 @@ impl Ecma {
         )
     }
 
+    /// From:
+    ///
+    /// ```ts
+    /// (a, b, c)
+    /// ```
+    ///
+    /// Into:
+    ///
+    /// ```ts
+    /// (
+    ///   [
+    ///     (resolve) => resolve(a),
+    ///     (resolve) => resolve(b),
+    ///     (resolve) => resolve(c),
+    ///   ]
+    /// )
+    /// ```
+    fn args_to_promises(loc: Loc, args: Vec<ExprOrSpread>) -> Vec<ExprOrSpread> {
+        vec![Self::non_spread(Expr::Array(ArrayLit {
+            span: loc.into(),
+            elems: args
+                .into_iter()
+                .map(|e| {
+                    Some(Self::non_spread(Self::short_arrow(
+                        loc,
+                        vec![Self::str_ident_pat(loc, "resolve")],
+                        Self::paren_call(
+                            loc,
+                            Expr::Ident(Self::str_ident(loc, "resolve")),
+                            *e.expr,
+                        ),
+                    )))
+                })
+                .collect(),
+        }))]
+    }
+
     fn await_executors(loc: Loc, awaiter: &str, executors: Vec<ExprOrSpread>) -> Expr {
         Expr::Await(AwaitExpr {
             span: loc.into(),
@@ -481,8 +518,11 @@ impl Ecma {
             match i.as_str() {
                 "Async" => return Ok(Self::await_executor(loc, args)),
                 "AsyncMul" => {
-                    dbg!(args);
-                    todo!()
+                    return Ok(Self::await_executors(
+                        loc,
+                        "Promise.all",
+                        Self::args_to_promises(loc, args),
+                    ))
                 }
                 "AsyncAll" => return Ok(Self::await_executors(loc, "Promise.all", args)),
                 "AsyncAny" => return Ok(Self::await_executors(loc, "Promise.any", args)),
