@@ -586,17 +586,24 @@ impl Ecma {
 
     fn type_erased_pats(loc: Loc, tele: Option<&Tele<Term>>, tm: &Term) -> Vec<Pat> {
         let mut ret = Vec::default();
+
+        // Try retrieving the function parameters from the function body, which sounds wack.
         let mut body = tm;
-        loop {
-            if let Term::TupleLocal(p, q, _, b) = body {
-                if q.var.as_str().starts_with(UNTUPLED_RHS_PREFIX) {
-                    ret.push(Self::ident_pat(loc, &p.var));
-                    body = b.as_ref();
-                    continue;
+        if matches!(body, Term::Ref(v) if v.as_str() == TUPLED) {
+            // Only retrieve those from destructuring the tupled parameter.
+            loop {
+                if let Term::TupleLocal(p, q, _, b) = body {
+                    if q.var.as_str().starts_with(UNTUPLED_RHS_PREFIX) {
+                        ret.push(Self::ident_pat(loc, &p.var));
+                        body = b.as_ref();
+                        continue;
+                    }
                 }
+                break;
             }
-            break;
         }
+
+        // Try adding the variadic parameter from the explicit parameters.
         if let Some(tele) = tele {
             let mut param_typ = tele
                 .iter()
@@ -628,6 +635,7 @@ impl Ecma {
                 }
             }
         }
+
         ret
     }
 
