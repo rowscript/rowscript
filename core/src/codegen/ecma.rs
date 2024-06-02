@@ -209,10 +209,6 @@ impl Ecma {
         })
     }
 
-    fn is_findable_async(i: &Var) -> bool {
-        matches!(i.as_str(), "Async" | "AsyncMul" | "AsyncAll" | "AsyncAny")
-    }
-
     fn short_arrow(loc: Loc, params: Vec<Pat>, e: Expr) -> Expr {
         Expr::Arrow(ArrowExpr {
             span: loc.into(),
@@ -514,20 +510,18 @@ impl Ecma {
         // Try transforming await expressions.
         let args = self.untuple_args(sigma, loc, x)?;
 
-        if let Find(_, i, _) = f {
-            match i.as_str() {
-                "Async" => return Ok(Self::await_executor(loc, args)),
-                "AsyncMul" => {
-                    return Ok(Self::await_executors(
-                        loc,
-                        "Promise.all",
-                        Self::args_to_promises(loc, args),
-                    ))
-                }
-                "AsyncAll" => return Ok(Self::await_executors(loc, "Promise.all", args)),
-                "AsyncAny" => return Ok(Self::await_executors(loc, "Promise.any", args)),
-                _ => {}
-            }
+        if let Find(_, i, m) = f {
+            return match i.as_str() {
+                "Async" => Ok(Self::await_executor(loc, args)),
+                "AsyncMul" => Ok(Self::await_executors(
+                    loc,
+                    "Promise.all",
+                    Self::args_to_promises(loc, args),
+                )),
+                "AsyncAll" => Ok(Self::await_executors(loc, "Promise.all", args)),
+                "AsyncAny" => Ok(Self::await_executors(loc, "Promise.any", args)),
+                _ => Err(NonErasable(Ref(m.clone()), loc)),
+            };
         }
 
         Ok(Expr::Call(CallExpr {
@@ -1384,10 +1378,6 @@ impl Ecma {
             }
             EmitAsync(a) => self.expr(sigma, loc, a)?,
 
-            Find(_, i, f) if !Self::is_findable_async(i) => {
-                return Err(NonErasable(Ref(f.clone()), loc));
-            }
-
             tm if matches!(tm, Fori(..) | While(..) | Guard(..)) => {
                 Self::iife(loc, self.block(sigma, loc, tm, true)?)
             }
@@ -1507,7 +1497,11 @@ impl Ecma {
                 Undefined => unreachable!(),
                 _ => continue,
             } {
-                Ok(_) | Err(NonErasable(_, _)) => continue,
+                Ok(..) => continue,
+                Err(NonErasable(..)) => {
+                    debug!(target: "codegen", "skipping non-erasable definition: {}", def.name);
+                    continue;
+                }
                 Err(e) => return Err(e),
             };
         }
