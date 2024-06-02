@@ -148,10 +148,7 @@ impl Ecma {
                 span: loc.into(),
                 expr: Box::new(f),
             }))),
-            args: vec![ExprOrSpread {
-                spread: None,
-                expr: Box::new(e),
-            }],
+            args: vec![Self::non_spread(e)],
             type_args: None,
         })
     }
@@ -208,16 +205,7 @@ impl Ecma {
     fn tuple(loc: Loc, fst: Expr, snd: Expr) -> Expr {
         Expr::Array(ArrayLit {
             span: loc.into(),
-            elems: vec![
-                Some(ExprOrSpread {
-                    spread: None,
-                    expr: Box::new(fst),
-                }),
-                Some(ExprOrSpread {
-                    spread: None,
-                    expr: Box::new(snd),
-                }),
-            ],
+            elems: vec![Some(Self::non_spread(fst)), Some(Self::non_spread(snd))],
         })
     }
 
@@ -271,13 +259,7 @@ impl Ecma {
         Expr::Call(CallExpr {
             span: loc.into(),
             callee: Callee::Expr(Box::new(Self::access(loc, a, m))),
-            args: args
-                .into_iter()
-                .map(|e| ExprOrSpread {
-                    spread: None,
-                    expr: Box::new(e),
-                })
-                .collect(),
+            args: args.into_iter().map(Self::non_spread).collect(),
             type_args: None,
         })
     }
@@ -419,10 +401,9 @@ impl Ecma {
                 params: vec![Self::str_ident_pat(loc, "e")],
                 body: Box::new(BlockStmtOrExpr::Expr(Box::new(Self::new_promise(
                     loc,
-                    Some(vec![ExprOrSpread {
-                        spread: None,
-                        expr: Box::new(Expr::Ident(Self::str_ident(loc, "e"))),
-                    }]),
+                    Some(vec![Self::non_spread(Expr::Ident(Self::str_ident(
+                        loc, "e",
+                    )))]),
                 )))),
                 is_async: false,
                 is_generator: false,
@@ -624,12 +605,12 @@ impl Ecma {
         loop {
             match tm {
                 Tuple(a, b) => {
-                    ret.push(self.non_spread_expr(sigma, loc, a)?);
+                    ret.push(Self::non_spread(self.expr(sigma, loc, a)?));
                     tm = b
                 }
                 TT => break,
                 Ref(v) if v.as_str() == TUPLED || v.as_str() == UNTUPLED_ENDS => {
-                    ret.push(self.spread_expr(sigma, loc, tm)?);
+                    ret.push(Self::spread(loc, self.expr(sigma, loc, tm)?));
                     break;
                 }
                 _ => unreachable!(),
@@ -952,23 +933,18 @@ impl Ecma {
         Ok(BlockStmt { span, stmts })
     }
 
-    fn non_spread_expr(
-        &mut self,
-        sigma: &Sigma,
-        loc: Loc,
-        tm: &Term,
-    ) -> Result<ExprOrSpread, Error> {
-        Ok(ExprOrSpread {
+    fn non_spread(e: Expr) -> ExprOrSpread {
+        ExprOrSpread {
             spread: None,
-            expr: Box::new(self.expr(sigma, loc, tm)?),
-        })
+            expr: Box::new(e),
+        }
     }
 
-    fn spread_expr(&mut self, sigma: &Sigma, loc: Loc, tm: &Term) -> Result<ExprOrSpread, Error> {
-        Ok(ExprOrSpread {
+    fn spread(loc: Loc, e: Expr) -> ExprOrSpread {
+        ExprOrSpread {
             spread: Some(loc.into()),
-            expr: Box::new(self.expr(sigma, loc, tm)?),
-        })
+            expr: Box::new(e),
+        }
     }
 
     fn expr(&mut self, sigma: &Sigma, loc: Loc, tm: &Term) -> Result<Expr, Error> {
@@ -986,13 +962,13 @@ impl Ecma {
 
             // Tuple here should only be used as anonymous variadic arguments.
             Tuple(a, b) => {
-                let mut elems = vec![Some(self.non_spread_expr(sigma, loc, a)?)];
+                let mut elems = vec![Some(Self::non_spread(self.expr(sigma, loc, a)?))];
                 let mut body = b.as_ref();
                 loop {
                     match body {
                         Tuple(arg, b) => {
                             body = b.as_ref();
-                            elems.push(Some(self.non_spread_expr(sigma, loc, arg)?));
+                            elems.push(Some(Self::non_spread(self.expr(sigma, loc, arg)?)));
                         }
                         TT => break,
                         _ => unreachable!(),
@@ -1087,7 +1063,7 @@ impl Ecma {
             Arr(xs) => {
                 let mut elems = Vec::default();
                 for x in xs {
-                    elems.push(Some(self.non_spread_expr(sigma, loc, x)?));
+                    elems.push(Some(Self::non_spread(self.expr(sigma, loc, x)?)));
                 }
                 Expr::Array(ArrayLit {
                     span: loc.into(),
@@ -1137,25 +1113,19 @@ impl Ecma {
             Kv(xs) => {
                 let mut elems = Vec::default();
                 for (k, v) in xs {
-                    elems.push(Some(ExprOrSpread {
-                        spread: None,
-                        expr: Box::new(Self::tuple(
-                            loc,
-                            self.expr(sigma, loc, k)?,
-                            self.expr(sigma, loc, v)?,
-                        )),
-                    }));
+                    elems.push(Some(Self::non_spread(Self::tuple(
+                        loc,
+                        self.expr(sigma, loc, k)?,
+                        self.expr(sigma, loc, v)?,
+                    ))));
                 }
                 Expr::New(NewExpr {
                     span: loc.into(),
                     callee: Box::new(Expr::Ident(Self::special_ident("Map"))),
-                    args: Some(vec![ExprOrSpread {
-                        spread: None,
-                        expr: Box::new(Expr::Array(ArrayLit {
-                            span: loc.into(),
-                            elems,
-                        })),
-                    }]),
+                    args: Some(vec![Self::non_spread(Expr::Array(ArrayLit {
+                        span: loc.into(),
+                        elems,
+                    }))]),
                     type_args: None,
                 })
             }
@@ -1360,14 +1330,14 @@ impl Ecma {
                 args: match m.as_ref() {
                     Tuple(..) => self.untuple_args(sigma, loc, m)?,
                     TT => Default::default(),
-                    m => vec![self.spread_expr(sigma, loc, m)?],
+                    m => vec![Self::spread(loc, self.expr(sigma, loc, m)?)],
                 },
                 type_args: None,
             }),
             SetTimeout(f, d, x) => {
                 let mut args = vec![
-                    self.non_spread_expr(sigma, loc, f)?,
-                    self.non_spread_expr(sigma, loc, d)?,
+                    Self::non_spread(self.expr(sigma, loc, f)?),
+                    Self::non_spread(self.expr(sigma, loc, d)?),
                 ];
                 args.extend(self.untuple_args(sigma, loc, x)?);
                 Expr::Call(CallExpr {
@@ -1624,18 +1594,12 @@ impl Ecma {
             }
             params.remove(0); // strips `this`
 
-            let mut args = vec![ExprOrSpread {
-                spread: None,
-                expr: Box::new(Expr::Ident(Self::special_ident(THIS))),
-            }];
+            let mut args = vec![Self::non_spread(Expr::Ident(Self::special_ident(THIS)))];
             for x in &params {
-                args.push(ExprOrSpread {
-                    spread: None,
-                    expr: Box::new(Expr::Ident(match &x.pat {
-                        Pat::Ident(binding) => binding.id.clone(),
-                        _ => unreachable!(),
-                    })),
-                });
+                args.push(Self::non_spread(Expr::Ident(match &x.pat {
+                    Pat::Ident(binding) => binding.id.clone(),
+                    _ => unreachable!(),
+                })));
             }
 
             // Simply a proxy call.
