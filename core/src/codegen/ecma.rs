@@ -225,6 +225,18 @@ impl Ecma {
         })
     }
 
+    fn block_arrow(loc: Loc, params: Vec<Pat>, block: BlockStmt) -> Expr {
+        Expr::Arrow(ArrowExpr {
+            span: loc.into(),
+            params,
+            body: Box::new(BlockStmtOrExpr::BlockStmt(block)),
+            is_async: false,
+            is_generator: false,
+            type_params: None,
+            return_type: None,
+        })
+    }
+
     /// ```ts
     /// ((x) => x.done ? None : Ok({key: x.value[0], value: x.value[1]}))(e)
     /// ```
@@ -626,15 +638,11 @@ impl Ecma {
     ) -> Result<Expr, Error> {
         Ok(Self::paren_call(
             loc,
-            Expr::Arrow(ArrowExpr {
-                span: loc.into(),
-                params: v.map_or_else(Default::default, |v| vec![Self::ident_pat(loc, v)]),
-                body: Box::new(BlockStmtOrExpr::BlockStmt(self.block(sigma, loc, b, true)?)),
-                is_async: false,
-                is_generator: false,
-                type_params: None,
-                return_type: None,
-            }),
+            Self::block_arrow(
+                loc,
+                v.map_or_else(Default::default, |v| vec![Self::ident_pat(loc, v)]),
+                self.block(sigma, loc, b, true)?,
+            ),
             self.expr(sigma, loc, a)?,
         ))
     }
@@ -662,17 +670,11 @@ impl Ecma {
             span: loc.into(),
             arg: Some(Box::new(Self::paren_call(
                 loc,
-                Expr::Arrow(ArrowExpr {
-                    span: loc.into(),
-                    params: vec![Self::ident_pat(loc, v)],
-                    body: Box::new(BlockStmtOrExpr::BlockStmt(
-                        self.block(sigma, loc, tm, true)?,
-                    )),
-                    is_async: false,
-                    is_generator: false,
-                    type_params: None,
-                    return_type: None,
-                }),
+                Self::block_arrow(
+                    loc,
+                    vec![Self::ident_pat(loc, v)],
+                    self.block(sigma, loc, tm, true)?,
+                ),
                 x,
             ))),
         }))
@@ -717,15 +719,7 @@ impl Ecma {
                 span: loc.into(),
                 callee: Callee::Expr(Box::from(Expr::Paren(ParenExpr {
                     span: loc.into(),
-                    expr: Box::new(Expr::Arrow(ArrowExpr {
-                        span: loc.into(),
-                        params: Default::default(),
-                        body: Box::new(BlockStmtOrExpr::BlockStmt(b)),
-                        is_async: false,
-                        is_generator: false,
-                        type_params: None,
-                        return_type: None,
-                    })),
+                    expr: Box::new(Self::block_arrow(loc, Default::default(), b)),
                 }))),
                 args: Default::default(),
                 type_args: None,
@@ -1001,15 +995,11 @@ impl Ecma {
                 prop: MemberProp::Ident(Self::ident(loc, r)),
             }),
             Lam(p, _, b) => match p.info {
-                Explicit => Expr::Arrow(ArrowExpr {
-                    span: loc.into(),
-                    params: Self::type_erased_pats(loc, None, b),
-                    body: Box::new(BlockStmtOrExpr::BlockStmt(self.block(sigma, loc, b, true)?)),
-                    is_async: false,
-                    is_generator: false,
-                    type_params: None,
-                    return_type: None,
-                }),
+                Explicit => Self::block_arrow(
+                    loc,
+                    Self::type_erased_pats(loc, None, b),
+                    self.block(sigma, loc, b, true)?,
+                ),
                 _ => self.expr(sigma, loc, b)?,
             },
 
@@ -1281,18 +1271,14 @@ impl Ecma {
 
                 Self::paren_call(
                     loc,
-                    Expr::Arrow(ArrowExpr {
-                        span: loc.into(),
-                        params: vec![Self::str_ident_pat(loc, "x")],
-                        body: Box::new(BlockStmtOrExpr::BlockStmt(BlockStmt {
+                    Self::block_arrow(
+                        loc,
+                        vec![Self::str_ident_pat(loc, "x")],
+                        BlockStmt {
                             span: loc.into(),
                             stmts,
-                        })),
-                        is_async: false,
-                        is_generator: false,
-                        type_params: None,
-                        return_type: None,
-                    }),
+                        },
+                    ),
                     self.expr(sigma, loc, a)?,
                 )
             }
