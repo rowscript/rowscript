@@ -14,8 +14,7 @@ async function f1() {
 
 async function f2(): Array<number> {
     const a: Executor<number> = (resolve) => { resolve(42) };
-    const b: Executor<number> = (resolve) => { resolve(69) };
-    awaits.all([a, b])
+    awaits.all([a, (resolve) => resolve(69)])
 }
 
 async function f3(): number {
