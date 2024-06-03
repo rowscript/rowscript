@@ -4,7 +4,7 @@ use log::trace;
 
 use crate::theory::abs::data::{CaseMap, PartialClass, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
-use crate::theory::abs::effect::has_side_effect;
+use crate::theory::abs::fold::should_fold;
 use crate::theory::abs::reflect::Reflector;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
@@ -119,7 +119,7 @@ impl<'a> Normalizer<'a> {
             }
             Local(p, a, b) => {
                 let a = self.term_box(a)?;
-                if has_side_effect(a.as_ref()) {
+                if should_fold(a.as_ref()) {
                     Local(p, a, self.term_box(b)?)
                 } else {
                     self.rho.insert(p.var, a);
@@ -153,7 +153,7 @@ impl<'a> Normalizer<'a> {
                 let f = self.term_box(f)?;
                 let x = self.term_box(x)?;
                 match *f {
-                    Lam(p, _, b) if !has_side_effect(x.as_ref()) => {
+                    Lam(p, _, b) if !should_fold(x.as_ref()) => {
                         self.rho.insert(p.var, x);
                         self.term(*b)?
                     }

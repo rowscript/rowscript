@@ -1,43 +1,41 @@
 use crate::theory::abs::data::Term;
 
-pub fn has_side_effect(tm: &Term) -> bool {
+pub fn should_fold(tm: &Term) -> bool {
     use Term::*;
     match tm {
         Fields(fields) => {
             for tm in fields.values() {
-                if has_side_effect(tm) {
+                if should_fold(tm) {
                     return true;
                 }
             }
             false
         }
         Switch(a, b, d) => {
-            if has_side_effect(a) {
+            if should_fold(a) {
                 return true;
             }
             for (_, a) in b.values() {
-                if has_side_effect(a) {
+                if should_fold(a) {
                     return true;
                 }
             }
             if let Some((_, tm)) = d {
-                if has_side_effect(tm) {
+                if should_fold(tm) {
                     return true;
                 }
             }
             false
         }
         Guard(p, a, e, b) => {
-            let mut has_effect = has_side_effect(p) || has_side_effect(a) || has_side_effect(b);
+            let mut fold = should_fold(p) || should_fold(a) || should_fold(b);
             if let Some(e) = e {
-                has_effect = has_effect || has_side_effect(e);
+                fold = fold || should_fold(e);
             }
-            has_effect
+            fold
         }
 
-        While(a, b, c) | If(a, b, c) => {
-            has_side_effect(a) || has_side_effect(b) || has_side_effect(c)
-        }
+        While(a, b, c) | If(a, b, c) => should_fold(a) || should_fold(b) || should_fold(c),
 
         Local(_, a, b)
         | Fori(a, b)
@@ -64,7 +62,7 @@ pub fn has_side_effect(tm: &Term) -> bool {
         | NumLt(a, b)
         | NumGt(a, b)
         | Combine(.., a, b)
-        | Concat(a, b) => has_side_effect(a) || has_side_effect(b),
+        | Concat(a, b) => should_fold(a) || should_fold(b),
 
         Lam(.., a)
         | BoolNot(a)
@@ -76,7 +74,7 @@ pub fn has_side_effect(tm: &Term) -> bool {
         | Variant(a)
         | Up(a, ..)
         | Find(a, ..)
-        | Spread(a) => has_side_effect(a),
+        | Spread(a) => should_fold(a),
 
         Extern(..) | MetaRef(..) | Undef(..) | LocalSet(..) | LocalUpdate(..) | Return(..)
         | Continue | Break | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..)
