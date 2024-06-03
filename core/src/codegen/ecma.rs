@@ -586,7 +586,7 @@ impl Ecma {
         if matches!(body, Term::Ref(v) if v.as_str() == TUPLED) {
             // Only retrieve those from destructuring the tupled parameter.
             loop {
-                if let Term::TupleLocal(p, q, _, b) = body {
+                if let Term::TupleBind(p, q, _, b) = body {
                     if q.var.as_str().starts_with(UNTUPLED_RHS_PREFIX) {
                         ret.push(Self::ident_pat(loc, &p.var));
                         body = b.as_ref();
@@ -722,13 +722,7 @@ impl Ecma {
         }))
     }
 
-    fn local_decl(
-        &mut self,
-        sigma: &Sigma,
-        loc: Loc,
-        v: &Var,
-        tm: &Term,
-    ) -> Result<VarDecl, Error> {
+    fn bind_decl(&mut self, sigma: &Sigma, loc: Loc, v: &Var, tm: &Term) -> Result<VarDecl, Error> {
         Ok(VarDecl {
             span: loc.into(),
             kind: VarDeclKind::Var,
@@ -742,7 +736,7 @@ impl Ecma {
         })
     }
 
-    fn local_update(&mut self, sigma: &Sigma, loc: Loc, v: &Var, tm: &Term) -> Result<Expr, Error> {
+    fn update(&mut self, sigma: &Sigma, loc: Loc, v: &Var, tm: &Term) -> Result<Expr, Error> {
         Ok(Expr::Assign(AssignExpr {
             span: loc.into(),
             op: AssignOp::Assign,
@@ -781,19 +775,19 @@ impl Ecma {
         use Term::*;
 
         let (init, body) = match body {
-            Local(p, a, b) | LocalSet(p, a, b) => (
+            Const(p, a, b) | Let(p, a, b) => (
                 Some(VarDeclOrExpr::VarDecl(Box::new(
-                    self.local_decl(sigma, loc, &p.var, a)?,
+                    self.bind_decl(sigma, loc, &p.var, a)?,
                 ))),
                 b,
             ),
-            LocalUpdate(v, a, b) => (
+            Update(v, a, b) => (
                 Some(VarDeclOrExpr::Expr(Box::new(
-                    self.local_update(sigma, loc, v, a)?,
+                    self.update(sigma, loc, v, a)?,
                 ))),
                 b,
             ),
-            UnitLocal(a, b) => (
+            UnitBind(a, b) => (
                 Some(VarDeclOrExpr::Expr(Box::new(self.expr(sigma, loc, a)?))),
                 b,
             ),
@@ -801,13 +795,13 @@ impl Ecma {
         };
 
         let (test, body) = match body.as_ref() {
-            LocalSet(_, a, b) => (Some(Box::new(self.expr(sigma, loc, a)?)), b),
+            Let(_, a, b) => (Some(Box::new(self.expr(sigma, loc, a)?)), b),
             _ => unreachable!(),
         };
 
         let (update, body) = match body.as_ref() {
-            LocalUpdate(v, a, b) => (Some(Box::new(self.local_update(sigma, loc, v, a)?)), b),
-            UnitLocal(a, b) => (Some(Box::new(self.expr(sigma, loc, a)?)), b),
+            Update(v, a, b) => (Some(Box::new(self.update(sigma, loc, v, a)?)), b),
+            UnitBind(a, b) => (Some(Box::new(self.expr(sigma, loc, a)?)), b),
             _ => unreachable!(),
         };
 
@@ -851,7 +845,7 @@ impl Ecma {
             use Term::*;
 
             // Only strip the tupled lets from the parameters.
-            if let TupleLocal(_, _, a, _) = tm {
+            if let TupleBind(_, _, a, _) = tm {
                 match a.as_ref() {
                     Ref(v) if v.as_str() == TUPLED => {}
                     _ => return tm,
@@ -859,7 +853,7 @@ impl Ecma {
             }
 
             loop {
-                if let TupleLocal(_, q, _, b) = tm {
+                if let TupleBind(_, q, _, b) = tm {
                     if q.var.as_str().starts_with(UNTUPLED_RHS_PREFIX) {
                         tm = b;
                         continue;
@@ -877,16 +871,16 @@ impl Ecma {
         let mut tm = strip_untupled_lets(body);
         loop {
             match tm {
-                Local(p, a, b) | LocalSet(p, a, b) => {
+                Const(p, a, b) | Let(p, a, b) => {
                     stmts.push(Stmt::Decl(Decl::Var(Box::new(
-                        self.local_decl(sigma, loc, &p.var, a)?,
+                        self.bind_decl(sigma, loc, &p.var, a)?,
                     ))));
                     tm = b
                 }
-                LocalUpdate(v, a, b) => {
+                Update(v, a, b) => {
                     stmts.push(Stmt::Expr(ExprStmt {
                         span,
-                        expr: Box::new(self.local_update(sigma, loc, v, a)?),
+                        expr: Box::new(self.update(sigma, loc, v, a)?),
                     }));
                     tm = b;
                 }
@@ -918,12 +912,12 @@ impl Ecma {
                     tm = &TT
                 }
                 // Only valid on syntax like `const (a, b, c, d) = expr`.
-                TupleLocal(p, _, a, b) => {
+                TupleBind(p, _, a, b) => {
                     // Collect all tupled lets to form `const [a, b, c, d] = expr` in JS.
                     let mut elems = vec![Some(Self::ident_pat(loc, &p.var))];
                     let mut body = b.as_ref();
                     loop {
-                        if let TupleLocal(p_next, _, _, b_next) = body {
+                        if let TupleBind(p_next, _, _, b_next) = body {
                             elems.push(Some(Self::ident_pat(loc, &p_next.var)));
                             body = b_next;
                             continue;
@@ -948,7 +942,7 @@ impl Ecma {
                     }))));
                     tm = body;
                 }
-                UnitLocal(a, b) => {
+                UnitBind(a, b) => {
                     stmts.extend(self.block(sigma, loc, a, false)?.stmts);
                     tm = b
                 }
@@ -996,10 +990,10 @@ impl Ecma {
                 Some(_) => unreachable!(),
             },
 
-            Local(p, a, b) | LocalSet(p, a, b) => {
+            Const(p, a, b) | Let(p, a, b) => {
                 self.lambda_encoded_let(sigma, loc, Some(&p.var), a, b)?
             }
-            UnitLocal(a, b) => self.lambda_encoded_let(sigma, loc, None, a, b)?,
+            UnitBind(a, b) => self.lambda_encoded_let(sigma, loc, None, a, b)?,
 
             // Tuple here should only be used as anonymous variadic arguments.
             Tuple(a, b) => {
@@ -1487,7 +1481,7 @@ impl Ecma {
             match match &def.body {
                 Fn { f, .. } | Method { f, .. } => self.func_decl(&mut items, sigma, &def, f),
                 Postulate => self.postulate_decl(&mut items, &def),
-                Const(_, f) => self.const_decl(&mut items, sigma, &def, f),
+                Constant(_, f) => self.const_decl(&mut items, sigma, &def, f),
                 Class { ctor, methods, .. } => {
                     self.not_escaping_this = true;
                     let ret = self.ctor_helper_decl(&mut items, sigma, &def.name, ctor, methods);

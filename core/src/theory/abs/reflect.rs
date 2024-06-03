@@ -133,7 +133,7 @@ impl<'a> Reflector<'a> {
         Ok(Box::new(Lam(
             Self::tupled_param(tupled.clone(), ty.clone()),
             Default::default(),
-            Box::new(TupleLocal(
+            Box::new(TupleBind(
                 Param {
                     var: x.clone(),
                     info: ParamInfo::Explicit,
@@ -250,7 +250,7 @@ impl<'a> Reflector<'a> {
         Box::new(Lam(
             Self::tupled_param(tupled.clone(), ty.clone()),
             Default::default(),
-            Box::new(TupleLocal(
+            Box::new(TupleBind(
                 Param {
                     var: x.clone(),
                     info: ParamInfo::Explicit,

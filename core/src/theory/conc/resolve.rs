@@ -128,7 +128,7 @@ impl<'a> Resolver<'a> {
             },
             Postulate => Postulate,
             Alias(t) => Alias(self.expr(t)?),
-            Const(anno, f) => Const(anno, self.expr(f)?),
+            Constant(anno, f) => Constant(anno, self.expr(f)?),
             Verify(a) => Verify(self.expr(a)?),
 
             Interface {
@@ -206,7 +206,7 @@ impl<'a> Resolver<'a> {
         let k = v.as_str();
         self.names
             .get(k)
-            .or_else(|| self.names.get(v.local().as_str()))
+            .or_else(|| self.names.get(v.bind_let().as_str()))
             .or_else(|| self.ubiquitous.get(k))
     }
 
@@ -264,9 +264,9 @@ impl<'a> Resolver<'a> {
                     None => return Err(UnresolvedVar(loc)),
                 },
                 None => {
-                    let local = self.get(&r.local());
+                    let bind = self.get(&r.bind_let());
                     let global = self.get(&r);
-                    match (local, global) {
+                    match (bind, global) {
                         (Some(v), _) | (_, Some(v)) => {
                             let k = v.0;
                             let v = v.1.clone();
@@ -279,9 +279,9 @@ impl<'a> Resolver<'a> {
                     }
                 }
             },
-            Local(loc, x, typ, a, b) => {
+            Const(loc, x, typ, a, b) => {
                 let b = self.bodied(&[&x], b)?;
-                Local(
+                Const(
                     loc,
                     x,
                     if let Some(ty) = typ {
@@ -293,15 +293,15 @@ impl<'a> Resolver<'a> {
                     b,
                 )
             }
-            LocalSet(loc, mut x, typ, a, b) => {
+            Let(loc, mut x, typ, a, b) => {
                 if x.as_str() != UNBOUND {
-                    x = x.local();
+                    x = x.bind_let();
                     if self.names.contains_key(x.as_str()) {
                         return Err(DuplicateName(loc));
                     }
                 }
                 let b = self.bodied(&[&x], b)?;
-                LocalSet(
+                Let(
                     loc,
                     x,
                     if let Some(ty) = typ {
@@ -313,8 +313,8 @@ impl<'a> Resolver<'a> {
                     b,
                 )
             }
-            LocalUpdate(loc, x, a, b) => match self.names.get(x.local().as_str()) {
-                Some(x) => LocalUpdate(loc, x.1.clone(), self.expr(a)?, self.expr(b)?),
+            Update(loc, x, a, b) => match self.names.get(x.bind_let().as_str()) {
+                Some(x) => Update(loc, x.1.clone(), self.expr(a)?, self.expr(b)?),
                 None => return Err(UnresolvedVar(loc)),
             },
             While(loc, p, b, r) => While(loc, self.expr(p)?, self.expr(b)?, self.expr(r)?),
@@ -337,7 +337,7 @@ impl<'a> Resolver<'a> {
             }
             TupledLam(loc, vars, b) => {
                 let x = Var::tupled();
-                let wrapped = Expr::wrap_tuple_locals(loc, x.clone(), vars, *b);
+                let wrapped = Expr::wrap_tuple_binds(loc, x.clone(), vars, *b);
                 let desugared = Lam(loc, x.clone(), Box::new(wrapped));
                 *self.bodied(&[&x], Box::new(desugared))?
             }
@@ -358,11 +358,11 @@ impl<'a> Resolver<'a> {
                 Sigma(loc, self.param(p)?, b)
             }
             Tuple(loc, a, b) => Tuple(loc, self.expr(a)?, self.expr(b)?),
-            TupleLocal(loc, x, y, a, b) => {
+            TupleBind(loc, x, y, a, b) => {
                 let b = self.bodied(&[&x, &y], b)?;
-                TupleLocal(loc, x, y, self.expr(a)?, b)
+                TupleBind(loc, x, y, self.expr(a)?, b)
             }
-            UnitLocal(loc, a, b) => UnitLocal(loc, self.expr(a)?, self.expr(b)?),
+            UnitBind(loc, a, b) => UnitBind(loc, self.expr(a)?, self.expr(b)?),
             If(loc, p, t, e) => If(loc, self.expr(p)?, self.expr(t)?, self.expr(e)?),
             Arr(loc, xs) => {
                 let mut resolved = Vec::default();

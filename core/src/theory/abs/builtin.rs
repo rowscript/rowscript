@@ -5,7 +5,7 @@ use crate::theory::abs::data::Term::{
     EmitAsync, Enum, ErrorThrow, Fields, Find, Map, MapClear, MapDelete, MapGet, MapHas, MapIter,
     MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt, NumMod,
     NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object, Pi, Ref, Reflected, Row, SetTimeout,
-    StrAdd, StrEq, StrNeq, String, TupleLocal, Unionify, Unit, Univ,
+    StrAdd, StrEq, StrNeq, String, TupleBind, Unionify, Unit, Univ,
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
@@ -57,8 +57,8 @@ fn explicit_sigma1(p: Var, ty: Term) -> Term {
     explicit_sigma((p, ty), Unit)
 }
 
-fn explicit_tuple_local(p: (Var, Term), q: (Var, Term), a: Term, b: Term) -> Term {
-    TupleLocal(
+fn explicit_tuple_bind(p: (Var, Term), q: (Var, Term), a: Term, b: Term) -> Term {
+    TupleBind(
         explicit(p.0, p.1),
         explicit(q.0, q.1),
         Box::new(a),
@@ -66,8 +66,8 @@ fn explicit_tuple_local(p: (Var, Term), q: (Var, Term), a: Term, b: Term) -> Ter
     )
 }
 
-fn explicit_tuple_local1(p: Var, ty: Term, a: Term, b: Term) -> Term {
-    explicit_tuple_local((p, ty), (Var::unbound(), Unit), a, b)
+fn explicit_tuple_bind1(p: Var, ty: Term, a: Term, b: Term) -> Term {
+    explicit_tuple_bind((p, ty), (Var::unbound(), Unit), a, b)
 }
 
 fn tuple_param<const N: usize>(var: Var, tele: [(Var, Term); N]) -> Param<Term> {
@@ -117,7 +117,7 @@ macro_rules! un_op {
                 $builtin_name,
                 tele,
                 $ret,
-                explicit_tuple_local1(a.clone(), $typ, tupled, $op(Box::new(Ref(a)))),
+                explicit_tuple_bind1(a.clone(), $typ, tupled, $op(Box::new(Ref(a)))),
             )
         }
     };
@@ -134,11 +134,11 @@ macro_rules! bin_op {
                 $builtin_name,
                 tele,
                 $ret,
-                explicit_tuple_local(
+                explicit_tuple_bind(
                     (a.clone(), $typ),
                     (a_rhs.clone(), explicit_sigma1(b.clone(), $typ)),
                     tupled,
-                    explicit_tuple_local1(
+                    explicit_tuple_bind1(
                         b.clone(),
                         $typ,
                         Ref(a_rhs),
@@ -246,7 +246,7 @@ impl Builtins {
                 tuple_param(tupled.clone(), [(m.clone(), m_ty.clone())]),
             ],
             Ref(t),
-            explicit_tuple_local1(m.clone(), m_ty, Ref(tupled), ErrorThrow(Box::new(Ref(m)))),
+            explicit_tuple_bind1(m.clone(), m_ty, Ref(tupled), ErrorThrow(Box::new(Ref(m)))),
         )
     }
 
@@ -289,7 +289,7 @@ impl Builtins {
                 ),
             ],
             Unit,
-            explicit_tuple_local(
+            explicit_tuple_bind(
                 (
                     f.clone(),
                     unbound_explicit_pi(AnonVarargs(Box::new(Ref(varargs.clone()))), Ref(t)),
@@ -299,7 +299,7 @@ impl Builtins {
                     unbound_explicit_sigma(Number, Ref(varargs.clone())),
                 ),
                 Ref(tupled),
-                explicit_tuple_local(
+                explicit_tuple_bind(
                     (d.clone(), Number),
                     (ends.clone(), Ref(varargs)),
                     Ref(f_rhs),
@@ -322,7 +322,7 @@ impl Builtins {
             "unionify",
             tele,
             a_ty.clone(),
-            explicit_tuple_local1(a.clone(), a_ty, Ref(tupled), Unionify(Box::new(Ref(a)))),
+            explicit_tuple_bind1(a.clone(), a_ty, Ref(tupled), Unionify(Box::new(Ref(a)))),
         )
     }
 
@@ -385,7 +385,7 @@ impl Builtins {
             "arrayIter#next",
             tele,
             option_type(Ref(t)),
-            explicit_tuple_local1(
+            explicit_tuple_bind1(
                 a.clone(),
                 a_ty.clone(),
                 tupled,
@@ -416,7 +416,7 @@ impl Builtins {
                 tuple_param(tupled.clone(), [(a.clone(), a_ty.clone())]),
             ],
             Number,
-            explicit_tuple_local1(
+            explicit_tuple_bind1(
                 a.clone(),
                 a_ty.clone(),
                 Ref(tupled),
@@ -443,11 +443,11 @@ impl Builtins {
                 ),
             ],
             Number,
-            explicit_tuple_local(
+            explicit_tuple_bind(
                 (a.clone(), a_ty),
                 (a_rhs.clone(), explicit_sigma1(v.clone(), v_ty.clone())),
                 Ref(tupled),
-                explicit_tuple_local1(
+                explicit_tuple_bind1(
                     v.clone(),
                     v_ty,
                     Ref(a_rhs),
@@ -479,11 +479,11 @@ impl Builtins {
                 ),
             ],
             Unit,
-            explicit_tuple_local(
+            explicit_tuple_bind(
                 (a.clone(), a_ty),
                 (a_rhs.clone(), explicit_sigma1(f.clone(), f_ty.clone())),
                 Ref(tupled),
-                explicit_tuple_local1(
+                explicit_tuple_bind1(
                     f.clone(),
                     f_ty,
                     Ref(a_rhs),
@@ -508,11 +508,11 @@ impl Builtins {
             "array#at",
             tele,
             option_type(Ref(t)),
-            explicit_tuple_local(
+            explicit_tuple_bind(
                 (a.clone(), a_ty),
                 (a_rhs.clone(), explicit_sigma1(i.clone(), i_ty.clone())),
                 tupled,
-                explicit_tuple_local1(
+                explicit_tuple_bind1(
                     i.clone(),
                     i_ty,
                     Ref(a_rhs),
@@ -544,7 +544,7 @@ impl Builtins {
             "array#set",
             tele,
             Unit,
-            explicit_tuple_local(
+            explicit_tuple_bind(
                 (a.clone(), a_ty),
                 (
                     a_rhs.clone(),
@@ -554,11 +554,11 @@ impl Builtins {
                     ),
                 ),
                 tupled,
-                explicit_tuple_local(
+                explicit_tuple_bind(
                     (i.clone(), i_ty),
                     (i_rhs.clone(), explicit_sigma1(v.clone(), v_ty.clone())),
                     Ref(a_rhs),
-                    explicit_tuple_local1(
+                    explicit_tuple_bind1(
                         v.clone(),
                         v_ty,
                         Ref(i_rhs),
@@ -581,7 +581,7 @@ impl Builtins {
                 tuple_param(tupled.clone(), [(a.clone(), a_ty.clone())]),
             ],
             ArrayIterator(Box::new(Ref(t))),
-            explicit_tuple_local1(a.clone(), a_ty, Ref(tupled), ArrIter(Box::new(Ref(a)))),
+            explicit_tuple_bind1(a.clone(), a_ty, Ref(tupled), ArrIter(Box::new(Ref(a)))),
         )
     }
 
@@ -604,7 +604,7 @@ impl Builtins {
             "mapIter#next",
             tele,
             option_type(Ref(t)),
-            explicit_tuple_local1(m.clone(), m_ty, tupled, MapIterNext(Box::new(Ref(m)))),
+            explicit_tuple_bind1(m.clone(), m_ty, tupled, MapIterNext(Box::new(Ref(m)))),
         )
     }
 
@@ -639,11 +639,11 @@ impl Builtins {
                 ),
             ],
             Boolean,
-            explicit_tuple_local(
+            explicit_tuple_bind(
                 (m.clone(), m_ty),
                 (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
                 Ref(tupled),
-                explicit_tuple_local1(
+                explicit_tuple_bind1(
                     key.clone(),
                     key_ty,
                     Ref(m_rhs),
@@ -669,11 +669,11 @@ impl Builtins {
             "map#get",
             tele,
             Ref(v),
-            explicit_tuple_local(
+            explicit_tuple_bind(
                 (m.clone(), m_ty),
                 (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
                 tupled,
-                explicit_tuple_local1(
+                explicit_tuple_bind1(
                     key.clone(),
                     key_ty,
                     Ref(m_rhs),
@@ -706,7 +706,7 @@ impl Builtins {
             "map#set",
             tele,
             Unit,
-            explicit_tuple_local(
+            explicit_tuple_bind(
                 (m.clone(), m_ty),
                 (
                     m_rhs.clone(),
@@ -716,14 +716,14 @@ impl Builtins {
                     ),
                 ),
                 tupled,
-                explicit_tuple_local(
+                explicit_tuple_bind(
                     (key.clone(), key_ty),
                     (
                         key_rhs.clone(),
                         explicit_sigma1(val.clone(), val_ty.clone()),
                     ),
                     Ref(m_rhs),
-                    explicit_tuple_local1(
+                    explicit_tuple_bind1(
                         val.clone(),
                         val_ty,
                         Ref(key_rhs),
@@ -750,11 +750,11 @@ impl Builtins {
             "map#delete",
             tele,
             Boolean,
-            explicit_tuple_local(
+            explicit_tuple_bind(
                 (m.clone(), m_ty),
                 (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
                 tupled,
-                explicit_tuple_local1(
+                explicit_tuple_bind1(
                     key.clone(),
                     key_ty,
                     Ref(m_rhs),
@@ -774,7 +774,7 @@ impl Builtins {
             "map#clear",
             tele,
             Unit,
-            explicit_tuple_local1(m.clone(), m_ty, tupled, MapClear(Box::new(Ref(m)))),
+            explicit_tuple_bind1(m.clone(), m_ty, tupled, MapClear(Box::new(Ref(m)))),
         )
     }
 
@@ -788,7 +788,7 @@ impl Builtins {
             "map#iter",
             tele,
             MapIterator(Box::new(entry_type(Ref(k), Ref(v)))),
-            explicit_tuple_local1(m.clone(), m_ty, tupled, MapIter(Box::new(Ref(m)))),
+            explicit_tuple_bind1(m.clone(), m_ty, tupled, MapIter(Box::new(Ref(m)))),
         )
     }
 

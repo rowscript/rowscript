@@ -21,9 +21,9 @@ pub enum Expr {
     Hole(Loc),
     InsertedHole(Loc),
 
-    Local(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
-    LocalSet(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
-    LocalUpdate(Loc, Var, Box<Self>, Box<Self>),
+    Const(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
+    Let(Loc, Var, Option<Box<Self>>, Box<Self>, Box<Self>),
+    Update(Loc, Var, Box<Self>, Box<Self>),
     While(Loc, Box<Self>, Box<Self>, Box<Self>),
     Fori(Loc, Box<Self>, Box<Self>),
     Guard(Loc, Box<Self>, Box<Self>, Option<Box<Self>>, Box<Self>),
@@ -41,11 +41,11 @@ pub enum Expr {
 
     Sigma(Loc, Param<Self>, Box<Self>),
     Tuple(Loc, Box<Self>, Box<Self>),
-    TupleLocal(Loc, Var, Var, Box<Self>, Box<Self>),
+    TupleBind(Loc, Var, Var, Box<Self>, Box<Self>),
 
     Unit(Loc),
     TT(Loc),
-    UnitLocal(Loc, Box<Self>, Box<Self>),
+    UnitBind(Loc, Box<Self>, Box<Self>),
 
     Boolean(Loc),
     False(Loc),
@@ -123,9 +123,9 @@ impl Expr {
             | Qualified(loc, ..)
             | Hole(loc)
             | InsertedHole(loc)
-            | Local(loc, ..)
-            | LocalSet(loc, ..)
-            | LocalUpdate(loc, ..)
+            | Const(loc, ..)
+            | Let(loc, ..)
+            | Update(loc, ..)
             | While(loc, ..)
             | Fori(loc, ..)
             | Guard(loc, ..)
@@ -140,10 +140,10 @@ impl Expr {
             | RevApp(loc, ..)
             | Sigma(loc, ..)
             | Tuple(loc, ..)
-            | TupleLocal(loc, ..)
+            | TupleBind(loc, ..)
             | Unit(loc)
             | TT(loc)
-            | UnitLocal(loc, ..)
+            | UnitBind(loc, ..)
             | Boolean(loc)
             | False(loc)
             | True(loc)
@@ -180,11 +180,11 @@ impl Expr {
         }
     }
 
-    pub fn wrap_tuple_locals(loc: Loc, tupled: Var, vars: Vec<Self>, b: Self) -> Self {
-        Self::wrap_expr_tuple_locals(Unresolved(loc, None, tupled), vars, b)
+    pub fn wrap_tuple_binds(loc: Loc, tupled: Var, vars: Vec<Self>, b: Self) -> Self {
+        Self::wrap_expr_tuple_binds(Unresolved(loc, None, tupled), vars, b)
     }
 
-    pub fn wrap_expr_tuple_locals(tupled: Self, vars: Vec<Self>, b: Self) -> Self {
+    pub fn wrap_expr_tuple_binds(tupled: Self, vars: Vec<Self>, b: Self) -> Self {
         use Expr::*;
 
         let mut untupled_rhs = Vec::default();
@@ -211,7 +211,7 @@ impl Expr {
                 _ => unreachable!(),
             };
             let tm = untupled_rhs.get(i + 1).unwrap();
-            wrapped = TupleLocal(
+            wrapped = TupleBind(
                 loc,
                 lhs,
                 rhs.clone(),
@@ -254,21 +254,21 @@ impl Display for Expr {
                 Qualified(_, m, r) => format!("{m}::{r}"),
                 Hole(_) => "?".to_string(),
                 InsertedHole(_) => "?i".to_string(),
-                Local(_, v, typ, a, b) => {
+                Const(_, v, typ, a, b) => {
                     if let Some(ty) = typ {
                         format!("const {v}: {ty} = {a};\n\t{b}")
                     } else {
                         format!("const {v} = {a};\n\t{b}")
                     }
                 }
-                LocalSet(_, v, typ, a, b) => {
+                Let(_, v, typ, a, b) => {
                     if let Some(ty) = typ {
                         format!("let {v}: {ty} = {a};\n\t{b}")
                     } else {
                         format!("let {v} = {a};\n\t{b}")
                     }
                 }
-                LocalUpdate(_, a, v, b) => format!("{a} = {v};\n\t{b}"),
+                Update(_, a, v, b) => format!("{a} = {v};\n\t{b}"),
                 While(_, p, b, r) => format!("while ({p}) {{\n\t{b}\n}}\n{r}"),
                 Fori(_, b, r) => format!("for {{ {b} }}\n{r}"),
                 Guard(_, p, b, e, r) => {
@@ -299,10 +299,10 @@ impl Display for Expr {
                 RevApp(_, f, x) => format!("({x}.{f})"),
                 Sigma(_, p, b) => format!("{p} * {b}"),
                 Tuple(_, a, b) => format!("[{a}, {b}]"),
-                TupleLocal(_, x, y, a, b) => format!("const [{x}, {y}] = {a};\n\t{b}"),
+                TupleBind(_, x, y, a, b) => format!("const [{x}, {y}] = {a};\n\t{b}"),
                 Unit(_) => "unit".to_string(),
                 TT(_) => "()".to_string(),
-                UnitLocal(_, a, b) => format!("{a};\n\t{b}"),
+                UnitBind(_, a, b) => format!("{a};\n\t{b}"),
                 Boolean(_) => "boolean".to_string(),
                 False(_) => "false".to_string(),
                 True(_) => "true".to_string(),

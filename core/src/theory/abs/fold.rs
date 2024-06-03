@@ -37,12 +37,12 @@ pub fn should_fold(tm: &Term) -> bool {
 
         While(a, b, c) | If(a, b, c) => should_fold(a) || should_fold(b) || should_fold(c),
 
-        Local(_, a, b)
+        Const(_, a, b)
         | Fori(a, b)
         | App(a, _, b)
         | Tuple(a, b)
-        | TupleLocal(.., a, b)
-        | UnitLocal(a, b)
+        | TupleBind(.., a, b)
+        | UnitBind(a, b)
         | BoolOr(a, b)
         | BoolAnd(a, b)
         | BoolEq(a, b)
@@ -76,11 +76,11 @@ pub fn should_fold(tm: &Term) -> bool {
         | Find(a, ..)
         | Spread(a) => should_fold(a),
 
-        Extern(..) | MetaRef(..) | Undef(..) | LocalSet(..) | LocalUpdate(..) | Return(..)
-        | Continue | Break | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..)
-        | ArrForeach(..) | ArrAt(..) | ArrInsert(..) | ArrIter(..) | MapIterNext(..) | Kv(..)
-        | MapHas(..) | MapGet(..) | MapSet(..) | MapDelete(..) | MapClear(..) | MapIter(..)
-        | Unionify(..) | ErrorThrow(..) | ConsoleLog(..) | SetTimeout(..) | EmitAsync(..) => true,
+        Extern(..) | MetaRef(..) | Undef(..) | Let(..) | Update(..) | Return(..) | Continue
+        | Break | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..) | ArrForeach(..)
+        | ArrAt(..) | ArrInsert(..) | ArrIter(..) | MapIterNext(..) | Kv(..) | MapHas(..)
+        | MapGet(..) | MapSet(..) | MapDelete(..) | MapClear(..) | MapIter(..) | Unionify(..)
+        | ErrorThrow(..) | ConsoleLog(..) | SetTimeout(..) | EmitAsync(..) => true,
 
         Ref(..)
         | Qualified(..)

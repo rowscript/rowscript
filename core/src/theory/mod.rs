@@ -67,7 +67,7 @@ pub const TUPLED: &str = "__tupled";
 pub const UNTUPLED_RHS_PREFIX: &str = "__untupled_";
 pub const UNTUPLED_ENDS: &str = "__untupled___ends";
 
-pub const LOCALS: &str = "__locals_";
+pub const LETS: &str = "__lets_";
 
 pub const THIS: &str = "this";
 
@@ -119,8 +119,8 @@ impl Var {
         Self::new(UNTUPLED_ENDS)
     }
 
-    pub fn local(&self) -> Self {
-        Self::new(format!("{LOCALS}{self}"))
+    pub fn bind_let(&self) -> Self {
+        Self::new(format!("{LETS}{self}"))
     }
 
     pub fn instance(&self, inst: &Expr) -> Self {

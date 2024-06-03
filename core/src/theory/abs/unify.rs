@@ -83,7 +83,7 @@ impl<'a> Unifier<'a> {
             (Cls { object, .. }, b) => self.unify(object, b),
             (a, Cls { object, .. }) => self.unify(a, object),
 
-            (Local(p, a, b), Local(q, x, y)) => {
+            (Const(p, a, b), Const(q, x, y)) => {
                 self.unify(&p.typ, &q.typ)?;
                 self.unify(a, x)?;
                 self.unify(b, y)
@@ -114,13 +114,13 @@ impl<'a> Unifier<'a> {
                 self.unify(a, x)?;
                 self.unify(b, y)
             }
-            (TupleLocal(p, q, a, b), TupleLocal(r, s, x, y)) => {
+            (TupleBind(p, q, a, b), TupleBind(r, s, x, y)) => {
                 let rho = &[(&r.var, &Ref(p.var.clone())), (&s.var, &Ref(q.var.clone()))];
                 let y = self.nf().with(rho, *y.clone())?;
                 self.unify(a, x)?;
                 self.unify(b, &y)
             }
-            (UnitLocal(a, b), UnitLocal(x, y)) => {
+            (UnitBind(a, b), UnitBind(x, y)) => {
                 self.unify(a, x)?;
                 self.unify(b, y)
             }

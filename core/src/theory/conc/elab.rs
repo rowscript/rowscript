@@ -103,7 +103,7 @@ impl Elaborator {
             },
             Postulate => Postulate,
             Alias(t) => Alias(Box::new(self.check(*t, &ret)?)),
-            Const(anno, f) => Const(
+            Constant(anno, f) => Constant(
                 anno,
                 Box::new(if anno {
                     self.check(*f, &ret)?
@@ -244,7 +244,7 @@ impl Elaborator {
         use Expr::*;
         trace!(target: "elab", "checking expression: e={e}, ty={ty}");
         Ok(match e {
-            Local(_, var, maybe_typ, a, b) => {
+            Const(_, var, maybe_typ, a, b) => {
                 let (tm, typ) = self.check_anno(*a, maybe_typ)?;
                 let param = Param {
                     var,
@@ -252,9 +252,9 @@ impl Elaborator {
                     typ: Box::new(typ),
                 };
                 let body = self.guarded_check(&[&param], *b, ty)?;
-                Term::Local(param, Box::new(tm), Box::new(body))
+                Term::Const(param, Box::new(tm), Box::new(body))
             }
-            LocalSet(_, var, maybe_typ, a, b) => {
+            Let(_, var, maybe_typ, a, b) => {
                 let (tm, typ) = self.check_anno(*a, maybe_typ)?;
                 let param = Param {
                     var,
@@ -262,13 +262,13 @@ impl Elaborator {
                     typ: Box::new(typ),
                 };
                 let body = self.guarded_check(&[&param], *b, ty)?;
-                Term::LocalSet(param, Box::new(tm), Box::new(body))
+                Term::Let(param, Box::new(tm), Box::new(body))
             }
-            LocalUpdate(_, v, a, b) => {
+            Update(_, v, a, b) => {
                 let a_ty = self.gamma.get(&v).unwrap().clone();
                 let a = self.check(*a, &a_ty)?;
                 let b = self.check(*b, ty)?;
-                Term::LocalUpdate(v, Box::new(a), Box::new(b))
+                Term::Update(v, Box::new(a), Box::new(b))
             }
             While(_, p, b, r) => {
                 let p = self.check(*p, &Term::Boolean)?;
@@ -358,7 +358,7 @@ impl Elaborator {
                     ty => return Err(ExpectedSigma(ty, loc)),
                 }
             }
-            TupleLocal(_, x, y, a, b) => {
+            TupleBind(_, x, y, a, b) => {
                 let a_loc = a.loc();
                 let (a, a_ty) = self.infer(*a)?;
                 match a_ty {
@@ -374,12 +374,12 @@ impl Elaborator {
                             typ,
                         };
                         let b = self.guarded_check(&[&x, &y], *b, ty)?;
-                        Term::TupleLocal(x, y, Box::new(a), Box::new(b))
+                        Term::TupleBind(x, y, Box::new(a), Box::new(b))
                     }
                     ty => return Err(ExpectedSigma(ty, a_loc)),
                 }
             }
-            UnitLocal(_, a, b) => Term::UnitLocal(
+            UnitBind(_, a, b) => Term::UnitBind(
                 Box::new(self.check(*a, &Term::Unit)?),
                 Box::new(self.check(*b, ty)?),
             ),
@@ -492,9 +492,7 @@ impl Elaborator {
                 // Our lambda parameters are mostly tupled, hence we could cheat here.
                 loop {
                     match body {
-                        TupleLocal(_, x, y, _, b)
-                            if y.as_str().starts_with(UNTUPLED_RHS_PREFIX) =>
-                        {
+                        TupleBind(_, x, y, _, b) if y.as_str().starts_with(UNTUPLED_RHS_PREFIX) => {
                             typ = Box::new(Term::Sigma(
                                 Param {
                                     var: x.clone(),
@@ -596,7 +594,7 @@ impl Elaborator {
                     ),
                 )
             }
-            TupleLocal(_, x, y, a, b) => {
+            TupleBind(_, x, y, a, b) => {
                 let a_loc = a.loc();
                 let x_ty = self.insert_meta(a_loc, InsertedMeta).0;
                 let y_ty = self.insert_meta(a_loc, InsertedMeta).0;
@@ -612,12 +610,12 @@ impl Elaborator {
                 };
                 let a = self.check(*a, &Term::Sigma(x.clone(), Box::new(y_ty)))?;
                 let (b, b_ty) = self.guarded_infer(&[&x, &y], *b)?;
-                (Term::TupleLocal(x, y, Box::new(a), Box::new(b)), b_ty)
+                (Term::TupleBind(x, y, Box::new(a), Box::new(b)), b_ty)
             }
-            UnitLocal(_, a, b) => {
+            UnitBind(_, a, b) => {
                 let a = self.check(*a, &Term::Unit)?;
                 let (b, ty) = self.infer(*b)?;
-                (Term::UnitLocal(Box::new(a), Box::new(b)), ty)
+                (Term::UnitBind(Box::new(a), Box::new(b)), ty)
             }
             Arr(loc, xs) => {
                 let mut v_ty = None;

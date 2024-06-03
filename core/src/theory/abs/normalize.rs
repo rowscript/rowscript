@@ -117,17 +117,17 @@ impl<'a> Normalizer<'a> {
                     object: self.term_box(object)?,
                 }
             }
-            Local(p, a, b) => {
+            Const(p, a, b) => {
                 let a = self.term_box(a)?;
                 if should_fold(a.as_ref()) {
-                    Local(p, a, self.term_box(b)?)
+                    Const(p, a, self.term_box(b)?)
                 } else {
                     self.rho.insert(p.var, a);
                     self.term(*b)?
                 }
             }
-            LocalSet(p, a, b) => LocalSet(p, self.term_box(a)?, self.term_box(b)?),
-            LocalUpdate(p, a, b) => LocalUpdate(p, self.term_box(a)?, self.term_box(b)?),
+            Let(p, a, b) => Let(p, self.term_box(a)?, self.term_box(b)?),
+            Update(p, a, b) => Update(p, self.term_box(a)?, self.term_box(b)?),
             While(p, b, r) => While(self.term_box(p)?, self.term_box(b)?, self.term_box(r)?),
             Fori(b, r) => Fori(self.term_box(b)?, self.term_box(r)?),
             Guard(p, b, e, r) => {
@@ -140,7 +140,7 @@ impl<'a> Normalizer<'a> {
                 let r = self.term_box(r)?;
                 match *p {
                     False => match e {
-                        Some(e) => self.term(UnitLocal(e, r))?,
+                        Some(e) => self.term(UnitBind(e, r))?,
                         None => *r,
                     },
                     p => Guard(Box::new(p), b, e, r),
@@ -162,7 +162,7 @@ impl<'a> Normalizer<'a> {
             }
             Sigma(p, b) => Sigma(self.param(p)?, self.term_box(b)?),
             Tuple(a, b) => Tuple(self.term_box(a)?, self.term_box(b)?),
-            TupleLocal(p, q, a, b) => {
+            TupleBind(p, q, a, b) => {
                 let p = self.param(p)?;
                 let q = self.param(q)?;
                 let a = self.term_box(a)?;
@@ -174,7 +174,7 @@ impl<'a> Normalizer<'a> {
                         let mut rhs_param = q;
                         loop {
                             match (tm, body) {
-                                (Tuple(x, y), TupleLocal(p, q, _, b)) => {
+                                (Tuple(x, y), TupleBind(p, q, _, b)) => {
                                     tms.push((p, x));
                                     tm = *y;
                                     body = *b;
@@ -189,18 +189,18 @@ impl<'a> Normalizer<'a> {
                         }
                         self.term(
                             tms.into_iter()
-                                .rfold(body, |b, (p, a)| Local(p, a, Box::new(b))),
+                                .rfold(body, |b, (p, a)| Const(p, a, Box::new(b))),
                         )?
                     }
-                    a => TupleLocal(p, q, Box::new(a), self.term_box(b)?),
+                    a => TupleBind(p, q, Box::new(a), self.term_box(b)?),
                 }
             }
-            UnitLocal(a, b) => {
+            UnitBind(a, b) => {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;
                 match *a {
                     TT => *b,
-                    _ => UnitLocal(a, b),
+                    _ => UnitBind(a, b),
                 }
             }
             If(p, t, e) => {

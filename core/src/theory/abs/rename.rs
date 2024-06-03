@@ -18,15 +18,15 @@ impl Renamer {
                     .map(|(i, tm)| (i, *self.term(Box::new(tm))))
                     .collect(),
             ),
-            Local(p, a, b) => {
+            Const(p, a, b) => {
                 let a = self.term(a); // not guarded by `p`, rename it first
-                Local(self.param(p), a, self.term(b))
+                Const(self.param(p), a, self.term(b))
             }
-            LocalSet(p, a, b) => {
+            Let(p, a, b) => {
                 let a = self.term(a);
-                LocalSet(self.param(p), a, self.term(b))
+                Let(self.param(p), a, self.term(b))
             }
-            LocalUpdate(v, a, b) => LocalUpdate(v, self.term(a), self.term(b)),
+            Update(v, a, b) => Update(v, self.term(a), self.term(b)),
             While(p, b, r) => While(self.term(p), self.term(b), self.term(r)),
             Fori(b, r) => Fori(self.term(b), self.term(r)),
             Guard(p, b, e, r) => Guard(
@@ -41,10 +41,10 @@ impl Renamer {
             App(f, i, x) => App(self.term(f), i, self.term(x)),
             Sigma(p, c) => Sigma(self.param(p), self.term(c)),
             Tuple(a, b) => Tuple(self.term(a), self.term(b)),
-            TupleLocal(x, y, a, b) => {
-                TupleLocal(self.param(x), self.param(y), self.term(a), self.term(b))
+            TupleBind(x, y, a, b) => {
+                TupleBind(self.param(x), self.param(y), self.term(a), self.term(b))
             }
-            UnitLocal(a, b) => UnitLocal(self.term(a), self.term(b)),
+            UnitBind(a, b) => UnitBind(self.term(a), self.term(b)),
             If(p, t, e) => If(self.term(p), self.term(t), self.term(e)),
             BoolOr(a, b) => BoolOr(self.term(a), self.term(b)),
             BoolAnd(a, b) => BoolAnd(self.term(a), self.term(b)),

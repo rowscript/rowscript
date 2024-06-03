@@ -130,7 +130,7 @@ variant_id = { pub_camel_id | priv_camel_id }
 field_id = _{ prop_id | variant_id }
 pub_field_id = _{ pub_camelback_id | pub_camel_id }
 param_id = { pub_camelback_id }
-local_id = { pub_camelback_id }
+bind_id = { pub_camelback_id }
 this_id = { "this" }
 std_pkg_id = { lower_id }
 vendor_org_id = @{ "@" ~ lower_id }
@@ -170,7 +170,7 @@ idref =
   | postulate_id
   | fn_id
   | param_id
-  | local_id
+  | bind_id
   | prop_id
   | this_id
   }
@@ -396,7 +396,7 @@ object_cast = { "{" ~ "..." ~ expr ~ "}" }
 enum_switch = { "switch" ~ paren_expr ~ "{" ~ enum_case+ ~ enum_default_case? ~ "}" }
 enum_cast = { "[" ~ "..." ~ expr ~ "]" }
 enum_case = { "case" ~ variant_id ~ ("(" ~ param_id ~ ")")? ~ ":" ~ expr }
-enum_default_case = { "case" ~ local_id ~ ":" ~ expr }
+enum_default_case = { "case" ~ bind_id ~ ":" ~ expr }
 await_multi_expr = { "await" ~ "(" ~ expr ~ ("," ~ expr)+ ~ ")" }
 await_lambda_expr = { "await" ~ fn_body_block }
 await_expr = { "await " ~ expr }
@@ -437,9 +437,9 @@ branch =
   { branch_const
   | branch_let
   | branch_const_variadic
-  | branch_local_assign
-  | branch_object_assign
-  | branch_item_assign
+  | branch_update
+  | branch_object_update
+  | branch_item_update
   | branch_unit_const
   | branch_ignored
   | branch_while
@@ -452,9 +452,9 @@ branch =
 branch_const = { const_stmt ~ ";" ~ branch }
 branch_let = { let_stmt ~ ";" ~ branch }
 branch_const_variadic = { const_variadic_stmt ~ ";" ~ branch }
-branch_object_assign = { object_assign_stmt ~ ";" ~ branch }
-branch_item_assign = { item_assign_stmt ~ ";" ~ branch }
-branch_local_assign = { local_assign_stmt ~ ";" ~ branch }
+branch_object_update = { object_update_stmt ~ ";" ~ branch }
+branch_item_update = { item_update_stmt ~ ";" ~ branch }
+branch_update = { update_stmt ~ ";" ~ branch }
 branch_unit_const = { unit_const_stmt ~ ";" ~ branch }
 branch_ignored = { ignored_stmt ~ ";" ~ branch }
 branch_while = { while_stmt_start ~ loop_branch ~ "}" ~ branch }
@@ -465,9 +465,9 @@ loop_branch =
   { loop_branch_const
   | loop_branch_let
   | loop_branch_const_variadic
-  | loop_branch_local_assign
-  | loop_branch_object_assign
-  | loop_branch_item_assign
+  | loop_branch_update
+  | loop_branch_object_update
+  | loop_branch_item_update
   | loop_branch_unit_const
   | loop_branch_ignored
   | loop_branch_while
@@ -482,9 +482,9 @@ loop_branch =
 loop_branch_const = { const_stmt ~ ";" ~ loop_branch }
 loop_branch_let = { let_stmt ~ ";" ~ loop_branch }
 loop_branch_const_variadic = { const_variadic_stmt ~ ";" ~ loop_branch }
-loop_branch_object_assign = { object_assign_stmt ~ ";" ~ loop_branch }
-loop_branch_item_assign = { item_assign_stmt ~ ";" ~ loop_branch }
-loop_branch_local_assign = { local_assign_stmt ~ ";" ~ loop_branch }
+loop_branch_object_update = { object_update_stmt ~ ";" ~ loop_branch }
+loop_branch_item_update = { item_update_stmt ~ ";" ~ loop_branch }
+loop_branch_update = { update_stmt ~ ";" ~ loop_branch }
 loop_branch_unit_const = { unit_const_stmt ~ ";" ~ loop_branch }
 loop_branch_ignored = { ignored_stmt ~ ";" ~ loop_branch }
 loop_branch_while = { while_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
@@ -492,13 +492,13 @@ loop_branch_fori = { fori_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
 loop_branch_forof = { forof_stmt_start ~ loop_branch ~ "}" ~ loop_branch }
 loop_branch_if = { if_stmt_start ~ loop_branch ~ (else_stmt_start ~ loop_branch)? ~ "}" ~ loop_branch }
 
-const_stmt = { "const" ~ assign }
-let_stmt = { "let" ~ assign }
-assign = _{ local_id ~ (":" ~ type_expr)? ~ "=" ~ expr }
-const_variadic_stmt = { "const" ~ "(" ~ local_id ~ ("," ~ local_id)* ~ ")" ~ "=" ~ expr }
-object_assign_stmt = { (local_id | this_id) ~ "." ~ prop_id ~ "=" ~ expr }
-item_assign_stmt = { local_id ~ "[" ~ expr ~ "]" ~ "=" ~ expr }
-local_assign_stmt = { local_id ~ "=" ~ expr }
+const_stmt = { "const" ~ update }
+let_stmt = { "let" ~ update }
+update = _{ bind_id ~ (":" ~ type_expr)? ~ "=" ~ expr }
+const_variadic_stmt = { "const" ~ "(" ~ bind_id ~ ("," ~ bind_id)* ~ ")" ~ "=" ~ expr }
+object_update_stmt = { (bind_id | this_id) ~ "." ~ prop_id ~ "=" ~ expr }
+item_update_stmt = { bind_id ~ "[" ~ expr ~ "]" ~ "=" ~ expr }
+update_stmt = { bind_id ~ "=" ~ expr }
 unit_const_stmt = { expr }
 ignored_stmt = { "_" ~ "=" ~ expr }
 while_stmt_start = _{ "while" ~ "(" ~ expr ~ ")" ~ "{" }
@@ -507,16 +507,16 @@ fori_clause = { fori_init? ~ ";" ~ expr? ~ ";" ~ fori_step? }
 fori_init =
   { const_stmt
   | let_stmt
-  | local_assign_stmt
-  | item_assign_stmt
+  | update_stmt
+  | item_update_stmt
   | unit_const_stmt
   }
 fori_step =
-  { local_assign_stmt
-  | item_assign_stmt
+  { update_stmt
+  | item_update_stmt
   | unit_const_stmt
   }
-forof_stmt_start = _{ "for" ~ "(" ~ (forof_const | forof_let) ~ local_id ~ "of" ~ expr ~ ")" ~ "{" }
+forof_stmt_start = _{ "for" ~ "(" ~ (forof_const | forof_let) ~ bind_id ~ "of" ~ expr ~ ")" ~ "{" }
 forof_const = { "const" }
 forof_let = { "let" }
 if_stmt_start = _{ "if" ~ "(" ~ expr ~ ")" ~ "{" }
@@ -563,9 +563,9 @@ fn_body =
   { fn_body_const
   | fn_body_let
   | fn_body_const_variadic
-  | fn_body_object_assign
-  | fn_body_item_assign
-  | fn_body_local_assign
+  | fn_body_object_update
+  | fn_body_item_update
+  | fn_body_update
   | fn_body_unit_const
   | fn_body_ignored
   | fn_body_while
@@ -577,9 +577,9 @@ fn_body =
 fn_body_const = { const_stmt ~ ";" ~ fn_body }
 fn_body_let = { let_stmt ~ ";" ~ fn_body }
 fn_body_const_variadic = { const_variadic_stmt ~ ";" ~ fn_body }
-fn_body_object_assign = { object_assign_stmt ~ ";" ~ fn_body }
-fn_body_item_assign = { item_assign_stmt ~ ";" ~ fn_body }
-fn_body_local_assign = { local_assign_stmt ~ ";" ~ fn_body }
+fn_body_object_update = { object_update_stmt ~ ";" ~ fn_body }
+fn_body_item_update = { item_update_stmt ~ ";" ~ fn_body }
+fn_body_update = { update_stmt ~ ";" ~ fn_body }
 fn_body_unit_const = { unit_const_stmt ~ ";" ~ fn_body }
 fn_body_ignored = { ignored_stmt ~ ";" ~ fn_body }
 fn_body_while = { while_stmt_start ~ loop_branch ~ "}" ~ fn_body }

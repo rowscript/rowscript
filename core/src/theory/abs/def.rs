@@ -54,7 +54,7 @@ impl Def<Term> {
             Fn { f, .. } => self.to_lam_term(*f.clone()),
             Postulate => Term::Extern(v),
             Alias(t) => self.to_lam_term(*t.clone()),
-            Const(_, f) => self.to_lam_term(*f.clone()),
+            Constant(_, f) => self.to_lam_term(*f.clone()),
             Verify(..) => unreachable!(),
 
             Interface { .. } => {
@@ -138,7 +138,7 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
-                Const(anno, f) => {
+                Constant(anno, f) => {
                     if *anno {
                         format!("const {}: {} = {f};", self.name, self.ret)
                     } else {
@@ -245,7 +245,7 @@ pub enum Body<T: Syntax> {
     },
     Postulate,
     Alias(Box<T>),
-    Const(bool, Box<T>),
+    Constant(bool, Box<T>),
     Verify(Box<T>),
 
     Interface {
