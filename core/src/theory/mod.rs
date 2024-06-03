@@ -242,29 +242,13 @@ pub struct ResolvedVar(pub VarKind, pub Var);
 
 pub type NameMap = HashMap<String, ResolvedVar>;
 
-#[derive(Debug, Clone)]
-pub enum Effect {
-    Pure,
-    Async,
-    Capture,
-}
-
-impl Default for Effect {
-    fn default() -> Self {
-        Self::Pure
-    }
+#[derive(Debug, Clone, Default)]
+pub struct Effect {
+    is_async: bool,
 }
 
 impl Display for Effect {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Self::Pure => return Ok(()),
-                Self::Async => "<async>",
-                Self::Capture => "<capture>",
-            }
-        )
+        f.write_str(if self.is_async { "async" } else { "" })
     }
 }
