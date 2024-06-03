@@ -94,7 +94,7 @@ impl<'a> Unifier<'a> {
                 let b = self.nf().with(rho, *b.clone())?;
                 self.unify(a, &b)
             }
-            (Lam(p, _, a), Lam(..)) => {
+            (Lam(p, a), Lam(..)) => {
                 let b = self
                     .nf()
                     .apply(rhs.clone(), p.info.into(), &[Ref(p.var.clone())])?;

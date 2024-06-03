@@ -148,12 +148,12 @@ impl<'a> Normalizer<'a> {
             }
             Return(a) => Return(self.term_box(a)?),
             Pi(p, e, b) => Pi(self.param(p)?, e, self.term_box(b)?),
-            Lam(p, e, b) => Lam(self.param(p)?, e, self.term_box(b)?),
+            Lam(p, b) => Lam(self.param(p)?, self.term_box(b)?),
             App(f, ai, x) => {
                 let f = self.term_box(f)?;
                 let x = self.term_box(x)?;
                 match *f {
-                    Lam(p, _, b) if !should_fold(x.as_ref()) => {
+                    Lam(p, b) if !should_fold(x.as_ref()) => {
                         self.rho.insert(p.var, x);
                         self.term(*b)?
                     }
@@ -600,7 +600,7 @@ impl<'a> Normalizer<'a> {
         let mut ret = f;
         for x in args {
             match ret {
-                Lam(p, _, b) => {
+                Lam(p, b) => {
                     ret = self.with(&[(&p.var, x)], *b)?;
                 }
                 _ => ret = App(Box::new(ret), ai.clone(), Box::new(x.clone())),

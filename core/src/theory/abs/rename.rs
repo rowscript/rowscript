@@ -37,7 +37,7 @@ impl Renamer {
             ),
             Return(a) => Return(self.term(a)),
             Pi(p, e, c) => Pi(self.param(p), e, self.term(c)),
-            Lam(p, e, b) => Lam(self.param(p), e, self.term(b)),
+            Lam(p, b) => Lam(self.param(p), self.term(b)),
             App(f, i, x) => App(self.term(f), i, self.term(x)),
             Sigma(p, c) => Sigma(self.param(p), self.term(c)),
             Tuple(a, b) => Tuple(self.term(a), self.term(b)),

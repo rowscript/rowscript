@@ -305,7 +305,7 @@ impl Elaborator {
                             .nf(loc)
                             .with(&[(&ty_param.var, &Term::Ref(var))], *ty_body)?;
                         let checked_body = self.guarded_check(&[&param], *body, &body_type)?;
-                        Term::Lam(param.clone(), Default::default(), Box::new(checked_body))
+                        Term::Lam(param.clone(), Box::new(checked_body))
                     }
                     ty => return Err(ExpectedPi(ty, loc)),
                 }
@@ -513,7 +513,7 @@ impl Elaborator {
                 };
                 let (b, b_ty) = self.guarded_infer(&[&p], *b)?;
                 (
-                    Term::Lam(p.clone(), Default::default(), Box::new(b)),
+                    Term::Lam(p.clone(), Box::new(b)),
                     Term::Pi(p, Default::default(), Box::new(b_ty)),
                 )
             }

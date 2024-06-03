@@ -49,7 +49,7 @@ pub enum Term {
     Univ,
 
     Pi(Param<Self>, Effect, Box<Self>),
-    Lam(Param<Self>, Effect, Box<Self>),
+    Lam(Param<Self>, Box<Self>),
     App(Box<Self>, ArgInfo, Box<Self>),
 
     Sigma(Param<Self>, Box<Self>),
@@ -175,9 +175,8 @@ pub struct PartialClass {
 
 impl Term {
     pub fn lam(tele: &Tele<Self>, tm: Self) -> Self {
-        tele.iter().rfold(tm, |b, p| {
-            Term::Lam(p.clone(), Default::default(), Box::new(b))
-        })
+        tele.iter()
+            .rfold(tm, |b, p| Term::Lam(p.clone(), Box::new(b)))
     }
 
     pub fn pi(tele: &Tele<Self>, tm: Self) -> Self {
@@ -268,9 +267,7 @@ impl Term {
     pub fn unwrap_solved_implicit_lambda(tm: Self, ty: Self) -> (Self, Self) {
         use Term::*;
         match (tm, ty) {
-            (Lam(p, _, b), Pi(.., body))
-                if p.info == Implicit && p.typ.is_solved_auto_implicit() =>
-            {
+            (Lam(p, b), Pi(.., body)) if p.info == Implicit && p.typ.is_solved_auto_implicit() => {
                 (*b, *body)
             }
             ret => ret,
@@ -307,7 +304,7 @@ impl Display for Term {
                 Break => "break".to_string(),
                 Univ => "type".to_string(),
                 Pi(p, e, b) => format!("{p} -> {e}{b}"),
-                Lam(p, e, b) => format!("{p} => {e}{b}"),
+                Lam(p, b) => format!("{p} => {b}"),
                 App(f, _, x) => format!("({f} {x})"),
                 Sigma(p, b) => format!("{p} * {b}"),
                 Tuple(a, b) => format!("[{a}, {b}]"),
