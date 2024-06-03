@@ -1110,22 +1110,36 @@ impl Trans {
             }
             Rule::app => {
                 let mut rev_f = None;
+                let mut rev_type_args = Vec::default();
                 for x in p.into_inner() {
                     match x.as_rule() {
                         Rule::idref => rev_f = Some(self.maybe_qualified(x)),
                         Rule::row_arg => {
                             let (i, e) = self.row_arg(x);
-                            f = App(loc, Box::new(f), i, Box::new(e));
+                            if rev_f.is_none() {
+                                f = App(loc, Box::new(f), i, Box::new(e));
+                                continue;
+                            }
+                            rev_type_args.push(e);
                         }
                         Rule::type_arg => {
                             let (i, e) = self.type_arg(x);
-                            f = App(loc, Box::new(f), i, Box::new(e));
+                            if rev_f.is_none() {
+                                f = App(loc, Box::new(f), i, Box::new(e));
+                                continue;
+                            }
+                            rev_type_args.push(e);
                         }
                         Rule::args => {
                             let mut args = self.tupled_args(x);
                             if let Some(rev_f) = rev_f.clone() {
                                 args = Tuple(loc, Box::new(f), Box::new(args));
-                                f = RevApp(loc, Box::new(rev_f), Box::new(args));
+                                f = RevApp(
+                                    loc,
+                                    Box::new(rev_f),
+                                    rev_type_args.clone(),
+                                    Box::new(args),
+                                );
                             } else {
                                 f = App(loc, Box::new(f), UnnamedExplicit, Box::new(args));
                             }
@@ -1766,6 +1780,7 @@ impl Trans {
         RevApp(
             f.loc(),
             Box::new(f),
+            Default::default(),
             Box::new(Tuple(a0.loc(), Box::new(a0), tt)),
         )
     }

@@ -544,7 +544,7 @@ impl Elaborator {
                     ty => return Err(ExpectedPi(ty, f_loc)),
                 }
             }
-            RevApp(loc, f, x) => {
+            RevApp(loc, f, type_args, x) => {
                 if let Term::Sigma(p, _) = self.infer(*x.clone())?.1 {
                     if let Some(PartialClass { methods, .. }) = p.typ.class_methods(&self.sigma) {
                         let (f_loc, f_var, globally_found) = match *f {
@@ -552,16 +552,18 @@ impl Elaborator {
                             Unresolved(f_loc, _, v) => (f_loc, v, false),
                             _ => unreachable!(),
                         };
-                        return self.infer(App(
-                            loc,
-                            Box::new(match methods.get(f_var.as_str()) {
-                                Some(v) => Resolved(f_loc, v.clone()),
-                                None if globally_found => Resolved(f_loc, f_var),
-                                _ => return Err(UnresolvedVar(f_loc)),
-                            }),
-                            UnnamedExplicit,
-                            x,
-                        ));
+
+                        let mut f = match methods.get(f_var.as_str()) {
+                            Some(v) => Resolved(f_loc, v.clone()),
+                            None if globally_found => Resolved(f_loc, f_var),
+                            _ => return Err(UnresolvedVar(f_loc)),
+                        };
+
+                        f = type_args.into_iter().fold(f, |e, ty| {
+                            App(loc, Box::new(e), UnnamedImplicit, Box::new(ty))
+                        });
+
+                        return self.infer(App(loc, Box::new(f), UnnamedExplicit, x));
                     }
                 }
                 if let Unresolved(f_loc, ..) = *f {

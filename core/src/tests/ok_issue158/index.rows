@@ -1,0 +1,6 @@
+class A {
+    empty: unit;
+    foo<T>(a: T): T { a }
+}
+
+console.log(new A(()).foo<string>("a"));

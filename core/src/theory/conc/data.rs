@@ -37,7 +37,7 @@ pub enum Expr {
     TupledLam(Loc, Vec<Self>, Box<Self>),
     Lam(Loc, Var, Box<Self>),
     App(Loc, Box<Self>, ArgInfo, Box<Self>),
-    RevApp(Loc, Box<Self>, Box<Self>),
+    RevApp(Loc, Box<Self>, Vec<Self>, Box<Self>),
 
     Sigma(Loc, Param<Self>, Box<Self>),
     Tuple(Loc, Box<Self>, Box<Self>),
@@ -296,7 +296,19 @@ impl Display for Expr {
                     UnnamedImplicit => format!("({f} {{{x}}})"),
                     NamedImplicit(r) => format!("({f} {{{r} = {x}}})"),
                 },
-                RevApp(_, f, x) => format!("({x}.{f})"),
+                RevApp(_, f, tys, x) => {
+                    if tys.is_empty() {
+                        format!("({x}.{f})")
+                    } else {
+                        format!(
+                            "({x}.{f}<{}>",
+                            tys.iter()
+                                .map(|t| t.to_string())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )
+                    }
+                }
                 Sigma(_, p, b) => format!("{p} * {b}"),
                 Tuple(_, a, b) => format!("[{a}, {b}]"),
                 TupleBind(_, x, y, a, b) => format!("const [{x}, {y}] = {a};\n\t{b}"),

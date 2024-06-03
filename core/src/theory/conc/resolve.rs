@@ -346,11 +346,16 @@ impl<'a> Resolver<'a> {
                 Lam(loc, x, b)
             }
             App(loc, f, i, x) => App(loc, self.expr(f)?, i, self.expr(x)?),
-            RevApp(loc, f, x) => {
+            RevApp(loc, f, tys, x) => {
+                let mut resolved_tys = Vec::default();
+                for ty in tys {
+                    resolved_tys.push(*self.expr(Box::new(ty))?);
+                }
+
                 let unresolved = f.clone();
                 match self.expr(f) {
-                    Ok(f) => RevApp(loc, f, self.expr(x)?),
-                    Err(_) => RevApp(loc, unresolved, self.expr(x)?),
+                    Ok(f) => RevApp(loc, f, resolved_tys, self.expr(x)?),
+                    Err(_) => RevApp(loc, unresolved, resolved_tys, self.expr(x)?),
                 }
             }
             Sigma(loc, p, b) => {
