@@ -28,7 +28,9 @@ use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::{UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::Explicit;
-use crate::theory::{Loc, Tele, Var, THIS, TUPLED, UNBOUND, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX};
+use crate::theory::{
+    Loc, Param, Tele, Var, THIS, TUPLED, UNBOUND, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX,
+};
 use crate::Error::{NonErasable, UnsolvedMeta};
 use crate::{Error, ModuleFile};
 
@@ -583,18 +585,29 @@ impl Ecma {
 
         // Try retrieving the function parameters from the function body, which sounds wack.
         let mut body = tm;
-        if matches!(body, Term::Ref(v) if v.as_str() == TUPLED) {
-            // Only retrieve those from destructuring the tupled parameter.
-            loop {
-                if let Term::TupleBind(p, q, _, b) = body {
-                    if q.var.as_str().starts_with(UNTUPLED_RHS_PREFIX) {
-                        ret.push(Self::ident_pat(loc, &p.var));
-                        body = b.as_ref();
+        let mut is_first = true;
+        loop {
+            if let Term::TupleBind(p, q, a, b) = body {
+                // Only retrieve those from destructuring the tupled parameter.
+                if is_first {
+                    match a.as_ref() {
+                        Term::Ref(v) if v.as_str() == TUPLED => {}
+                        _ => break,
+                    }
+                }
+                is_first = false;
+
+                let rhs = q.var.as_str();
+                if rhs.starts_with(UNTUPLED_RHS_PREFIX) {
+                    ret.push(Self::ident_pat(loc, &p.var));
+                    body = b.as_ref();
+                    // Stop at here otherwise we would retrieve some wrong ones (e.g. other tupled lets).
+                    if rhs != UNTUPLED_ENDS {
                         continue;
                     }
                 }
-                break;
             }
+            break;
         }
 
         // Try adding the variadic parameter from the explicit parameters.
@@ -687,6 +700,23 @@ impl Ecma {
             ),
             self.expr(sigma, loc, a)?,
         ))
+    }
+
+    fn tuple_binds_to_pats<'a>(
+        loc: Loc,
+        p: &Param<Term>,
+        mut body: &'a Term,
+    ) -> (Vec<Option<Pat>>, &'a Term) {
+        let mut elems = vec![Some(Self::ident_pat(loc, &p.var))];
+        loop {
+            if let Term::TupleBind(p_next, _, _, b) = body {
+                elems.push(Some(Self::ident_pat(loc, &p_next.var)));
+                body = b;
+                continue;
+            }
+            break;
+        }
+        (elems, body)
     }
 
     fn enum_case_consequent(
@@ -854,9 +884,12 @@ impl Ecma {
 
             loop {
                 if let TupleBind(_, q, _, b) = tm {
-                    if q.var.as_str().starts_with(UNTUPLED_RHS_PREFIX) {
+                    let rhs = q.var.as_str();
+                    if rhs.starts_with(UNTUPLED_RHS_PREFIX) {
                         tm = b;
-                        continue;
+                        if rhs != UNTUPLED_ENDS {
+                            continue;
+                        }
                     }
                 }
                 return tm;
@@ -914,16 +947,7 @@ impl Ecma {
                 // Only valid on syntax like `const (a, b, c, d) = expr`.
                 TupleBind(p, _, a, b) => {
                     // Collect all tupled lets to form `const [a, b, c, d] = expr` in JS.
-                    let mut elems = vec![Some(Self::ident_pat(loc, &p.var))];
-                    let mut body = b.as_ref();
-                    loop {
-                        if let TupleBind(p_next, _, _, b_next) = body {
-                            elems.push(Some(Self::ident_pat(loc, &p_next.var)));
-                            body = b_next;
-                            continue;
-                        }
-                        break;
-                    }
+                    let (elems, body) = Self::tuple_binds_to_pats(loc, p, b);
                     stmts.push(Stmt::Decl(Decl::Var(Box::new(VarDecl {
                         span,
                         kind: VarDeclKind::Var,
@@ -1013,6 +1037,26 @@ impl Ecma {
                     span: loc.into(),
                     elems,
                 })
+            }
+            // Ditto.
+            //
+            // Transform into `((a, b, c, d) => stripped_body)(a)`.
+            TupleBind(p, _, a, b) => {
+                let (elems, body) = Self::tuple_binds_to_pats(loc, p, b);
+                Self::paren_call(
+                    loc,
+                    Self::block_arrow(
+                        loc,
+                        vec![Pat::Array(ArrayPat {
+                            span: loc.into(),
+                            elems,
+                            optional: false,
+                            type_ann: None,
+                        })],
+                        self.block(sigma, loc, body, true)?,
+                    ),
+                    self.expr(sigma, loc, a)?,
+                )
             }
 
             Ref(r) if self.not_escaping_this => Expr::Ident(Self::asis_ident(loc, r)),

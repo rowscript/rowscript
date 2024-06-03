@@ -1,0 +1,10 @@
+function f0<Args>(...: Args): Args;
+
+function f1(a: number, b: string, c: boolean): boolean {
+    const (x0, x1) = f0(1, "foo");
+    console.log(x0);
+    console.log(x1);
+    c
+}
+
+console.log(f1(2, "okay", true));
