@@ -1789,7 +1789,7 @@ impl Trans {
         use Expr::*;
         EmitAsync(
             loc,
-            Box::new(Self::call1(Unresolved(loc, None, Var::new("__await__")), e)),
+            Box::new(Self::call1(Unresolved(loc, None, Var::await_one()), e)),
         )
     }
 
@@ -1799,7 +1799,7 @@ impl Trans {
             loc,
             Box::new(App(
                 loc,
-                Box::new(Unresolved(loc, None, Var::new("__await_mul__"))),
+                Box::new(Unresolved(loc, None, Var::await_mul())),
                 UnnamedExplicit,
                 Box::new(
                     e.into_iter()

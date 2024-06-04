@@ -146,17 +146,11 @@ type Executor<T> = (resolve: (value: T) -> unit) -> unit;
 
 interface Async {
     __await__<T>(executor: Executor<T>): T;
-}
 
-interface AsyncMul {
     __await_mul__<Args>(...: Args): Args;
-}
 
-interface AsyncAll {
     __await_all__<T>(executors: NativeArray<Executor<T>>): NativeArray<T>;
-}
 
-interface AsyncAny {
     __await_any__<T>(executors: NativeArray<Executor<T>>): T;
 }
 

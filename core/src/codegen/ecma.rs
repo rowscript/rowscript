@@ -29,7 +29,8 @@ use crate::theory::conc::data::ArgInfo::{UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::Explicit;
 use crate::theory::{
-    Loc, Param, Tele, Var, THIS, TUPLED, UNBOUND, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX,
+    Loc, Param, Tele, Var, AWAIT, AWAIT_ALL, AWAIT_ANY, AWAIT_MUL, THIS, TUPLED, UNBOUND,
+    UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX,
 };
 use crate::Error::{NonErasable, UnsolvedMeta};
 use crate::{Error, ModuleFile};
@@ -509,21 +510,19 @@ impl Ecma {
             break;
         }
 
-        // Try transforming await expressions.
         let args = self.untuple_args(sigma, loc, x)?;
 
-        if let Find(_, i, m) = f {
-            return match i.as_str() {
-                "Async" => Ok(Self::await_executor(loc, args)),
-                "AsyncMul" => Ok(Self::await_executors(
-                    loc,
-                    "Promise.all",
-                    Self::args_to_promises(loc, args),
-                )),
-                "AsyncAll" => Ok(Self::await_executors(loc, "Promise.all", args)),
-                "AsyncAny" => Ok(Self::await_executors(loc, "Promise.any", args)),
-                _ => Err(NonErasable(Ref(m.clone()), loc)),
-            };
+        // Try transforming await expressions.
+        if let Find(_, _, m) = f {
+            return Ok(match m.as_str() {
+                AWAIT => Self::await_executor(loc, args),
+                AWAIT_MUL => {
+                    Self::await_executors(loc, "Promise.all", Self::args_to_promises(loc, args))
+                }
+                AWAIT_ALL => Self::await_executors(loc, "Promise.all", args),
+                AWAIT_ANY => Self::await_executors(loc, "Promise.any", args),
+                _ => return Err(NonErasable(Ref(m.clone()), loc)),
+            });
         }
 
         Ok(Expr::Call(CallExpr {

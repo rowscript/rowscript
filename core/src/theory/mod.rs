@@ -76,6 +76,11 @@ pub const ITER_RET: &str = "__r";
 
 pub const ARRAY: &str = "Array";
 
+pub const AWAIT: &str = "__await__";
+pub const AWAIT_MUL: &str = "__await_mul__";
+pub const AWAIT_ALL: &str = "__await_all__";
+pub const AWAIT_ANY: &str = "__await_any__";
+
 impl Var {
     fn new<S: Into<String>>(name: S) -> Self {
         Self {
@@ -137,6 +142,22 @@ impl Var {
 
     pub fn iteration_result() -> Self {
         Self::new(ITER_RET)
+    }
+
+    pub fn await_one() -> Self {
+        Self::new(AWAIT)
+    }
+
+    pub fn await_mul() -> Self {
+        Self::new(AWAIT_MUL)
+    }
+
+    pub fn await_all() -> Self {
+        Self::new(AWAIT_ALL)
+    }
+
+    pub fn await_any() -> Self {
+        Self::new(AWAIT_ANY)
     }
 
     pub fn id(&self) -> usize {

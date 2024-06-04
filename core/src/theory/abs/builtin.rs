@@ -832,8 +832,8 @@ impl Builtins {
                 // All unbound, only the string content matters here.
                 Box::new(Find(
                     Box::new(Ref(Var::unbound())),
-                    Var::new("AsyncAll"),
                     Var::unbound(),
+                    Var::await_all(),
                 )),
                 ArgInfo::UnnamedExplicit,
                 Box::new(tupled),
@@ -854,8 +854,8 @@ impl Builtins {
                 // All unbound, only the string content matters here.
                 Box::new(Find(
                     Box::new(Ref(Var::unbound())),
-                    Var::new("AsyncAny"),
                     Var::unbound(),
+                    Var::await_any(),
                 )),
                 ArgInfo::UnnamedExplicit,
                 Box::new(tupled),
