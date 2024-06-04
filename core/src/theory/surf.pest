@@ -398,11 +398,25 @@ enum_cast = { "[" ~ "..." ~ expr ~ "]" }
 enum_case = { "case" ~ variant_id ~ ("(" ~ param_id ~ ")")? ~ ":" ~ expr }
 enum_default_case = { "case" ~ bind_id ~ ":" ~ expr }
 await_multi_expr = { "await" ~ "(" ~ expr ~ ("," ~ expr)+ ~ ")" }
-await_lambda_expr = { "await" ~ fn_body_block }
+await_lambda_expr = { "await" ~ lambda_body_block }
 await_expr = { "await " ~ expr }
 lambda_expr = { lambda_params ~ "=>" ~ lambda_body }
 lambda_params = _{ "()" | "(" ~ param_id ~ ("," ~ param_id)* ~ ")" }
-lambda_body = { expr | fn_body_block }
+lambda_body = { expr | lambda_body_block }
+lambda_body_block =
+  { "{"
+  ~ ( fn_body_const
+    | fn_body_let
+    | fn_body_const_variadic
+    | fn_body_object_update
+    | fn_body_item_update
+    | fn_body_update
+    | fn_body_unit_const
+    | fn_body_ignored
+    | fn_body_ret
+    )
+  ~ "}"
+  }
 new_expr = { "new " ~ tyref ~ ("<" ~ type_args ~ ">")? ~ args }
 paren_expr = { "(" ~ expr ~ ")" }
 object_literal = { "{" ~ label ~ ("," ~ label)* ~ "}" }

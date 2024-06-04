@@ -1043,7 +1043,7 @@ impl Trans {
                             let b = p.into_inner().next().unwrap();
                             body = Some(match b.as_rule() {
                                 Rule::expr => self.expr(b),
-                                Rule::fn_body => self.fn_body(b),
+                                Rule::lambda_body_block => self.fn_body(b),
                                 _ => unreachable!(),
                             });
                             break;
