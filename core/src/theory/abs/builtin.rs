@@ -4,8 +4,8 @@ use crate::theory::abs::data::Term::{
     Array, ArrayIterator, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean, ConsoleLog,
     EmitAsync, Enum, ErrorThrow, Fields, Find, Map, MapClear, MapDelete, MapGet, MapHas, MapIter,
     MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt, NumMod,
-    NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object, Pi, Ref, Reflected, Row, SetTimeout,
-    StrAdd, StrEq, StrNeq, String, TupleBind, Unionify, Unit, Univ,
+    NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object, Pi, Pure, Ref, Reflected, Row,
+    SetTimeout, StrAdd, StrEq, StrNeq, String, TupleBind, Unionify, Unit, Univ,
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
@@ -38,7 +38,11 @@ fn explicit(var: Var, typ: Term) -> Param<Term> {
 }
 
 fn explicit_pi(p: (Var, Term), b: Term) -> Term {
-    Pi(explicit(p.0, p.1), Default::default(), Box::new(b))
+    Pi {
+        param: explicit(p.0, p.1),
+        eff: Box::new(Pure),
+        body: Box::new(b),
+    }
 }
 
 fn unbound_explicit_pi(a: Term, b: Term) -> Term {
@@ -464,11 +468,11 @@ impl Builtins {
         let a_ty = Array(Box::new(Ref(t.clone())));
         let a_rhs = a.untupled_rhs();
         let f = Var::new("f");
-        let f_ty = Pi(
-            tuple_param(Var::unbound(), [(Var::new("v"), Ref(t.clone()))]),
-            Default::default(),
-            Box::new(Unit),
-        );
+        let f_ty = Pi {
+            param: tuple_param(Var::unbound(), [(Var::new("v"), Ref(t.clone()))]),
+            eff: Box::new(Pure),
+            body: Box::new(Unit),
+        };
         self.func(
             "array#forEach",
             vec![
@@ -796,21 +800,21 @@ impl Builtins {
         App(
             Box::new(self.defined("NativeArray")),
             ArgInfo::UnnamedImplicit,
-            Box::new(Pi(
-                tuple_param(
+            Box::new(Pi {
+                param: tuple_param(
                     Var::tupled(),
                     [(
                         Var::new("resolve"),
-                        Pi(
-                            tuple_param(Var::tupled(), [(Var::new("value"), v_ty)]),
-                            Default::default(),
-                            Box::new(Unit),
-                        ),
+                        Pi {
+                            param: tuple_param(Var::tupled(), [(Var::new("value"), v_ty)]),
+                            eff: Box::new(Pure),
+                            body: Box::new(Unit),
+                        },
                     )],
                 ),
-                Default::default(),
-                Box::new(Unit),
-            )),
+                eff: Box::new(Pure),
+                body: Box::new(Unit),
+            }),
         )
     }
 

@@ -88,7 +88,14 @@ impl<'a> Unifier<'a> {
                 self.unify(a, x)?;
                 self.unify(b, y)
             }
-            (Pi(p, _, a), Pi(q, _, b)) => {
+            (
+                Pi {
+                    param: p, body: a, ..
+                },
+                Pi {
+                    param: q, body: b, ..
+                },
+            ) => {
                 self.unify(&p.typ, &q.typ)?;
                 let rho = &[(&q.var, &Ref(p.var.clone()))];
                 let b = self.nf().with(rho, *b.clone())?;

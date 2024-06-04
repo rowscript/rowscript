@@ -85,7 +85,7 @@ pub fn should_fold(tm: &Term) -> bool {
         Ref(..)
         | Qualified(..)
         | Univ
-        | Pi(..)
+        | Pi { .. }
         | Sigma(..)
         | Unit
         | TT
@@ -117,6 +117,7 @@ pub fn should_fold(tm: &Term) -> bool {
         | Varargs(..)
         | AnonVarargs(..)
         | Reflected(..)
-        | Cls { .. } => false,
+        | Cls { .. }
+        | Pure => false,
     }
 }

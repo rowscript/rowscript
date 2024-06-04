@@ -208,7 +208,7 @@ impl Elaborator {
             let inst_loc = self.sigma.get(inst_fn).unwrap().loc;
 
             let (i_fn_ty_p, i_fn_ty_b) = match i_fn_def.to_type() {
-                Term::Pi(p, _, b) => (p, b),
+                Term::Pi { param, body, .. } => (param, body),
                 _ => unreachable!(),
             };
             let i_fn_ty_applied = self
@@ -298,7 +298,11 @@ impl Elaborator {
             Lam(loc, var, body) => {
                 let pi = self.nf(loc).term(ty.clone())?;
                 match pi {
-                    Term::Pi(ty_param, _, ty_body) => {
+                    Term::Pi {
+                        param: ty_param,
+                        body: ty_body,
+                        ..
+                    } => {
                         let param = Param {
                             var: var.clone(),
                             info: Explicit,
@@ -493,7 +497,14 @@ impl Elaborator {
                     typ: Box::new(param_ty),
                 };
                 let InferResult { tm: b, ty: b_ty } = self.guarded_infer(&[&param], *b)?;
-                InferResult::from((Term::Pi(param, Default::default(), Box::new(b)), b_ty))
+                InferResult::from((
+                    Term::Pi {
+                        param,
+                        eff: Box::new(Term::Pure),
+                        body: Box::new(b),
+                    },
+                    b_ty,
+                ))
             }
             Lam(loc, var, b) => {
                 let mut typ = Box::new(Term::Unit);
@@ -523,7 +534,11 @@ impl Elaborator {
                 let InferResult { tm: b, ty: b_ty } = self.guarded_infer(&[&p], *b)?;
                 InferResult::from((
                     Term::Lam(p.clone(), Box::new(b)),
-                    Term::Pi(p, Default::default(), Box::new(b_ty)),
+                    Term::Pi {
+                        param: p,
+                        eff: Box::new(Term::Pure),
+                        body: Box::new(b_ty),
+                    },
                 ))
             }
             App(_, f, ai, x) => {
@@ -536,7 +551,9 @@ impl Elaborator {
                 }
 
                 match f_ty {
-                    Term::Pi(p, _, b) => {
+                    Term::Pi {
+                        param: p, body: b, ..
+                    } => {
                         let x = self.guarded_check(
                             &[&Param {
                                 var: p.var.clone(),
@@ -999,7 +1016,7 @@ impl Elaborator {
 
     fn is_hole_insertable(expected: &Term) -> bool {
         match expected {
-            Term::Pi(p, ..) => p.info != Implicit,
+            Term::Pi { param, .. } => param.info != Implicit,
             _ => true,
         }
     }
@@ -1009,7 +1026,9 @@ impl Elaborator {
             let mut ret = Default::default();
             loop {
                 match ty {
-                    Term::Pi(p, _, b) => {
+                    Term::Pi {
+                        param: p, body: b, ..
+                    } => {
                         if p.info != Implicit {
                             return Err(UnresolvedImplicitParam(name, loc));
                         }
@@ -1025,7 +1044,7 @@ impl Elaborator {
         }
 
         Ok(match f_ty {
-            Term::Pi(p, ..) if p.info == Implicit => match i {
+            Term::Pi { param, .. } if param.info == Implicit => match i {
                 UnnamedExplicit => Some(Expr::holed_app(f_e)),
                 NamedImplicit(name) => match holes_to_insert(f_e.loc(), name.to_string(), f_ty)? {
                     0 => None,

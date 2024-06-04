@@ -5,7 +5,7 @@ use crate::theory::abs::def::{Body, Sigma};
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::load::ModuleID;
 use crate::theory::ParamInfo::Implicit;
-use crate::theory::{Effect, Param, ParamInfo, Syntax, Tele, Var};
+use crate::theory::{Param, ParamInfo, Syntax, Tele, Var};
 
 pub type Spine = Vec<(ParamInfo, Term)>;
 
@@ -48,7 +48,11 @@ pub enum Term {
 
     Univ,
 
-    Pi(Param<Self>, Effect, Box<Self>),
+    Pi {
+        param: Param<Self>,
+        eff: Box<Self>,
+        body: Box<Self>,
+    },
     Lam(Param<Self>, Box<Self>),
     App(Box<Self>, ArgInfo, Box<Self>),
 
@@ -163,6 +167,7 @@ pub enum Term {
     ConsoleLog(Box<Self>),
     SetTimeout(Box<Self>, Box<Self>, Box<Self>),
 
+    Pure,
     EmitAsync(Box<Self>),
 }
 
@@ -180,8 +185,10 @@ impl Term {
     }
 
     pub fn pi(tele: &Tele<Self>, tm: Self) -> Self {
-        tele.iter().rfold(tm, |b, p| {
-            Term::Pi(p.clone(), Default::default(), Box::new(b))
+        tele.iter().rfold(tm, |b, p| Term::Pi {
+            param: p.clone(),
+            eff: Box::new(Term::Pure),
+            body: Box::new(b),
         })
     }
 
@@ -216,7 +223,7 @@ impl Term {
                     } => (type_args.clone(), associated.clone(), methods.clone()),
                     _ => unreachable!(),
                 },
-                Varargs(tm) | Pi(.., tm) | Lam(.., tm) => {
+                Varargs(tm) | Pi { body: tm, .. } | Lam(.., tm) => {
                     x = tm.as_ref();
                     continue;
                 }
@@ -267,7 +274,9 @@ impl Term {
     pub fn unwrap_solved_implicit_lambda(tm: Self, ty: Self) -> (Self, Self) {
         use Term::*;
         match (tm, ty) {
-            (Lam(p, b), Pi(.., body)) if p.info == Implicit && p.typ.is_solved_auto_implicit() => {
+            (Lam(p, b), Pi { body, .. })
+                if p.info == Implicit && p.typ.is_solved_auto_implicit() =>
+            {
                 (*b, *body)
             }
             ret => ret,
@@ -303,7 +312,10 @@ impl Display for Term {
                 Continue => "continue".to_string(),
                 Break => "break".to_string(),
                 Univ => "type".to_string(),
-                Pi(p, e, b) => format!("{p} -> {e}{b}"),
+                Pi { param, eff, body } => match eff.as_ref() {
+                    Pure => format!("{param} -> {body}"),
+                    e => format!("{param} -> {e} {body}"),
+                },
                 Lam(p, b) => format!("{p} => {b}"),
                 App(f, _, x) => format!("({f} {x})"),
                 Sigma(p, b) => format!("{p} * {b}"),
@@ -428,6 +440,7 @@ impl Display for Term {
                 ErrorThrow(a) => format!("throw Error({a})"),
                 ConsoleLog(m) => format!("console.log({m})"),
                 SetTimeout(f, d, x) => format!("setTimeout({f}, {d}, {x})"),
+                Pure => "pure".to_string(),
                 EmitAsync(a) => format!("await {a}"),
             }
             .as_str(),

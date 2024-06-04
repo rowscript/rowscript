@@ -262,14 +262,3 @@ pub enum VarKind {
 pub struct ResolvedVar(pub VarKind, pub Var);
 
 pub type NameMap = HashMap<String, ResolvedVar>;
-
-#[derive(Debug, Clone, Default)]
-pub struct Effect {
-    is_async: bool,
-}
-
-impl Display for Effect {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(if self.is_async { "async" } else { "" })
-    }
-}

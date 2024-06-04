@@ -36,7 +36,11 @@ impl Renamer {
                 self.term(r),
             ),
             Return(a) => Return(self.term(a)),
-            Pi(p, e, c) => Pi(self.param(p), e, self.term(c)),
+            Pi { param, eff, body } => Pi {
+                param: self.param(param),
+                eff,
+                body: self.term(body),
+            },
             Lam(p, b) => Lam(self.param(p), self.term(b)),
             App(f, i, x) => App(self.term(f), i, self.term(x)),
             Sigma(p, c) => Sigma(self.param(p), self.term(c)),

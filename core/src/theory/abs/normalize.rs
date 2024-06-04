@@ -147,7 +147,11 @@ impl<'a> Normalizer<'a> {
                 }
             }
             Return(a) => Return(self.term_box(a)?),
-            Pi(p, e, b) => Pi(self.param(p)?, e, self.term_box(b)?),
+            Pi { param, eff, body } => Pi {
+                param: self.param(param)?,
+                eff,
+                body: self.term_box(body)?,
+            },
             Lam(p, b) => Lam(self.param(p)?, self.term_box(b)?),
             App(f, ai, x) => {
                 let f = self.term_box(f)?;
@@ -614,9 +618,7 @@ impl<'a> Normalizer<'a> {
         let mut ret = f;
         for x in args {
             match ret {
-                Pi(p, _, b) => {
-                    ret = self.with(&[(&p.var, x)], *b)?;
-                }
+                Pi { param, body, .. } => ret = self.with(&[(&param.var, x)], *body)?,
                 _ => unreachable!(),
             }
         }
@@ -677,7 +679,7 @@ impl<'a> Normalizer<'a> {
             }
 
             let f_ty = match self.sigma.get(&f).unwrap().to_type() {
-                Pi(p, _, body) => self.with(&[(&p.var, x)], *body)?,
+                Pi { param: p, body, .. } => self.with(&[(&p.var, x)], *body)?,
                 _ => unreachable!(),
             };
 
