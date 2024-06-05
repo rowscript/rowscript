@@ -37,7 +37,7 @@ class Bar {
 console.log(new Bar());
 
 function createDefault<T>(): T
-where Default<T>
+where T instanceof Default
 {
     default()
 }

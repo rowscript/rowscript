@@ -1,7 +1,7 @@
 function log<T>(v: T);
 
 function f1<T>(it: T)
-where Iterator<T>
+where T instanceof Iterator
 {
     const n = it.next();
     log(n);

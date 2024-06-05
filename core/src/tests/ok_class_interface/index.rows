@@ -10,7 +10,9 @@ interface Updater {
     update(a: Updater);
 }
 
-function doSomething<U>(updater: U) where Updater<U> {
+function doSomething<U>(updater: U)
+where U instanceof Updater
+{
     updater.update();
 }
 

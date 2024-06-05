@@ -7,7 +7,9 @@ interface Updater<T> {
     update<T>(a: Updater<T>);
 }
 
-function doSomething<U: type -> type, T>(updater: U<T>) where Updater<U> {
+function doSomething<U: type -> type, T>(updater: U<T>)
+where U instanceof Updater
+{
     updater.update();
 }
 

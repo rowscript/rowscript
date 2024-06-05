@@ -18,7 +18,7 @@ instanceof NatLike for Bar {
 }
 
 function f0<T>(a: T): T
-where NatLike<T>
+where T instanceof NatLike
 {
     add(a, a)
 }

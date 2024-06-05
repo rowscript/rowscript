@@ -7,7 +7,7 @@ use pest::pratt_parser::{Assoc, Op, PrattParser};
 use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, InstanceBody};
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
-use crate::theory::conc::data::Expr::Pure;
+use crate::theory::conc::data::Expr::{App, Instanceof, Pure};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::conc::load::ImportedPkg::Vendor;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
@@ -742,10 +742,30 @@ impl Trans {
                     let rhs = self.row_expr(p.next().unwrap());
                     RowEq(loc, Box::new(lhs), Box::new(rhs))
                 }
-                Rule::interface_constraint => Instanceof(loc, Box::new(self.type_app(p))),
+                Rule::instanceof => self.instanceof(loc, p),
                 _ => unreachable!(),
             }),
         }
+    }
+
+    fn instanceof(&self, loc: Loc, i: Pair<Rule>) -> Expr {
+        let mut p = i.into_inner();
+        let mut xs = vec![(UnnamedImplicit, self.maybe_qualified(p.next().unwrap()))];
+        for arg in p {
+            match arg.as_rule() {
+                Rule::row_arg => xs.push(self.row_arg(arg)),
+                Rule::type_arg => xs.push(self.type_arg(arg)),
+                Rule::tyref => {
+                    let mut f = self.maybe_qualified(arg);
+                    for (i, x) in xs {
+                        f = App(loc, Box::new(f), i, Box::new(x))
+                    }
+                    return Instanceof(loc, Box::new(f));
+                }
+                _ => unreachable!(),
+            };
+        }
+        unreachable!()
     }
 
     fn row_expr(&self, e: Pair<Rule>) -> Expr {
