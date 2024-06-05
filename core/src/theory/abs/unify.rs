@@ -83,6 +83,9 @@ impl<'a> Unifier<'a> {
             (Cls { object, .. }, b) => self.unify(object, b),
             (a, Cls { object, .. }) => self.unify(a, object),
 
+            // Expected effect is impure, but the actual is pure, we could proceed. But the opposite is not ture.
+            (Fields(..), Pure) => Ok(()),
+
             (Const(p, a, b), Const(q, x, y)) => {
                 self.unify(&p.typ, &q.typ)?;
                 self.unify(a, x)?;

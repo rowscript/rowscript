@@ -135,10 +135,15 @@ impl Trans {
         let loc = Loc::from(f.as_span());
         let mut pairs = f.into_inner();
 
+        let mut eff = Box::new(Pure(loc));
         let name = Var::from({
             let p = pairs.next().unwrap();
+            let p_loc = Loc::from(p.as_span());
             match p.as_rule() {
-                Rule::is_async => todo!(),
+                Rule::is_async => {
+                    eff = Box::new(Expr::async_effect(p_loc));
+                    pairs.next().unwrap()
+                }
                 _ => p,
             }
         });
@@ -197,7 +202,7 @@ impl Trans {
             loc,
             name,
             tele,
-            eff: Box::new(Pure(loc)),
+            eff,
             ret,
             body,
         }

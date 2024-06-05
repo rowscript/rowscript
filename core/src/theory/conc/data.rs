@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter};
 
 use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::conc::load::ModuleID;
-use crate::theory::{Loc, Param, Syntax, Tele, Var};
+use crate::theory::{Loc, Param, Syntax, Tele, Var, ASYNC};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ArgInfo {
@@ -235,6 +235,11 @@ impl Expr {
             UnnamedImplicit,
             Box::new(InsertedHole(loc)),
         )
+    }
+
+    pub fn async_effect(loc: Loc) -> Self {
+        use Expr::*;
+        Fields(loc, vec![(ASYNC.to_string(), Unit(loc))])
     }
 }
 

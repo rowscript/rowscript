@@ -1,23 +1,23 @@
-function delay(d: Duration) {
+async function delay(d: Duration) {
     await { setTimeout(resolve, d, ()) }
 }
 
-function f0() {
+async function f0() {
     const a = await 42;
     console.log(a);
 }
 
-function f1() {
+async function f1() {
     const (a, b, c) = await (42, "foo", true);
     console.log(a, b, c);
 }
 
-function f2(): Array<number> {
+async function f2(): Array<number> {
     const a: Executor<number> = (resolve) => resolve(42);
     awaits.all([a, (resolve) => resolve(69)])
 }
 
-function f3(): number {
+async function f3(): number {
     const a: Executor<number> = (resolve) => resolve(42);
     awaits.any([a, (resolve) => resolve(69)])
 }

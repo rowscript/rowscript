@@ -28,6 +28,7 @@ pub struct Elaborator {
 
     vg: VarGen,
 
+    checking_eff: Option<Term>,
     checking_ret: Option<Term>,
     checking_class_type_args: Option<Box<[Term]>>,
 }
@@ -67,7 +68,7 @@ impl Elaborator {
             let checked_var = p.var.clone();
             let var = p.var.clone();
 
-            let gamma_typ = self.check(*p.typ, &Term::Univ)?;
+            let gamma_typ = self.check(*p.typ, &Term::Pure, &Term::Univ)?;
             let typ = Box::new(gamma_typ.clone());
 
             self.gamma.insert(gamma_var, Box::new(gamma_typ));
@@ -84,8 +85,9 @@ impl Elaborator {
             self.checking_class_type_args = Some(tele_to_refs(&tele));
         }
 
-        let eff = self.check(*d.eff, &Term::Univ)?;
-        let ret = self.check(*d.ret, &Term::Univ)?;
+        let eff = self.check(*d.eff, &Term::Pure, &Term::Row)?;
+        let ret = self.check(*d.ret, &Term::Pure, &Term::Univ)?;
+        self.checking_eff = Some(eff.clone());
         self.checking_ret = Some(ret.clone());
         self.sigma.insert(
             d.name.clone(),
@@ -102,17 +104,13 @@ impl Elaborator {
         let mut inferred_eff = None;
         let mut inferred_ret = None;
         let body = match d.body {
-            Fn(f) => Fn(
-                // TODO: Check the effect.
-                Box::new(self.check(*f, &ret)?),
-            ),
+            Fn(f) => Fn(Box::new(self.check(*f, &eff, &ret)?)),
             Postulate => Postulate,
-            Alias(t) => Alias(Box::new(self.check(*t, &ret)?)),
+            Alias(t) => Alias(Box::new(self.check(*t, &eff, &ret)?)),
             Constant(anno, f) => Constant(
                 anno,
                 Box::new(if anno {
-                    // TODO: Check the effect.
-                    self.check(*f, &ret)?
+                    self.check(*f, &eff, &ret)?
                 } else {
                     let InferResult { tm, ty, eff } = self.infer(*f)?;
                     inferred_eff = Some(Box::new(eff));
@@ -134,7 +132,7 @@ impl Elaborator {
 
             Interface { fns, instances } => Interface { fns, instances },
             Instance(body) => Instance(self.check_instance_body(&d.name, *body)?),
-            InstanceFn(f) => InstanceFn(Box::new(self.check(*f, &ret)?)),
+            InstanceFn(f) => InstanceFn(Box::new(self.check(*f, &eff, &ret)?)),
             Findable(i) => Findable(i),
 
             Class {
@@ -145,7 +143,7 @@ impl Elaborator {
             } => {
                 let mut checked_members = Vec::default();
                 for (loc, id, typ) in members {
-                    checked_members.push((loc, id, self.check(typ, &ret)?));
+                    checked_members.push((loc, id, self.check(typ, &eff, &ret)?));
                 }
                 Class {
                     ctor,
@@ -154,7 +152,7 @@ impl Elaborator {
                     methods,
                 }
             }
-            Associated(t) => Associated(Box::new(self.check(*t, &ret)?)),
+            Associated(t) => Associated(Box::new(self.check(*t, &eff, &ret)?)),
             Method {
                 class,
                 associated,
@@ -162,7 +160,7 @@ impl Elaborator {
             } => Method {
                 class,
                 associated,
-                f: Box::new(self.check(*f, &ret)?),
+                f: Box::new(self.check(*f, &eff, &ret)?),
             },
 
             Undefined | Meta(..) => unreachable!(),
@@ -180,6 +178,7 @@ impl Elaborator {
         if let Some(ret) = inferred_ret {
             checked.ret = ret;
         }
+        self.checking_eff = None;
         self.checking_ret = None;
         self.checking_class_type_args = None;
 
@@ -240,161 +239,177 @@ impl Elaborator {
         Ok(ret)
     }
 
-    fn check_anno(&mut self, a: Expr, maybe_typ: Option<Box<Expr>>) -> Result<InferResult, Error> {
-        Ok(if let Some(t) = maybe_typ {
-            let ty = self.check(*t, &Term::Univ)?;
-            InferResult {
-                // TODO: Check the effect.
-                tm: self.check(a, &ty)?,
-                eff: Term::Pure,
+    fn check_anno(
+        &mut self,
+        a: Expr,
+        eff: &Term,
+        maybe_typ: Option<Box<Expr>>,
+    ) -> Result<InferResult, Error> {
+        if let Some(t) = maybe_typ {
+            let ty = self.check(*t, &Term::Pure, &Term::Univ)?;
+            Ok(InferResult {
+                tm: self.check(a, eff, &ty)?,
+                eff: eff.clone(),
                 ty,
-            }
+            })
         } else {
-            self.infer(a)?
-        })
+            self.infer(a)
+        }
     }
 
-    fn check(&mut self, e: Expr, ty: &Term) -> Result<Term, Error> {
+    fn check(&mut self, e: Expr, eff: &Term, ty: &Term) -> Result<Term, Error> {
         maybe_grow(move || {
-            self.check_impl(e, ty).inspect(|tm| {
-                debug!(target: "elab", "expression checked successfully: tm={tm}, ty={ty}");
+            self.check_impl(e, eff, ty).inspect(|tm| {
+                debug!(target: "elab", "expression checked successfully: tm={tm}, eff={eff}, ty={ty}");
             })
         })
     }
 
-    fn check_impl(&mut self, e: Expr, ty: &Term) -> Result<Term, Error> {
+    fn check_impl(&mut self, e: Expr, eff: &Term, ty: &Term) -> Result<Term, Error> {
         use Expr::*;
         trace!(target: "elab", "checking expression: e={e}, ty={ty}");
         Ok(match e {
             Const(_, var, maybe_typ, a, b) => {
-                // TODO: Check the effect.
-                let InferResult { tm, ty: typ, .. } = self.check_anno(*a, maybe_typ)?;
+                let a_loc = a.loc();
+                let InferResult {
+                    tm: a_tm,
+                    eff: a_eff,
+                    ty: a_ty,
+                } = self.check_anno(*a, eff, maybe_typ)?;
+
+                self.unifier(a_loc).unify(eff, &a_eff)?;
+
                 let param = Param {
                     var,
                     info: Explicit,
-                    typ: Box::new(typ),
+                    typ: Box::new(a_ty),
                 };
-                let body = self.guarded_check(&[&param], *b, ty)?;
-                Term::Const(param, Box::new(tm), Box::new(body))
+                let body = self.guarded_check([&param], *b, eff, ty)?;
+                Term::Const(param, Box::new(a_tm), Box::new(body))
             }
             Let(_, var, maybe_typ, a, b) => {
-                // TODO: Check the effect.
-                let InferResult { tm, ty: typ, .. } = self.check_anno(*a, maybe_typ)?;
+                let a_loc = a.loc();
+                let InferResult {
+                    tm: a_tm,
+                    eff: a_eff,
+                    ty: a_ty,
+                } = self.check_anno(*a, eff, maybe_typ)?;
+
+                self.unifier(a_loc).unify(eff, &a_eff)?;
+
                 let param = Param {
                     var,
                     info: Explicit,
-                    typ: Box::new(typ),
+                    typ: Box::new(a_ty),
                 };
-                let body = self.guarded_check(&[&param], *b, ty)?;
-                Term::Let(param, Box::new(tm), Box::new(body))
+                let body = self.guarded_check([&param], *b, eff, ty)?;
+                Term::Let(param, Box::new(a_tm), Box::new(body))
             }
             Update(_, v, a, b) => {
                 let a_ty = self.gamma.get(&v).unwrap().clone();
-                let a = self.check(*a, &a_ty)?;
-                let b = self.check(*b, ty)?;
+                let a = self.check(*a, eff, &a_ty)?;
+                let b = self.check(*b, eff, ty)?;
                 Term::Update(v, Box::new(a), Box::new(b))
             }
             While(_, p, b, r) => {
-                let p = self.check(*p, &Term::Boolean)?;
-                let b = self.check(*b, &Term::Unit)?;
-                let r = self.check(*r, ty)?;
+                let p = self.check(*p, eff, &Term::Boolean)?;
+                let b = self.check(*b, eff, &Term::Unit)?;
+                let r = self.check(*r, eff, ty)?;
                 Term::While(Box::new(p), Box::new(b), Box::new(r))
             }
             Fori(_, b, r) => {
-                let b = self.check(*b, &Term::Unit)?;
-                let r = self.check(*r, ty)?;
+                let b = self.check(*b, eff, &Term::Unit)?;
+                let r = self.check(*r, eff, ty)?;
                 Term::Fori(Box::new(b), Box::new(r))
             }
             Guard(_, p, b, e, r) => {
-                let p = self.check(*p, &Term::Boolean)?;
-                let b = self.check(*b, &Term::Unit)?;
+                let p = self.check(*p, eff, &Term::Boolean)?;
+                let b = self.check(*b, eff, &Term::Unit)?;
                 let e = if let Some(e) = e {
-                    Some(Box::new(self.check(*e, &Term::Unit)?))
+                    Some(Box::new(self.check(*e, eff, &Term::Unit)?))
                 } else {
                     None
                 };
-                let r = self.check(*r, ty)?;
+                let r = self.check(*r, eff, ty)?;
                 Term::Guard(Box::new(p), Box::new(b), e, Box::new(r))
             }
-            Lam(loc, var, body) => {
-                let pi = self.nf(loc).term(ty.clone())?;
-                match pi {
-                    Term::Pi {
-                        param: ty_param,
-                        body: ty_body,
-                        ..
-                    } => {
-                        let param = Param {
-                            var: var.clone(),
-                            info: Explicit,
-                            typ: ty_param.typ.clone(),
-                        };
-                        let body_type = self
-                            .nf(loc)
-                            .with(&[(&ty_param.var, &Term::Ref(var))], *ty_body)?;
-                        let checked_body = self.guarded_check(&[&param], *body, &body_type)?;
-                        Term::Lam(param.clone(), Box::new(checked_body))
-                    }
-                    ty => return Err(ExpectedPi(ty, loc)),
+            Lam(loc, var, body) => match self.nf(loc).term(ty.clone())? {
+                Term::Pi {
+                    param: ty_param,
+                    eff: ty_eff,
+                    body: ty_body,
+                } => {
+                    self.unifier(loc).unify(eff, &ty_eff)?;
+
+                    let p = Param {
+                        var: var.clone(),
+                        info: Explicit,
+                        typ: ty_param.typ.clone(),
+                    };
+                    let b_ty = self
+                        .nf(loc)
+                        .with(&[(&ty_param.var, &Term::Ref(var))], *ty_body)?;
+                    let b = self.guarded_check([&p], *body, eff, &b_ty)?;
+                    Term::Lam(p, Box::new(b))
                 }
-            }
-            Tuple(loc, a, b) => {
-                let sig = self.nf(loc).term(ty.clone())?;
-                match sig {
-                    Term::Sigma(p, body) => match p.typ.as_ref() {
-                        Term::Varargs(t) => {
-                            let args = match *a {
-                                Spread(_, a) => *a,
-                                a => {
-                                    let mut args = vec![a];
-                                    let mut rest = b;
-                                    loop {
-                                        match *rest {
-                                            TT(..) => break,
-                                            Tuple(.., arg, body) => {
-                                                args.push(*arg);
-                                                rest = body;
-                                            }
-                                            _ => unreachable!(),
+                ty => return Err(ExpectedPi(ty, loc)),
+            },
+            Tuple(loc, a, b) => match self.nf(loc).term(ty.clone())? {
+                Term::Sigma(p, body) => match p.typ.as_ref() {
+                    Term::Varargs(t) => {
+                        let args = match *a {
+                            Spread(_, a) => *a,
+                            a => {
+                                let mut args = vec![a];
+                                let mut rest = b;
+                                loop {
+                                    match *rest {
+                                        TT(..) => break,
+                                        Tuple(.., arg, body) => {
+                                            args.push(*arg);
+                                            rest = body;
                                         }
+                                        _ => unreachable!(),
                                     }
-                                    App(
-                                        loc,
-                                        Box::new(self.array_ctor_ref(loc)),
-                                        UnnamedExplicit,
-                                        Box::new(Tuple(
-                                            loc,
-                                            Box::new(Arr(loc, args)),
-                                            Box::new(TT(loc)),
-                                        )),
-                                    )
                                 }
-                            };
-                            Term::Tuple(Box::new(self.check(args, t)?), Box::new(Term::TT))
-                        }
-                        _ => {
-                            let a = self.check(*a, &p.typ)?;
-                            let body = self.nf(loc).with(&[(&p.var, &a)], *body)?;
-                            Term::Tuple(Box::new(a), Box::new(self.check(*b, &body)?))
-                        }
-                    },
-                    Term::AnonVarargs(ty) => {
-                        // TODO: Check the effect.
-                        let InferResult {
-                            tm: a, ty: a_ty, ..
-                        } = self.infer(Tuple(loc, a, b))?;
-                        self.unifier(loc).unify(&ty, &a_ty)?;
-                        a
+                                App(
+                                    loc,
+                                    Box::new(self.array_ctor_ref(loc)),
+                                    UnnamedExplicit,
+                                    Box::new(Tuple(
+                                        loc,
+                                        Box::new(Arr(loc, args)),
+                                        Box::new(TT(loc)),
+                                    )),
+                                )
+                            }
+                        };
+                        Term::Tuple(Box::new(self.check(args, eff, t)?), Box::new(Term::TT))
                     }
-                    ty => return Err(ExpectedSigma(ty, loc)),
+                    _ => {
+                        let a = self.check(*a, eff, &p.typ)?;
+                        let body = self.nf(loc).with(&[(&p.var, &a)], *body)?;
+                        Term::Tuple(Box::new(a), Box::new(self.check(*b, eff, &body)?))
+                    }
+                },
+                Term::AnonVarargs(ty) => {
+                    let ret = self.infer(Tuple(loc, a, b))?;
+                    self.unifier(loc).unify(eff, &ret.eff)?;
+                    self.unifier(loc).unify(&ty, &ret.ty)?;
+                    ret.tm
                 }
-            }
+                ty => return Err(ExpectedSigma(ty, loc)),
+            },
             TupleBind(_, x, y, a, b) => {
                 let a_loc = a.loc();
-                // TODO: Check the effect.
                 let InferResult {
-                    tm: a, ty: a_ty, ..
+                    tm: a,
+                    eff: a_eff,
+                    ty: a_ty,
                 } = self.infer(*a)?;
+
+                self.unifier(a_loc).unify(eff, &a_eff)?;
+
                 match a_ty {
                     Term::Sigma(ty_param, typ) => {
                         let x = Param {
@@ -407,26 +422,30 @@ impl Elaborator {
                             info: Explicit,
                             typ,
                         };
-                        let b = self.guarded_check(&[&x, &y], *b, ty)?;
+                        let b = self.guarded_check([&x, &y], *b, eff, ty)?;
                         Term::TupleBind(x, y, Box::new(a), Box::new(b))
                     }
                     ty => return Err(ExpectedSigma(ty, a_loc)),
                 }
             }
             UnitBind(_, a, b) => Term::UnitBind(
-                Box::new(self.check(*a, &Term::Unit)?),
-                Box::new(self.check(*b, ty)?),
+                Box::new(self.check(*a, eff, &Term::Unit)?),
+                Box::new(self.check(*b, eff, ty)?),
             ),
             If(_, p, t, e) => Term::If(
-                Box::new(self.check(*p, &Term::Boolean)?),
-                Box::new(self.check(*t, ty)?),
-                Box::new(self.check(*e, ty)?),
+                Box::new(self.check(*p, eff, &Term::Boolean)?),
+                Box::new(self.check(*t, eff, ty)?),
+                Box::new(self.check(*e, eff, ty)?),
             ),
             Downcast(loc, a) => {
-                // TODO: Check the effect.
                 let InferResult {
-                    tm: a, ty: a_ty, ..
+                    tm: a,
+                    eff: a_eff,
+                    ty: a_ty,
                 } = self.infer(*a)?;
+
+                self.unifier(loc).unify(eff, &a_eff)?;
+
                 let to = match self.nf(loc).term(ty.clone())? {
                     Term::Object(to) => to,
                     ty => return Err(ExpectedObject(ty, loc)),
@@ -437,10 +456,14 @@ impl Elaborator {
                 }
             }
             Upcast(loc, a) => {
-                // TODO: Check the effect.
                 let InferResult {
-                    tm: a, ty: a_ty, ..
+                    tm: a,
+                    eff: a_eff,
+                    ty: a_ty,
                 } = self.infer(*a)?;
+
+                self.unifier(loc).unify(eff, &a_eff)?;
+
                 let to = match self.nf(loc).term(ty.clone())? {
                     Term::Enum(to) => to,
                     ty => return Err(ExpectedEnum(ty, loc)),
@@ -476,9 +499,7 @@ impl Elaborator {
                     }
                 }
 
-                // TODO: Check the effect.
-                _ = inferred_eff;
-
+                self.unifier(loc).unify(eff, &inferred_eff)?;
                 self.unifier(loc).unify(&expected, &inferred)?;
 
                 inferred_tm
@@ -501,9 +522,9 @@ impl Elaborator {
         use MetaKind::*;
         trace!(target: "elab", "inferring expression: e={e}");
         Ok(match e {
-            Resolved(loc, v) => match self.gamma.get(&v) {
-                Some(ty) => InferResult::pure(Term::Ref(v), *ty.clone()),
-                None => {
+            Resolved(loc, v) => {
+                let local = self.gamma.get(&v);
+                if local.is_none() {
                     let d = self.sigma.get(&v).unwrap();
                     let mut tm = d.to_term(v);
                     let eff = d.to_eff();
@@ -511,9 +532,15 @@ impl Elaborator {
                     if matches!(d.body, Body::Associated(..)) {
                         (tm, ty) = self.try_sugar_type_args(loc, tm, ty)?;
                     }
-                    InferResult { tm, eff, ty }
+                    return Ok(InferResult { tm, eff, ty });
                 }
-            },
+                let ty = *local.unwrap().clone();
+                return Ok(InferResult {
+                    tm: Term::Ref(v),
+                    eff: self.insert_meta(loc, InsertedMeta).0,
+                    ty,
+                });
+            }
             Imported(_, v) => {
                 let d = self.sigma.get(&v).unwrap();
                 let tm = Term::Ref(v);
@@ -537,7 +564,11 @@ impl Elaborator {
                 InferResult::pure(tm, ty)
             }
             Return(_, a) => {
-                let a = self.check(*a, &self.checking_ret.clone().unwrap())?;
+                let a = self.check(
+                    *a,
+                    &self.checking_eff.clone().unwrap(),
+                    &self.checking_ret.clone().unwrap(),
+                )?;
                 InferResult::pure(Term::Return(Box::new(a)), Term::Unit)
             }
             Continue(_) => InferResult::pure(Term::Continue, Term::Unit),
@@ -553,7 +584,7 @@ impl Elaborator {
                     tm: b,
                     eff,
                     ty: b_ty,
-                } = self.guarded_infer(&[&param], *b)?;
+                } = self.guarded_infer([&param], *b)?;
                 InferResult {
                     tm: Term::Pi {
                         param,
@@ -601,7 +632,7 @@ impl Elaborator {
                     tm: b,
                     eff,
                     ty: b_ty,
-                } = self.guarded_infer(&[&param], *b)?;
+                } = self.guarded_infer([&param], *b)?;
                 InferResult {
                     tm: Term::Lam(param.clone(), Box::new(b)),
                     eff: eff.clone(),
@@ -629,14 +660,14 @@ impl Elaborator {
                     Term::Pi {
                         param: p, body: b, ..
                     } => {
-                        // TODO: Check the effect of `x` against that of `f`.
                         let x = self.guarded_check(
-                            &[&Param {
+                            [&Param {
                                 var: p.var.clone(),
                                 info: p.info,
                                 typ: p.typ.clone(),
                             }],
                             *x,
+                            &eff,
                             &p.typ,
                         )?;
                         let applied_ty = self.nf(f_loc).with(&[(&p.var, &x)], *b)?;
@@ -688,7 +719,7 @@ impl Elaborator {
                     tm: b,
                     eff,
                     ty: b_ty,
-                } = self.guarded_infer(&[&param], *b)?;
+                } = self.guarded_infer([&param], *b)?;
                 InferResult {
                     tm: Term::Sigma(param, Box::new(b)),
                     eff,
@@ -724,6 +755,7 @@ impl Elaborator {
             }
             TupleBind(_, x, y, a, b) => {
                 let a_loc = a.loc();
+
                 let x_ty = self.insert_meta(a_loc, InsertedMeta).0;
                 let y_ty = self.insert_meta(a_loc, InsertedMeta).0;
                 let x = Param {
@@ -736,12 +768,14 @@ impl Elaborator {
                     info: Explicit,
                     typ: Box::new(y_ty.clone()),
                 };
-                let a = self.check(*a, &Term::Sigma(x.clone(), Box::new(y_ty)))?;
+
                 let InferResult {
                     tm: b,
                     eff,
                     ty: b_ty,
-                } = self.guarded_infer(&[&x, &y], *b)?;
+                } = self.guarded_infer([&x, &y], *b)?;
+                let a = self.check(*a, &eff, &Term::Sigma(x.clone(), Box::new(y_ty)))?;
+
                 InferResult {
                     tm: Term::TupleBind(x, y, Box::new(a), Box::new(b)),
                     eff,
@@ -749,8 +783,8 @@ impl Elaborator {
                 }
             }
             UnitBind(_, a, b) => {
-                let a = self.check(*a, &Term::Unit)?;
                 let InferResult { tm: b, eff, ty } = self.infer(*b)?;
+                let a = self.check(*a, &eff, &Term::Unit)?;
                 InferResult {
                     tm: Term::UnitBind(Box::new(a), Box::new(b)),
                     eff,
@@ -763,8 +797,11 @@ impl Elaborator {
                 let mut checked = Vec::default();
                 for (i, x) in xs.into_iter().enumerate() {
                     if i > 0 {
-                        // TODO: Check the effect.
-                        checked.push(self.check(x, v_ty.as_ref().unwrap())?);
+                        checked.push(self.check(
+                            x,
+                            v_eff.as_ref().unwrap(),
+                            v_ty.as_ref().unwrap(),
+                        )?);
                         continue;
                     }
                     let InferResult {
@@ -798,10 +835,8 @@ impl Elaborator {
                 for (i, (k, v)) in xs.into_iter().enumerate() {
                     if i > 0 {
                         checked.push((
-                            // TODO: Check the key effect.
-                            self.check(k, k_ty.as_ref().unwrap())?,
-                            // TODO: Check the value effect.
-                            self.check(v, v_ty.as_ref().unwrap())?,
+                            self.check(k, k_eff.as_ref().unwrap(), k_ty.as_ref().unwrap())?,
+                            self.check(v, k_eff.as_ref().unwrap(), v_ty.as_ref().unwrap())?,
                         ));
                         continue;
                     }
@@ -841,7 +876,7 @@ impl Elaborator {
                 }
             }
             Associate(loc, a, n) => InferResult::pure(
-                Term::Associate(Box::new(self.check(*a, &Term::Univ)?), n),
+                Term::Associate(Box::new(self.check(*a, &Term::Pure, &Term::Univ)?), n),
                 self.insert_meta(loc, InsertedMeta).0,
             ),
             Fields(_, fields) => {
@@ -852,22 +887,22 @@ impl Elaborator {
                 InferResult::pure(Term::Fields(inferred), Term::Row)
             }
             Combine(_, a, b) => {
-                let a = self.check(*a, &Term::Row)?;
-                let b = self.check(*b, &Term::Row)?;
+                let a = self.check(*a, &Term::Pure, &Term::Row)?;
+                let b = self.check(*b, &Term::Pure, &Term::Row)?;
                 InferResult::pure(Term::Combine(false, Box::new(a), Box::new(b)), Term::Row)
             }
             RowOrd(_, a, b) => {
-                let a = self.check(*a, &Term::Row)?;
-                let b = self.check(*b, &Term::Row)?;
+                let a = self.check(*a, &Term::Pure, &Term::Row)?;
+                let b = self.check(*b, &Term::Pure, &Term::Row)?;
                 InferResult::pure(Term::RowOrd(Box::new(a), Box::new(b)), Term::Univ)
             }
             RowEq(_, a, b) => {
-                let a = self.check(*a, &Term::Row)?;
-                let b = self.check(*b, &Term::Row)?;
+                let a = self.check(*a, &Term::Pure, &Term::Row)?;
+                let b = self.check(*b, &Term::Pure, &Term::Row)?;
                 InferResult::pure(Term::RowEq(Box::new(a), Box::new(b)), Term::Univ)
             }
             Object(_, r) => {
-                let r = self.check(*r, &Term::Row)?;
+                let r = self.check(*r, &Term::Pure, &Term::Row)?;
                 InferResult::pure(Term::Object(Box::new(r)), Term::Univ)
             }
             Obj(_, r) => match *r {
@@ -994,7 +1029,7 @@ impl Elaborator {
                 }
             }
             Enum(_, r) => InferResult::pure(
-                Term::Enum(Box::new(self.check(*r, &Term::Row)?)),
+                Term::Enum(Box::new(self.check(*r, &Term::Pure, &Term::Row)?)),
                 Term::Univ,
             ),
             Variant(_, n, a) => {
@@ -1064,13 +1099,12 @@ impl Elaborator {
                     };
                     let tm = match &ret_ty {
                         None => {
-                            let InferResult { tm, eff, ty } = self.guarded_infer(&[&pat], e)?;
+                            let InferResult { tm, eff, ty } = self.guarded_infer([&pat], e)?;
                             self.unifier(loc).unify(&a_eff, &eff)?;
                             ret_ty = Some(ty);
                             tm
                         }
-                        // TODO: Check the effect.
-                        Some(ret) => self.guarded_check(&[&pat], e, ret)?,
+                        Some(ret) => self.guarded_check([&pat], e, &a_eff, ret)?,
                     };
                     m.insert(n, (v, tm));
                 }
@@ -1087,7 +1121,12 @@ impl Elaborator {
                         };
                         Some((
                             v,
-                            Box::new(self.guarded_check(&[&p], *e, ret_ty.as_ref().unwrap())?),
+                            Box::new(self.guarded_check(
+                                [&p],
+                                *e,
+                                &a_eff,
+                                ret_ty.as_ref().unwrap(),
+                            )?),
                         ))
                     }
                     None => None,
@@ -1110,14 +1149,14 @@ impl Elaborator {
                 }
             }
             Varargs(loc, t) => {
-                let t = self.check(*t, &Term::Univ)?;
+                let t = self.check(*t, &Term::Pure, &Term::Univ)?;
                 if !self.is_variadic(&t) {
                     return Err(NonVariadicType(t, loc));
                 }
                 InferResult::pure(Term::Varargs(Box::new(t)), Term::Univ)
             }
             AnonVarargs(_, t) => InferResult::pure(
-                Term::AnonVarargs(Box::new(self.check(*t, &Term::Univ)?)),
+                Term::AnonVarargs(Box::new(self.check(*t, &Term::Pure, &Term::Univ)?)),
                 Term::Univ,
             ),
             Spread(loc, a) => {
@@ -1131,7 +1170,7 @@ impl Elaborator {
                     ty,
                 }
             }
-            Pure(_) => InferResult::pure(Term::Pure, Term::Univ),
+            Pure(_) => InferResult::pure(Term::Pure, Term::Row),
             EmitAsync(_, a) => {
                 let InferResult { tm, ty, .. } = self.infer(*a)?;
                 InferResult {
@@ -1159,19 +1198,29 @@ impl Elaborator {
         })
     }
 
-    fn guarded_check(&mut self, ps: &[&Param<Term>], e: Expr, ty: &Term) -> Result<Term, Error> {
-        for &p in ps {
+    fn guarded_check<const N: usize>(
+        &mut self,
+        ps: [&Param<Term>; N],
+        e: Expr,
+        eff: &Term,
+        ty: &Term,
+    ) -> Result<Term, Error> {
+        for p in ps {
             self.gamma.insert(p.var.clone(), p.typ.clone());
         }
-        let ret = self.check(e, &ty.clone())?;
+        let ret = self.check(e, eff, ty)?;
         for p in ps {
             self.gamma.remove(&p.var);
         }
         Ok(ret)
     }
 
-    fn guarded_infer(&mut self, ps: &[&Param<Term>], e: Expr) -> Result<InferResult, Error> {
-        for &p in ps {
+    fn guarded_infer<const N: usize>(
+        &mut self,
+        ps: [&Param<Term>; N],
+        e: Expr,
+    ) -> Result<InferResult, Error> {
+        for p in ps {
             self.gamma.insert(p.var.clone(), p.typ.clone());
         }
         let ret = self.infer(e)?;
@@ -1277,11 +1326,11 @@ impl Elaborator {
         {
             let actual_eff = self.nf(loc).term(eff)?;
             let expected_eff = self.nf(loc).term(expected_eff)?;
-            self.unifier(loc).unify(&actual_eff, &expected_eff)?;
+            self.unifier(loc).unify(&expected_eff, &actual_eff)?;
 
             let actual_ty = self.nf(loc).term(ty)?;
             let expected_ty = self.nf(loc).term(expected_ty)?;
-            self.unifier(loc).unify(&actual_ty, &expected_ty)?;
+            self.unifier(loc).unify(&expected_ty, &actual_ty)?;
         }
         Ok(tm)
     }
@@ -1322,6 +1371,7 @@ impl Default for Elaborator {
             sigma,
             gamma: Default::default(),
             vg: Default::default(),
+            checking_eff: Default::default(),
             checking_ret: Default::default(),
             checking_class_type_args: Default::default(),
         }

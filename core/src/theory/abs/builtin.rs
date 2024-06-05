@@ -212,11 +212,15 @@ impl Builtins {
     }
 
     fn func(self, name: &str, tele: Tele<Term>, ret: Term, f: Term) -> Self {
+        self.impure_func(name, tele, Pure, ret, f)
+    }
+
+    fn impure_func(self, name: &str, tele: Tele<Term>, eff: Term, ret: Term, f: Term) -> Self {
         self.define(Def {
             loc: Default::default(),
             name: Var::new(name),
             tele,
-            eff: Box::new(Pure),
+            eff: Box::new(eff),
             ret: Box::new(ret),
             body: Body::Fn(Box::new(f)),
         })
@@ -822,9 +826,10 @@ impl Builtins {
         let array_ty = self.defined("NativeArray");
         let e = Var::new("executors");
         let (tupled, tele) = parameters([t.clone()], [(e.clone(), executors_ty)]);
-        self.func(
+        self.impure_func(
             "await#all",
             tele,
+            Term::async_effect(),
             App(
                 Box::new(array_ty),
                 ArgInfo::UnnamedImplicit,
@@ -848,9 +853,10 @@ impl Builtins {
         let executors_ty = self.executors_type(Ref(t.clone()));
         let e = Var::new("executors");
         let (tupled, tele) = parameters([t.clone()], [(e.clone(), executors_ty)]);
-        self.func(
+        self.impure_func(
             "await#any",
             tele,
+            Term::async_effect(),
             Ref(t),
             EmitAsync(Box::new(App(
                 // All unbound, only the string content matters here.
