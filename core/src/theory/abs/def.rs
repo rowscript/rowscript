@@ -31,6 +31,7 @@ pub struct Def<T: Syntax> {
     pub loc: Loc,
     pub name: Var,
     pub tele: Tele<T>,
+    pub eff: Box<T>,
     pub ret: Box<T>,
     pub body: Body<T>,
 }
@@ -51,7 +52,7 @@ impl Def<Term> {
     pub fn to_term(&self, v: Var) -> Term {
         use Body::*;
         match &self.body {
-            Fn { f, .. } => self.to_lam_term(*f.clone()),
+            Fn(f) => self.to_lam_term(*f.clone()),
             Postulate => Term::Extern(v),
             Alias(t) => self.to_lam_term(*t.clone()),
             Constant(_, f) => self.to_lam_term(*f.clone()),
@@ -110,7 +111,15 @@ impl Def<Term> {
     }
 
     pub fn to_type(&self) -> Term {
-        *rename(Box::new(Term::pi(&self.tele, *self.ret.clone())))
+        *rename(Box::new(Term::pi(
+            &self.tele,
+            *self.eff.clone(),
+            *self.ret.clone(),
+        )))
+    }
+
+    pub fn to_eff(&self) -> Term {
+        *rename(self.eff.clone())
     }
 }
 
@@ -119,9 +128,8 @@ impl<T: Syntax> Display for Def<T> {
         use Body::*;
         f.write_str(
             match &self.body {
-                Fn { is_async, f } => format!(
-                    "{}function {} {}: {} {{\n\t{f}\n}}",
-                    if *is_async { "async " } else { "" },
+                Fn(f) => format!(
+                    "function {} {}: {} {{\n\t{f}\n}}",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
@@ -239,10 +247,7 @@ impl<T: Syntax> Display for Def<T> {
 
 #[derive(Clone, Debug)]
 pub enum Body<T: Syntax> {
-    Fn {
-        is_async: bool,
-        f: Box<T>,
-    },
+    Fn(Box<T>),
     Postulate,
     Alias(Box<T>),
     Constant(bool, Box<T>),

@@ -96,6 +96,7 @@ pub enum Expr {
     Spread(Loc, Box<Self>),
     AnonSpread(Loc),
 
+    Pure(Loc),
     EmitAsync(Loc, Box<Self>),
 }
 
@@ -176,6 +177,7 @@ impl Expr {
             | AnonVarargs(loc, ..)
             | Spread(loc, ..)
             | AnonSpread(loc)
+            | Pure(loc)
             | EmitAsync(loc, ..) => loc,
         }
     }
@@ -374,6 +376,7 @@ impl Display for Expr {
                 AnonVarargs(_, t) => format!("...{t}"),
                 Spread(_, a) => format!("...{a}"),
                 AnonSpread(..) => "...".to_string(),
+                Pure(_) => "pure".to_string(),
                 EmitAsync(_, a) => format!("await {a}"),
             }
             .as_str(),

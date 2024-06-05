@@ -7,6 +7,7 @@ use pest::pratt_parser::{Assoc, Op, PrattParser};
 use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, InstanceBody};
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
+use crate::theory::conc::data::Expr::Pure;
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::conc::load::ImportedPkg::Vendor;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
@@ -134,14 +135,10 @@ impl Trans {
         let loc = Loc::from(f.as_span());
         let mut pairs = f.into_inner();
 
-        let mut is_async = false;
         let name = Var::from({
             let p = pairs.next().unwrap();
             match p.as_rule() {
-                Rule::is_async => {
-                    is_async = true;
-                    pairs.next().unwrap()
-                }
+                Rule::is_async => todo!(),
                 _ => p,
             }
         });
@@ -187,15 +184,12 @@ impl Trans {
         let untupled_vars = untupled.unresolved();
         let untupled_loc = untupled.0;
         let tupled_param = untupled.param(untupled_ends);
-        let body = Fn {
-            is_async,
-            f: Box::new(Expr::wrap_tuple_binds(
-                untupled_loc,
-                tupled_param.var.clone(),
-                untupled_vars,
-                body.unwrap(),
-            )),
-        };
+        let body = Fn(Box::new(Expr::wrap_tuple_binds(
+            untupled_loc,
+            tupled_param.var.clone(),
+            untupled_vars,
+            body.unwrap(),
+        )));
         tele.push(tupled_param);
         tele.extend(preds);
 
@@ -203,6 +197,7 @@ impl Trans {
             loc,
             name,
             tele,
+            eff: Box::new(Pure(loc)),
             ret,
             body,
         }
@@ -245,6 +240,7 @@ impl Trans {
             loc,
             name,
             tele,
+            eff: Box::new(Expr::Pure(loc)),
             ret,
             body: Body::Postulate,
         }
@@ -268,6 +264,7 @@ impl Trans {
             loc,
             name,
             tele,
+            eff: Box::new(Pure(loc)),
             ret: Box::new(Univ(loc)),
             body: Postulate,
         }
@@ -296,6 +293,7 @@ impl Trans {
             loc,
             name,
             tele,
+            eff: Box::new(Pure(loc)),
             ret: Box::new(Univ(loc)),
             body: Alias(Box::new(target.unwrap())),
         }
@@ -364,6 +362,7 @@ impl Trans {
                 info: Implicit,
                 typ: Box::new(alias_type(name_loc, &inst_tele)),
             }],
+            eff: Box::new(Pure(loc)),
             ret,
             body: Interface {
                 fns,
@@ -400,7 +399,7 @@ impl Trans {
             fns.insert(def.name.clone(), fn_name.clone());
             def.name = fn_name;
             def.body = match def.body {
-                Fn { f, .. } => InstanceFn(f),
+                Fn(f) => InstanceFn(f),
                 _ => unreachable!(),
             };
             defs.push(def);
@@ -410,6 +409,7 @@ impl Trans {
             loc,
             name: i.instance(&inst),
             tele: Default::default(),
+            eff: Box::new(Pure(loc)),
             ret: Box::new(Univ(loc)),
             body: Instance(Box::new(InstanceBody {
                 i: (i, Box::new(inst)),
@@ -438,6 +438,7 @@ impl Trans {
                         loc,
                         name,
                         tele: Default::default(),
+                        eff: Box::new(Pure(loc)),
                         ret,
                         body: Constant(is_annotated, Box::new(self.expr(p))),
                     };
@@ -488,6 +489,7 @@ impl Trans {
                         loc: typ_name_loc,
                         name: mangled_typ_var,
                         tele: tele.clone(),
+                        eff: Box::new(Pure(typ_name_loc)),
                         ret: Box::new(Univ(typ_name_loc)),
                         body: Associated(Box::new(typ)),
                     });
@@ -522,7 +524,7 @@ impl Trans {
                     let method_var = name.method(m.name);
                     m.name = method_var.clone();
                     m.body = match m.body {
-                        Fn { f, .. } => Method {
+                        Fn(f) => Method {
                             class: name.clone(),
                             associated: associated.clone(),
                             f,
@@ -564,6 +566,7 @@ impl Trans {
             loc,
             name: name.clone(),
             tele: tele.clone(),
+            eff: Box::new(Pure(loc)),
             ret: Box::new(Univ(loc)),
             body: Class {
                 ctor: ctor_name.clone(),
@@ -576,6 +579,7 @@ impl Trans {
             loc,
             name: ctor_name,
             tele: ctor_tele,
+            eff: Box::new(Pure(loc)),
             ret: Box::new(ctor_ret),
             body: ctor_body,
         };
@@ -606,6 +610,7 @@ impl Trans {
             loc,
             name: Var::unbound(),
             tele,
+            eff: Box::new(Pure(loc)),
             ret: Box::new(Expr::Univ(loc)),
             body: Body::Verify(Box::new(target)),
         }
@@ -620,6 +625,7 @@ impl Trans {
             loc,
             name: Var::unbound(),
             tele,
+            eff: Box::new(Pure(loc)),
             ret,
             body: Body::Verify(Box::new(target)),
         }

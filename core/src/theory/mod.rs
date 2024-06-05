@@ -76,6 +76,7 @@ pub const ITER_RET: &str = "__r";
 
 pub const ARRAY: &str = "Array";
 
+pub const ASYNC: &str = "Async";
 pub const AWAIT: &str = "__await__";
 pub const AWAIT_MUL: &str = "__await_mul__";
 pub const AWAIT_ALL: &str = "__await_all__";

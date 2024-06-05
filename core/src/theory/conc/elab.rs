@@ -11,7 +11,9 @@ use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Loc, NameMap, Param, Tele, Var, VarGen, ARRAY, UNTUPLED_RHS_PREFIX};
+use crate::theory::{
+    Loc, NameMap, Param, Tele, Var, VarGen, ARRAY, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX,
+};
 use crate::Error;
 use crate::Error::{
     ExpectedEnum, ExpectedInstanceof, ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedSigma,
@@ -82,6 +84,7 @@ impl Elaborator {
             self.checking_class_type_args = Some(tele_to_refs(&tele));
         }
 
+        let eff = self.check(*d.eff, &Term::Univ)?;
         let ret = self.check(*d.ret, &Term::Univ)?;
         self.checking_ret = Some(ret.clone());
         self.sigma.insert(
@@ -90,32 +93,43 @@ impl Elaborator {
                 loc: d.loc,
                 name: d.name.clone(),
                 tele,
+                eff: Box::new(eff.clone()),
                 ret: Box::new(ret.clone()),
                 body: Undefined,
             },
         );
 
+        let mut inferred_eff = None;
         let mut inferred_ret = None;
         let body = match d.body {
-            Fn { is_async, f } => Fn {
-                is_async,
-                f: Box::new(self.check(*f, &ret)?),
-            },
+            Fn(f) => Fn(
+                // TODO: Check the effect.
+                Box::new(self.check(*f, &ret)?),
+            ),
             Postulate => Postulate,
             Alias(t) => Alias(Box::new(self.check(*t, &ret)?)),
             Constant(anno, f) => Constant(
                 anno,
                 Box::new(if anno {
+                    // TODO: Check the effect.
                     self.check(*f, &ret)?
                 } else {
-                    let InferResult { tm, ty } = self.infer(*f)?;
+                    let InferResult { tm, ty, eff } = self.infer(*f)?;
+                    inferred_eff = Some(Box::new(eff));
                     inferred_ret = Some(Box::new(ty));
                     tm
                 }),
             ),
             Verify(a) => {
-                let expected = self.sigma.get(&d.name).unwrap().to_type();
-                Verify(Box::new(self.verify(d.loc, *a, expected)?))
+                let d = self.sigma.get(&d.name).unwrap();
+                let expected_eff = d.to_eff();
+                let expected_ty = d.to_type();
+                Verify(Box::new(self.verify(
+                    d.loc,
+                    *a,
+                    expected_eff,
+                    expected_ty,
+                )?))
             }
 
             Interface { fns, instances } => Interface { fns, instances },
@@ -160,6 +174,9 @@ impl Elaborator {
 
         let checked = self.sigma.get_mut(&d.name).unwrap();
         checked.body = body;
+        if let Some(eff) = inferred_eff {
+            checked.eff = eff;
+        }
         if let Some(ret) = inferred_ret {
             checked.ret = ret;
         }
@@ -227,7 +244,9 @@ impl Elaborator {
         Ok(if let Some(t) = maybe_typ {
             let ty = self.check(*t, &Term::Univ)?;
             InferResult {
+                // TODO: Check the effect.
                 tm: self.check(a, &ty)?,
+                eff: Term::Pure,
                 ty,
             }
         } else {
@@ -248,7 +267,8 @@ impl Elaborator {
         trace!(target: "elab", "checking expression: e={e}, ty={ty}");
         Ok(match e {
             Const(_, var, maybe_typ, a, b) => {
-                let InferResult { tm, ty: typ } = self.check_anno(*a, maybe_typ)?;
+                // TODO: Check the effect.
+                let InferResult { tm, ty: typ, .. } = self.check_anno(*a, maybe_typ)?;
                 let param = Param {
                     var,
                     info: Explicit,
@@ -258,7 +278,8 @@ impl Elaborator {
                 Term::Const(param, Box::new(tm), Box::new(body))
             }
             Let(_, var, maybe_typ, a, b) => {
-                let InferResult { tm, ty: typ } = self.check_anno(*a, maybe_typ)?;
+                // TODO: Check the effect.
+                let InferResult { tm, ty: typ, .. } = self.check_anno(*a, maybe_typ)?;
                 let param = Param {
                     var,
                     info: Explicit,
@@ -358,7 +379,10 @@ impl Elaborator {
                         }
                     },
                     Term::AnonVarargs(ty) => {
-                        let InferResult { tm: a, ty: a_ty } = self.infer(Tuple(loc, a, b))?;
+                        // TODO: Check the effect.
+                        let InferResult {
+                            tm: a, ty: a_ty, ..
+                        } = self.infer(Tuple(loc, a, b))?;
                         self.unifier(loc).unify(&ty, &a_ty)?;
                         a
                     }
@@ -367,7 +391,10 @@ impl Elaborator {
             }
             TupleBind(_, x, y, a, b) => {
                 let a_loc = a.loc();
-                let InferResult { tm: a, ty: a_ty } = self.infer(*a)?;
+                // TODO: Check the effect.
+                let InferResult {
+                    tm: a, ty: a_ty, ..
+                } = self.infer(*a)?;
                 match a_ty {
                     Term::Sigma(ty_param, typ) => {
                         let x = Param {
@@ -396,7 +423,10 @@ impl Elaborator {
                 Box::new(self.check(*e, ty)?),
             ),
             Downcast(loc, a) => {
-                let InferResult { tm: a, ty: a_ty } = self.infer(*a)?;
+                // TODO: Check the effect.
+                let InferResult {
+                    tm: a, ty: a_ty, ..
+                } = self.infer(*a)?;
                 let to = match self.nf(loc).term(ty.clone())? {
                     Term::Object(to) => to,
                     ty => return Err(ExpectedObject(ty, loc)),
@@ -407,7 +437,10 @@ impl Elaborator {
                 }
             }
             Upcast(loc, a) => {
-                let InferResult { tm: a, ty: a_ty } = self.infer(*a)?;
+                // TODO: Check the effect.
+                let InferResult {
+                    tm: a, ty: a_ty, ..
+                } = self.infer(*a)?;
                 let to = match self.nf(loc).term(ty.clone())? {
                     Term::Enum(to) => to,
                     ty => return Err(ExpectedEnum(ty, loc)),
@@ -423,8 +456,10 @@ impl Elaborator {
 
                 let InferResult {
                     tm: mut inferred_tm,
+                    eff: inferred_eff,
                     ty: inferred_ty,
                 } = self.infer(e)?;
+                let mut inferred_eff = self.nf(loc).term(inferred_eff)?;
                 let mut inferred = self.nf(loc).term(inferred_ty)?;
                 let expected = self.nf(loc).term(ty.clone())?;
 
@@ -432,12 +467,17 @@ impl Elaborator {
                     if let Some(f_e) = Self::app_insert_holes(f_e, UnnamedExplicit, &inferred)? {
                         let InferResult {
                             tm: new_tm,
+                            eff: new_eff,
                             ty: new_ty,
                         } = self.infer(f_e)?;
                         inferred_tm = new_tm;
+                        inferred_eff = new_eff;
                         inferred = new_ty;
                     }
                 }
+
+                // TODO: Check the effect.
+                _ = inferred_eff;
 
                 self.unifier(loc).unify(&expected, &inferred)?;
 
@@ -448,9 +488,10 @@ impl Elaborator {
 
     fn infer(&mut self, e: Expr) -> Result<InferResult, Error> {
         maybe_grow(move || {
-            self.infer_impl(e).map(|InferResult { tm, ty }| {
-                debug!(target: "elab", "expression inferred successfully: tm={tm}, ty={ty}");
-                Term::unwrap_solved_implicit_lambda(tm, ty).into()
+            self.infer_impl(e).map(|InferResult { tm, eff, ty }| {
+                debug!(target: "elab", "expression inferred successfully: tm={tm}, eff={eff}, ty={ty}");
+                let (tm,ty)=Term::unwrap_solved_implicit_lambda(tm, ty);
+                InferResult{ tm, eff, ty }
             })
         })
     }
@@ -461,34 +502,46 @@ impl Elaborator {
         trace!(target: "elab", "inferring expression: e={e}");
         Ok(match e {
             Resolved(loc, v) => match self.gamma.get(&v) {
-                Some(ty) => InferResult::from((Term::Ref(v), *ty.clone())),
+                Some(ty) => InferResult::pure(Term::Ref(v), *ty.clone()),
                 None => {
                     let d = self.sigma.get(&v).unwrap();
-                    let tm = d.to_term(v);
-                    let ty = d.to_type();
+                    let mut tm = d.to_term(v);
+                    let eff = d.to_eff();
+                    let mut ty = d.to_type();
                     if matches!(d.body, Body::Associated(..)) {
-                        InferResult::from(self.try_sugar_type_args(loc, tm, ty)?)
-                    } else {
-                        InferResult::from((tm, ty))
+                        (tm, ty) = self.try_sugar_type_args(loc, tm, ty)?;
                     }
+                    InferResult { tm, eff, ty }
                 }
             },
             Imported(_, v) => {
-                let ty = self.sigma.get(&v).unwrap().to_type();
-                InferResult::from((Term::Ref(v), ty))
+                let d = self.sigma.get(&v).unwrap();
+                let tm = Term::Ref(v);
+                let eff = d.to_eff();
+                let ty = d.to_type();
+                InferResult { tm, eff, ty }
             }
             Qualified(_, m, v) => {
-                let ty = self.sigma.get(&v).unwrap().to_type();
-                InferResult::from((Term::Qualified(m, v), ty))
+                let d = self.sigma.get(&v).unwrap();
+                let tm = Term::Qualified(m, v);
+                let eff = d.to_eff();
+                let ty = d.to_type();
+                InferResult { tm, eff, ty }
             }
-            Hole(loc) => InferResult::from(self.insert_meta(loc, UserMeta)),
-            InsertedHole(loc) => InferResult::from(self.insert_meta(loc, InsertedMeta)),
+            Hole(loc) => {
+                let (tm, ty) = self.insert_meta(loc, UserMeta);
+                InferResult::pure(tm, ty)
+            }
+            InsertedHole(loc) => {
+                let (tm, ty) = self.insert_meta(loc, InsertedMeta);
+                InferResult::pure(tm, ty)
+            }
             Return(_, a) => {
                 let a = self.check(*a, &self.checking_ret.clone().unwrap())?;
-                InferResult::from((Term::Return(Box::new(a)), Term::Unit))
+                InferResult::pure(Term::Return(Box::new(a)), Term::Unit)
             }
-            Continue(_) => InferResult::from((Term::Continue, Term::Unit)),
-            Break(_) => InferResult::from((Term::Break, Term::Unit)),
+            Continue(_) => InferResult::pure(Term::Continue, Term::Unit),
+            Break(_) => InferResult::pure(Term::Break, Term::Unit),
             Pi(_, p, b) => {
                 let param_ty = self.infer(*p.typ)?.tm;
                 let param = Param {
@@ -496,55 +549,77 @@ impl Elaborator {
                     info: p.info,
                     typ: Box::new(param_ty),
                 };
-                let InferResult { tm: b, ty: b_ty } = self.guarded_infer(&[&param], *b)?;
-                InferResult::from((
-                    Term::Pi {
+                let InferResult {
+                    tm: b,
+                    eff,
+                    ty: b_ty,
+                } = self.guarded_infer(&[&param], *b)?;
+                InferResult {
+                    tm: Term::Pi {
                         param,
-                        eff: Box::new(Term::Pure),
+                        eff: Box::new(eff.clone()),
                         body: Box::new(b),
                     },
-                    b_ty,
-                ))
+                    eff,
+                    ty: b_ty,
+                }
             }
             Lam(loc, var, b) => {
                 let mut typ = Box::new(Term::Unit);
+
+                // Our lambda parameters are mostly tupled, hence we could cheat here by forming the tupled parameters
+                // and inserting metas, and unification won't get stuck.
                 let mut body = b.as_ref();
-                // Our lambda parameters are mostly tupled, hence we could cheat here.
-                loop {
-                    match body {
-                        TupleBind(_, x, y, _, b) if y.as_str().starts_with(UNTUPLED_RHS_PREFIX) => {
-                            typ = Box::new(Term::Sigma(
-                                Param {
-                                    var: x.clone(),
-                                    info: Explicit,
-                                    typ: Box::new(self.insert_meta(loc, InsertedMeta).0),
-                                },
-                                typ,
-                            ));
-                            body = b.as_ref();
-                        }
-                        _ => break,
+                while let TupleBind(_, x, y, _, b) = body {
+                    let rhs = y.as_str();
+                    if !rhs.starts_with(UNTUPLED_RHS_PREFIX) {
+                        break;
+                    }
+
+                    typ = Box::new(Term::Sigma(
+                        Param {
+                            var: x.clone(),
+                            info: Explicit,
+                            typ: Box::new(self.insert_meta(loc, InsertedMeta).0),
+                        },
+                        typ,
+                    ));
+                    body = b.as_ref();
+
+                    // Do not count in the multi-binders `const (a, b, c) = expr` here.
+                    if rhs == UNTUPLED_ENDS {
+                        break;
                     }
                 }
-                let p = Param {
+
+                let param = Param {
                     var,
                     info: Explicit,
                     typ,
                 };
-                let InferResult { tm: b, ty: b_ty } = self.guarded_infer(&[&p], *b)?;
-                InferResult::from((
-                    Term::Lam(p.clone(), Box::new(b)),
-                    Term::Pi {
-                        param: p,
-                        eff: Box::new(Term::Pure),
+                let InferResult {
+                    tm: b,
+                    eff,
+                    ty: b_ty,
+                } = self.guarded_infer(&[&param], *b)?;
+                InferResult {
+                    tm: Term::Lam(param.clone(), Box::new(b)),
+                    eff: eff.clone(),
+                    ty: Term::Pi {
+                        param,
+                        eff: Box::new(eff),
                         body: Box::new(b_ty),
                     },
-                ))
+                }
             }
             App(_, f, ai, x) => {
                 let f_loc = f.loc();
                 let f_e = f.clone();
-                let InferResult { tm: f, ty: f_ty } = self.infer(*f)?;
+                let InferResult {
+                    tm: f,
+                    eff,
+                    ty: f_ty,
+                } = self.infer(*f)?;
 
                 if let Some(f_e) = Self::app_insert_holes(*f_e, ai.clone(), &f_ty)? {
                     return self.infer(App(f_loc, Box::new(f_e), ai, x));
@@ -554,6 +629,7 @@ impl Elaborator {
                     Term::Pi {
                         param: p, body: b, ..
                     } => {
+                        // TODO: Check the effect of `x` against that of `f`.
                         let x = self.guarded_check(
                             &[&Param {
                                 var: p.var.clone(),
@@ -565,7 +641,11 @@ impl Elaborator {
                         )?;
                         let applied_ty = self.nf(f_loc).with(&[(&p.var, &x)], *b)?;
                         let applied = self.nf(f_loc).apply(f, p.info.into(), &[x])?;
-                        InferResult::from((applied, applied_ty))
+                        InferResult {
+                            tm: applied,
+                            eff,
+                            ty: applied_ty,
+                        }
                     }
                     ty => return Err(ExpectedPi(ty, f_loc)),
                 }
@@ -604,15 +684,35 @@ impl Elaborator {
                     info: p.info,
                     typ: Box::new(param_ty),
                 };
-                let InferResult { tm: b, ty: b_ty } = self.guarded_infer(&[&param], *b)?;
-                InferResult::from((Term::Sigma(param, Box::new(b)), b_ty))
+                let InferResult {
+                    tm: b,
+                    eff,
+                    ty: b_ty,
+                } = self.guarded_infer(&[&param], *b)?;
+                InferResult {
+                    tm: Term::Sigma(param, Box::new(b)),
+                    eff,
+                    ty: b_ty,
+                }
             }
-            Tuple(_, a, b) => {
-                let InferResult { tm: a, ty: a_ty } = self.infer(*a)?;
-                let InferResult { tm: b, ty: b_ty } = self.infer(*b)?;
-                InferResult::from((
-                    Term::Tuple(Box::new(a), Box::new(b)),
-                    Term::Sigma(
+            Tuple(loc, a, b) => {
+                let InferResult {
+                    tm: a,
+                    eff: a_eff,
+                    ty: a_ty,
+                } = self.infer(*a)?;
+                let InferResult {
+                    tm: b,
+                    eff: b_eff,
+                    ty: b_ty,
+                } = self.infer(*b)?;
+
+                self.unifier(loc).unify(&a_eff, &b_eff)?;
+
+                InferResult {
+                    tm: Term::Tuple(Box::new(a), Box::new(b)),
+                    eff: a_eff,
+                    ty: Term::Sigma(
                         Param {
                             var: Var::unbound(),
                             info: Explicit,
@@ -620,7 +720,7 @@ impl Elaborator {
                         },
                         Box::new(b_ty),
                     ),
-                ))
+                }
             }
             TupleBind(_, x, y, a, b) => {
                 let a_loc = a.loc();
@@ -637,122 +737,179 @@ impl Elaborator {
                     typ: Box::new(y_ty.clone()),
                 };
                 let a = self.check(*a, &Term::Sigma(x.clone(), Box::new(y_ty)))?;
-                let InferResult { tm: b, ty: b_ty } = self.guarded_infer(&[&x, &y], *b)?;
-                InferResult::from((Term::TupleBind(x, y, Box::new(a), Box::new(b)), b_ty))
+                let InferResult {
+                    tm: b,
+                    eff,
+                    ty: b_ty,
+                } = self.guarded_infer(&[&x, &y], *b)?;
+                InferResult {
+                    tm: Term::TupleBind(x, y, Box::new(a), Box::new(b)),
+                    eff,
+                    ty: b_ty,
+                }
             }
             UnitBind(_, a, b) => {
                 let a = self.check(*a, &Term::Unit)?;
-                let InferResult { tm: b, ty } = self.infer(*b)?;
-                InferResult::from((Term::UnitBind(Box::new(a), Box::new(b)), ty))
+                let InferResult { tm: b, eff, ty } = self.infer(*b)?;
+                InferResult {
+                    tm: Term::UnitBind(Box::new(a), Box::new(b)),
+                    eff,
+                    ty,
+                }
             }
             Arr(loc, xs) => {
                 let mut v_ty = None;
+                let mut v_eff = None;
                 let mut checked = Vec::default();
                 for (i, x) in xs.into_iter().enumerate() {
                     if i > 0 {
+                        // TODO: Check the effect.
                         checked.push(self.check(x, v_ty.as_ref().unwrap())?);
                         continue;
                     }
-                    let InferResult { tm: x_tm, ty: x_ty } = self.infer(x)?;
+                    let InferResult {
+                        tm: x_tm,
+                        eff,
+                        ty: x_ty,
+                    } = self.infer(x)?;
                     v_ty = Some(x_ty);
+                    v_eff = Some(eff);
                     checked.push(x_tm);
                 }
                 if checked.is_empty() {
-                    InferResult::from((
-                        Term::Arr(Default::default()),
-                        self.insert_meta(loc, InsertedMeta).0,
-                    ))
+                    InferResult {
+                        tm: Term::Arr(Default::default()),
+                        eff: self.insert_meta(loc, InsertedMeta).0,
+                        ty: self.insert_meta(loc, InsertedMeta).0,
+                    }
                 } else {
-                    InferResult::from((Term::Arr(checked), Term::Array(Box::new(v_ty.unwrap()))))
+                    InferResult {
+                        tm: Term::Arr(checked),
+                        eff: v_eff.unwrap(),
+                        ty: Term::Array(Box::new(v_ty.unwrap())),
+                    }
                 }
             }
             Kv(loc, xs) => {
                 let mut k_ty = None;
                 let mut v_ty = None;
+                let mut k_eff = None;
                 let mut checked = Vec::default();
                 for (i, (k, v)) in xs.into_iter().enumerate() {
                     if i > 0 {
                         checked.push((
+                            // TODO: Check the key effect.
                             self.check(k, k_ty.as_ref().unwrap())?,
+                            // TODO: Check the value effect.
                             self.check(v, v_ty.as_ref().unwrap())?,
                         ));
                         continue;
                     }
+
                     let InferResult {
                         tm: key,
+                        eff: key_eff,
                         ty: key_ty,
                     } = self.infer(k)?;
                     let InferResult {
                         tm: val,
+                        eff: val_eff,
                         ty: val_ty,
                     } = self.infer(v)?;
+
+                    if i == 0 {
+                        self.unifier(loc).unify(&key_eff, &val_eff)?;
+                    }
+
                     k_ty = Some(key_ty);
                     v_ty = Some(val_ty);
+                    k_eff = Some(key_eff);
                     checked.push((key, val));
                 }
                 if checked.is_empty() {
-                    InferResult::from((
-                        Term::Kv(Default::default()),
-                        self.insert_meta(loc, InsertedMeta).0,
-                    ))
+                    InferResult {
+                        tm: Term::Kv(Default::default()),
+                        eff: self.insert_meta(loc, InsertedMeta).0,
+                        ty: self.insert_meta(loc, InsertedMeta).0,
+                    }
                 } else {
-                    InferResult::from((
-                        Term::Kv(checked),
-                        Term::Map(Box::new(k_ty.unwrap()), Box::new(v_ty.unwrap())),
-                    ))
+                    InferResult {
+                        tm: Term::Kv(checked),
+                        eff: k_eff.unwrap(),
+                        ty: Term::Map(Box::new(k_ty.unwrap()), Box::new(v_ty.unwrap())),
+                    }
                 }
             }
-            Associate(loc, a, n) => InferResult::from((
+            Associate(loc, a, n) => InferResult::pure(
                 Term::Associate(Box::new(self.check(*a, &Term::Univ)?), n),
                 self.insert_meta(loc, InsertedMeta).0,
-            )),
+            ),
             Fields(_, fields) => {
                 let mut inferred = FieldMap::default();
                 for (f, e) in fields {
                     inferred.insert(f, self.infer(e)?.tm);
                 }
-                InferResult::from((Term::Fields(inferred), Term::Row))
+                InferResult::pure(Term::Fields(inferred), Term::Row)
             }
             Combine(_, a, b) => {
                 let a = self.check(*a, &Term::Row)?;
                 let b = self.check(*b, &Term::Row)?;
-                InferResult::from((Term::Combine(false, Box::new(a), Box::new(b)), Term::Row))
+                InferResult::pure(Term::Combine(false, Box::new(a), Box::new(b)), Term::Row)
             }
             RowOrd(_, a, b) => {
                 let a = self.check(*a, &Term::Row)?;
                 let b = self.check(*b, &Term::Row)?;
-                InferResult::from((Term::RowOrd(Box::new(a), Box::new(b)), Term::Univ))
+                InferResult::pure(Term::RowOrd(Box::new(a), Box::new(b)), Term::Univ)
             }
             RowEq(_, a, b) => {
                 let a = self.check(*a, &Term::Row)?;
                 let b = self.check(*b, &Term::Row)?;
-                InferResult::from((Term::RowEq(Box::new(a), Box::new(b)), Term::Univ))
+                InferResult::pure(Term::RowEq(Box::new(a), Box::new(b)), Term::Univ)
             }
             Object(_, r) => {
                 let r = self.check(*r, &Term::Row)?;
-                InferResult::from((Term::Object(Box::new(r)), Term::Univ))
+                InferResult::pure(Term::Object(Box::new(r)), Term::Univ)
             }
             Obj(_, r) => match *r {
-                Fields(_, fields) => {
+                Fields(loc, fields) => {
                     let mut tm_fields = FieldMap::default();
                     let mut ty_fields = FieldMap::default();
+                    let mut o_eff = None;
                     for (n, e) in fields {
-                        let InferResult { tm, ty } = self.infer(e)?;
+                        let InferResult { tm, eff, ty } = self.infer(e)?;
+                        if o_eff.is_none() {
+                            o_eff = Some(eff);
+                        } else {
+                            self.unifier(loc).unify(o_eff.as_ref().unwrap(), &eff)?;
+                        }
                         tm_fields.insert(n.clone(), tm);
                         ty_fields.insert(n, ty);
                     }
-                    InferResult::from((
-                        Term::Obj(Box::new(Term::Fields(tm_fields))),
-                        Term::Object(Box::new(Term::Fields(ty_fields))),
-                    ))
+                    InferResult {
+                        tm: Term::Obj(Box::new(Term::Fields(tm_fields))),
+                        eff: o_eff.unwrap(),
+                        ty: Term::Object(Box::new(Term::Fields(ty_fields))),
+                    }
                 }
                 _ => unreachable!(),
             },
-            Concat(_, a, b) => {
+            Concat(loc, a, b) => {
                 let x_loc = a.loc();
                 let y_loc = b.loc();
-                let InferResult { tm: x, ty: x_ty } = self.infer(*a)?;
-                let InferResult { tm: y, ty: y_ty } = self.infer(*b)?;
+
+                let InferResult {
+                    tm: x,
+                    eff: x_eff,
+                    ty: x_ty,
+                } = self.infer(*a)?;
+                let InferResult {
+                    tm: y,
+                    eff: y_eff,
+                    ty: y_ty,
+                } = self.infer(*b)?;
+
+                self.unifier(loc).unify(&x_eff, &y_eff)?;
+
                 let (x_ty, x_associated, x_type_args, x_name) = if let Term::Cls {
                     class,
                     type_args,
@@ -764,6 +921,7 @@ impl Elaborator {
                 } else {
                     (x_ty, None, None, None)
                 };
+
                 let ty = match (x_ty, y_ty) {
                     (Term::Object(rx), Term::Object(ry)) => match x_name {
                         Some(n) => Term::Cls {
@@ -777,7 +935,11 @@ impl Elaborator {
                     (Term::Object(_), y_ty) => return Err(ExpectedObject(y_ty, y_loc)),
                     (x_ty, _) => return Err(ExpectedObject(x_ty, x_loc)),
                 };
-                InferResult::from((Term::Concat(Box::new(x), Box::new(y)), ty))
+                InferResult {
+                    tm: Term::Concat(Box::new(x), Box::new(y)),
+                    eff: x_eff,
+                    ty,
+                }
             }
             Access(_, n) => {
                 let t = Var::new("T");
@@ -811,50 +973,68 @@ impl Elaborator {
                         )),
                     },
                 ];
-                InferResult::from((
+                InferResult::pure(
                     *rename(Box::new(Term::lam(
                         &tele,
                         Term::Access(Box::new(Term::Ref(o)), n),
                     ))),
-                    *rename(Box::new(Term::pi(&tele, Term::Ref(t)))),
-                ))
+                    *rename(Box::new(Term::pi(&tele, Term::Pure, Term::Ref(t)))),
+                )
             }
             Downcast(loc, a) => {
-                let InferResult { tm: a, ty } = self.infer(*a)?;
+                let InferResult { tm: a, eff, ty } = self.infer(*a)?;
                 let m = self.insert_meta(loc, InsertedMeta).0;
                 match ty {
-                    Term::Object(r) => InferResult::from((
-                        Term::Down(Box::new(a), Box::new(m.clone())),
-                        Term::Downcast(Box::new(Term::Object(r)), Box::new(m)),
-                    )),
+                    Term::Object(r) => InferResult {
+                        tm: Term::Down(Box::new(a), Box::new(m.clone())),
+                        eff,
+                        ty: Term::Downcast(Box::new(Term::Object(r)), Box::new(m)),
+                    },
                     ty => return Err(ExpectedObject(ty, loc)),
                 }
             }
-            Enum(_, r) => InferResult::from((
+            Enum(_, r) => InferResult::pure(
                 Term::Enum(Box::new(self.check(*r, &Term::Row)?)),
                 Term::Univ,
-            )),
+            ),
             Variant(_, n, a) => {
-                let InferResult { tm: a, ty: a_ty } = self.infer(*a)?;
+                let InferResult {
+                    tm: a,
+                    eff,
+                    ty: a_ty,
+                } = self.infer(*a)?;
                 let tm = Term::Fields(FieldMap::from([(n.clone(), a)]));
                 let ty = Term::Fields(FieldMap::from([(n, a_ty)]));
-                InferResult::from((
-                    Term::Variant(Box::new(tm)),
-                    Term::Upcast(Box::new(Term::Enum(Box::new(ty)))),
-                ))
+                InferResult {
+                    tm: Term::Variant(Box::new(tm)),
+                    eff,
+                    ty: Term::Upcast(Box::new(Term::Enum(Box::new(ty)))),
+                }
             }
             Upcast(loc, a) => {
-                let InferResult { tm: a, ty } = self.infer(*a)?;
+                let InferResult { tm: a, eff, ty } = self.infer(*a)?;
                 match ty {
-                    Term::Enum(r) => InferResult::from((a, Term::Upcast(Box::new(Term::Enum(r))))),
-                    Term::Upcast(r) => InferResult::from((a, Term::Upcast(r))),
+                    Term::Enum(r) => InferResult {
+                        tm: a,
+                        eff,
+                        ty: Term::Upcast(Box::new(Term::Enum(r))),
+                    },
+                    Term::Upcast(r) => InferResult {
+                        tm: a,
+                        eff,
+                        ty: Term::Upcast(r),
+                    },
                     ty => return Err(ExpectedEnum(ty, loc)),
                 }
             }
             Switch(loc, a, cs, d) => {
                 let mut ret_ty = None;
                 let a_loc = a.loc();
-                let InferResult { tm: a, ty: a_ty } = self.infer(*a)?;
+                let InferResult {
+                    tm: a,
+                    eff: a_eff,
+                    ty: a_ty,
+                } = self.infer(*a)?;
                 let en = self.nf(loc).term(a_ty)?;
                 let fields = match &en {
                     Term::Enum(y) => match y.as_ref() {
@@ -884,10 +1064,12 @@ impl Elaborator {
                     };
                     let tm = match &ret_ty {
                         None => {
-                            let InferResult { tm, ty } = self.guarded_infer(&[&pat], e)?;
+                            let InferResult { tm, eff, ty } = self.guarded_infer(&[&pat], e)?;
+                            self.unifier(loc).unify(&a_eff, &eff)?;
                             ret_ty = Some(ty);
                             tm
                         }
+                        // TODO: Check the effect.
                         Some(ret) => self.guarded_check(&[&pat], e, ret)?,
                     };
                     m.insert(n, (v, tm));
@@ -910,12 +1092,20 @@ impl Elaborator {
                     }
                     None => None,
                 };
-                InferResult::from((Term::Switch(Box::new(a), m, d), ret_ty.unwrap()))
+                InferResult {
+                    tm: Term::Switch(Box::new(a), m, d),
+                    eff: a_eff,
+                    ty: ret_ty.unwrap(),
+                }
             }
             Instanceof(loc, a) => {
-                let InferResult { tm, ty } = self.infer(*a)?;
+                let InferResult { tm, eff, ty } = self.infer(*a)?;
                 match tm {
-                    Term::Instanceof(a, i) => InferResult::from((Term::Instanceof(a, i), ty)),
+                    Term::Instanceof(a, i) => InferResult {
+                        tm: Term::Instanceof(a, i),
+                        eff,
+                        ty,
+                    },
                     tm => return Err(ExpectedInstanceof(tm, loc)),
                 }
             }
@@ -924,37 +1114,46 @@ impl Elaborator {
                 if !self.is_variadic(&t) {
                     return Err(NonVariadicType(t, loc));
                 }
-                InferResult::from((Term::Varargs(Box::new(t)), Term::Univ))
+                InferResult::pure(Term::Varargs(Box::new(t)), Term::Univ)
             }
-            AnonVarargs(_, t) => InferResult::from((
+            AnonVarargs(_, t) => InferResult::pure(
                 Term::AnonVarargs(Box::new(self.check(*t, &Term::Univ)?)),
                 Term::Univ,
-            )),
+            ),
             Spread(loc, a) => {
-                let InferResult { tm: a, ty } = self.infer(*a)?;
+                let InferResult { tm: a, eff, ty } = self.infer(*a)?;
                 if !self.is_variadic(&ty) {
                     return Err(NonVariadicType(ty, loc));
                 }
-                InferResult::from((Term::Spread(Box::new(a)), ty))
+                InferResult {
+                    tm: Term::Spread(Box::new(a)),
+                    eff,
+                    ty,
+                }
             }
+            Pure(_) => InferResult::pure(Term::Pure, Term::Univ),
             EmitAsync(_, a) => {
-                let InferResult { tm, ty } = self.infer(*a)?;
-                InferResult::from((Term::EmitAsync(Box::new(tm)), ty))
+                let InferResult { tm, ty, .. } = self.infer(*a)?;
+                InferResult {
+                    tm: Term::EmitAsync(Box::new(tm)),
+                    eff: Term::async_effect(),
+                    ty,
+                }
             }
 
-            Univ(_) => InferResult::from((Term::Univ, Term::Univ)),
-            Unit(_) => InferResult::from((Term::Unit, Term::Univ)),
-            TT(_) => InferResult::from((Term::TT, Term::Unit)),
-            Boolean(_) => InferResult::from((Term::Boolean, Term::Univ)),
-            False(_) => InferResult::from((Term::False, Term::Boolean)),
-            True(_) => InferResult::from((Term::True, Term::Boolean)),
-            String(_) => InferResult::from((Term::String, Term::Univ)),
-            Str(_, v) => InferResult::from((Term::Str(v), Term::String)),
-            Number(_) => InferResult::from((Term::Number, Term::Univ)),
-            Num(_, r) => InferResult::from((Term::Num(r.parse().unwrap()), Term::Number)),
-            BigInt(_) => InferResult::from((Term::BigInt, Term::Univ)),
-            Big(_, v) => InferResult::from((Term::Big(v), Term::BigInt)),
-            Row(_) => InferResult::from((Term::Row, Term::Univ)),
+            Univ(_) => InferResult::pure(Term::Univ, Term::Univ),
+            Unit(_) => InferResult::pure(Term::Unit, Term::Univ),
+            TT(_) => InferResult::pure(Term::TT, Term::Unit),
+            Boolean(_) => InferResult::pure(Term::Boolean, Term::Univ),
+            False(_) => InferResult::pure(Term::False, Term::Boolean),
+            True(_) => InferResult::pure(Term::True, Term::Boolean),
+            String(_) => InferResult::pure(Term::String, Term::Univ),
+            Str(_, v) => InferResult::pure(Term::Str(v), Term::String),
+            Number(_) => InferResult::pure(Term::Number, Term::Univ),
+            Num(_, r) => InferResult::pure(Term::Num(r.parse().unwrap()), Term::Number),
+            BigInt(_) => InferResult::pure(Term::BigInt, Term::Univ),
+            Big(_, v) => InferResult::pure(Term::Big(v), Term::BigInt),
+            Row(_) => InferResult::pure(Term::Row, Term::Univ),
 
             _ => unreachable!(),
         })
@@ -992,6 +1191,7 @@ impl Elaborator {
                 loc,
                 name: ty_meta_var.clone(),
                 tele: Default::default(),
+                eff: Box::new(Term::Pure),
                 ret: Box::new(Term::Univ),
                 body: Meta(k.clone(), None),
             },
@@ -1007,6 +1207,7 @@ impl Elaborator {
                 loc,
                 name: tm_meta_var.clone(),
                 tele,
+                eff: Box::new(Term::Pure),
                 ret: Box::new(ty.clone()),
                 body: Meta(k.clone(), None),
             },
@@ -1056,19 +1257,31 @@ impl Elaborator {
         })
     }
 
-    fn verify(&mut self, loc: Loc, target: Expr, expected: Term) -> Result<Term, Error> {
-        let InferResult { tm, ty } = self.infer(target)?;
+    fn verify(
+        &mut self,
+        loc: Loc,
+        target: Expr,
+        expected_eff: Term,
+        expected_ty: Term,
+    ) -> Result<Term, Error> {
+        let InferResult { tm, eff, ty } = self.infer(target)?;
         #[cfg(not(test))]
         {
             let _ = loc;
-            let _ = expected;
+            let _ = expected_eff;
+            let _ = expected_ty;
+            let _ = eff;
             let _ = ty;
         }
         #[cfg(test)]
         {
-            let actual = self.nf(loc).term(ty)?;
-            let expected = self.nf(loc).term(expected)?;
-            self.unifier(loc).unify(&actual, &expected)?;
+            let actual_eff = self.nf(loc).term(eff)?;
+            let expected_eff = self.nf(loc).term(expected_eff)?;
+            self.unifier(loc).unify(&actual_eff, &expected_eff)?;
+
+            let actual_ty = self.nf(loc).term(ty)?;
+            let expected_ty = self.nf(loc).term(expected_ty)?;
+            self.unifier(loc).unify(&actual_ty, &expected_ty)?;
         }
         Ok(tm)
     }
@@ -1117,12 +1330,16 @@ impl Default for Elaborator {
 
 struct InferResult {
     tm: Term,
+    eff: Term,
     ty: Term,
 }
 
-impl From<(Term, Term)> for InferResult {
-    fn from(v: (Term, Term)) -> Self {
-        let (tm, ty) = v;
-        Self { tm, ty }
+impl InferResult {
+    fn pure(tm: Term, ty: Term) -> Self {
+        Self {
+            tm,
+            eff: Term::Pure,
+            ty,
+        }
     }
 }

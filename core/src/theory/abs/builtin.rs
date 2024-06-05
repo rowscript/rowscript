@@ -216,11 +216,9 @@ impl Builtins {
             loc: Default::default(),
             name: Var::new(name),
             tele,
+            eff: Box::new(Pure),
             ret: Box::new(ret),
-            body: Body::Fn {
-                is_async: false,
-                f: Box::new(f),
-            },
+            body: Body::Fn(Box::new(f)),
         })
     }
 

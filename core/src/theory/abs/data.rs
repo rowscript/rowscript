@@ -5,7 +5,7 @@ use crate::theory::abs::def::{Body, Sigma};
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::load::ModuleID;
 use crate::theory::ParamInfo::Implicit;
-use crate::theory::{Param, ParamInfo, Syntax, Tele, Var};
+use crate::theory::{Param, ParamInfo, Syntax, Tele, Var, ASYNC, TUPLED};
 
 pub type Spine = Vec<(ParamInfo, Term)>;
 
@@ -181,13 +181,17 @@ pub struct PartialClass {
 impl Term {
     pub fn lam(tele: &Tele<Self>, tm: Self) -> Self {
         tele.iter()
-            .rfold(tm, |b, p| Term::Lam(p.clone(), Box::new(b)))
+            .rfold(tm, |b, p| Self::Lam(p.clone(), Box::new(b)))
     }
 
-    pub fn pi(tele: &Tele<Self>, tm: Self) -> Self {
-        tele.iter().rfold(tm, |b, p| Term::Pi {
+    pub fn pi(tele: &Tele<Self>, eff: Self, tm: Self) -> Self {
+        tele.iter().rfold(tm, |b, p| Self::Pi {
             param: p.clone(),
-            eff: Box::new(Term::Pure),
+            eff: Box::new(if p.var.as_str() == TUPLED {
+                eff.clone()
+            } else {
+                Self::Pure
+            }),
             body: Box::new(b),
         })
     }
@@ -200,9 +204,9 @@ impl Term {
 
     pub fn bool(v: bool) -> Self {
         if v {
-            Term::True
+            Self::True
         } else {
-            Term::False
+            Self::False
         }
     }
 
@@ -259,7 +263,7 @@ impl Term {
 
     fn is_unsolved(&self) -> bool {
         use Term::*;
-        matches!(self, Ref(..)) || matches!(self, MetaRef(..))
+        matches!(self, MetaRef(..) | Ref(..))
     }
 
     fn is_solved_auto_implicit(&self) -> bool {
@@ -281,6 +285,11 @@ impl Term {
             }
             ret => ret,
         }
+    }
+
+    pub fn async_effect() -> Self {
+        use Term::*;
+        Fields(FieldMap::from([(ASYNC.to_string(), Unit)]))
     }
 }
 

@@ -122,10 +122,7 @@ impl<'a> Resolver<'a> {
         d.tele = tele;
         d.ret = self.expr(d.ret)?;
         d.body = match d.body {
-            Fn { is_async, f } => Fn {
-                is_async,
-                f: self.self_referencing_fn(&d.name, f)?,
-            },
+            Fn(f) => Fn(self.self_referencing_fn(&d.name, f)?),
             Postulate => Postulate,
             Alias(t) => Alias(self.expr(t)?),
             Constant(anno, f) => Constant(anno, self.expr(f)?),
