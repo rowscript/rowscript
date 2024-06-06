@@ -154,16 +154,16 @@ interface Async {
     __await_any__<T>(executors: NativeArray<Executor<T>>): T;
 }
 
-//class Awaits {
-//    empty: unit;
-//
-//    all<T>(executors: Array<Executor<T>>): Array<T> {
-//        new Array(await#all(executors.a))
-//    }
-//
-//    any<T>(executors: Array<Executor<T>>): T {
-//        await#any(executors.a)
-//    }
-//}
-//
-//const awaits = new Awaits(());
+class Awaits {
+    empty: unit;
+
+    async all<T>(executors: Array<Executor<T>>): Array<T> {
+        new Array(await#all(executors.a))
+    }
+
+    async any<T>(executors: Array<Executor<T>>): T {
+        await#any(executors.a)
+    }
+}
+
+const awaits = new Awaits(());

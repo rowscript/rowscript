@@ -120,6 +120,7 @@ impl<'a> Resolver<'a> {
             });
         }
         d.tele = tele;
+        d.eff = self.expr(d.eff)?;
         d.ret = self.expr(d.ret)?;
         d.body = match d.body {
             Fn(f) => Fn(self.self_referencing_fn(&d.name, f)?),

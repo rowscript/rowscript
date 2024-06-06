@@ -149,7 +149,7 @@ impl<'a> Normalizer<'a> {
             Return(a) => Return(self.term_box(a)?),
             Pi { param, eff, body } => Pi {
                 param: self.param(param)?,
-                eff,
+                eff: self.term_box(eff)?,
                 body: self.term_box(body)?,
             },
             Lam(p, b) => Lam(self.param(p)?, self.term_box(b)?),
@@ -592,8 +592,12 @@ impl<'a> Normalizer<'a> {
         })
     }
 
-    pub fn with(&mut self, rho: &[(&Var, &Term)], tm: Term) -> Result<Term, Error> {
-        for &(x, v) in rho {
+    pub fn with<const N: usize>(
+        &mut self,
+        rho: [(&Var, &Term); N],
+        tm: Term,
+    ) -> Result<Term, Error> {
+        for (x, v) in rho {
             self.rho.insert(x.clone(), Box::new(v.clone()));
         }
         self.term(tm)
@@ -605,7 +609,7 @@ impl<'a> Normalizer<'a> {
         for x in args {
             match ret {
                 Lam(p, b) => {
-                    ret = self.with(&[(&p.var, x)], *b)?;
+                    ret = self.with([(&p.var, x)], *b)?;
                 }
                 _ => ret = App(Box::new(ret), ai.clone(), Box::new(x.clone())),
             }
@@ -618,7 +622,7 @@ impl<'a> Normalizer<'a> {
         let mut ret = f;
         for x in args {
             match ret {
-                Pi { param, body, .. } => ret = self.with(&[(&param.var, x)], *body)?,
+                Pi { param, body, .. } => ret = self.with([(&param.var, x)], *body)?,
                 _ => unreachable!(),
             }
         }
@@ -679,14 +683,14 @@ impl<'a> Normalizer<'a> {
             }
 
             let f_ty = match self.sigma.get(&f).unwrap().to_type() {
-                Pi { param: p, body, .. } => self.with(&[(&p.var, x)], *body)?,
+                Pi { param: p, body, .. } => self.with([(&p.var, x)], *body)?,
                 _ => unreachable!(),
             };
 
-            match self.unifier().unify(&m_ty, &f_ty) {
-                Ok(_) => continue,
-                Err(_) => return Err(ClassMethodNotImplemented(f, i.clone(), x.clone(), self.loc)),
+            if self.unifier().unify(&m_ty, &f_ty).is_ok() {
+                continue;
             }
+            return Err(ClassMethodNotImplemented(f, i.clone(), x.clone(), self.loc));
         }
 
         Ok(())

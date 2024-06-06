@@ -53,6 +53,10 @@ impl<'a> Unifier<'a> {
             (a, AnonVarargs(b)) => self.unify(a, b),
             (AnonVarargs(a), b) => self.unify(a, b),
 
+            // If expected effect is impure, but the actual is pure, we could proceed. But the opposite is not ture.
+            (Fields(..), Pure) => Ok(()),
+            (Ref(..), Pure) => Ok(()),
+
             (Ref(a), Ref(b)) if a == b => Ok(()),
             (Qualified(_, a), Qualified(_, b)) if a == b => Ok(()),
 
@@ -83,9 +87,6 @@ impl<'a> Unifier<'a> {
             (Cls { object, .. }, b) => self.unify(object, b),
             (a, Cls { object, .. }) => self.unify(a, object),
 
-            // Expected effect is impure, but the actual is pure, we could proceed. But the opposite is not ture.
-            (Fields(..), Pure) => Ok(()),
-
             (Const(p, a, b), Const(q, x, y)) => {
                 self.unify(&p.typ, &q.typ)?;
                 self.unify(a, x)?;
@@ -100,7 +101,7 @@ impl<'a> Unifier<'a> {
                 },
             ) => {
                 self.unify(&p.typ, &q.typ)?;
-                let rho = &[(&q.var, &Ref(p.var.clone()))];
+                let rho = [(&q.var, &Ref(p.var.clone()))];
                 let b = self.nf().with(rho, *b.clone())?;
                 self.unify(a, &b)
             }
@@ -116,7 +117,7 @@ impl<'a> Unifier<'a> {
             }
             (Sigma(p, a), Sigma(q, b)) => {
                 self.unify(&p.typ, &q.typ)?;
-                let rho = &[(&q.var, &Ref(p.var.clone()))];
+                let rho = [(&q.var, &Ref(p.var.clone()))];
                 let b = self.nf().with(rho, *b.clone())?;
                 self.unify(a, &b)
             }
@@ -125,7 +126,7 @@ impl<'a> Unifier<'a> {
                 self.unify(b, y)
             }
             (TupleBind(p, q, a, b), TupleBind(r, s, x, y)) => {
-                let rho = &[(&r.var, &Ref(p.var.clone())), (&s.var, &Ref(q.var.clone()))];
+                let rho = [(&r.var, &Ref(p.var.clone())), (&s.var, &Ref(q.var.clone()))];
                 let y = self.nf().with(rho, *y.clone())?;
                 self.unify(a, x)?;
                 self.unify(b, &y)

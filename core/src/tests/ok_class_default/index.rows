@@ -1,0 +1,13 @@
+class Foo {
+    n: number = 42;
+}
+
+function createDefault<T>(): T
+where T instanceof Default
+{
+    default()
+}
+
+console.log(new Foo ());
+// TODO: Polymorphic effect syntax?
+//console.log(createDefault<Foo>());

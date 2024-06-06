@@ -574,6 +574,12 @@ impl Trans {
         };
         let ctor_ret = Self::wrap_implicit_apps(&tele, Unresolved(loc, None, name.clone()));
         let mut ctor_tele = tele.clone();
+        let ctor_eff_var = Var::new("^E");
+        ctor_tele.push(Param {
+            var: ctor_eff_var.clone(),
+            info: Implicit,
+            typ: Box::new(Row(ctor_loc)),
+        });
         ctor_tele.push(ctor_tupled_params);
 
         let mut defs = associated_defs;
@@ -594,7 +600,7 @@ impl Trans {
             loc,
             name: ctor_name,
             tele: ctor_tele,
-            eff: Box::new(Pure(loc)),
+            eff: Box::new(Unresolved(ctor_loc, None, ctor_eff_var)),
             ret: Box::new(ctor_ret),
             body: ctor_body,
         };

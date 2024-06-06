@@ -229,7 +229,7 @@ impl Elaborator {
             };
             let i_fn_ty_applied = self
                 .nf(i_loc)
-                .with(&[(&i_fn_ty_p.var, &inst_tm)], *i_fn_ty_b)?;
+                .with([(&i_fn_ty_p.var, &inst_tm)], *i_fn_ty_b)?;
             let inst_fn_ty = self.infer(Resolved(inst_loc, inst_fn.clone()))?.ty;
 
             self.unifier(inst_loc)
@@ -348,7 +348,7 @@ impl Elaborator {
                     };
                     let b_ty = self
                         .nf(loc)
-                        .with(&[(&ty_param.var, &Term::Ref(var))], *ty_body)?;
+                        .with([(&ty_param.var, &Term::Ref(var))], *ty_body)?;
                     let b = self.guarded_check([&p], *body, eff, &b_ty)?;
                     Term::Lam(p, Box::new(b))
                 }
@@ -388,7 +388,7 @@ impl Elaborator {
                     }
                     _ => {
                         let a = self.check(*a, eff, &p.typ)?;
-                        let body = self.nf(loc).with(&[(&p.var, &a)], *body)?;
+                        let body = self.nf(loc).with([(&p.var, &a)], *body)?;
                         Term::Tuple(Box::new(a), Box::new(self.check(*b, eff, &body)?))
                     }
                 },
@@ -573,7 +573,7 @@ impl Elaborator {
             }
             Continue(_) => InferResult::pure(Term::Continue, Term::Unit),
             Break(_) => InferResult::pure(Term::Break, Term::Unit),
-            Pi(_, p, b) => {
+            Pi(loc, p, b) => {
                 let param_ty = self.infer(*p.typ)?.tm;
                 let param = Param {
                     var: p.var,
@@ -581,10 +581,9 @@ impl Elaborator {
                     typ: Box::new(param_ty),
                 };
                 let InferResult {
-                    tm: b,
-                    eff,
-                    ty: b_ty,
+                    tm: b, ty: b_ty, ..
                 } = self.guarded_infer([&param], *b)?;
+                let eff = self.insert_meta(loc, InsertedMeta).0;
                 InferResult {
                     tm: Term::Pi {
                         param,
@@ -629,10 +628,9 @@ impl Elaborator {
                     typ,
                 };
                 let InferResult {
-                    tm: b,
-                    eff,
-                    ty: b_ty,
+                    tm: b, ty: b_ty, ..
                 } = self.guarded_infer([&param], *b)?;
+                let eff = self.insert_meta(loc, InsertedMeta).0;
                 InferResult {
                     tm: Term::Lam(param.clone(), Box::new(b)),
                     eff: eff.clone(),
@@ -647,9 +645,7 @@ impl Elaborator {
                 let f_loc = f.loc();
                 let f_e = f.clone();
                 let InferResult {
-                    tm: f,
-                    eff,
-                    ty: f_ty,
+                    tm: f, ty: f_ty, ..
                 } = self.infer(*f)?;
 
                 if let Some(f_e) = Self::app_insert_holes(*f_e, ai.clone(), &f_ty)? {
@@ -658,7 +654,9 @@ impl Elaborator {
 
                 match f_ty {
                     Term::Pi {
-                        param: p, body: b, ..
+                        param: p,
+                        eff: b_eff,
+                        body: b,
                     } => {
                         let x = self.guarded_check(
                             [&Param {
@@ -667,14 +665,15 @@ impl Elaborator {
                                 typ: p.typ.clone(),
                             }],
                             *x,
-                            &eff,
+                            &b_eff,
                             &p.typ,
                         )?;
-                        let applied_ty = self.nf(f_loc).with(&[(&p.var, &x)], *b)?;
+                        let applied_eff = self.nf(f_loc).with([(&p.var, &x)], *b_eff)?;
+                        let applied_ty = self.nf(f_loc).with([(&p.var, &x)], *b)?;
                         let applied = self.nf(f_loc).apply(f, p.info.into(), &[x])?;
                         InferResult {
                             tm: applied,
-                            eff,
+                            eff: applied_eff,
                             ty: applied_ty,
                         }
                     }
@@ -979,6 +978,7 @@ impl Elaborator {
             Access(_, n) => {
                 let t = Var::new("T");
                 let a = Var::new("'A");
+                let e = Var::new("^E");
                 let o = Var::new("o");
                 let tele = vec![
                     Param {
@@ -988,6 +988,11 @@ impl Elaborator {
                     },
                     Param {
                         var: a.clone(),
+                        info: Implicit,
+                        typ: Box::new(Term::Row),
+                    },
+                    Param {
+                        var: e.clone(),
                         info: Implicit,
                         typ: Box::new(Term::Row),
                     },

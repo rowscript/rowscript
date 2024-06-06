@@ -29,17 +29,3 @@ new Foo(42).foo();
 function f() {
     console.log(new ::outside::Outside("hello").outside());
 }
-
-class Bar {
-    n: number = 42;
-}
-
-console.log(new Bar());
-
-function createDefault<T>(): T
-where T instanceof Default
-{
-    default()
-}
-
-console.log(createDefault<Bar>());

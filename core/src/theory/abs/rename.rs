@@ -38,7 +38,7 @@ impl Renamer {
             Return(a) => Return(self.term(a)),
             Pi { param, eff, body } => Pi {
                 param: self.param(param),
-                eff,
+                eff: self.term(eff),
                 body: self.term(body),
             },
             Lam(p, b) => Lam(self.param(p), self.term(b)),

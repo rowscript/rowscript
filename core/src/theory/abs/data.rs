@@ -4,8 +4,8 @@ use std::fmt::{Display, Formatter};
 use crate::theory::abs::def::{Body, Sigma};
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::load::ModuleID;
-use crate::theory::ParamInfo::Implicit;
-use crate::theory::{Param, ParamInfo, Syntax, Tele, Var, ASYNC, TUPLED};
+use crate::theory::ParamInfo::{Explicit, Implicit};
+use crate::theory::{Param, ParamInfo, Syntax, Tele, Var, ASYNC};
 
 pub type Spine = Vec<(ParamInfo, Term)>;
 
@@ -187,7 +187,7 @@ impl Term {
     pub fn pi(tele: &Tele<Self>, eff: Self, tm: Self) -> Self {
         tele.iter().rfold(tm, |b, p| Self::Pi {
             param: p.clone(),
-            eff: Box::new(if p.var.as_str() == TUPLED {
+            eff: Box::new(if p.info == Explicit {
                 eff.clone()
             } else {
                 Self::Pure
