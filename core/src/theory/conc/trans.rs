@@ -7,7 +7,6 @@ use pest::pratt_parser::{Assoc, Op, PrattParser};
 use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, InstanceBody};
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
-use crate::theory::conc::data::Expr::{App, Instanceof, Pure};
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::conc::load::ImportedPkg::Vendor;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
@@ -135,18 +134,7 @@ impl Trans {
         let loc = Loc::from(f.as_span());
         let mut pairs = f.into_inner();
 
-        let mut eff = Box::new(Pure(loc));
-        let name = Var::from({
-            let p = pairs.next().unwrap();
-            let p_loc = Loc::from(p.as_span());
-            match p.as_rule() {
-                Rule::is_async => {
-                    eff = Box::new(Expr::async_effect(p_loc));
-                    pairs.next().unwrap()
-                }
-                _ => p,
-            }
-        });
+        let (name, eff) = self.name_maybe_async(&mut pairs);
 
         let mut tele = Tele::default();
         let mut untupled = UntupledParams::new(loc);
@@ -208,6 +196,28 @@ impl Trans {
         }
     }
 
+    fn name_maybe_async(&self, pairs: &mut Pairs<Rule>) -> (Var, Box<Expr>) {
+        let (p, eff) = self.name_pair_maybe_async(pairs);
+        (Var::from(p), eff)
+    }
+
+    fn idref_maybe_async(&self, pairs: &mut Pairs<Rule>) -> (Expr, Box<Expr>) {
+        let (p, eff) = self.name_pair_maybe_async(pairs);
+        (self.maybe_qualified(p), eff)
+    }
+
+    fn name_pair_maybe_async<'a>(
+        &self,
+        pairs: &mut Pairs<'a, Rule>,
+    ) -> (Pair<'a, Rule>, Box<Expr>) {
+        let p = pairs.next().unwrap();
+        let loc = Loc::from(p.as_span());
+        match p.as_rule() {
+            Rule::is_async => (pairs.next().unwrap(), Box::new(Expr::async_effect(loc))),
+            _ => (p, Box::new(Expr::Pure(loc))),
+        }
+    }
+
     fn fn_signature(&self, pairs: Pairs<Rule>, loc: Loc) -> (Tele<Expr>, Box<Expr>) {
         let mut tele = Tele::default();
         let mut untupled = UntupledParams::new(loc);
@@ -239,13 +249,13 @@ impl Trans {
     fn fn_postulate(&self, f: Pair<Rule>) -> Def<Expr> {
         let loc = Loc::from(f.as_span());
         let mut pairs = f.into_inner();
-        let name = Var::from(pairs.next().unwrap());
+        let (name, eff) = self.name_maybe_async(&mut pairs);
         let (tele, ret) = self.fn_signature(pairs, loc);
         Def {
             loc,
             name,
             tele,
-            eff: Box::new(Expr::Pure(loc)),
+            eff,
             ret,
             body: Body::Postulate,
         }
@@ -615,7 +625,7 @@ impl Trans {
             loc,
             name: Var::unbound(),
             tele,
-            eff: Box::new(Pure(loc)),
+            eff: Box::new(Expr::Pure(loc)),
             ret: Box::new(Expr::Univ(loc)),
             body: Body::Verify(Box::new(target)),
         }
@@ -624,13 +634,13 @@ impl Trans {
     fn fn_verify(&self, f: Pair<Rule>) -> Def<Expr> {
         let loc = Loc::from(f.as_span());
         let mut pairs = f.into_inner();
-        let target = self.maybe_qualified(pairs.next().unwrap());
+        let (target, eff) = self.idref_maybe_async(&mut pairs);
         let (tele, ret) = self.fn_signature(pairs, loc);
         Def {
             loc,
             name: Var::unbound(),
             tele,
-            eff: Box::new(Pure(loc)),
+            eff,
             ret,
             body: Body::Verify(Box::new(target)),
         }
@@ -763,9 +773,9 @@ impl Trans {
                 Rule::tyref => {
                     let mut f = self.maybe_qualified(arg);
                     for (i, x) in xs {
-                        f = App(loc, Box::new(f), i, Box::new(x))
+                        f = Expr::App(loc, Box::new(f), i, Box::new(x))
                     }
-                    return Instanceof(loc, Box::new(f));
+                    return Expr::Instanceof(loc, Box::new(f));
                 }
                 _ => unreachable!(),
             };

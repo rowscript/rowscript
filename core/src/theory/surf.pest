@@ -603,7 +603,8 @@ fn_body_if = { if_stmt_start ~ branch ~ (else_stmt_start ~ branch)? ~ "}" ~ fn_b
 fn_body_ret = { expr? }
 
 fn_postulate =
-  { "function"
+  { is_async?
+  ~ "function"
   ~ postulate_id
   ~ implicits?
   ~ params
@@ -632,7 +633,8 @@ interface_def =
   ~ "}"
   }
 interface_fn =
-  { (fn_id | magic_fn_id)
+  { is_async?
+  ~ (fn_id | magic_fn_id)
   ~ implicits?
   ~ params
   ~ (":" ~ type_expr)?
@@ -650,7 +652,8 @@ instance_def =
   ~ "}"
   }
 instance_fn =
-  { (fn_id | magic_fn_id)
+  { is_async?
+  ~ (fn_id | magic_fn_id)
   ~ implicits?
   ~ params
   ~ (":" ~ type_expr)?
@@ -672,7 +675,8 @@ class_def =
 associated_type = { "type" ~ type_id ~ "=" ~ type_expr ~ ";" }
 class_member = { prop_id ~ ":" ~ type_expr ~ ("=" ~ expr)? ~ ";" }
 class_method =
-  { (fn_id | magic_fn_id)
+  { is_async?
+  ~ (fn_id | magic_fn_id)
   ~ implicits?
   ~ params
   ~ (":" ~ type_expr)?
@@ -690,6 +694,7 @@ type_verify =
 
 fn_verify =
   { "declare"
+  ~ is_async?
   ~ idref
   ~ implicits?
   ~ params

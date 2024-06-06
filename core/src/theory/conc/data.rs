@@ -1,6 +1,5 @@
 use std::fmt::{Display, Formatter};
 
-use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::conc::load::ModuleID;
 use crate::theory::{Loc, Param, Syntax, Tele, Var, ASYNC};
 
@@ -108,9 +107,8 @@ impl Expr {
     }
 
     pub fn resolved(self) -> Var {
-        use Expr::*;
         match self {
-            Resolved(_, r) => r,
+            Expr::Resolved(_, r) => r,
             _ => unreachable!(),
         }
     }
@@ -183,7 +181,7 @@ impl Expr {
     }
 
     pub fn wrap_tuple_binds(loc: Loc, tupled: Var, vars: Vec<Self>, b: Self) -> Self {
-        Self::wrap_expr_tuple_binds(Unresolved(loc, None, tupled), vars, b)
+        Self::wrap_expr_tuple_binds(Expr::Unresolved(loc, None, tupled), vars, b)
     }
 
     pub fn wrap_expr_tuple_binds(tupled: Self, vars: Vec<Self>, b: Self) -> Self {
