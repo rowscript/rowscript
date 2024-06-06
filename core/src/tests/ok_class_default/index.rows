@@ -9,5 +9,4 @@ where T instanceof Default
 }
 
 console.log(new Foo ());
-// TODO: Polymorphic effect syntax?
-//console.log(createDefault<Foo>());
+console.log(createDefault<Foo>());

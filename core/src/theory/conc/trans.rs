@@ -574,12 +574,17 @@ impl Trans {
         };
         let ctor_ret = Self::wrap_implicit_apps(&tele, Unresolved(loc, None, name.clone()));
         let mut ctor_tele = tele.clone();
-        let ctor_eff_var = Var::new("^E");
-        ctor_tele.push(Param {
-            var: ctor_eff_var.clone(),
-            info: Implicit,
-            typ: Box::new(Row(ctor_loc)),
-        });
+        let mut eff = Box::new(Pure(ctor_loc));
+        if !could_be_default {
+            // Constructors that could not be default should be effect-polymorphic.
+            let ctor_eff_var = Var::new("^E");
+            ctor_tele.push(Param {
+                var: ctor_eff_var.clone(),
+                info: Implicit,
+                typ: Box::new(Row(ctor_loc)),
+            });
+            eff = Box::new(Unresolved(ctor_loc, None, ctor_eff_var));
+        }
         ctor_tele.push(ctor_tupled_params);
 
         let mut defs = associated_defs;
@@ -600,7 +605,7 @@ impl Trans {
             loc,
             name: ctor_name,
             tele: ctor_tele,
-            eff: Box::new(Unresolved(ctor_loc, None, ctor_eff_var)),
+            eff,
             ret: Box::new(ctor_ret),
             body: ctor_body,
         };
