@@ -224,12 +224,12 @@ impl Ecma {
         })
     }
 
-    fn block_arrow(loc: Loc, params: Vec<Pat>, block: BlockStmt) -> Expr {
+    fn block_arrow(loc: Loc, params: Vec<Pat>, block: BlockStmt, is_async: bool) -> Expr {
         Expr::Arrow(ArrowExpr {
             span: loc.into(),
             params,
             body: Box::new(BlockStmtOrExpr::BlockStmt(block)),
-            is_async: false,
+            is_async,
             is_generator: false,
             type_params: None,
             return_type: None,
@@ -566,6 +566,13 @@ impl Ecma {
         }))
     }
 
+    fn is_async(def: &Def<Term>) -> bool {
+        match def.eff.as_ref() {
+            Term::Fields(m) => m.contains_key("Async"),
+            _ => false,
+        }
+    }
+
     fn func(&mut self, sigma: &Sigma, def: &Def<Term>, body: &Term) -> Result<Function, Error> {
         Ok(Function {
             params: Self::type_erased_params(def.loc, &def.tele, body),
@@ -573,7 +580,7 @@ impl Ecma {
             span: def.loc.into(),
             body: Some(self.block(sigma, def.loc, body, true)?),
             is_generator: false,
-            is_async: false,
+            is_async: Self::is_async(def),
             type_params: None,
             return_type: None,
         })
@@ -696,6 +703,7 @@ impl Ecma {
                 loc,
                 v.map_or_else(Default::default, |v| vec![Self::ident_pat(loc, v)]),
                 self.block(sigma, loc, b, true)?,
+                false,
             ),
             self.expr(sigma, loc, a)?,
         ))
@@ -745,6 +753,7 @@ impl Ecma {
                     loc,
                     vec![Self::ident_pat(loc, v)],
                     self.block(sigma, loc, tm, true)?,
+                    false,
                 ),
                 x,
             ))),
@@ -777,14 +786,14 @@ impl Ecma {
         }))
     }
 
-    fn iife(loc: Loc, b: BlockStmt) -> Expr {
+    fn iife(loc: Loc, b: BlockStmt, is_async: bool) -> Expr {
         Expr::Paren(ParenExpr {
             span: loc.into(),
             expr: Box::new(Expr::Call(CallExpr {
                 span: loc.into(),
                 callee: Callee::Expr(Box::from(Expr::Paren(ParenExpr {
                     span: loc.into(),
-                    expr: Box::new(Self::block_arrow(loc, Default::default(), b)),
+                    expr: Box::new(Self::block_arrow(loc, Default::default(), b, is_async)),
                 }))),
                 args: Default::default(),
                 type_args: None,
@@ -1053,6 +1062,7 @@ impl Ecma {
                             type_ann: None,
                         })],
                         self.block(sigma, loc, body, true)?,
+                        false,
                     ),
                     self.expr(sigma, loc, a)?,
                 )
@@ -1078,6 +1088,7 @@ impl Ecma {
                     loc,
                     Self::type_erased_pats(loc, None, b),
                     self.block(sigma, loc, b, true)?,
+                    false,
                 ),
                 _ => self.expr(sigma, loc, b)?,
             },
@@ -1357,6 +1368,7 @@ impl Ecma {
                             span: loc.into(),
                             stmts,
                         },
+                        false,
                     ),
                     self.expr(sigma, loc, a)?,
                 )
@@ -1385,6 +1397,7 @@ impl Ecma {
                         )),
                     })],
                 },
+                false,
             ),
             ConsoleLog(m) => Expr::Call(CallExpr {
                 span: loc.into(),
@@ -1416,7 +1429,7 @@ impl Ecma {
             EmitAsync(a) => self.expr(sigma, loc, a)?,
 
             tm if matches!(tm, Fori(..) | While(..) | Guard(..)) => {
-                Self::iife(loc, self.block(sigma, loc, tm, true)?)
+                Self::iife(loc, self.block(sigma, loc, tm, true)?, false)
             }
 
             _ => unreachable!(),
@@ -1606,10 +1619,15 @@ impl Ecma {
         def: &Def<Term>,
         f: &Term,
     ) -> Result<(), Error> {
+        let is_async = Self::is_async(def);
         items.push(match def.name.as_str() {
             UNBOUND => ModuleItem::Stmt(Stmt::Expr(ExprStmt {
                 span: def.loc.into(),
-                expr: Box::new(Self::iife(def.loc, self.block(sigma, def.loc, f, false)?)),
+                expr: Box::new(Self::iife(
+                    def.loc,
+                    self.block(sigma, def.loc, f, false)?,
+                    is_async,
+                )),
             })),
             _ => Self::try_export_decl(
                 def,
@@ -1623,6 +1641,7 @@ impl Ecma {
                         init: Some(Box::new(Self::iife(
                             def.loc,
                             self.block(sigma, def.loc, f, true)?,
+                            is_async,
                         ))),
                         definite: false,
                     }],

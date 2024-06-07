@@ -145,13 +145,13 @@ class Map<K, V> {
 type Executor<T> = (resolve: (value: T) -> unit) -> unit;
 
 interface Async {
-    __await__<T>(executor: Executor<T>): T;
+    async __await__<T>(executor: Executor<T>): T;
 
-    __await_mul__<Args>(...: Args): Args;
+    async __await_mul__<Args>(...: Args): Args;
 
-    __await_all__<T>(executors: NativeArray<Executor<T>>): NativeArray<T>;
+    async __await_all__<T>(executors: NativeArray<Executor<T>>): NativeArray<T>;
 
-    __await_any__<T>(executors: NativeArray<Executor<T>>): T;
+    async __await_any__<T>(executors: NativeArray<Executor<T>>): T;
 }
 
 class Awaits {
