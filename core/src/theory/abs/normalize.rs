@@ -10,8 +10,8 @@ use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedImplicit;
-use crate::theory::NameMap;
 use crate::theory::{Loc, Param, Var};
+use crate::theory::{NameMap, ASYNC};
 use crate::Error::{
     ClassMethodNotImplemented, FieldsNonExtendable, NonExhaustive, UnresolvedField,
     UnresolvedInstance, UnsatisfiedConstraint,
@@ -575,6 +575,7 @@ impl<'a> Normalizer<'a> {
                             _ => unreachable!(),
                         }
                     }
+                    ty if i.as_str() == ASYNC => Find(Box::new(ty), i, f),
                     ty => self.find_instance(ty, i, f)?,
                 }
             }

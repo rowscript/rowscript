@@ -1,15 +1,16 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 
 use crate::theory::abs::def::{Body, Sigma};
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::load::ModuleID;
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Param, ParamInfo, Syntax, Tele, Var, ASYNC};
+use crate::theory::{Param, ParamInfo, Syntax, Tele, Var};
 
 pub type Spine = Vec<(ParamInfo, Term)>;
 
 pub type FieldMap = HashMap<String, Term>;
+pub type FieldSet = HashSet<Var>;
 pub type CaseMap = HashMap<String, (Var, Term)>;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -168,6 +169,7 @@ pub enum Term {
     SetTimeout(Box<Self>, Box<Self>, Box<Self>),
 
     Pure,
+    Effect(FieldSet),
     EmitAsync(Box<Self>),
 }
 
@@ -287,9 +289,9 @@ impl Term {
         }
     }
 
-    pub fn async_effect() -> Self {
+    pub fn async_effect(v: Var) -> Self {
         use Term::*;
-        Fields(FieldMap::from([(ASYNC.to_string(), Unit)]))
+        Effect(FieldSet::from([v]))
     }
 }
 
@@ -370,7 +372,7 @@ impl Display for Term {
                 Arr(xs) => format!(
                     "[{}]",
                     xs.iter()
-                        .map(|x| x.to_string())
+                        .map(ToString::to_string)
                         .collect::<Vec<_>>()
                         .join(", ")
                 ),
@@ -450,6 +452,11 @@ impl Display for Term {
                 ConsoleLog(m) => format!("console.log({m})"),
                 SetTimeout(f, d, x) => format!("setTimeout({f}, {d}, {x})"),
                 Pure => "pure".to_string(),
+                Effect(a) => a
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(" | "),
                 EmitAsync(a) => format!("await {a}"),
             }
             .as_str(),

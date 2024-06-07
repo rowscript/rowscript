@@ -145,6 +145,10 @@ impl Var {
         Self::new(ITER_RET)
     }
 
+    pub fn async_effect() -> Self {
+        Self::new(ASYNC)
+    }
+
     pub fn await_one() -> Self {
         Self::new(AWAIT)
     }
@@ -255,6 +259,7 @@ impl<T: Syntax> Display for Param<T> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum VarKind {
+    Reserved,
     InModule,
     Imported,
 }

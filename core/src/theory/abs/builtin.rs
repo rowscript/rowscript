@@ -10,7 +10,7 @@ use crate::theory::abs::data::Term::{
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{NameMap, Param, ResolvedVar, Var};
+use crate::theory::{NameMap, Param, ResolvedVar, Var, ASYNC, AWAIT_ANY};
 use crate::theory::{Tele, VarKind};
 
 fn implicit(var: Var, typ: Term) -> Param<Term> {
@@ -163,6 +163,13 @@ pub struct Builtins {
 impl Builtins {
     pub fn new() -> Self {
         Self::default()
+            .reserved([
+                Var::async_effect(),
+                Var::await_one(),
+                Var::await_mul(),
+                Var::await_all(),
+                Var::await_any(),
+            ])
             .error_throw()
             .console_log()
             .set_timeout()
@@ -238,6 +245,14 @@ impl Builtins {
     fn defined(&self, name: &str) -> Term {
         let var = self.ubiquitous.get(name).unwrap().1.clone();
         self.sigma.get(&var).unwrap().to_term(var)
+    }
+
+    fn reserved<const N: usize>(mut self, vars: [Var; N]) -> Self {
+        for v in vars {
+            self.ubiquitous
+                .insert(v.to_string(), ResolvedVar(VarKind::Reserved, v));
+        }
+        self
     }
 
     fn error_throw(self) -> Self {
@@ -825,23 +840,21 @@ impl Builtins {
         let executors_ty = self.executors_type(Ref(t.clone()));
         let array_ty = self.defined("NativeArray");
         let e = Var::new("executors");
-        let (tupled, tele) = parameters([t.clone()], [(e.clone(), executors_ty)]);
+        let (tupled, tele) = parameters([t.clone()], [(e.clone(), executors_ty.clone())]);
+        let async_var = self.ubiquitous.get(ASYNC).unwrap().1.clone();
+        let await_all_var = self.ubiquitous.get(AWAIT_ANY).unwrap().1.clone();
+        let eff = Term::async_effect(async_var.clone());
         self.impure_func(
             "await#all",
             tele,
-            Term::async_effect(),
+            eff,
             App(
                 Box::new(array_ty),
                 ArgInfo::UnnamedImplicit,
                 Box::new(Ref(t)),
             ),
             EmitAsync(Box::new(App(
-                // All unbound, only the string content matters here.
-                Box::new(Find(
-                    Box::new(Ref(Var::unbound())),
-                    Var::unbound(),
-                    Var::await_all(),
-                )),
+                Box::new(Find(Box::new(executors_ty), async_var, await_all_var)),
                 ArgInfo::UnnamedExplicit,
                 Box::new(tupled),
             ))),
@@ -852,19 +865,17 @@ impl Builtins {
         let t = Var::new("T");
         let executors_ty = self.executors_type(Ref(t.clone()));
         let e = Var::new("executors");
-        let (tupled, tele) = parameters([t.clone()], [(e.clone(), executors_ty)]);
+        let (tupled, tele) = parameters([t.clone()], [(e.clone(), executors_ty.clone())]);
+        let async_var = self.ubiquitous.get(ASYNC).unwrap().1.clone();
+        let await_any_var = self.ubiquitous.get(AWAIT_ANY).unwrap().1.clone();
+        let eff = Term::async_effect(async_var.clone());
         self.impure_func(
             "await#any",
             tele,
-            Term::async_effect(),
+            eff,
             Ref(t),
             EmitAsync(Box::new(App(
-                // All unbound, only the string content matters here.
-                Box::new(Find(
-                    Box::new(Ref(Var::unbound())),
-                    Var::unbound(),
-                    Var::await_any(),
-                )),
+                Box::new(Find(Box::new(executors_ty), async_var, await_any_var)),
                 ArgInfo::UnnamedExplicit,
                 Box::new(tupled),
             ))),

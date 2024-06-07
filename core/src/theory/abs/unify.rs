@@ -54,7 +54,7 @@ impl<'a> Unifier<'a> {
             (AnonVarargs(a), b) => self.unify(a, b),
 
             // If expected effect is impure, but the actual is pure, we could proceed. But the opposite is not ture.
-            (Fields(..), Pure) => Ok(()),
+            (Effect(..), Pure) => Ok(()),
             (Ref(..), Pure) => Ok(()),
 
             (Ref(a), Ref(b)) if a == b => Ok(()),
@@ -163,6 +163,7 @@ impl<'a> Unifier<'a> {
             (Str(a), Str(b)) if a == b => Ok(()),
             (Num(a), Num(b)) if a == b => Ok(()),
             (Big(a), Big(b)) if a == b => Ok(()),
+            (Effect(a), Effect(b)) if a == b => Ok(()),
 
             (Univ, Univ) => Ok(()),
             (Unit, Unit) => Ok(()),
@@ -216,7 +217,7 @@ impl<'a> Unifier<'a> {
                         Fields(small.clone()),
                         Fields(big.clone()),
                         self.loc,
-                    ))
+                    ));
                 }
             }
         }

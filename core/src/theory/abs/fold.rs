@@ -118,6 +118,7 @@ pub fn should_fold(tm: &Term) -> bool {
         | AnonVarargs(..)
         | Reflected(..)
         | Cls { .. }
-        | Pure => false,
+        | Pure
+        | Effect(..) => false,
     }
 }

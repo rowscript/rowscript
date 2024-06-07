@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 use crate::theory::conc::load::ModuleID;
-use crate::theory::{Loc, Param, Syntax, Tele, Var, ASYNC};
+use crate::theory::{Loc, Param, Syntax, Tele, Var};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ArgInfo {
@@ -96,6 +96,7 @@ pub enum Expr {
     AnonSpread(Loc),
 
     Pure(Loc),
+    Effect(Loc, Vec<Self>),
     EmitAsync(Loc, Box<Self>),
 }
 
@@ -176,6 +177,7 @@ impl Expr {
             | Spread(loc, ..)
             | AnonSpread(loc)
             | Pure(loc)
+            | Effect(loc, ..)
             | EmitAsync(loc, ..) => loc,
         }
     }
@@ -237,7 +239,7 @@ impl Expr {
 
     pub fn async_effect(loc: Loc) -> Self {
         use Expr::*;
-        Fields(loc, vec![(ASYNC.to_string(), Unit(loc))])
+        Effect(loc, vec![Unresolved(loc, None, Var::async_effect())])
     }
 }
 
@@ -380,6 +382,11 @@ impl Display for Expr {
                 Spread(_, a) => format!("...{a}"),
                 AnonSpread(..) => "...".to_string(),
                 Pure(_) => "pure".to_string(),
+                Effect(_, a) => a
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(" | "),
                 EmitAsync(_, a) => format!("await {a}"),
             }
             .as_str(),

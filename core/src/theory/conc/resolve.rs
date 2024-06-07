@@ -66,10 +66,14 @@ impl<'a> Resolver<'a> {
         defs: Vec<Def<Expr>>,
     ) -> Result<Vec<Def<Expr>>, Error> {
         let mut ret = Vec::default();
-        for d in defs {
+        for mut d in defs {
             if d.name.as_str() != UNBOUND {
-                if self.ubiquitous.contains_key(d.name.as_str()) {
-                    return Err(DuplicateName(d.loc));
+                if let Some(rv) = self.ubiquitous.get(d.name.as_str()) {
+                    if !matches!(rv.0, VarKind::Reserved) {
+                        return Err(DuplicateName(d.loc));
+                    }
+                    // Use the reserved definition name.
+                    d.name = rv.1.clone();
                 }
                 names.var(d.loc, &d.name)?;
             }
@@ -269,7 +273,7 @@ impl<'a> Resolver<'a> {
                             let k = v.0;
                             let v = v.1.clone();
                             match k {
-                                VarKind::InModule => Resolved(loc, v),
+                                VarKind::Reserved | VarKind::InModule => Resolved(loc, v),
                                 VarKind::Imported => Imported(loc, v),
                             }
                         }
@@ -432,6 +436,13 @@ impl<'a> Resolver<'a> {
                 .1
                 .clone(),
             ),
+            Effect(loc, a) => {
+                let mut resolved = Vec::default();
+                for e in a {
+                    resolved.push(*self.expr(Box::new(e))?);
+                }
+                Effect(loc, resolved)
+            }
             EmitAsync(loc, a) => EmitAsync(loc, self.expr(a)?),
 
             e => e,

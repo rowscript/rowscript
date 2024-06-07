@@ -2,7 +2,7 @@ use log::{debug, info, trace};
 
 use crate::maybe_grow;
 use crate::theory::abs::builtin::Builtins;
-use crate::theory::abs::data::{CaseMap, FieldMap, MetaKind, PartialClass, Term};
+use crate::theory::abs::data::{CaseMap, FieldMap, FieldSet, MetaKind, PartialClass, Term};
 use crate::theory::abs::def::{gamma_to_tele, tele_to_refs, Body, InstanceBody};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
@@ -12,7 +12,7 @@ use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, Unnamed
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{
-    Loc, NameMap, Param, Tele, Var, VarGen, ARRAY, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX,
+    Loc, NameMap, Param, Tele, Var, VarGen, ARRAY, ASYNC, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX,
 };
 use crate::Error;
 use crate::Error::{
@@ -1176,11 +1176,15 @@ impl Elaborator {
                 }
             }
             Pure(_) => InferResult::pure(Term::Pure, Term::Row),
+            Effect(_, a) => InferResult::pure(
+                Term::Effect(FieldSet::from_iter(a.into_iter().map(Expr::resolved))),
+                Term::Row,
+            ),
             EmitAsync(_, a) => {
                 let InferResult { tm, ty, .. } = self.infer(*a)?;
                 InferResult {
                     tm: Term::EmitAsync(Box::new(tm)),
-                    eff: Term::async_effect(),
+                    eff: Term::async_effect(self.ubiquitous.get(ASYNC).unwrap().1.clone()),
                     ty,
                 }
             }
