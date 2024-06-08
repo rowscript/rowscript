@@ -73,7 +73,7 @@ pub fn should_fold(tm: &Term) -> bool {
         | Down(a, ..)
         | Variant(a)
         | Up(a, ..)
-        | Find(a, ..)
+        | Find { instance_ty: a, .. }
         | Spread(a) => should_fold(a),
 
         Extern(..) | MetaRef(..) | Undef(..) | Let(..) | Update(..) | Return(..) | Continue

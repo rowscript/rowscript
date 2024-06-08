@@ -513,15 +513,15 @@ impl Ecma {
         let args = self.untuple_args(sigma, loc, x)?;
 
         // Try transforming await expressions.
-        if let Find(_, _, m) = f {
-            return Ok(match m.as_str() {
+        if let Find { interface_fn, .. } = f {
+            return Ok(match interface_fn.as_str() {
                 AWAIT => Self::await_executor(loc, args),
                 AWAIT_MUL => {
                     Self::await_executors(loc, "Promise.all", Self::args_to_promises(loc, args))
                 }
                 AWAIT_ALL => Self::await_executors(loc, "Promise.all", args),
                 AWAIT_ANY => Self::await_executors(loc, "Promise.any", args),
-                _ => return Err(NonErasable(Ref(m.clone()), loc)),
+                _ => return Err(NonErasable(Ref(interface_fn.clone()), loc)),
             });
         }
 

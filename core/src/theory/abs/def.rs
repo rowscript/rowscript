@@ -62,9 +62,14 @@ impl Def<Term> {
             }
             Instance { .. } => unreachable!(),
             InstanceFn(f) => self.to_lam_term(*f.clone()),
-            InterfaceFn(i) => {
+            InterfaceFn(is_capability, i) => {
                 let r = Term::Ref(self.tele[0].var.clone());
-                let mut f = Term::Find(Box::new(r), i.clone(), v);
+                let mut f = Term::Find {
+                    is_capability: *is_capability,
+                    instance_ty: Box::new(r),
+                    interface: i.clone(),
+                    interface_fn: v,
+                };
                 for p in self.tele.iter().skip(1) {
                     f = Term::App(
                         Box::new(f),
@@ -176,8 +181,9 @@ impl<T: Syntax> Display for Def<T> {
                         .collect::<Vec<_>>()
                         .concat()
                 ),
-                InterfaceFn(i) => format!(
-                    "interface function {i}.{} {}: {};",
+                InterfaceFn(is_capability, i) => format!(
+                    "{} function {i}.{} {}: {};",
+                    if *is_capability { "throw" } else { "interface" },
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret
@@ -261,7 +267,7 @@ pub enum Body<T: Syntax> {
         fns: Vec<Var>,
         instances: Vec<Var>,
     },
-    InterfaceFn(Var),
+    InterfaceFn(bool, Var),
     Instance(Box<InstanceBody<T>>),
     InstanceFn(Box<T>),
 

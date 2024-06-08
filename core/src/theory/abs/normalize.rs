@@ -563,10 +563,20 @@ impl<'a> Normalizer<'a> {
             Varargs(t) => Varargs(self.term_box(t)?),
             AnonVarargs(t) => AnonVarargs(self.term_box(t)?),
             Spread(a) => Spread(self.term_box(a)?),
-            Find(ty, i, f) => {
+            Find {
+                is_capability,
+                instance_ty: ty,
+                interface: i,
+                interface_fn: f,
+            } => {
                 let ty = self.term_box(ty)?;
                 match *ty {
-                    Ref(_) | MetaRef(_, _, _) => Find(ty, i, f),
+                    Ref(_) | MetaRef(_, _, _) => Find {
+                        is_capability,
+                        instance_ty: ty,
+                        interface: i,
+                        interface_fn: f,
+                    },
                     ty if self.is_reflector(&i) => {
                         let r = self.reflector();
                         *match f.as_str() {
@@ -575,7 +585,12 @@ impl<'a> Normalizer<'a> {
                             _ => unreachable!(),
                         }
                     }
-                    ty if i.as_str() == ASYNC => Find(Box::new(ty), i, f),
+                    ty if i.as_str() == ASYNC => Find {
+                        is_capability,
+                        instance_ty: Box::new(ty),
+                        interface: i,
+                        interface_fn: f,
+                    },
                     ty => self.find_instance(ty, i, f)?,
                 }
             }

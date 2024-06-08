@@ -147,7 +147,12 @@ pub enum Term {
     Switch(Box<Self>, CaseMap, Option<(Var, Box<Self>)>),
     Unionify(Box<Self>),
 
-    Find(Box<Self>, Var, Var),
+    Find {
+        is_capability: bool,
+        instance_ty: Box<Self>,
+        interface: Var,
+        interface_fn: Var,
+    },
     Instanceof(Box<Self>, Var),
     InstanceofSat,
 
@@ -440,7 +445,12 @@ impl Display for Term {
                     return write!(f, "}}");
                 }
                 Unionify(a) => format!("unionify({a})"),
-                Find(ty, i, f) => format!("{i}.{f}<{ty}>"),
+                Find {
+                    instance_ty,
+                    interface,
+                    interface_fn,
+                    ..
+                } => format!("{interface}.{interface_fn}<{instance_ty}>"),
                 Instanceof(t, i) => format!("{t} instanceof {i}"),
                 InstanceofSat => "instanceofSat".to_string(),
                 Varargs(t) => format!("...Array<{t}>"),

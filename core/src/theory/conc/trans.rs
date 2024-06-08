@@ -391,7 +391,7 @@ impl Trans {
                     tele.extend(d.tele);
                     d.tele = tele;
 
-                    d.body = InterfaceFn(name.clone());
+                    d.body = InterfaceFn(is_capability, name.clone());
                     fns.push(d.name.clone());
                     fn_defs.push(d);
                 }

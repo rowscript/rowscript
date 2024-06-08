@@ -139,7 +139,7 @@ impl Elaborator {
                 fns,
                 instances,
             },
-            InterfaceFn(i) => InterfaceFn(i),
+            InterfaceFn(is_capability, i) => InterfaceFn(is_capability, i),
             Instance(body) => Instance(self.check_instance_body(&d.name, *body)?),
             InstanceFn(f) => InstanceFn(Box::new(self.check(*f, &eff, &ret)?)),
 

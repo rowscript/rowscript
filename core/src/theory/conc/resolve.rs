@@ -142,6 +142,7 @@ impl<'a> Resolver<'a> {
                 fns,
                 instances: ims,
             },
+            InterfaceFn(is_capability, i) => InterfaceFn(is_capability, i),
             Instance(body) => {
                 let loc = d.loc;
                 let i = self
@@ -159,7 +160,6 @@ impl<'a> Resolver<'a> {
                 Instance(Box::new(InstanceBody { i: (i, inst), fns }))
             }
             InstanceFn(f) => InstanceFn(self.expr(f)?), // FIXME: currently cannot be recursive
-            InterfaceFn(i) => InterfaceFn(i),
 
             Class {
                 ctor,

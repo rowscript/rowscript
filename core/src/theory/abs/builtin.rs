@@ -835,6 +835,19 @@ impl Builtins {
         )
     }
 
+    fn emit_async(tupled: Term, ty: Term, interface: Var, interface_fn: Var) -> Term {
+        EmitAsync(Box::new(App(
+            Box::new(Find {
+                is_capability: Default::default(),
+                instance_ty: Box::new(ty),
+                interface,
+                interface_fn,
+            }),
+            ArgInfo::UnnamedExplicit,
+            Box::new(tupled),
+        )))
+    }
+
     fn await_all(self) -> Self {
         let t = Var::new("T");
         let executors_ty = self.executors_type(Ref(t.clone()));
@@ -853,11 +866,7 @@ impl Builtins {
                 ArgInfo::UnnamedImplicit,
                 Box::new(Ref(t)),
             ),
-            EmitAsync(Box::new(App(
-                Box::new(Find(Box::new(executors_ty), async_var, await_all_var)),
-                ArgInfo::UnnamedExplicit,
-                Box::new(tupled),
-            ))),
+            Self::emit_async(tupled, executors_ty, async_var, await_all_var),
         )
     }
 
@@ -874,11 +883,7 @@ impl Builtins {
             tele,
             eff,
             Ref(t),
-            EmitAsync(Box::new(App(
-                Box::new(Find(Box::new(executors_ty), async_var, await_any_var)),
-                ArgInfo::UnnamedExplicit,
-                Box::new(tupled),
-            ))),
+            Self::emit_async(tupled, executors_ty, async_var, await_any_var),
         )
     }
 }
