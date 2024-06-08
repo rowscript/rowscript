@@ -1,9 +1,21 @@
 throw DB {
-  open(dsn: string): DB;
-  close(db: DB);
+    open(dsn: string): DB;
+    close(db: DB);
 }
 
-function f0() throw DB {
-  const db = open("mysql://john:pass@localhost:3306/my_db");
-  close(db);
+function f0() {
+    const db = open("mysql://john:pass@localhost:3306/my_db");
+    close(db);
 }
+
+type MySQLConn;
+type MySQL = {conn: MySQLConn};
+
+function connectMySQL(dsn: string): MySQLConn;
+function closeMySQL(conn: MySQLConn);
+
+// Cannot do this:
+//instanceof DB for MySQL {
+//    open(dsn: string): MySQL { {conn: connectMySQL(dsn)} }
+//    close(db: MySQL) { closeMySQL(db.conn) }
+//}

@@ -213,7 +213,14 @@ impl Elaborator {
         let i_def = self.sigma.get_mut(&ret.i.0).unwrap();
         let i_def_loc = i_def.loc;
         match &mut i_def.body {
-            Interface { fns, instances, .. } => {
+            Interface {
+                is_capability,
+                fns,
+                instances,
+            } => {
+                if *is_capability {
+                    return Err(ExpectedInterface(Term::Ref(ret.i.0.clone()), i_def_loc));
+                }
                 instances.push(d.clone());
                 for f in fns {
                     if ret.fns.contains_key(f) {
