@@ -16,8 +16,9 @@ use crate::theory::{
 };
 use crate::Error;
 use crate::Error::{
-    ExpectedEnum, ExpectedInstanceof, ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedSigma,
-    NonExhaustive, NonVariadicType, UnresolvedField, UnresolvedImplicitParam, UnresolvedVar,
+    DuplicateEffect, ExpectedCapability, ExpectedEnum, ExpectedInstanceof, ExpectedInterface,
+    ExpectedObject, ExpectedPi, ExpectedSigma, NonExhaustive, NonVariadicType, UnresolvedField,
+    UnresolvedImplicitParam, UnresolvedVar,
 };
 
 #[derive(Debug)]
@@ -1191,10 +1192,32 @@ impl Elaborator {
                 }
             }
             Pure(_) => InferResult::pure(Term::Pure, Term::Row),
-            Effect(_, a) => InferResult::pure(
-                Term::Effect(FieldSet::from_iter(a.into_iter().map(Expr::resolved))),
-                Term::Row,
-            ),
+            Effect(loc, a) => {
+                let mut effs = FieldSet::new();
+                for e in a {
+                    let eff = e.resolved();
+                    if effs.contains(&eff) {
+                        return Err(DuplicateEffect(eff, loc));
+                    }
+
+                    // Check if it's async effect.
+                    if let Some(rv) = self.ubiquitous.get(eff.as_str()) {
+                        if rv.1.as_str() == ASYNC {
+                            effs.insert(eff);
+                            continue;
+                        }
+                    }
+
+                    // Check if it's capability effect.
+                    match &self.sigma.get(&eff).unwrap().body {
+                        Body::Interface { is_capability, .. } if *is_capability => {
+                            effs.insert(eff);
+                        }
+                        _ => return Err(ExpectedCapability(eff, loc)),
+                    }
+                }
+                InferResult::pure(Term::Effect(effs), Term::Row)
+            }
             EmitAsync(_, a) => {
                 let InferResult { tm, ty, .. } = self.infer(*a)?;
                 InferResult {

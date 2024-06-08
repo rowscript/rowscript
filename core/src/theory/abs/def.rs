@@ -60,8 +60,6 @@ impl Def<Term> {
                 let r = Term::Ref(self.tele[0].var.clone());
                 self.to_lam_term(Term::Instanceof(Box::new(r), v))
             }
-            Instance { .. } => unreachable!(),
-            InstanceFn(f) => self.to_lam_term(*f.clone()),
             InterfaceFn(is_capability, i) => {
                 let r = Term::Ref(self.tele[0].var.clone());
                 let mut f = Term::Find {
@@ -79,6 +77,8 @@ impl Def<Term> {
                 }
                 self.to_lam_term(f)
             }
+            Instance { .. } => unreachable!(),
+            InstanceFn(f) => self.to_lam_term(*f.clone()),
 
             Class {
                 associated,

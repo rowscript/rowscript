@@ -3,7 +3,7 @@ throw DB {
     close(db: DB);
 }
 
-function f0() {
+function f0() throw DB {
     const db = open("mysql://john:pass@localhost:3306/my_db");
     close(db);
 }

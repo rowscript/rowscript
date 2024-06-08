@@ -58,6 +58,8 @@ pub enum Error {
     UnresolvedField(String, Term, Loc),
     #[error("expected interface type, got \"{0}\"")]
     ExpectedInterface(Term, Loc),
+    #[error("expected capability type, got \"{0}\"")]
+    ExpectedCapability(Var, Loc),
     #[error("expected type alias, got \"{0}\"")]
     ExpectedAlias(Term, Loc),
     #[error("unsatisfied constraint \"{0}\", got \"{1}\"")]
@@ -68,6 +70,8 @@ pub enum Error {
     UnresolvedInstance(Term, Loc),
     #[error("expected constraint, got \"{0}\"")]
     ExpectedInstanceof(Term, Loc),
+    #[error("duplicate effect, got \"{0}\"")]
+    DuplicateEffect(Var, Loc),
     #[error("expected reflectable type, got \"{0}\"")]
     ExpectedReflectable(Term, Loc),
 
@@ -126,11 +130,13 @@ fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
         | NonExhaustive(.., loc)
         | UnresolvedField(.., loc)
         | ExpectedInterface(.., loc)
+        | ExpectedCapability(.., loc)
         | ExpectedAlias(.., loc)
         | UnsatisfiedConstraint(.., loc)
         | ClassMethodNotImplemented(.., loc)
         | UnresolvedInstance(.., loc)
         | ExpectedInstanceof(.., loc)
+        | DuplicateEffect(.., loc)
         | ExpectedReflectable(.., loc) => simple_message(&e, loc, CHECKER_FAILED),
 
         NonUnifiable(.., loc) | NonRowSat(.., loc) => simple_message(&e, loc, UNIFIER_FAILED),
