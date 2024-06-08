@@ -159,7 +159,7 @@ impl<'a> Resolver<'a> {
                 Instance(Box::new(InstanceBody { i: (i, inst), fns }))
             }
             InstanceFn(f) => InstanceFn(self.expr(f)?), // FIXME: currently cannot be recursive
-            Findable(i) => Findable(i),
+            InterfaceFn(i) => InterfaceFn(i),
 
             Class {
                 ctor,

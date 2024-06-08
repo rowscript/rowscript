@@ -62,7 +62,7 @@ impl Def<Term> {
             }
             Instance { .. } => unreachable!(),
             InstanceFn(f) => self.to_lam_term(*f.clone()),
-            Findable(i) => {
+            InterfaceFn(i) => {
                 let r = Term::Ref(self.tele[0].var.clone());
                 let mut f = Term::Find(Box::new(r), i.clone(), v);
                 for p in self.tele.iter().skip(1) {
@@ -176,6 +176,12 @@ impl<T: Syntax> Display for Def<T> {
                         .collect::<Vec<_>>()
                         .concat()
                 ),
+                InterfaceFn(i) => format!(
+                    "interface function {i}.{} {}: {};",
+                    self.name,
+                    Param::tele_to_string(&self.tele),
+                    self.ret
+                ),
                 Instance(body) => body.to_string(),
                 InstanceFn(f) => format!(
                     "instanceof function {} {}: {} {{\n\t{f}\n}}",
@@ -236,12 +242,6 @@ impl<T: Syntax> Display for Def<T> {
                         None => format!("meta {k}{} {tele}: {};", self.name, self.ret),
                     }
                 }
-                Findable(i) => format!(
-                    "findable {i}.{} {}: {};",
-                    self.name,
-                    Param::tele_to_string(&self.tele),
-                    self.ret
-                ),
             }
             .as_str(),
         )
@@ -261,9 +261,9 @@ pub enum Body<T: Syntax> {
         fns: Vec<Var>,
         instances: Vec<Var>,
     },
+    InterfaceFn(Var),
     Instance(Box<InstanceBody<T>>),
     InstanceFn(Box<T>),
-    Findable(Var),
 
     Class {
         ctor: Var,

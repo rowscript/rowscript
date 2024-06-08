@@ -391,7 +391,7 @@ impl Trans {
                     tele.extend(d.tele);
                     d.tele = tele;
 
-                    d.body = Findable(name.clone());
+                    d.body = InterfaceFn(name.clone());
                     fns.push(d.name.clone());
                     fn_defs.push(d);
                 }
