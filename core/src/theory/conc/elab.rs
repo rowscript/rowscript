@@ -1226,6 +1226,7 @@ impl Elaborator {
                     ty,
                 }
             }
+            TryCatch(..) => todo!(),
 
             Univ(_) => InferResult::pure(Term::Univ, Term::Univ),
             Unit(_) => InferResult::pure(Term::Unit, Term::Univ),

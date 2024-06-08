@@ -446,6 +446,19 @@ impl<'a> Resolver<'a> {
                 Effect(loc, resolved)
             }
             EmitAsync(loc, a) => EmitAsync(loc, self.expr(a)?),
+            TryCatch(loc, b, catches) => {
+                let body = self.expr(b)?;
+                let mut resolved = Vec::default();
+                for (c, fn_defs) in catches {
+                    let cap = *self.expr(Box::new(c))?;
+                    let mut resolved_defs = Vec::default();
+                    for d in fn_defs {
+                        resolved_defs.push(self.def(d)?);
+                    }
+                    resolved.push((cap, resolved_defs));
+                }
+                TryCatch(loc, body, resolved)
+            }
 
             e => e,
         }))

@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
 
+use crate::theory::abs::def::Def;
 use crate::theory::conc::load::ModuleID;
 use crate::theory::{Loc, Param, Syntax, Tele, Var};
 
@@ -98,6 +99,7 @@ pub enum Expr {
     Pure(Loc),
     Effect(Loc, Vec<Self>),
     EmitAsync(Loc, Box<Self>),
+    TryCatch(Loc, Box<Self>, Vec<(Expr, Vec<Def<Self>>)>),
 }
 
 impl Expr {
@@ -178,7 +180,8 @@ impl Expr {
             | AnonSpread(loc)
             | Pure(loc)
             | Effect(loc, ..)
-            | EmitAsync(loc, ..) => loc,
+            | EmitAsync(loc, ..)
+            | TryCatch(loc, ..) => loc,
         }
     }
 
@@ -388,6 +391,14 @@ impl Display for Expr {
                     .collect::<Vec<_>>()
                     .join(" | "),
                 EmitAsync(_, a) => format!("await {a}"),
+                TryCatch(_, body, catches) => format!(
+                    "try {{\n\t{body}\n}}\n{}",
+                    catches
+                        .iter()
+                        .map(|(eff, _)| format!("catch ({eff})"))
+                        .collect::<Vec<_>>()
+                        .join("\n")
+                ),
             }
             .as_str(),
         )

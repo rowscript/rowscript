@@ -1114,6 +1114,15 @@ impl Trans {
                 }
                 Switch(loc, Box::new(e), cases, default_case)
             }
+            Rule::try_catch => {
+                let mut pairs = p.into_inner();
+                let body = self.fn_body(pairs.next().unwrap());
+                let mut catches = Vec::default();
+                for p in pairs {
+                    catches.push(self.catch(p));
+                }
+                TryCatch(loc, Box::new(body), catches)
+            }
             Rule::await_multi_expr => {
                 Self::await_executors(loc, p.into_inner().map(|e| self.expr(e)).collect())
             }
@@ -1820,6 +1829,22 @@ impl Trans {
             ends = Tuple(loc, Box::new(x), Box::new(ends))
         }
         ends
+    }
+
+    fn catch(&self, c: Pair<Rule>) -> (Expr, Vec<Def<Expr>>) {
+        let mut pairs = c.into_inner();
+        let tyref = self.maybe_qualified(pairs.next().unwrap());
+        let mut defs = Vec::default();
+        for p in pairs {
+            let mut def = self.fn_def(p, None);
+            def.name = def.name.catch_fn();
+            def.body = match def.body {
+                Body::Fn(f) => Body::InstanceFn(f),
+                _ => unreachable!(),
+            };
+            defs.push(def);
+        }
+        (tyref, defs)
     }
 
     fn call1(f: Expr, x: Expr) -> Expr {
