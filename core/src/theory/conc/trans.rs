@@ -134,12 +134,13 @@ impl Trans {
         let loc = Loc::from(f.as_span());
         let mut pairs = f.into_inner();
 
-        let (name, eff) = self.name_maybe_async(&mut pairs);
+        let (name, mut eff) = self.name_maybe_async(&mut pairs);
 
         let mut tele = Tele::default();
         let mut untupled = UntupledParams::new(loc);
         let mut untupled_ends = None;
         let mut preds = Tele::default();
+        let mut capabilities = Vec::default();
         let mut ret = Box::new(Unit(loc));
         let mut body = None;
 
@@ -171,6 +172,7 @@ impl Trans {
                     break;
                 }
                 Rule::pred => preds.push(self.pred(p)),
+                Rule::capability => capabilities.push(Self::unresolved(p)),
                 _ => unreachable!(),
             }
         }
@@ -185,6 +187,7 @@ impl Trans {
         )));
         tele.push(tupled_param);
         tele.extend(preds);
+        Self::concat_effects(eff.as_mut(), capabilities);
 
         Def {
             loc,
@@ -218,11 +221,27 @@ impl Trans {
         }
     }
 
-    fn fn_signature(&self, pairs: Pairs<Rule>, loc: Loc) -> (Tele<Expr>, Box<Expr>) {
+    fn concat_effects(async_eff: &mut Expr, capabilities: Vec<Expr>) {
+        if capabilities.is_empty() || matches!(async_eff, Expr::Pure(..)) {
+            return;
+        }
+        match async_eff {
+            Expr::Effect(_, ref mut es) => es.extend(capabilities),
+            _ => unreachable!(),
+        }
+    }
+
+    fn fn_signature(
+        &self,
+        pairs: Pairs<Rule>,
+        loc: Loc,
+        async_eff: &mut Expr,
+    ) -> (Tele<Expr>, Box<Expr>) {
         let mut tele = Tele::default();
         let mut untupled = UntupledParams::new(loc);
         let mut untupled_ends = None;
         let mut preds = Tele::default();
+        let mut capabilities = Vec::default();
         let mut ret = Box::new(Expr::Unit(loc));
 
         for p in pairs {
@@ -237,11 +256,13 @@ impl Trans {
                 },
                 Rule::type_expr => ret = Box::new(self.type_expr(p)),
                 Rule::pred => preds.push(self.pred(p)),
+                Rule::capability => capabilities.push(Self::unresolved(p)),
                 _ => unreachable!(),
             }
         }
         tele.push(untupled.param(untupled_ends));
         tele.extend(preds);
+        Self::concat_effects(async_eff, capabilities);
 
         (tele, ret)
     }
@@ -249,8 +270,8 @@ impl Trans {
     fn fn_postulate(&self, f: Pair<Rule>) -> Def<Expr> {
         let loc = Loc::from(f.as_span());
         let mut pairs = f.into_inner();
-        let (name, eff) = self.name_maybe_async(&mut pairs);
-        let (tele, ret) = self.fn_signature(pairs, loc);
+        let (name, mut eff) = self.name_maybe_async(&mut pairs);
+        let (tele, ret) = self.fn_signature(pairs, loc, eff.as_mut());
         Def {
             loc,
             name,
@@ -655,8 +676,8 @@ impl Trans {
     fn fn_verify(&self, f: Pair<Rule>) -> Def<Expr> {
         let loc = Loc::from(f.as_span());
         let mut pairs = f.into_inner();
-        let (target, eff) = self.idref_maybe_async(&mut pairs);
-        let (tele, ret) = self.fn_signature(pairs, loc);
+        let (target, mut eff) = self.idref_maybe_async(&mut pairs);
+        let (tele, ret) = self.fn_signature(pairs, loc, eff.as_mut());
         Def {
             loc,
             name: Var::unbound(),

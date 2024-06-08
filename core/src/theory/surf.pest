@@ -563,6 +563,9 @@ row_concat = { row_primary_expr ~ "+" ~ row_expr }
 paren_row_expr = { "(" ~ row_expr ~ ")" }
 instanceof = { tyref ~ implicit_args? ~ "instanceof" ~ tyref }
 
+capabilities = _{ "throw" ~ capability ~ ("," ~ capability)* }
+capability = { tyref }
+
 fn_def =
   { is_async?
   ~ "function"
@@ -571,6 +574,7 @@ fn_def =
   ~ params
   ~ (":" ~ type_expr)?
   ~ preds?
+  ~ capabilities?
   ~ fn_body_block
   }
 fn_body_block = _{ "{" ~ fn_body ~ "}" }
@@ -611,6 +615,7 @@ fn_postulate =
   ~ params
   ~ (":" ~ type_expr)?
   ~ preds?
+  ~ capabilities?
   ~ ";"
   }
 
@@ -640,6 +645,7 @@ interface_fn =
   ~ params
   ~ (":" ~ type_expr)?
   ~ preds?
+  ~ capabilities?
   ~ ";"
   }
 
@@ -682,6 +688,7 @@ class_method =
   ~ params
   ~ (":" ~ type_expr)?
   ~ preds?
+  ~ capabilities?
   ~ fn_body_block
   }
 
@@ -701,6 +708,7 @@ fn_verify =
   ~ params
   ~ (":" ~ type_expr)?
   ~ preds?
+  ~ capabilities?
   ~ ";"
   }
 
