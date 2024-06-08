@@ -373,6 +373,7 @@ chainable_operand =
   { object_cast
   | enum_cast
   | enum_switch
+  | try_catch
   | await_multi_expr
   | await_lambda_expr
   | await_expr
@@ -398,6 +399,8 @@ enum_switch = { "switch" ~ paren_expr ~ "{" ~ enum_case+ ~ enum_default_case? ~ 
 enum_cast = { "[" ~ "..." ~ expr ~ "]" }
 enum_case = { "case" ~ variant_id ~ ("(" ~ param_id ~ ")")? ~ ":" ~ expr }
 enum_default_case = { "case" ~ bind_id ~ ":" ~ expr }
+try_catch = { "try" ~ lambda_body_block ~ catch+ }
+catch = { "catch" ~ "(" ~ tyref ~ ")" ~ "{" ~ instance_fn+ ~ "}" }
 await_multi_expr = { "await" ~ "(" ~ expr ~ ("," ~ expr)+ ~ ")" }
 await_lambda_expr = { "await" ~ lambda_body_block }
 await_expr = { "await " ~ expr }
