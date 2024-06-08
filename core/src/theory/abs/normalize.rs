@@ -564,7 +564,6 @@ impl<'a> Normalizer<'a> {
             AnonVarargs(t) => AnonVarargs(self.term_box(t)?),
             Spread(a) => Spread(self.term_box(a)?),
             Find {
-                is_capability,
                 instance_ty: ty,
                 interface: i,
                 interface_fn: f,
@@ -572,7 +571,6 @@ impl<'a> Normalizer<'a> {
                 let ty = self.term_box(ty)?;
                 match *ty {
                     Ref(_) | MetaRef(_, _, _) => Find {
-                        is_capability,
                         instance_ty: ty,
                         interface: i,
                         interface_fn: f,
@@ -586,7 +584,6 @@ impl<'a> Normalizer<'a> {
                         }
                     }
                     ty if i.as_str() == ASYNC => Find {
-                        is_capability,
                         instance_ty: Box::new(ty),
                         interface: i,
                         interface_fn: f,

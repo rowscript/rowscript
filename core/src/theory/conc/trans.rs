@@ -395,7 +395,7 @@ impl Trans {
                     tele.extend(d.tele);
                     d.tele = tele;
 
-                    d.body = InterfaceFn(is_capability, name.clone());
+                    d.body = InterfaceFn(name.clone());
                     if is_capability {
                         d.eff = Self::concat_effects(
                             *d.eff,

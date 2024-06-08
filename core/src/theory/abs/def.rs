@@ -60,10 +60,9 @@ impl Def<Term> {
                 let r = Term::Ref(self.tele[0].var.clone());
                 self.to_lam_term(Term::Instanceof(Box::new(r), v))
             }
-            InterfaceFn(is_capability, i) => {
+            InterfaceFn(i) => {
                 let r = Term::Ref(self.tele[0].var.clone());
                 let mut f = Term::Find {
-                    is_capability: *is_capability,
                     instance_ty: Box::new(r),
                     interface: i.clone(),
                     interface_fn: v,
@@ -181,9 +180,8 @@ impl<T: Syntax> Display for Def<T> {
                         .collect::<Vec<_>>()
                         .concat()
                 ),
-                InterfaceFn(is_capability, i) => format!(
-                    "{} function {i}.{} {}: {};",
-                    if *is_capability { "throw" } else { "interface" },
+                InterfaceFn(i) => format!(
+                    "interface function {i}.{} {}: {};",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret
@@ -267,7 +265,7 @@ pub enum Body<T: Syntax> {
         fns: Vec<Var>,
         instances: Vec<Var>,
     },
-    InterfaceFn(bool, Var),
+    InterfaceFn(Var),
     Instance(Box<InstanceBody<T>>),
     InstanceFn(Box<T>),
 

@@ -148,7 +148,6 @@ pub enum Term {
     Unionify(Box<Self>),
 
     Find {
-        is_capability: bool,
         instance_ty: Box<Self>,
         interface: Var,
         interface_fn: Var,

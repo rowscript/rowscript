@@ -838,7 +838,6 @@ impl Builtins {
     fn emit_async(tupled: Term, ty: Term, interface: Var, interface_fn: Var) -> Term {
         EmitAsync(Box::new(App(
             Box::new(Find {
-                is_capability: Default::default(),
                 instance_ty: Box::new(ty),
                 interface,
                 interface_fn,

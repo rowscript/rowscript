@@ -125,12 +125,10 @@ impl Renamer {
             }
             Unionify(a) => Unionify(self.term(a)),
             Find {
-                is_capability,
                 instance_ty: ty,
                 interface,
                 interface_fn,
             } => Find {
-                is_capability,
                 instance_ty: self.term(ty),
                 interface,
                 interface_fn,

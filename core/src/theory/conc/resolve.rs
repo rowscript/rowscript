@@ -142,7 +142,7 @@ impl<'a> Resolver<'a> {
                 fns,
                 instances: ims,
             },
-            InterfaceFn(is_capability, i) => InterfaceFn(is_capability, i),
+            InterfaceFn(i) => InterfaceFn(i),
             Instance(body) => {
                 let loc = d.loc;
                 let i = self
