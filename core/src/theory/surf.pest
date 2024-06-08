@@ -230,6 +230,7 @@ univ = { "type" }
 root_prefix = { "::" }
 tt = { "()" }
 is_async = { "async" }
+is_capability = { "throw" }
 
 string = @{ "\"" ~ unquoted_string_part ~ "\"" }
 unquoted_string_part = @{ (unescaped_string_fragment | escaped_string_fragment)* }
@@ -625,7 +626,7 @@ type_alias =
   }
 
 interface_def =
-  { "interface"
+  { ("interface" | is_capability)
   ~ type_id
   ~ implicits?
   ~ "{"

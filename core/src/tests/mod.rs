@@ -53,6 +53,7 @@ mod ok_array_iter;
 mod ok_async;
 mod ok_bool;
 mod ok_builtin;
+mod ok_capabilities;
 mod ok_chainable;
 mod ok_class;
 mod ok_class_associated;

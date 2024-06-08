@@ -651,7 +651,7 @@ impl<'a> Normalizer<'a> {
         use Term::*;
 
         let (fns, instances) = match &self.sigma.get(i).unwrap().body {
-            Interface { fns, instances } => (fns.clone(), instances.clone()),
+            Interface { fns, instances, .. } => (fns.clone(), instances.clone()),
             _ => unreachable!(),
         };
 

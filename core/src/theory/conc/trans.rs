@@ -339,7 +339,16 @@ impl Trans {
         let loc = Loc::from(i.as_span());
         let mut pairs = i.into_inner();
 
-        let name_pair = pairs.next().unwrap();
+        let mut is_capability = false;
+        let name_pair = {
+            let p = pairs.next().unwrap();
+            if p.as_rule() == Rule::is_capability {
+                is_capability = true;
+                pairs.next().unwrap()
+            } else {
+                p
+            }
+        };
         let name_loc = Loc::from(name_pair.as_span());
         let ret = Box::new(Univ(Loc::from(name_pair.as_span())));
         let name = Var::from(name_pair);
@@ -380,6 +389,7 @@ impl Trans {
             eff: Box::new(Pure(loc)),
             ret,
             body: Interface {
+                is_capability,
                 fns,
                 instances: Default::default(),
             },

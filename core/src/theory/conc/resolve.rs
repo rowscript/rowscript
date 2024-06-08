@@ -134,9 +134,11 @@ impl<'a> Resolver<'a> {
             Verify(a) => Verify(self.expr(a)?),
 
             Interface {
+                is_capability,
                 fns,
                 instances: ims,
             } => Interface {
+                is_capability,
                 fns,
                 instances: ims,
             },

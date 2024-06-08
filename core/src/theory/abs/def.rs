@@ -156,8 +156,13 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     self.ret
                 ),
-                Interface { fns, instances } => format!(
-                    "interface {} {}: {} {{\n{}\n{}}}",
+                Interface {
+                    is_capability,
+                    fns,
+                    instances,
+                } => format!(
+                    "{} {} {}: {} {{\n{}\n{}}}",
+                    if *is_capability { "throw" } else { "interface" },
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
@@ -252,6 +257,7 @@ pub enum Body<T: Syntax> {
     Verify(Box<T>),
 
     Interface {
+        is_capability: bool,
         fns: Vec<Var>,
         instances: Vec<Var>,
     },

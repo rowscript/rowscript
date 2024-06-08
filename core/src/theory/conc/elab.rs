@@ -130,7 +130,15 @@ impl Elaborator {
                 )?))
             }
 
-            Interface { fns, instances } => Interface { fns, instances },
+            Interface {
+                is_capability,
+                fns,
+                instances,
+            } => Interface {
+                is_capability,
+                fns,
+                instances,
+            },
             Instance(body) => Instance(self.check_instance_body(&d.name, *body)?),
             InstanceFn(f) => InstanceFn(Box::new(self.check(*f, &eff, &ret)?)),
             Findable(i) => Findable(i),
@@ -205,7 +213,7 @@ impl Elaborator {
         let i_def = self.sigma.get_mut(&ret.i.0).unwrap();
         let i_def_loc = i_def.loc;
         match &mut i_def.body {
-            Interface { fns, instances } => {
+            Interface { fns, instances, .. } => {
                 instances.push(d.clone());
                 for f in fns {
                     if ret.fns.contains_key(f) {

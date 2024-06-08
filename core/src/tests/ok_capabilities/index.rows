@@ -1,0 +1,4 @@
+throw DB {
+  open(dsn: string): DB;
+  close(db: DB);
+}
