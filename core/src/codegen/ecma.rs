@@ -1591,6 +1591,9 @@ impl Ecma {
         if def.is_private() {
             return Ok(());
         }
+        if matches!(def.ret.as_ref(), Term::Univ) {
+            return Ok(());
+        }
         items.push(ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl {
             span: def.loc.into(),
             decl: Decl::Var(Box::new(VarDecl {
