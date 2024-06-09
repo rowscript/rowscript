@@ -4,8 +4,8 @@ use log::debug;
 
 use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, InstanceBody};
-use crate::theory::conc::data::Expr;
 use crate::theory::conc::data::Expr::Unresolved;
+use crate::theory::conc::data::{Catch, Expr};
 use crate::theory::conc::load::{Import, ImportedDefs, Loaded};
 use crate::theory::{
     NameMap, Param, RawNameSet, ResolvedVar, Tele, Var, VarKind, TUPLED, UNBOUND, UNTUPLED_ENDS,
@@ -146,18 +146,17 @@ impl<'a> Resolver<'a> {
             Instance(body) => {
                 let loc = d.loc;
                 let i = self
-                    .expr(Box::new(Unresolved(loc, None, body.i.0)))?
+                    .expr(Box::new(Unresolved(loc, None, body.i)))?
                     .resolved();
-                let inst = self.expr(body.i.1)?;
+                let inst = self.expr(body.inst)?;
                 let mut fns = HashMap::default();
                 for (i_fn, inst_fn) in body.fns {
                     fns.insert(
                         self.expr(Box::new(Unresolved(loc, None, i_fn)))?.resolved(),
-                        self.expr(Box::new(Unresolved(loc, None, inst_fn)))?
-                            .resolved(),
+                        inst_fn,
                     );
                 }
-                Instance(Box::new(InstanceBody { i: (i, inst), fns }))
+                Instance(Box::new(InstanceBody { i, inst, fns }))
             }
             InstanceFn(f) => InstanceFn(self.expr(f)?), // FIXME: currently cannot be recursive
 
@@ -449,13 +448,18 @@ impl<'a> Resolver<'a> {
             TryCatch(loc, b, catches) => {
                 let body = self.expr(b)?;
                 let mut resolved = Vec::default();
-                for (c, fn_defs) in catches {
-                    let cap = *self.expr(Box::new(c))?;
-                    let mut resolved_defs = Vec::default();
-                    for d in fn_defs {
-                        resolved_defs.push(self.def(d)?);
+                for catch in catches {
+                    let i = *self.expr(Box::new(catch.i))?;
+                    let inst_ty = *self.expr(Box::new(catch.inst_ty))?;
+                    let mut inst_fns = Vec::default();
+                    for (name, d) in catch.inst_fns {
+                        inst_fns.push((name, self.def(d)?));
                     }
-                    resolved.push((cap, resolved_defs));
+                    resolved.push(Catch {
+                        i,
+                        inst_ty,
+                        inst_fns,
+                    });
                 }
                 TryCatch(loc, body, resolved)
             }

@@ -99,7 +99,7 @@ pub enum Expr {
     Pure(Loc),
     Effect(Loc, Vec<Self>),
     EmitAsync(Loc, Box<Self>),
-    TryCatch(Loc, Box<Self>, Vec<(Expr, Vec<Def<Self>>)>),
+    TryCatch(Loc, Box<Self>, Vec<Catch>),
 }
 
 impl Expr {
@@ -395,7 +395,7 @@ impl Display for Expr {
                     "try {{\n\t{body}\n}}\n{}",
                     catches
                         .iter()
-                        .map(|(eff, _)| format!("catch ({eff})"))
+                        .map(|c| format!("catch ({})", c.i))
                         .collect::<Vec<_>>()
                         .join("\n")
                 ),
@@ -403,4 +403,11 @@ impl Display for Expr {
             .as_str(),
         )
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct Catch {
+    pub i: Expr,
+    pub inst_ty: Expr,
+    pub inst_fns: Vec<(String, Def<Expr>)>,
 }

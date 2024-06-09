@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use log::{debug, info, trace};
 
 use crate::maybe_grow;
@@ -16,9 +18,9 @@ use crate::theory::{
 };
 use crate::Error;
 use crate::Error::{
-    DuplicateEffect, ExpectedCapability, ExpectedEnum, ExpectedInstanceof, ExpectedInterface,
-    ExpectedObject, ExpectedPi, ExpectedSigma, NonExhaustive, NonVariadicType, UnresolvedField,
-    UnresolvedImplicitParam, UnresolvedVar,
+    CatchAsyncEffect, DuplicateEffect, ExpectedCapability, ExpectedEnum, ExpectedInstanceof,
+    ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedSigma, NonCatchableExpr, NonExhaustive,
+    NonVariadicType, UnresolvedEffect, UnresolvedField, UnresolvedImplicitParam, UnresolvedVar,
 };
 
 #[derive(Debug)]
@@ -141,7 +143,7 @@ impl Elaborator {
                 instances,
             },
             InterfaceFn(i) => InterfaceFn(i),
-            Instance(body) => Instance(self.check_instance_body(&d.name, *body)?),
+            Instance(body) => Instance(self.check_instance_body(&d.name, *body, false)?),
             InstanceFn(f) => InstanceFn(Box::new(self.check(*f, &eff, &ret)?)),
 
             Class {
@@ -200,18 +202,19 @@ impl Elaborator {
         &mut self,
         d: &Var,
         body: InstanceBody<Expr>,
+        can_be_capability: bool,
     ) -> Result<Box<InstanceBody<Term>>, Error> {
         use Body::*;
         use Expr::*;
 
-        let (i, inst) = body.i;
         let ret = Box::new(InstanceBody {
-            i: (i, Box::new(self.infer(*inst)?.tm)),
+            i: body.i,
+            inst: Box::new(self.infer(*body.inst)?.tm),
             fns: body.fns,
         });
         let inst_tm = ret.instance_type(&self.sigma)?;
 
-        let i_def = self.sigma.get_mut(&ret.i.0).unwrap();
+        let i_def = self.sigma.get_mut(&ret.i).unwrap();
         let i_def_loc = i_def.loc;
         match &mut i_def.body {
             Interface {
@@ -219,8 +222,8 @@ impl Elaborator {
                 fns,
                 instances,
             } => {
-                if *is_capability {
-                    return Err(ExpectedInterface(Term::Ref(ret.i.0.clone()), i_def_loc));
+                if !can_be_capability && *is_capability {
+                    return Err(ExpectedInterface(Term::Ref(ret.i.clone()), i_def_loc));
                 }
                 instances.push(d.clone());
                 for f in fns {
@@ -230,7 +233,7 @@ impl Elaborator {
                     return Err(NonExhaustive(inst_tm, i_def_loc));
                 }
             }
-            _ => return Err(ExpectedInterface(Term::Ref(ret.i.0.clone()), i_def_loc)),
+            _ => return Err(ExpectedInterface(Term::Ref(ret.i.clone()), i_def_loc)),
         };
 
         for (i_fn, inst_fn) in &ret.fns {
@@ -1226,7 +1229,75 @@ impl Elaborator {
                     ty,
                 }
             }
-            TryCatch(..) => todo!(),
+            TryCatch(_, body, catches) => {
+                let body_loc = body.loc();
+                let InferResult { tm, eff, ty } = self.infer(*body)?;
+                let effs = match eff {
+                    Term::Effect(effs) => effs,
+                    _ => return Err(NonCatchableExpr(tm, body_loc)),
+                };
+                if effs.contains(&self.ubiquitous.get(ASYNC).unwrap().1) {
+                    return Err(CatchAsyncEffect(tm, body_loc));
+                }
+
+                let mut remaining_effs = effs.clone();
+                for catch in catches {
+                    let i_loc = catch.i.loc();
+                    let eff = catch.i.resolved();
+                    if !effs.contains(&eff) {
+                        return Err(UnresolvedEffect(eff, Term::Effect(effs), i_loc));
+                    }
+                    remaining_effs.remove(&eff);
+
+                    let interface_fns = match &self.sigma.get(&eff).unwrap().body {
+                        Body::Interface { fns, .. } => fns
+                            .iter()
+                            .map(|f| (f.to_string(), f.clone()))
+                            .collect::<HashMap<_, _>>(),
+                        _ => unreachable!(),
+                    };
+                    let mut fns = HashMap::default();
+                    let mut instance_fns = Vec::default();
+                    for (name, def) in catch.inst_fns {
+                        if let Some(v) = interface_fns.get(&name) {
+                            fns.insert(v.clone(), def.name.clone());
+                        }
+                        instance_fns.push(def);
+                    }
+                    for d in self.defs(instance_fns)? {
+                        self.sigma.insert(d.name.clone(), d);
+                    }
+
+                    let inst_name = self.vg.fresh().catch();
+                    let checked_instance_body = self.check_instance_body(
+                        &inst_name,
+                        InstanceBody {
+                            i: eff,
+                            inst: Box::new(catch.inst_ty),
+                            fns,
+                        },
+                        true,
+                    )?;
+
+                    self.sigma.insert(
+                        inst_name.clone(),
+                        Def {
+                            loc: i_loc,
+                            name: inst_name,
+                            tele: Default::default(),
+                            eff: Box::new(Term::Pure),
+                            ret: Box::new(Term::Univ),
+                            body: Body::Instance(checked_instance_body),
+                        },
+                    );
+                }
+
+                let mut eff = Term::Pure;
+                if !remaining_effs.is_empty() {
+                    eff = Term::Effect(remaining_effs);
+                }
+                InferResult { tm, eff, ty }
+            }
 
             Univ(_) => InferResult::pure(Term::Univ, Term::Univ),
             Unit(_) => InferResult::pure(Term::Unit, Term::Univ),

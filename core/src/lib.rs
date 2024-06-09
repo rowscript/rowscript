@@ -72,6 +72,12 @@ pub enum Error {
     ExpectedInstanceof(Term, Loc),
     #[error("duplicate effect, got \"{0}\"")]
     DuplicateEffect(Var, Loc),
+    #[error("cannot catch effects from pure expressions, got \"{0}\"")]
+    NonCatchableExpr(Term, Loc),
+    #[error("cannot catch async effects from expressions, got \"{0}\"")]
+    CatchAsyncEffect(Term, Loc),
+    #[error("unresolved effect \"{0}\", got \"{1}\"")]
+    UnresolvedEffect(Var, Term, Loc),
     #[error("expected reflectable type, got \"{0}\"")]
     ExpectedReflectable(Term, Loc),
 
@@ -137,6 +143,9 @@ fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
         | UnresolvedInstance(.., loc)
         | ExpectedInstanceof(.., loc)
         | DuplicateEffect(.., loc)
+        | NonCatchableExpr(.., loc)
+        | CatchAsyncEffect(.., loc)
+        | UnresolvedEffect(.., loc)
         | ExpectedReflectable(.., loc) => simple_message(&e, loc, CHECKER_FAILED),
 
         NonUnifiable(.., loc) | NonRowSat(.., loc) => simple_message(&e, loc, UNIFIER_FAILED),

@@ -7,7 +7,7 @@ use pest::pratt_parser::{Assoc, Op, PrattParser};
 use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, InstanceBody};
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
-use crate::theory::conc::data::{ArgInfo, Expr};
+use crate::theory::conc::data::{ArgInfo, Catch, Expr};
 use crate::theory::conc::load::ImportedPkg::Vendor;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::{Explicit, Implicit};
@@ -439,14 +439,14 @@ impl Trans {
         let mut defs = Vec::default();
 
         let i = Var::from(pairs.next().unwrap());
-        let inst = {
+        let inst = Box::new({
             let p = pairs.next().unwrap();
             match p.as_rule() {
                 Rule::tyref => Self::unresolved(p),
                 Rule::primitive_type => self.primitive_type(p),
                 _ => unreachable!(),
             }
-        };
+        });
 
         let mut fns = HashMap::default();
         for p in pairs {
@@ -467,10 +467,7 @@ impl Trans {
             tele: Default::default(),
             eff: Box::new(Pure(loc)),
             ret: Box::new(Univ(loc)),
-            body: Instance(Box::new(InstanceBody {
-                i: (i, Box::new(inst)),
-                fns,
-            })),
+            body: Instance(Box::new(InstanceBody { i, inst, fns })),
         });
         defs
     }
@@ -1831,20 +1828,26 @@ impl Trans {
         ends
     }
 
-    fn catch(&self, c: Pair<Rule>) -> (Expr, Vec<Def<Expr>>) {
+    fn catch(&self, c: Pair<Rule>) -> Catch {
         let mut pairs = c.into_inner();
-        let tyref = self.maybe_qualified(pairs.next().unwrap());
-        let mut defs = Vec::default();
+        let i = self.maybe_qualified(pairs.next().unwrap());
+        let inst_ty = self.type_expr(pairs.next().unwrap());
+        let mut inst_fns = Vec::default();
         for p in pairs {
             let mut def = self.fn_def(p, None);
-            def.name = Var::unbound();
+            let name = def.name.to_string();
+            def.name = def.name.catch_fn();
             def.body = match def.body {
                 Body::Fn(f) => Body::InstanceFn(f),
                 _ => unreachable!(),
             };
-            defs.push(def);
+            inst_fns.push((name, def));
         }
-        (tyref, defs)
+        Catch {
+            i,
+            inst_ty,
+            inst_fns,
+        }
     }
 
     fn call1(f: Expr, x: Expr) -> Expr {

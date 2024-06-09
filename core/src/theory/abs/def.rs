@@ -289,7 +289,8 @@ pub enum Body<T: Syntax> {
 
 #[derive(Clone, Debug)]
 pub struct InstanceBody<T: Syntax> {
-    pub i: (Var, Box<T>),
+    pub i: Var,
+    pub inst: Box<T>,
     pub fns: HashMap<Var, Var>,
 }
 
@@ -298,7 +299,7 @@ impl InstanceBody<Term> {
         use Body::*;
         use Error::*;
         use Term::*;
-        Ok(match self.i.1.as_ref() {
+        Ok(match self.inst.as_ref() {
             Ref(inst) => {
                 let inst = inst.clone();
                 let def = sigma.get(&inst).unwrap();
@@ -317,8 +318,8 @@ impl<T: Syntax> Display for InstanceBody<T> {
         write!(
             f,
             "instanceof {} for {} {{\n{}}}",
-            self.i.0,
-            self.i.1,
+            self.i,
+            self.inst,
             self.fns
                 .iter()
                 .map(|(i, inst)| format!("\t{i}; {inst};\n"))
