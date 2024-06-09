@@ -1837,7 +1837,7 @@ impl Trans {
         let mut defs = Vec::default();
         for p in pairs {
             let mut def = self.fn_def(p, None);
-            def.name = def.name.catch_fn();
+            def.name = Var::unbound();
             def.body = match def.body {
                 Body::Fn(f) => Body::InstanceFn(f),
                 _ => unreachable!(),

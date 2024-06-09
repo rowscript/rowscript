@@ -137,10 +137,6 @@ impl Var {
         Self::new(format!("{i}__for__{inst}__{self}"))
     }
 
-    pub fn catch_fn(&self) -> Self {
-        Self::new(format!("catch__{}__{self}", self.id()))
-    }
-
     pub fn iterator() -> Self {
         Self::new(ITER)
     }
