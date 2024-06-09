@@ -23,6 +23,8 @@ pub struct Normalizer<'a> {
     sigma: &'a mut Sigma,
     rho: Rho,
     loc: Loc,
+
+    instances: HashMap<Var, Term>,
 }
 
 impl<'a> Normalizer<'a> {
@@ -32,6 +34,7 @@ impl<'a> Normalizer<'a> {
             sigma,
             rho: Default::default(),
             loc,
+            instances: Default::default(),
         }
     }
 
@@ -568,6 +571,10 @@ impl<'a> Normalizer<'a> {
                 interface: i,
                 interface_fn: f,
             } => {
+                if let Some(ty) = self.instances.get(&i) {
+                    return self.find_instance(ty.clone(), i, f);
+                }
+
                 let ty = self.term_box(ty)?;
                 match *ty {
                     Ref(_) | MetaRef(_, _, _) => Find {
@@ -613,6 +620,11 @@ impl<'a> Normalizer<'a> {
         for (x, v) in rho {
             self.rho.insert(x.clone(), Box::new(v.clone()));
         }
+        self.term(tm)
+    }
+
+    pub fn with_instances(&mut self, m: HashMap<Var, Term>, tm: Term) -> Result<Term, Error> {
+        self.instances = m;
         self.term(tm)
     }
 

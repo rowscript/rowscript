@@ -1231,7 +1231,7 @@ impl Elaborator {
             }
             TryCatch(_, body, catches) => {
                 let body_loc = body.loc();
-                let InferResult { tm, eff, ty } = self.infer(*body)?;
+                let InferResult { mut tm, eff, ty } = self.infer(*body)?;
                 let effs = match eff {
                     Term::Effect(effs) => effs,
                     _ => return Err(NonCatchableExpr(tm, body_loc)),
@@ -1241,6 +1241,8 @@ impl Elaborator {
                 }
 
                 let mut remaining_effs = effs.clone();
+                let mut instances = HashMap::new();
+
                 for catch in catches {
                     let i_loc = catch.i.loc();
                     let eff = catch.i.resolved();
@@ -1272,13 +1274,14 @@ impl Elaborator {
                     let checked_instance_body = self.check_instance_body(
                         &inst_name,
                         InstanceBody {
-                            i: eff,
+                            i: eff.clone(),
                             inst: Box::new(catch.inst_ty),
                             fns,
                         },
                         true,
                     )?;
 
+                    instances.insert(eff, *checked_instance_body.inst.clone());
                     self.sigma.insert(
                         inst_name.clone(),
                         Def {
@@ -1291,6 +1294,8 @@ impl Elaborator {
                         },
                     );
                 }
+
+                tm = self.nf(body_loc).with_instances(instances, tm)?;
 
                 let mut eff = Term::Pure;
                 if !remaining_effs.is_empty() {

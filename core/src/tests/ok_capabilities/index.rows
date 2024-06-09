@@ -25,6 +25,8 @@ function f1() {
     }
 }
 
+f1();
+
 // Cannot do this:
 //instanceof DB for MySQL {
 //    open(dsn: string): MySQL { {conn: dsn.connectMySQL()} }
