@@ -1,5 +1,5 @@
 function f() {
-    const a: (n: number) -> number = (n) => {
+    const a: (n: number) => number = (n) => {
         if (true) {
             return
         }

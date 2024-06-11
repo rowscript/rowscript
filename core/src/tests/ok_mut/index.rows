@@ -11,7 +11,7 @@ const n0 = f0();
 
 function f1(): number {
     let a = 42;
-    let f: () -> unit = () => { a = 69; };
+    let f: () => unit = () => { a = 69; };
     f();
     a
 }

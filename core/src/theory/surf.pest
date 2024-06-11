@@ -277,7 +277,7 @@ row_ids = _{ row_id ~ ("," ~ row_id)* }
 implicit_params = _{ implicit_param ~ ("," ~ implicit_param)* }
 implicit_param = _{ hkt_param | implicit_id }
 hkt_param = { implicit_id ~ ":" ~ hkt_expr }
-hkt_expr = _{ univ ~ ("->" ~ univ)* }
+hkt_expr = _{ univ ~ ("=>" ~ univ)* }
 
 param = { param_id ~ ":" ~ type_expr }
 variadic_param = { "..." ~ param_id? ~ ":" ~ type_expr }
@@ -314,7 +314,7 @@ primitive_type =
   | unit_type
   }
 paren_type_expr = { "(" ~ type_expr ~ ")" }
-fn_type = { params ~ "->" ~ type_expr }
+fn_type = { params ~ "=>" ~ type_expr }
 string_type = { "string" }
 number_type = { "number" }
 bigint_type = { "bigint" }

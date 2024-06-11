@@ -28,7 +28,7 @@ declare arrayIter#next<T>(it: NativeArrayIterator<T>): [Ok: T | None];
 declare NativeArray<T>;
 declare array#length<T>(a: NativeArray<T>): number;
 declare array#push<T>(a: NativeArray<T>, v: T): number;
-declare array#forEach<T>(a: NativeArray<T>, f: (v: T) -> unit);
+declare array#forEach<T>(a: NativeArray<T>, f: (v: T) => unit);
 declare array#at<T>(a: NativeArray<T>, i: number): [Ok: T | None];
 declare array#set<T>(a: NativeArray<T>, i: number, v: T);
 declare array#iter<T>(a: NativeArray<T>): NativeArrayIterator<T>;
@@ -44,5 +44,5 @@ declare map#delete<K, V>(m: NativeMap<K, V>, key: K): boolean;
 declare map#clear<K, V>(m: NativeMap<K, V>);
 declare map#iter<K, V>(m: NativeMap<K, V>): NativeMapIterator<{key: K, value: V}>;
 
-declare async await#all<T>(executors: NativeArray<(resolve: (value: T) -> unit) -> unit>): NativeArray<T>;
-declare async await#any<T>(executors: NativeArray<(resolve: (value: T) -> unit) -> unit>): T;
+declare async await#all<T>(executors: NativeArray<(resolve: (value: T) => unit) => unit>): NativeArray<T>;
+declare async await#any<T>(executors: NativeArray<(resolve: (value: T) => unit) => unit>): T;

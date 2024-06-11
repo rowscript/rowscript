@@ -191,4 +191,4 @@ function seconds(d: number): Duration {
     d * 1000
 }
 
-declare setTimeout<Args, T>(f: (...: Args) -> T, dur: Duration, ...: Args);
+declare setTimeout<Args, T>(f: (...: Args) => T, dur: Duration, ...: Args);

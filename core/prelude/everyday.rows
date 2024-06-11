@@ -56,7 +56,7 @@ class Array<T> {
         array#push(this.a, value)
     }
 
-    forEach(f: (value: T) -> unit) {
+    forEach(f: (value: T) => unit) {
         array#forEach(this.a, f)
     }
 
@@ -142,7 +142,7 @@ class Map<K, V> {
 
 // Effects.
 
-type Executor<T> = (resolve: (value: T) -> unit) -> unit;
+type Executor<T> = (resolve: (value: T) => unit) => unit;
 
 interface Async {
     async __await__<T>(executor: Executor<T>): T;

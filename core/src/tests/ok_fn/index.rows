@@ -1,4 +1,4 @@
-function f(): () -> unit {
+function f(): () => unit {
     const id = (n) => n;
     const a = id(42);
     () => ()
