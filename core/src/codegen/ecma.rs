@@ -1641,11 +1641,11 @@ impl Ecma {
                     decls: vec![VarDeclarator {
                         span: def.loc.into(),
                         name: Self::ident_pat(def.loc, &def.name),
-                        init: Some(Box::new(Self::iife(
-                            def.loc,
-                            self.block(sigma, def.loc, f, true)?,
-                            is_async,
-                        ))),
+                        init: Some(Box::new(if f.is_binder() {
+                            Self::iife(def.loc, self.block(sigma, def.loc, f, true)?, is_async)
+                        } else {
+                            self.expr(sigma, def.loc, f)?
+                        })),
                         definite: false,
                     }],
                 })),

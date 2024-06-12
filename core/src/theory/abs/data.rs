@@ -297,6 +297,21 @@ impl Term {
         use Term::*;
         Effect(FieldSet::from([v]))
     }
+
+    pub fn is_binder(&self) -> bool {
+        use Term::*;
+        matches!(
+            self,
+            Const(..)
+                | Let(..)
+                | Update(..)
+                | While(..)
+                | Fori(..)
+                | Guard(..)
+                | TupleBind(..)
+                | UnitBind(..)
+        )
+    }
 }
 
 impl Syntax for Term {}
