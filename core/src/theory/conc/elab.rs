@@ -296,7 +296,7 @@ impl Elaborator {
                     ty: a_ty,
                 } = self.check_anno(*a, eff, maybe_typ)?;
 
-                self.unifier(a_loc).unify(eff, &a_eff)?;
+                self.unifier(a_loc).unify_eff(eff, &a_eff)?;
 
                 let param = Param {
                     var,
@@ -314,7 +314,7 @@ impl Elaborator {
                     ty: a_ty,
                 } = self.check_anno(*a, eff, maybe_typ)?;
 
-                self.unifier(a_loc).unify(eff, &a_eff)?;
+                self.unifier(a_loc).unify_eff(eff, &a_eff)?;
 
                 let param = Param {
                     var,
@@ -358,7 +358,7 @@ impl Elaborator {
                     eff: ty_eff,
                     body: ty_body,
                 } => {
-                    self.unifier(loc).unify(eff, &ty_eff)?;
+                    self.unifier(loc).unify_eff(eff, &ty_eff)?;
 
                     let p = Param {
                         var: var.clone(),
@@ -413,7 +413,7 @@ impl Elaborator {
                 },
                 Term::AnonVarargs(ty) => {
                     let ret = self.infer(Tuple(loc, a, b))?;
-                    self.unifier(loc).unify(eff, &ret.eff)?;
+                    self.unifier(loc).unify_eff(eff, &ret.eff)?;
                     self.unifier(loc).unify(&ty, &ret.ty)?;
                     ret.tm
                 }
@@ -427,7 +427,7 @@ impl Elaborator {
                     ty: a_ty,
                 } = self.infer(*a)?;
 
-                self.unifier(a_loc).unify(eff, &a_eff)?;
+                self.unifier(a_loc).unify_eff(eff, &a_eff)?;
 
                 match a_ty {
                     Term::Sigma(ty_param, typ) => {
@@ -463,7 +463,7 @@ impl Elaborator {
                     ty: a_ty,
                 } = self.infer(*a)?;
 
-                self.unifier(loc).unify(eff, &a_eff)?;
+                self.unifier(loc).unify_eff(eff, &a_eff)?;
 
                 let to = match self.nf(loc).term(ty.clone())? {
                     Term::Object(to) => to,
@@ -481,7 +481,7 @@ impl Elaborator {
                     ty: a_ty,
                 } = self.infer(*a)?;
 
-                self.unifier(loc).unify(eff, &a_eff)?;
+                self.unifier(loc).unify_eff(eff, &a_eff)?;
 
                 let to = match self.nf(loc).term(ty.clone())? {
                     Term::Enum(to) => to,
@@ -518,7 +518,7 @@ impl Elaborator {
                     }
                 }
 
-                self.unifier(loc).unify(eff, &inferred_eff)?;
+                self.unifier(loc).unify_eff(eff, &inferred_eff)?;
                 self.unifier(loc).unify(&expected, &inferred)?;
 
                 inferred_tm
@@ -756,7 +756,7 @@ impl Elaborator {
                     ty: b_ty,
                 } = self.infer(*b)?;
 
-                self.unifier(loc).unify(&a_eff, &b_eff)?;
+                self.unifier(loc).unify_eff(&a_eff, &b_eff)?;
 
                 InferResult {
                     tm: Term::Tuple(Box::new(a), Box::new(b)),
@@ -871,7 +871,7 @@ impl Elaborator {
                     } = self.infer(v)?;
 
                     if i == 0 {
-                        self.unifier(loc).unify(&key_eff, &val_eff)?;
+                        self.unifier(loc).unify_eff(&key_eff, &val_eff)?;
                     }
 
                     k_ty = Some(key_ty);
@@ -933,7 +933,7 @@ impl Elaborator {
                         if o_eff.is_none() {
                             o_eff = Some(eff);
                         } else {
-                            self.unifier(loc).unify(o_eff.as_ref().unwrap(), &eff)?;
+                            self.unifier(loc).unify_eff(o_eff.as_ref().unwrap(), &eff)?;
                         }
                         tm_fields.insert(n.clone(), tm);
                         ty_fields.insert(n, ty);
@@ -961,7 +961,7 @@ impl Elaborator {
                     ty: y_ty,
                 } = self.infer(*b)?;
 
-                self.unifier(loc).unify(&x_eff, &y_eff)?;
+                self.unifier(loc).unify_eff(&x_eff, &y_eff)?;
 
                 let (x_ty, x_associated, x_type_args, x_name) = if let Term::Cls {
                     class,
@@ -1124,7 +1124,7 @@ impl Elaborator {
                     let tm = match &ret_ty {
                         None => {
                             let InferResult { tm, eff, ty } = self.guarded_infer([&pat], e)?;
-                            self.unifier(loc).unify(&a_eff, &eff)?;
+                            self.unifier(loc).unify_eff(&a_eff, &eff)?;
                             ret_ty = Some(ty);
                             tm
                         }
@@ -1450,7 +1450,7 @@ impl Elaborator {
         {
             let actual_eff = self.nf(loc).term(eff)?;
             let expected_eff = self.nf(loc).term(expected_eff)?;
-            self.unifier(loc).unify(&expected_eff, &actual_eff)?;
+            self.unifier(loc).unify_eff(&expected_eff, &actual_eff)?;
 
             let actual_ty = self.nf(loc).term(ty)?;
             let expected_ty = self.nf(loc).term(expected_ty)?;

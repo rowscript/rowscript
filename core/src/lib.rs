@@ -83,6 +83,8 @@ pub enum Error {
 
     #[error("expected \"{0}\", found \"{1}\"")]
     NonUnifiable(Term, Term, Loc),
+    #[error("expected effect \"{0}\", found \"{1}\"")]
+    EffectNonUnifiable(Term, Term, Loc),
     #[error("field(s) \"{0}\" not contained in \"{1}\"")]
     NonRowSat(Term, Term, Loc),
 
@@ -148,7 +150,9 @@ fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
         | UnresolvedEffect(.., loc)
         | ExpectedReflectable(.., loc) => simple_message(&e, loc, CHECKER_FAILED),
 
-        NonUnifiable(.., loc) | NonRowSat(.., loc) => simple_message(&e, loc, UNIFIER_FAILED),
+        NonUnifiable(.., loc) | EffectNonUnifiable(.., loc) | NonRowSat(.., loc) => {
+            simple_message(&e, loc, UNIFIER_FAILED)
+        }
 
         UnsolvedMeta(.., loc) | NonErasable(.., loc) => simple_message(&e, loc, CODEGEN_FAILED),
 

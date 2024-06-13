@@ -4,7 +4,7 @@ use crate::theory::abs::def::Sigma;
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::NameMap;
 use crate::theory::{Loc, Var};
-use crate::Error::{NonRowSat, NonUnifiable};
+use crate::Error::{EffectNonUnifiable, NonRowSat, NonUnifiable};
 use crate::{maybe_grow, Error};
 
 pub struct Unifier<'a> {
@@ -32,6 +32,13 @@ impl<'a> Unifier<'a> {
 
     pub fn unify(&mut self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
         maybe_grow(move || self.unify_impl(lhs, rhs))
+    }
+
+    pub fn unify_eff(&mut self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
+        self.unify(lhs, rhs).map_err(|e| match e {
+            NonUnifiable(l, r, loc) => EffectNonUnifiable(l, r, loc),
+            e => e,
+        })
     }
 
     fn unify_impl(&mut self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
