@@ -1623,14 +1623,15 @@ impl Ecma {
         f: &Term,
     ) -> Result<(), Error> {
         let is_async = Self::is_async(def);
+        let expr = Box::new(if f.is_binder() {
+            Self::iife(def.loc, self.block(sigma, def.loc, f, true)?, is_async)
+        } else {
+            self.expr(sigma, def.loc, f)?
+        });
         items.push(match def.name.as_str() {
             UNBOUND => ModuleItem::Stmt(Stmt::Expr(ExprStmt {
                 span: def.loc.into(),
-                expr: Box::new(Self::iife(
-                    def.loc,
-                    self.block(sigma, def.loc, f, false)?,
-                    is_async,
-                )),
+                expr,
             })),
             _ => Self::try_export_decl(
                 def,
@@ -1641,11 +1642,7 @@ impl Ecma {
                     decls: vec![VarDeclarator {
                         span: def.loc.into(),
                         name: Self::ident_pat(def.loc, &def.name),
-                        init: Some(Box::new(if f.is_binder() {
-                            Self::iife(def.loc, self.block(sigma, def.loc, f, true)?, is_async)
-                        } else {
-                            self.expr(sigma, def.loc, f)?
-                        })),
+                        init: Some(expr),
                         definite: false,
                     }],
                 })),
