@@ -66,6 +66,7 @@ mod ok_ctl;
 mod ok_enum;
 mod ok_enum_default;
 mod ok_enum_rowpoly;
+mod ok_enum_unionify;
 mod ok_fn;
 mod ok_fn_recur;
 mod ok_fori;

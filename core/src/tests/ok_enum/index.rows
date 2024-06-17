@@ -1,7 +1,3 @@
-type WriteOptions = [None | WritePath: {path: string}];
-
-function write(opts: WriteOptions);
-
 function f0(): [None | Some: number] {
     Some(42)
 }
@@ -18,15 +14,3 @@ function f2(): number {
 }
 
 function f3(): number { f2() }
-
-function f4() {
-    const a: WriteOptions = WritePath({path: "foo.txt"});
-    write(unionify(a))
-}
-
-function getData(): [Age: number | Name: string];
-function setData(data: [Age: number | Name: string]);
-
-function f5() {
-    setData(unionify(getData()))
-}

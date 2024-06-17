@@ -1,3 +1,2 @@
-from .console import _;
 from .node import _;
 from .web import _;

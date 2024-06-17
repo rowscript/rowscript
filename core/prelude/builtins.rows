@@ -2,8 +2,6 @@ declare error#throw<T>(m: string): T;
 
 declare console#log<Args>(...: Args);
 
-declare unionify<'R>(a: ['R]): ['R];
-
 declare Reflected<T>;
 
 declare number#__add__(a: number, b: number): number;

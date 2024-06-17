@@ -4,8 +4,8 @@ use crate::theory::abs::data::Term::{
     Array, ArrayIterator, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean, ConsoleLog,
     EmitAsync, Enum, ErrorThrow, Fields, Find, Map, MapClear, MapDelete, MapGet, MapHas, MapIter,
     MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt, NumMod,
-    NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object, Pi, Pure, Ref, Reflected, Row,
-    SetTimeout, StrAdd, StrEq, StrNeq, String, TupleBind, Unionify, Unit, Univ,
+    NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object, Pi, Pure, Ref, Reflected, SetTimeout,
+    StrAdd, StrEq, StrNeq, String, TupleBind, Unit, Univ,
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
@@ -23,10 +23,6 @@ fn implicit(var: Var, typ: Term) -> Param<Term> {
 
 fn type_param(var: Var) -> Param<Term> {
     implicit(var, Univ)
-}
-
-fn row_param(var: Var) -> Param<Term> {
-    implicit(var, Row)
 }
 
 fn explicit(var: Var, typ: Term) -> Param<Term> {
@@ -173,7 +169,6 @@ impl Builtins {
             .error_throw()
             .console_log()
             .set_timeout()
-            .unionify()
             .reflect()
             .boolean_or()
             .boolean_and()
@@ -327,23 +322,6 @@ impl Builtins {
                     SetTimeout(Box::new(Ref(f)), Box::new(Ref(d)), Box::new(Ref(ends))),
                 ),
             ),
-        )
-    }
-
-    fn unionify(self) -> Self {
-        let r = Var::new("'R");
-        let a = Var::new("a");
-        let a_ty = Enum(Box::new(Ref(r.clone())));
-        let tupled = Var::tupled();
-        let tele = vec![
-            row_param(r),
-            tuple_param(tupled.clone(), [(a.clone(), a_ty.clone())]),
-        ];
-        self.func(
-            "unionify",
-            tele,
-            a_ty.clone(),
-            explicit_tuple_bind1(a.clone(), a_ty, Ref(tupled), Unionify(Box::new(Ref(a)))),
         )
     }
 

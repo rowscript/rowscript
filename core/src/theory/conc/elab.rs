@@ -691,7 +691,7 @@ impl Elaborator {
                         let applied_ty = self.nf(f_loc).with([(&p.var, &x)], *b)?;
                         let applied = self.nf(f_loc).apply(f, p.info.into(), &[x])?;
                         InferResult {
-                            tm: applied,
+                            tm: Self::auto_unionify(applied, &p.typ),
                             eff: applied_eff,
                             ty: applied_ty,
                         }
@@ -1484,6 +1484,46 @@ impl Elaborator {
     fn array_ctor_ref(&self, loc: Loc) -> Expr {
         let name = Var::new(ARRAY).ctor();
         Expr::Resolved(loc, self.ubiquitous.get(name.as_str()).unwrap().1.clone())
+    }
+
+    fn auto_unionify(fx: Term, x_ty: &Term) -> Term {
+        match fx {
+            Term::App(f, i, x) => match *f {
+                Term::Extern(ffi) => {
+                    let f = Box::new(Term::Extern(ffi));
+                    let mut arg = *x;
+                    let mut arg_ty = x_ty;
+                    let mut args = Vec::default();
+                    loop {
+                        match (arg, arg_ty) {
+                            (Term::Tuple(a, b), Term::Sigma(a_p, b_ty)) => {
+                                args.push(if matches!(a_p.typ.as_ref(), Term::Enum(..)) {
+                                    Box::new(Term::Unionify(a))
+                                } else {
+                                    a
+                                });
+                                arg = *b;
+                                arg_ty = b_ty.as_ref();
+                            }
+                            (Term::TT, Term::Unit) => {
+                                return Term::App(
+                                    f,
+                                    i,
+                                    Box::new(
+                                        args.into_iter()
+                                            .rfold(Term::TT, |b, a| Term::Tuple(a, Box::new(b))),
+                                    ),
+                                )
+                            }
+                            _ if !args.is_empty() => unreachable!(),
+                            (arg, _) => return Term::App(f, i, Box::new(arg)),
+                        }
+                    }
+                }
+                _ => Term::App(f, i, x),
+            },
+            _ => fx,
+        }
     }
 }
 
