@@ -35,10 +35,10 @@ interface Iterable {
 class ArrayIterator<T> {
     type Item = T;
 
-    it: NativeArrayIterator<T>;
+    NativeArrayIterator<T>;
 
     next(): Option<T> {
-        arrayIter#next(this.it)
+        arrayIter#next(this)
     }
 }
 
@@ -46,22 +46,22 @@ class Array<T> {
     type Key = number;
     type Value = T;
 
-    a: NativeArray<T>;
+    NativeArray<T>;
 
     length(): number {
-        array#length(this.a)
+        array#length(this)
     }
 
     push(value: T): number {
-        array#push(this.a, value)
+        array#push(this, value)
     }
 
     forEach(f: (value: T) => unit) {
-        array#forEach(this.a, f)
+        array#forEach(this, f)
     }
 
     at(index: number): Option<T> {
-        array#at(this.a, index)
+        array#at(this, index)
     }
 
     get(index: number): Option<T> {
@@ -73,7 +73,7 @@ class Array<T> {
     }
 
     set(index: number, value: T) {
-        array#set(this.a, index, value)
+        array#set(this, index, value)
     }
 
     __setitem__(index: number, value: T) {
@@ -81,7 +81,7 @@ class Array<T> {
     }
 
     iter(): ArrayIterator<T> {
-        new ArrayIterator(array#iter(this.a))
+        new ArrayIterator(array#iter(this))
     }
 }
 
@@ -158,11 +158,11 @@ class Awaits {
     empty: unit;
 
     async all<T>(executors: Array<Executor<T>>): Array<T> {
-        new Array(await#all(executors.a))
+        new Array(await#all(executors))
     }
 
     async any<T>(executors: Array<Executor<T>>): T {
-        await#any(executors.a)
+        await#any(executors)
     }
 }
 

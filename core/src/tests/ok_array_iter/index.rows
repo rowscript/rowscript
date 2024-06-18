@@ -1,10 +1,10 @@
-function log<T>(v: T);
-
 function f1<T>(it: T)
 where T instanceof Iterator
 {
-    const n = it.next();
-    log(n);
+    const a = it.next();
+    console.log(a);
+    const b = it.next();
+    console.log(b);
 }
 
 function f0() {

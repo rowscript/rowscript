@@ -29,3 +29,6 @@ function f3(): string {
 }
 
 console.log(f3());
+
+function f4(): Array<string>;
+console.log(f4()[0]);

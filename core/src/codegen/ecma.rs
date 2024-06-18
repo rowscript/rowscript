@@ -568,7 +568,14 @@ impl Ecma {
 
     fn is_async(def: &Def<Term>) -> bool {
         match def.eff.as_ref() {
-            Term::Fields(m) => m.contains_key("Async"),
+            Term::Effect(m) => {
+                for x in m {
+                    if x.as_str() == "Async" {
+                        return true;
+                    }
+                }
+                false
+            }
             _ => false,
         }
     }

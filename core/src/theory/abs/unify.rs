@@ -92,12 +92,7 @@ impl<'a> Unifier<'a> {
                 },
             ) if m == n => self.unify(a, b),
             (Cls { object, .. }, b) => self.unify(object, b),
-            // NOTE: If the actual type is a wrapper class, but the expected is not a class, it should fail. Because we
-            // disable this overpowered conversion.
-            (a, Cls { object, .. }) => match object.as_ref() {
-                Object(..) => self.unify(a, object),
-                _ => self.unify_err(lhs, rhs),
-            },
+            (a, Cls { object, .. }) => self.unify(a, object),
 
             (Const(p, a, b), Const(q, x, y)) => {
                 self.unify(&p.typ, &q.typ)?;

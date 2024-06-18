@@ -12,12 +12,12 @@ function f0() {
 }
 f0();
 
-// Can't do this:
-//function f1(): number {
-//    new ID(42)
-//}
-
-function f1(): ID {
-    42
+function f1(): number {
+    new ID(42)
 }
 f1();
+
+function f2(): ID {
+    42
+}
+f2();
