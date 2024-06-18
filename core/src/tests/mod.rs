@@ -80,6 +80,7 @@ mod ok_map;
 mod ok_map_iter;
 mod ok_modsys;
 mod ok_mut;
+mod ok_namespace;
 mod ok_num_add;
 mod ok_object;
 mod ok_object_assign;

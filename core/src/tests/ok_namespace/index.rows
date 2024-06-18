@@ -1,0 +1,12 @@
+namespace ns {
+    foo() {
+        console.log("foo");
+    }
+
+    bar() {
+        console.log(this);
+    }
+}
+
+ns.foo();
+ns.bar();

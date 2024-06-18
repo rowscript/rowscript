@@ -58,6 +58,7 @@ impl Trans {
                 Rule::instance_def => defs.extend(self.instance_def(d)),
                 Rule::const_def => defs.push(self.const_def(d)),
                 Rule::class_def => defs.extend(self.class_def(d)),
+                Rule::namespace_def => defs.extend(self.namespace_def(d)),
                 Rule::type_verify => defs.push(self.type_verify(d)),
                 Rule::fn_verify => defs.push(self.fn_verify(d)),
                 Rule::EOI => break,
@@ -506,10 +507,11 @@ impl Trans {
         use Body::*;
         use Expr::*;
 
-        let loc = Loc::from(c.as_span());
         let mut pairs = c.into_inner();
 
-        let name = Var::from(pairs.next().unwrap());
+        let name_pair = pairs.next().unwrap();
+        let loc = Loc::from(name_pair.as_span());
+        let name = Var::from(name_pair);
 
         let mut tele = Tele::default();
 
@@ -585,7 +587,6 @@ impl Trans {
                     )
                 }
                 Rule::class_method => {
-                    let loc = Loc::from(p.as_span());
                     let mut m =
                         self.fn_def(p, Some((Unresolved(loc, None, name.clone()), tele.clone())));
                     let method_name = m.name.to_string();
@@ -675,6 +676,116 @@ impl Trans {
             defs.push(default_def);
         }
         defs.push(ctor_def);
+        defs.extend(method_defs);
+        defs
+    }
+
+    fn namespace_def(&self, n: Pair<Rule>) -> Vec<Def<Expr>> {
+        use Body::*;
+        use Expr::*;
+
+        let mut pairs = n.into_inner();
+
+        let name_pair = pairs.next().unwrap();
+        let loc = Loc::from(name_pair.as_span());
+        let name = Var::from(name_pair);
+        let class_name = name.namespace_class();
+
+        let tele = Vec::default();
+
+        let wrapper = "v";
+        let mut ctor_params = UntupledParams::new(loc);
+        ctor_params.push(
+            loc,
+            Param {
+                var: Var::new(wrapper),
+                info: Explicit,
+                typ: Box::new(Unit(loc)),
+            },
+        );
+
+        let mut method_defs = Vec::default();
+        let mut methods = HashMap::default();
+
+        for p in pairs {
+            match p.as_rule() {
+                Rule::class_method => {
+                    let mut m = self.fn_def(
+                        p,
+                        Some((
+                            Unresolved(loc, None, class_name.clone()),
+                            Default::default(),
+                        )),
+                    );
+                    let method_name = m.name.to_string();
+                    let method_var = class_name.method(m.name);
+                    m.name = method_var.clone();
+                    m.body = match m.body {
+                        Fn(f) => Method {
+                            class: class_name.clone(),
+                            associated: Default::default(),
+                            f,
+                        },
+                        _ => unreachable!(),
+                    };
+                    method_defs.push(m);
+                    methods.insert(method_name, method_var);
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        let ctor_loc = ctor_params.0;
+        let ctor_param_vars = ctor_params.unresolved();
+        let ctor_tupled_params = ctor_params.param(None);
+        let ctor_name = class_name.ctor();
+        let ctor_body = Method {
+            class: class_name.clone(),
+            associated: Default::default(),
+            f: Box::new(Expr::wrap_tuple_binds(
+                ctor_loc,
+                ctor_tupled_params.var.clone(),
+                ctor_param_vars,
+                Unresolved(loc, None, Var::new(wrapper)),
+            )),
+        };
+        let ctor_ret = Self::wrap_implicit_apps(&tele, Unresolved(loc, None, class_name.clone()));
+        let ctor_tele = vec![ctor_tupled_params];
+
+        let mut defs = vec![
+            Def {
+                loc,
+                name: class_name.clone(),
+                tele: tele.clone(),
+                eff: Box::new(Pure(loc)),
+                ret: Box::new(Univ(loc)),
+                body: Class {
+                    ctor: ctor_name.clone(),
+                    associated: Default::default(),
+                    members: ClassMembers::Wrapper(Box::new(Unit(loc))),
+                    methods,
+                },
+            },
+            Def {
+                loc,
+                name: ctor_name.clone(),
+                tele: ctor_tele,
+                eff: Box::new(Pure(loc)),
+                ret: Box::new(ctor_ret),
+                body: ctor_body,
+            },
+            Def {
+                loc,
+                name,
+                tele: Default::default(),
+                eff: Box::new(Pure(loc)),
+                ret: Box::new(Unresolved(loc, None, class_name)),
+                body: Constant(
+                    false,
+                    Box::new(Self::call1(Unresolved(loc, None, ctor_name), TT(loc))),
+                ),
+            },
+        ];
         defs.extend(method_defs);
         defs
     }

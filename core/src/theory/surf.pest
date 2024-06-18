@@ -696,6 +696,14 @@ class_method =
   ~ fn_body_block
   }
 
+namespace_def =
+  { "namespace"
+  ~ fn_id
+  ~ "{"
+  ~ class_method+
+  ~ "}"
+  }
+
 type_verify =
   { "declare"
   ~ tyref
@@ -725,6 +733,7 @@ def =
   | instance_def
   | const_def
   | class_def
+  | namespace_def
   | type_verify
   | fn_verify
   }

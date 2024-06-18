@@ -82,6 +82,8 @@ pub const AWAIT_MUL: &str = "__await_mul__";
 pub const AWAIT_ALL: &str = "__await_all__";
 pub const AWAIT_ANY: &str = "__await_any__";
 
+pub const NAMESPACE_PREFIX: &str = "__namespace_";
+
 impl Var {
     fn new<S: Into<String>>(name: S) -> Self {
         Self {
@@ -171,6 +173,10 @@ impl Var {
 
     pub fn await_any() -> Self {
         Self::new(AWAIT_ANY)
+    }
+
+    pub fn namespace_class(&self) -> Self {
+        Self::new(format!("{NAMESPACE_PREFIX}{self}"))
     }
 
     pub fn id(&self) -> usize {
