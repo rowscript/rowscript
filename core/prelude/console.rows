@@ -1,9 +1,5 @@
-class Console {
-    empty: unit;
-
+namespace console {
     log<Args>(...: Args) {
         console#log(...)
     }
 }
-
-const console = new Console(());
