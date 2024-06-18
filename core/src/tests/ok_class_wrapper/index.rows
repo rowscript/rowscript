@@ -1,0 +1,23 @@
+class ID {
+    number;
+
+    fetch() {
+        console.log("fetch:", this);
+    }
+}
+
+function f0() {
+    const a = new ID(42);
+    a.fetch();
+}
+f0();
+
+// Can't do this:
+//function f1(): number {
+//    new ID(42)
+//}
+
+function f1(): ID {
+    42
+}
+f1();

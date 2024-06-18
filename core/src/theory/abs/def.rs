@@ -90,12 +90,17 @@ impl Def<Term> {
                     .iter()
                     .map(|(n, v)| (n.clone(), Term::Ref(v.clone())))
                     .collect(),
-                object: Box::new(Term::Object(Box::new(Term::Fields(
-                    members
-                        .iter()
-                        .map(|(_, id, typ)| (id.clone(), typ.clone()))
-                        .collect(),
-                )))),
+                object: match members {
+                    ClassMembers::Wrapper(ty) => ty.clone(),
+                    ClassMembers::Members(members) => {
+                        Box::new(Term::Object(Box::new(Term::Fields(
+                            members
+                                .iter()
+                                .map(|(_, id, typ)| (id.clone(), typ.clone()))
+                                .collect(),
+                        ))))
+                    }
+                },
             }),
             Associated(t) => self.to_lam_term(*t.clone()),
             Method { f, .. } => self.to_lam_term(*f.clone()),
@@ -200,17 +205,12 @@ impl<T: Syntax> Display for Def<T> {
                     methods,
                     ..
                 } => format!(
-                    "class {}{} {{\n{}\n{}\n\n{}\n}}",
+                    "class {}{} {{\n{}\n{members}\n\n{}\n}}",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     associated
                         .iter()
                         .map(|(name, v)| format!("\ttype {name} = {v};\n"))
-                        .collect::<Vec<_>>()
-                        .concat(),
-                    members
-                        .iter()
-                        .map(|(_, id, typ)| format!("\t{id}: {typ};\n"))
                         .collect::<Vec<_>>()
                         .concat(),
                     methods
@@ -272,7 +272,7 @@ pub enum Body<T: Syntax> {
     Class {
         ctor: Var,
         associated: HashMap<String, Var>,
-        members: Vec<(Loc, String, T)>,
+        members: ClassMembers<T>,
         methods: HashMap<String, Var>,
     },
     Associated(Box<T>),
@@ -326,5 +326,26 @@ impl<T: Syntax> Display for InstanceBody<T> {
                 .collect::<Vec<_>>()
                 .concat()
         )
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum ClassMembers<T: Syntax> {
+    Wrapper(Box<T>),
+    Members(Vec<(Loc, String, T)>),
+}
+
+impl<T: Syntax> Display for ClassMembers<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        use ClassMembers::*;
+        match self {
+            Wrapper(t) => writeln!(f, "\t{t};")?,
+            Members(members) => {
+                for (_, id, typ) in members {
+                    writeln!(f, "\t{id}: {typ};")?;
+                }
+            }
+        }
+        Ok(())
     }
 }

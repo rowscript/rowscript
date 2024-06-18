@@ -5,7 +5,7 @@ use log::{debug, info, trace};
 use crate::maybe_grow;
 use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::{CaseMap, FieldMap, FieldSet, MetaKind, PartialClass, Term};
-use crate::theory::abs::def::{gamma_to_tele, tele_to_refs, Body, InstanceBody};
+use crate::theory::abs::def::{gamma_to_tele, tele_to_refs, Body, ClassMembers, InstanceBody};
 use crate::theory::abs::def::{Def, Gamma, Sigma};
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::abs::rename::rename;
@@ -152,14 +152,24 @@ impl Elaborator {
                 members,
                 methods,
             } => {
-                let mut checked_members = Vec::default();
-                for (loc, id, typ) in members {
-                    checked_members.push((loc, id, self.check(typ, &eff, &ret)?));
-                }
+                let members = match members {
+                    ClassMembers::Wrapper(ty) => ClassMembers::Wrapper(Box::new(self.check(
+                        *ty,
+                        &Term::Pure,
+                        &Term::Univ,
+                    )?)),
+                    ClassMembers::Members(m) => {
+                        let mut checked_members = Vec::default();
+                        for (loc, id, typ) in m {
+                            checked_members.push((loc, id, self.check(typ, &eff, &ret)?));
+                        }
+                        ClassMembers::Members(checked_members)
+                    }
+                };
                 Class {
                     ctor,
                     associated,
-                    members: checked_members,
+                    members,
                     methods,
                 }
             }

@@ -678,12 +678,13 @@ class_def =
   ~ ("<" ~ implicit_params ~ ">")?
   ~ "{"
   ~ associated_type*
-  ~ class_member+
+  ~ (class_member+ | class_wrapper)
   ~ class_method*
   ~ "}"
   }
 associated_type = { "type" ~ type_id ~ "=" ~ type_expr ~ ";" }
 class_member = { prop_id ~ ":" ~ type_expr ~ ("=" ~ expr)? ~ ";" }
+class_wrapper = { type_expr ~ ";" }
 class_method =
   { is_async?
   ~ (fn_id | magic_fn_id)

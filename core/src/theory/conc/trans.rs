@@ -4,8 +4,8 @@ use std::path::PathBuf;
 use pest::iterators::{Pair, Pairs};
 use pest::pratt_parser::{Assoc, Op, PrattParser};
 
-use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, InstanceBody};
+use crate::theory::abs::def::{ClassMembers, Def};
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::data::{ArgInfo, Catch, Expr};
 use crate::theory::conc::load::ImportedPkg::Vendor;
@@ -519,8 +519,10 @@ impl Trans {
         let mut members = Vec::default();
         let mut method_defs = Vec::default();
         let mut methods = HashMap::default();
-
         let mut ctor_body_obj = Vec::default();
+
+        let mut wrapper = None;
+
         let mut ctor_params = UntupledParams::new(loc);
 
         for p in pairs {
@@ -569,6 +571,19 @@ impl Trans {
                     };
                     ctor_body_obj.push((m.to_string(), v));
                 }
+                Rule::class_wrapper => {
+                    let ty = self.type_expr(p.into_inner().next().unwrap());
+                    let var = Var::new("v");
+                    wrapper = Some((var.clone(), ty.clone()));
+                    ctor_params.push(
+                        ty.loc(),
+                        Param {
+                            var,
+                            info: Explicit,
+                            typ: Box::new(ty),
+                        },
+                    )
+                }
                 Rule::class_method => {
                     let loc = Loc::from(p.as_span());
                     let mut m =
@@ -600,15 +615,19 @@ impl Trans {
         }
         let ctor_tupled_params = ctor_params.param(None);
         let ctor_name = name.ctor();
+        let ctor_fn = Box::new(Expr::wrap_tuple_binds(
+            ctor_loc,
+            ctor_tupled_params.var.clone(),
+            ctor_param_vars,
+            match &wrapper {
+                Some((v, ty)) => Unresolved(ty.loc(), None, v.clone()),
+                None => Obj(loc, Box::new(Fields(ctor_loc, ctor_body_obj))),
+            },
+        ));
         let ctor_body = Method {
             class: name.clone(),
             associated: associated.clone(),
-            f: Box::new(Expr::wrap_tuple_binds(
-                ctor_loc,
-                ctor_tupled_params.var.clone(),
-                ctor_param_vars,
-                Obj(loc, Box::new(Fields(loc, ctor_body_obj))),
-            )),
+            f: ctor_fn,
         };
         let ctor_ret = Self::wrap_implicit_apps(&tele, Unresolved(loc, None, name.clone()));
         let mut ctor_tele = tele.clone();
@@ -635,7 +654,10 @@ impl Trans {
             body: Class {
                 ctor: ctor_name.clone(),
                 associated,
-                members,
+                members: match wrapper {
+                    Some((_, ty)) => ClassMembers::Wrapper(Box::new(ty)),
+                    None => ClassMembers::Members(members),
+                },
                 methods,
             },
         });

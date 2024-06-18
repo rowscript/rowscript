@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use log::debug;
 
-use crate::theory::abs::def::Def;
 use crate::theory::abs::def::{Body, InstanceBody};
+use crate::theory::abs::def::{ClassMembers, Def};
 use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::conc::data::{Catch, Expr};
 use crate::theory::conc::load::{Import, ImportedDefs, Loaded};
@@ -166,16 +166,22 @@ impl<'a> Resolver<'a> {
                 members,
                 methods,
             } => {
-                let mut names = RawNameSet::default();
-                let mut resolved_members = Vec::default();
-                for (loc, id, typ) in members {
-                    names.raw(loc, id.clone())?;
-                    resolved_members.push((loc, id, *self.expr(Box::new(typ))?));
-                }
+                let members = match members {
+                    ClassMembers::Wrapper(ty) => ClassMembers::Wrapper(self.expr(ty)?),
+                    ClassMembers::Members(m) => {
+                        let mut names = RawNameSet::default();
+                        let mut resolved_members = Vec::default();
+                        for (loc, id, typ) in m {
+                            names.raw(loc, id.clone())?;
+                            resolved_members.push((loc, id, *self.expr(Box::new(typ))?));
+                        }
+                        ClassMembers::Members(resolved_members)
+                    }
+                };
                 Class {
                     ctor,
                     associated,
-                    members: resolved_members,
+                    members,
                     methods,
                 }
             }

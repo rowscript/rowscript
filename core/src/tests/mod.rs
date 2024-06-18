@@ -61,6 +61,7 @@ mod ok_class_default;
 mod ok_class_generics;
 mod ok_class_helper;
 mod ok_class_interface;
+mod ok_class_wrapper;
 mod ok_const;
 mod ok_ctl;
 mod ok_enum;
