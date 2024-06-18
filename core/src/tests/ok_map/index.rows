@@ -24,3 +24,11 @@ function f2() {
     console.log(m);
 }
 f2();
+
+function getData(): Map<string, number>;
+
+function f3() {
+    const m = getData();
+    console.log(m["n"]);
+}
+f3();

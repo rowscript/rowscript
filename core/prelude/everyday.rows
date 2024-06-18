@@ -93,10 +93,10 @@ type Entry<K, V> = {
 class MapIterator<K, V> {
     type Item = Entry<K, V>;
 
-    it: NativeMapIterator<Item>;
+    NativeMapIterator<Item>;
 
     next(): Option<Item> {
-        mapIter#next(this.it)
+        mapIter#next(this)
     }
 }
 
@@ -104,14 +104,14 @@ class Map<K, V> {
     type Key = K;
     type Value = V;
 
-    m: NativeMap<K, V>;
+    NativeMap<K, V>;
 
     has(key: K): boolean {
-        map#has(this.m, key)
+        map#has(this, key)
     }
 
     get(key: K): Option<V> {
-        (this.has(key)) ? Ok(map#get(this.m, key)) : None
+        (this.has(key)) ? Ok(map#get(this, key)) : None
     }
 
     __getitem__(key: K): V {
@@ -119,7 +119,7 @@ class Map<K, V> {
     }
 
     set(key: K, value: V): Map<K, V> {
-        map#set(this.m, key, value);
+        map#set(this, key, value);
         this
     }
 
@@ -128,15 +128,15 @@ class Map<K, V> {
     }
 
     delete(key: K): boolean {
-        map#delete(this.m, key)
+        map#delete(this, key)
     }
 
     clear() {
-        map#clear(this.m)
+        map#clear(this)
     }
 
     iter(): MapIterator<K, V> {
-        new MapIterator(map#iter(this.m))
+        new MapIterator(map#iter(this))
     }
 }
 
