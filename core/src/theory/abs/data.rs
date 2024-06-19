@@ -160,6 +160,7 @@ pub enum Term {
     Spread(Box<Self>),
 
     Reflected(Box<Self>),
+    Reflect(Box<Self>, Box<Self>),
 
     Cls {
         class: Var,
@@ -471,6 +472,7 @@ impl Display for Term {
                 AnonVarargs(t) => format!("...{t}"),
                 Spread(a) => format!("...{a}"),
                 Reflected(a) => format!("Reflected<{a}>"),
+                Reflect(ty, tm) => format!("reflect<{ty}>({tm})"),
                 Cls { class, .. } => format!("class {class}"),
                 ErrorThrow(a) => format!("throw Error({a})"),
                 ConsoleLog(m) => format!("console.log({m})"),

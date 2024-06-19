@@ -9,7 +9,7 @@ use crate::theory::abs::reflect::Reflector;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo;
-use crate::theory::conc::data::ArgInfo::UnnamedImplicit;
+use crate::theory::conc::data::ArgInfo::{UnnamedExplicit, UnnamedImplicit};
 use crate::theory::{Loc, Param, Var};
 use crate::theory::{NameMap, ASYNC};
 use crate::Error::{
@@ -582,13 +582,6 @@ impl<'a> Normalizer<'a> {
                         interface: i,
                         interface_fn: f,
                     },
-                    ty if self.is_reflector(&i) => {
-                        let r = self.reflector();
-                        *match f.as_str() {
-                            "reflect" => r.reflect(ty)?,
-                            _ => unreachable!(),
-                        }
-                    }
                     ty if i.as_str() == ASYNC => Find {
                         instance_ty: Box::new(ty),
                         interface: i,
@@ -600,6 +593,15 @@ impl<'a> Normalizer<'a> {
             Reflected(a) => {
                 let ty = *self.term_box(a)?;
                 *self.reflector().reflected(ty, true)?
+            }
+            Reflect(ty, a) => {
+                let ty = self.term(*ty)?;
+                let a = Box::new(self.term(*a)?);
+                if matches!(&ty, Ref(..) | MetaRef(..)) {
+                    Reflect(Box::new(ty), a)
+                } else {
+                    self.term(App(self.reflector().reflect(ty)?, UnnamedExplicit, a))?
+                }
             }
             ErrorThrow(a) => ErrorThrow(self.term_box(a)?),
             ConsoleLog(m) => ConsoleLog(self.term_box(m)?),
@@ -758,12 +760,5 @@ impl<'a> Normalizer<'a> {
         }
 
         Ok(meth)
-    }
-
-    fn is_reflector(&self, i: &Var) -> bool {
-        return self
-            .ubiquitous
-            .get("Reflector")
-            .map_or(false, |v| &v.1 == i);
     }
 }

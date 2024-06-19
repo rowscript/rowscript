@@ -117,25 +117,14 @@ impl<'a> Reflector<'a> {
     }
 
     pub fn reflect(&self, ty: Term) -> Result<Box<Term>, Error> {
-        use Term::*;
-        let tupled = Var::tupled();
         let x = Var::new("x");
-        Ok(Box::new(Lam(
-            Self::tupled_param(tupled.clone(), ty.clone()),
-            Box::new(TupleBind(
-                Param {
-                    var: x.clone(),
-                    info: ParamInfo::Explicit,
-                    typ: Box::new(ty.clone()),
-                },
-                Param {
-                    var: Var::unbound(),
-                    info: ParamInfo::Explicit,
-                    typ: Box::new(Unit),
-                },
-                Box::new(Ref(tupled)),
-                self.reflect_body(Some(x), ty)?,
-            )),
+        Ok(Box::new(Term::Lam(
+            Param {
+                var: x.clone(),
+                info: ParamInfo::Explicit,
+                typ: Box::new(ty.clone()),
+            },
+            self.reflect_body(Some(x), ty)?,
         )))
     }
 
@@ -229,21 +218,5 @@ impl<'a> Reflector<'a> {
                 (PROP_VALUE.to_string(), Ref(x)),
             ])))),
         })
-    }
-
-    fn tupled_param(var: Var, ty: Term) -> Param<Term> {
-        use Term::*;
-        Param {
-            var,
-            info: ParamInfo::Explicit,
-            typ: Box::new(Sigma(
-                Param {
-                    var: Var::unbound(),
-                    info: ParamInfo::Explicit,
-                    typ: Box::new(ty),
-                },
-                Box::new(Unit),
-            )),
-        }
     }
 }

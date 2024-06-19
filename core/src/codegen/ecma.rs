@@ -1439,6 +1439,8 @@ impl Ecma {
                 Self::iife(loc, self.block(sigma, loc, tm, true)?, false)
             }
 
+            Reflect(..) => return Err(NonErasable(tm.clone(), loc)),
+
             _ => unreachable!(),
         })
     }

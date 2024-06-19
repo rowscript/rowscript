@@ -8,10 +8,6 @@ type RepKind =
     | RepKindEnum
     ];
 
-interface Reflector {
-    reflect(t: Reflector): Reflected<Reflector>;
-}
-
 function unreflect<'R, T>(r: {'R}): T
 where (value: T) keyof 'R
 {

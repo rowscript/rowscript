@@ -74,7 +74,8 @@ pub fn should_fold(tm: &Term) -> bool {
         | Variant(a)
         | Up(a, ..)
         | Find { instance_ty: a, .. }
-        | Spread(a) => should_fold(a),
+        | Spread(a)
+        | Reflect(.., a) => should_fold(a),
 
         Extern(..) | MetaRef(..) | Undef(..) | Let(..) | Update(..) | Return(..) | Continue
         | Break | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..) | ArrForeach(..)
