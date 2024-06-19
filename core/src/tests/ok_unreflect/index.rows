@@ -1,12 +1,12 @@
 type A = {a: number};
 const a0: Reflected<A> = reflect({a: 42});
-const a1: A = unreflect<A>(a0);
+const a1: A = unreflect<T=A>(a0);
 
 type B = [B0: number | B1];
 const b0: B = B1;
 const b1: Reflected<B> = reflect(b0);
-const b2: B = unreflect<B>(b1);
+const b2: B = unreflect<T=B>(b1);
 
 type C = number;
 const c0: Reflected<C> = reflect(42);
-const c1: C = unreflect<C>(c0);
+const c1: C = unreflect<T=C>(c0);

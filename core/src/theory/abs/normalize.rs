@@ -586,7 +586,6 @@ impl<'a> Normalizer<'a> {
                         let r = self.reflector();
                         *match f.as_str() {
                             "reflect" => r.reflect(ty)?,
-                            "unreflect" => r.unreflect(ty),
                             _ => unreachable!(),
                         }
                     }

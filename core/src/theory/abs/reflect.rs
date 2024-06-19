@@ -1,5 +1,4 @@
 use crate::theory::abs::data::{FieldMap, Term};
-use crate::theory::conc::data::ArgInfo::UnnamedImplicit;
 use crate::theory::NameMap;
 use crate::theory::{Loc, Param, ParamInfo, Var};
 use crate::Error;
@@ -23,15 +22,6 @@ impl<'a> Reflector<'a> {
 
     fn rep_kind(&self) -> Term {
         Term::Ref(self.ubiquitous.get("RepKind").unwrap().1.clone())
-    }
-
-    fn reflected_app(&self, ty: Term) -> Term {
-        use Term::*;
-        App(
-            Box::new(Ref(self.ubiquitous.get("Reflected").unwrap().1.clone())),
-            UnnamedImplicit,
-            Box::new(ty),
-        )
     }
 
     fn prefix_field(mut name: String, prefix: &str) -> String {
@@ -239,30 +229,6 @@ impl<'a> Reflector<'a> {
                 (PROP_VALUE.to_string(), Ref(x)),
             ])))),
         })
-    }
-
-    pub fn unreflect(&self, ty: Term) -> Box<Term> {
-        use Term::*;
-        let ty = self.reflected_app(ty);
-        let tupled = Var::tupled();
-        let x = Var::new("x");
-        Box::new(Lam(
-            Self::tupled_param(tupled.clone(), ty.clone()),
-            Box::new(TupleBind(
-                Param {
-                    var: x.clone(),
-                    info: ParamInfo::Explicit,
-                    typ: Box::new(ty),
-                },
-                Param {
-                    var: Var::unbound(),
-                    info: ParamInfo::Explicit,
-                    typ: Box::new(Unit),
-                },
-                Box::new(Ref(tupled)),
-                Box::new(Access(Box::new(Ref(x)), PROP_VALUE.to_string())),
-            )),
-        ))
     }
 
     fn tupled_param(var: Var, ty: Term) -> Param<Term> {
