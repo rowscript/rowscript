@@ -169,7 +169,7 @@ impl Builtins {
             .error_throw()
             .console_log()
             .set_timeout()
-            .reflect()
+            .reflected()
             .boolean_or()
             .boolean_and()
             .boolean_not()
@@ -325,11 +325,11 @@ impl Builtins {
         )
     }
 
-    fn reflect(self) -> Self {
+    fn reflected(self) -> Self {
         let t = Var::new("T");
         self.func(
             "Reflected",
-            vec![implicit(t.clone(), Univ)],
+            vec![type_param(t.clone())],
             Univ,
             Reflected(Box::new(Ref(t))),
         )
@@ -369,7 +369,7 @@ impl Builtins {
         let t = Var::new("T");
         self.func(
             "NativeArrayIterator",
-            vec![implicit(t.clone(), Univ)],
+            vec![type_param(t.clone())],
             Univ,
             ArrayIterator(Box::new(Ref(t))),
         )
