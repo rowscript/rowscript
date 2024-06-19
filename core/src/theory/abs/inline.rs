@@ -1,41 +1,41 @@
 use crate::theory::abs::data::Term;
 
-pub fn should_fold(tm: &Term) -> bool {
+pub fn noinline(tm: &Term) -> bool {
     use Term::*;
     match tm {
         Fields(fields) => {
             for tm in fields.values() {
-                if should_fold(tm) {
+                if noinline(tm) {
                     return true;
                 }
             }
             false
         }
         Switch(a, b, d) => {
-            if should_fold(a) {
+            if noinline(a) {
                 return true;
             }
             for (_, a) in b.values() {
-                if should_fold(a) {
+                if noinline(a) {
                     return true;
                 }
             }
             if let Some((_, tm)) = d {
-                if should_fold(tm) {
+                if noinline(tm) {
                     return true;
                 }
             }
             false
         }
         Guard(p, a, e, b) => {
-            let mut fold = should_fold(p) || should_fold(a) || should_fold(b);
+            let mut fold = noinline(p) || noinline(a) || noinline(b);
             if let Some(e) = e {
-                fold = fold || should_fold(e);
+                fold = fold || noinline(e);
             }
             fold
         }
 
-        While(a, b, c) | If(a, b, c) => should_fold(a) || should_fold(b) || should_fold(c),
+        While(a, b, c) | If(a, b, c) => noinline(a) || noinline(b) || noinline(c),
 
         Const(_, a, b)
         | Fori(a, b)
@@ -62,7 +62,7 @@ pub fn should_fold(tm: &Term) -> bool {
         | NumLt(a, b)
         | NumGt(a, b)
         | Combine(.., a, b)
-        | Concat(a, b) => should_fold(a) || should_fold(b),
+        | Concat(a, b) => noinline(a) || noinline(b),
 
         Lam(.., a)
         | BoolNot(a)
@@ -73,18 +73,42 @@ pub fn should_fold(tm: &Term) -> bool {
         | Down(a, ..)
         | Variant(a)
         | Up(a, ..)
-        | Find { instance_ty: a, .. }
         | Spread(a)
-        | Reflect(.., a) => should_fold(a),
+        | Reflect(.., a) => noinline(a),
 
-        Extern(..) | MetaRef(..) | Undef(..) | Let(..) | Update(..) | Return(..) | Continue
-        | Break | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..) | ArrForeach(..)
-        | ArrAt(..) | ArrInsert(..) | ArrIter(..) | MapIterNext(..) | Kv(..) | MapHas(..)
-        | MapGet(..) | MapSet(..) | MapDelete(..) | MapClear(..) | MapIter(..) | Unionify(..)
-        | Panic(..) | ConsoleLog(..) | SetTimeout(..) | EmitAsync(..) => true,
+        Extern(..)
+        | MetaRef(..)
+        | Let(..)
+        | Update(..)
+        | Return(..)
+        | Continue
+        | Break
+        | ArrIterNext(..)
+        | Arr(..)
+        | ArrLength(..)
+        | ArrPush(..)
+        | ArrForeach(..)
+        | ArrAt(..)
+        | ArrInsert(..)
+        | ArrIter(..)
+        | MapIterNext(..)
+        | Kv(..)
+        | MapHas(..)
+        | MapGet(..)
+        | MapSet(..)
+        | MapDelete(..)
+        | MapClear(..)
+        | MapIter(..)
+        | Unionify(..)
+        | Find { .. }
+        | Panic(..)
+        | ConsoleLog(..)
+        | SetTimeout(..)
+        | EmitAsync(..) => true,
 
         Ref(..)
         | Qualified(..)
+        | Undef(..)
         | Univ
         | Pi { .. }
         | Sigma(..)

@@ -6,4 +6,4 @@ pub mod reflect;
 pub mod rename;
 pub mod unify;
 
-mod fold;
+mod inline;

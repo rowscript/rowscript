@@ -4,7 +4,7 @@ use log::trace;
 
 use crate::theory::abs::data::{CaseMap, PartialClass, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
-use crate::theory::abs::fold::should_fold;
+use crate::theory::abs::inline::noinline;
 use crate::theory::abs::reflect::Reflector;
 use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
@@ -72,6 +72,14 @@ impl<'a> Normalizer<'a> {
                     Ref(x)
                 }
             }
+            Undef(v) => {
+                let ret = self.sigma.get(&v).unwrap().to_term(v.clone());
+                if noinline(&ret) {
+                    Undef(v)
+                } else {
+                    ret
+                }
+            }
             MetaRef(k, x, sp) => {
                 let mut def = self.sigma.get(&x).unwrap().clone();
                 *def.ret = self.term(*def.ret)?;
@@ -122,7 +130,7 @@ impl<'a> Normalizer<'a> {
             }
             Const(p, a, b) => {
                 let a = self.term_box(a)?;
-                if should_fold(a.as_ref()) {
+                if noinline(a.as_ref()) {
                     Const(p, a, self.term_box(b)?)
                 } else {
                     self.rho.insert(p.var, a);
@@ -160,7 +168,7 @@ impl<'a> Normalizer<'a> {
                 let f = self.term_box(f)?;
                 let x = self.term_box(x)?;
                 match *f {
-                    Lam(p, b) if !should_fold(x.as_ref()) => {
+                    Lam(p, b) if !noinline(x.as_ref()) => {
                         self.rho.insert(p.var, x);
                         self.term(*b)?
                     }
@@ -210,16 +218,11 @@ impl<'a> Normalizer<'a> {
                     _ => UnitBind(a, b),
                 }
             }
-            If(p, t, e) => {
-                let p = self.term_box(p)?;
-                let t = self.term_box(t)?;
-                let e = self.term_box(e)?;
-                match *p {
-                    True => *t,
-                    False => *e,
-                    _ => If(p, t, e),
-                }
-            }
+            If(p, t, e) => match self.term(*p)? {
+                True => self.term(*t)?,
+                False => self.term(*e)?,
+                p => If(Box::new(p), self.term_box(t)?, self.term_box(e)?),
+            },
             BoolOr(a, b) => {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;
@@ -528,11 +531,6 @@ impl<'a> Normalizer<'a> {
             }
             Switch(a, cs, d) => {
                 let a = self.term_box(a)?;
-                let cs = self.case_map(cs)?;
-                let d = match d {
-                    Some((v, tm)) => Some((v, Box::new(self.term(*tm)?))),
-                    None => None,
-                };
                 match a.as_ref() {
                     Variant(r) => match r.as_ref() {
                         Fields(f) => {
@@ -550,9 +548,9 @@ impl<'a> Normalizer<'a> {
                                 _ => return Err(NonExhaustive(*a, self.loc)),
                             }
                         }
-                        _ => Switch(a, cs, d),
+                        _ => Switch(a, self.case_map(cs)?, self.case_default(d)?),
                     },
-                    _ => Switch(a, cs, d),
+                    _ => Switch(a, self.case_map(cs)?, self.case_default(d)?),
                 }
             }
             Unionify(a) => Unionify(self.term_box(a)?),
@@ -669,6 +667,16 @@ impl<'a> Normalizer<'a> {
             }
         }
         Ok(cs)
+    }
+
+    fn case_default(
+        &mut self,
+        d: Option<(Var, Box<Term>)>,
+    ) -> Result<Option<(Var, Box<Term>)>, Error> {
+        Ok(match d {
+            Some((v, tm)) => Some((v, self.term_box(tm)?)),
+            None => None,
+        })
     }
 
     fn check_constraint(&mut self, x: &Term, i: &Var) -> Result<(), Error> {
