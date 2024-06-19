@@ -175,8 +175,7 @@ idref =
   | this_id
   }
 builtin =
-  { "error#throw"
-  | "console#log"
+  { "console#log"
   | "boolean#__and__"
   | "boolean#__or__"
   | "boolean#__not__"

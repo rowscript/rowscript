@@ -169,7 +169,7 @@ pub enum Term {
         object: Box<Self>,
     },
 
-    ErrorThrow(Box<Self>),
+    Panic(Box<Self>),
     ConsoleLog(Box<Self>),
     SetTimeout(Box<Self>, Box<Self>, Box<Self>),
 
@@ -474,7 +474,7 @@ impl Display for Term {
                 Reflected(a) => format!("Reflected<{a}>"),
                 Reflect(ty, tm) => format!("reflect<{ty}>({tm})"),
                 Cls { class, .. } => format!("class {class}"),
-                ErrorThrow(a) => format!("throw Error({a})"),
+                Panic(a) => format!("panic({a})"),
                 ConsoleLog(m) => format!("console.log({m})"),
                 SetTimeout(f, d, x) => format!("setTimeout({f}, {d}, {x})"),
                 Pure => "pure".to_string(),

@@ -1391,7 +1391,7 @@ impl Ecma {
                 ),
                 0.0,
             ),
-            ErrorThrow(a) => Self::iife(
+            Panic(a) => Self::iife(
                 loc,
                 BlockStmt {
                     span: loc.into(),

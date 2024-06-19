@@ -1,4 +1,4 @@
-declare error#throw<T>(m: string): T;
+declare panic<T>(m: string): T;
 
 declare console#log<Args>(...: Args);
 

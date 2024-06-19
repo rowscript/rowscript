@@ -603,7 +603,7 @@ impl<'a> Normalizer<'a> {
                     self.term(App(self.reflector().reflect(ty)?, UnnamedExplicit, a))?
                 }
             }
-            ErrorThrow(a) => ErrorThrow(self.term_box(a)?),
+            Panic(a) => Panic(self.term_box(a)?),
             ConsoleLog(m) => ConsoleLog(self.term_box(m)?),
             SetTimeout(f, d, x) => {
                 SetTimeout(self.term_box(f)?, self.term_box(d)?, self.term_box(x)?)

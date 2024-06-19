@@ -2,10 +2,10 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{
     AnonVarargs, App, ArrAt, ArrForeach, ArrInsert, ArrIter, ArrIterNext, ArrLength, ArrPush,
     Array, ArrayIterator, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean, ConsoleLog,
-    EmitAsync, Enum, ErrorThrow, Fields, Find, Map, MapClear, MapDelete, MapGet, MapHas, MapIter,
-    MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt, NumMod,
-    NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object, Pi, Pure, Ref, Reflect, Reflected,
-    SetTimeout, StrAdd, StrEq, StrNeq, String, TupleBind, Unit, Univ,
+    EmitAsync, Enum, Fields, Find, Map, MapClear, MapDelete, MapGet, MapHas, MapIter, MapIterNext,
+    MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt, NumMod, NumMul, NumNeg,
+    NumNeq, NumSub, NumToStr, Number, Object, Panic, Pi, Pure, Ref, Reflect, Reflected, SetTimeout,
+    StrAdd, StrEq, StrNeq, String, TupleBind, Unit, Univ,
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
@@ -166,7 +166,7 @@ impl Builtins {
                 Var::await_all(),
                 Var::await_any(),
             ])
-            .error_throw()
+            .panic()
             .console_log()
             .set_timeout()
             .reflected()
@@ -251,19 +251,19 @@ impl Builtins {
         self
     }
 
-    fn error_throw(self) -> Self {
+    fn panic(self) -> Self {
         let t = Var::new("T");
         let tupled = Var::tupled();
         let m = Var::new("m");
         let m_ty = String;
         self.func(
-            "error#throw",
+            "panic",
             vec![
                 type_param(t.clone()),
                 tuple_param(tupled.clone(), [(m.clone(), m_ty.clone())]),
             ],
             Ref(t),
-            explicit_tuple_bind1(m.clone(), m_ty, Ref(tupled), ErrorThrow(Box::new(Ref(m)))),
+            explicit_tuple_bind1(m.clone(), m_ty, Ref(tupled), Panic(Box::new(Ref(m)))),
         )
     }
 

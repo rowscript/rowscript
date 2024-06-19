@@ -81,7 +81,7 @@ pub fn should_fold(tm: &Term) -> bool {
         | Break | ArrIterNext(..) | Arr(..) | ArrLength(..) | ArrPush(..) | ArrForeach(..)
         | ArrAt(..) | ArrInsert(..) | ArrIter(..) | MapIterNext(..) | Kv(..) | MapHas(..)
         | MapGet(..) | MapSet(..) | MapDelete(..) | MapClear(..) | MapIter(..) | Unionify(..)
-        | ErrorThrow(..) | ConsoleLog(..) | SetTimeout(..) | EmitAsync(..) => true,
+        | Panic(..) | ConsoleLog(..) | SetTimeout(..) | EmitAsync(..) => true,
 
         Ref(..)
         | Qualified(..)

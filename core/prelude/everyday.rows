@@ -1,7 +1,3 @@
-function panic<T>(msg: string): T {
-    error#throw(msg)
-}
-
 type Option<T> = [Ok: T | None];
 
 type Result<T, E> = [Ok: T | Err: E];

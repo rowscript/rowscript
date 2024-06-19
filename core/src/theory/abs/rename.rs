@@ -153,7 +153,7 @@ impl Renamer {
                     .collect(),
                 object: self.term(object),
             },
-            ErrorThrow(a) => ErrorThrow(self.term(a)),
+            Panic(a) => Panic(self.term(a)),
             ConsoleLog(m) => ConsoleLog(self.term(m)),
             SetTimeout(f, d, x) => SetTimeout(self.term(f), self.term(d), self.term(x)),
             EmitAsync(a) => EmitAsync(self.term(a)),
