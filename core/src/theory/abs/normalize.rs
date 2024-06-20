@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use log::trace;
 
-use crate::theory::abs::data::{CaseMap, PartialClass, Term};
+use crate::theory::abs::data::{CaseDefault, CaseMap, PartialClass, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::inline::noinline;
 use crate::theory::abs::reflect::Reflector;
@@ -669,10 +669,7 @@ impl<'a> Normalizer<'a> {
         Ok(cs)
     }
 
-    fn case_default(
-        &mut self,
-        d: Option<(Var, Box<Term>)>,
-    ) -> Result<Option<(Var, Box<Term>)>, Error> {
+    fn case_default(&mut self, d: CaseDefault) -> Result<CaseDefault, Error> {
         Ok(match d {
             Some((v, tm)) => Some((v, self.term_box(tm)?)),
             None => None,

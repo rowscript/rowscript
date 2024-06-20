@@ -12,6 +12,7 @@ pub type Spine = Vec<(ParamInfo, Term)>;
 pub type FieldMap = HashMap<String, Term>;
 pub type FieldSet = HashSet<Var>;
 pub type CaseMap = HashMap<String, (Var, Term)>;
+pub type CaseDefault = Option<(Var, Box<Term>)>;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum MetaKind {
@@ -144,7 +145,7 @@ pub enum Term {
     Variant(Box<Self>),
     Upcast(Box<Self>),
     Up(Box<Self>, Box<Self>, Box<Self>),
-    Switch(Box<Self>, CaseMap, Option<(Var, Box<Self>)>),
+    Switch(Box<Self>, CaseMap, CaseDefault),
     Unionify(Box<Self>),
 
     Find {
