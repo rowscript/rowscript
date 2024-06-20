@@ -3,7 +3,15 @@ type List<T> =
     | Empty
     ];
 
-// TODO: Currently loops.
+// TODO: This fails.
+//function f0(): List<number> {
+//    const a0: List<number> = Empty;
+//    const a1: List<number> = Append({value: 1, rest: a0});
+//    const a2: List<number> = Append({value: 2, rest: a1});
+//    a2
+//}
+
+// TODO: This loops.
 //function fold<T, ItemT>(init: T, list: List<ItemT>, f: (a: T, i: ItemT) => T): T {
 //    switch (list) {
 //        case Append(item): fold(f(init, item.value), item.rest, f)

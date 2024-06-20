@@ -167,6 +167,7 @@ impl<'a> Unifier<'a> {
             (Reflected(a), Reflected(b)) => self.unify(a, b),
 
             (Extern(a), Extern(b)) if a == b => Ok(()),
+            (UndefType(a), UndefType(b)) if a == b => Ok(()),
             (Str(a), Str(b)) if a == b => Ok(()),
             (Num(a), Num(b)) if a == b => Ok(()),
             (Big(a), Big(b)) if a == b => Ok(()),

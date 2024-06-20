@@ -539,8 +539,8 @@ impl Elaborator {
     fn infer(&mut self, e: Expr) -> Result<InferResult, Error> {
         maybe_grow(move || {
             self.infer_impl(e).map(|InferResult { tm, eff, ty }| {
+                let (tm, ty) = Term::unwrap_solved_implicit_lambda(tm, ty);
                 debug!(target: "elab", "expression inferred successfully: tm={tm}, eff={eff}, ty={ty}");
-                let (tm,ty)=Term::unwrap_solved_implicit_lambda(tm, ty);
                 InferResult{ tm, eff, ty }
             })
         })
