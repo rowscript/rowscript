@@ -109,6 +109,7 @@ pub fn noinline(tm: &Term) -> bool {
         Ref(..)
         | Qualified(..)
         | Undef(..)
+        | UndefType(..)
         | Univ
         | Pi { .. }
         | Sigma(..)

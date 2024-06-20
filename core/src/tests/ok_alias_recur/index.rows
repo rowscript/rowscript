@@ -1,0 +1,12 @@
+type List<T> =
+    [ Append: {value: T, rest: List<T>}
+    | Empty
+    ];
+
+// TODO: Currently loops.
+//function fold<T, ItemT>(init: T, list: List<ItemT>, f: (a: T, i: ItemT) => T): T {
+//    switch (list) {
+//        case Append(item): fold(f(init, item.value), item.rest, f)
+//        case Empty: init
+//    }
+//}

@@ -127,9 +127,9 @@ impl<'a> Resolver<'a> {
         d.eff = self.expr(d.eff)?;
         d.ret = self.expr(d.ret)?;
         d.body = match d.body {
-            Fn(f) => Fn(self.self_referencing_fn(&d.name, f)?),
+            Fn(f) => Fn(self.self_referencing(&d.name, f)?),
             Postulate => Postulate,
-            Alias(t) => Alias(self.expr(t)?),
+            Alias(t) => Alias(self.self_referencing(&d.name, t)?),
             Constant(anno, f) => Constant(anno, self.expr(f)?),
             Verify(a) => Verify(self.expr(a)?),
 
@@ -474,7 +474,7 @@ impl<'a> Resolver<'a> {
         }))
     }
 
-    fn self_referencing_fn(&mut self, name: &Var, f: Box<Expr>) -> Result<Box<Expr>, Error> {
+    fn self_referencing(&mut self, name: &Var, f: Box<Expr>) -> Result<Box<Expr>, Error> {
         self.insert(name);
         self.expr(f)
     }

@@ -37,6 +37,7 @@ pub enum Term {
     Extern(Var),
     MetaRef(MetaKind, Var, Spine),
     Undef(Var),
+    UndefType(Var),
 
     Const(Param<Self>, Box<Self>, Box<Self>),
     Let(Param<Self>, Box<Self>, Box<Self>),
@@ -269,7 +270,7 @@ impl Term {
         }
     }
 
-    fn is_unsolved(&self) -> bool {
+    pub fn is_unsolved(&self) -> bool {
         use Term::*;
         matches!(self, MetaRef(..) | Ref(..))
     }
@@ -323,11 +324,9 @@ impl Display for Term {
         use Term::*;
         f.write_str(
             match self {
-                Ref(r) => r.to_string(),
-                Extern(r) => r.to_string(),
+                Ref(r) | Extern(r) | Undef(r) | UndefType(r) => r.to_string(),
                 Qualified(m, r) => format!("{m}::{r}"),
                 MetaRef(k, r, ..) => format!("{k}{r}"),
-                Undef(r) => r.to_string(),
                 Const(p, a, b) => format!("const {p} = {a};\n\t{b}"),
                 Let(p, a, b) => format!("let {p} = {a};\n\t{b}"),
                 Update(v, a, b) => format!("{v} = {a};\n\t{b}"),

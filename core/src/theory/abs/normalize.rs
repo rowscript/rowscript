@@ -97,7 +97,7 @@ impl<'a> Normalizer<'a> {
                                 def.body = Meta(k, Some(Box::new(tm.clone())));
                                 tm
                             } else {
-                                trace!(target: "unify", "cannot solve meta: {x}");
+                                trace!(target: "unify", "cannot solve meta: def={def}");
                                 MetaRef(k, x.clone(), sp)
                             }
                         }
@@ -164,17 +164,14 @@ impl<'a> Normalizer<'a> {
                 body: self.term_box(body)?,
             },
             Lam(p, b) => Lam(self.param(p)?, self.term_box(b)?),
-            App(f, ai, x) => {
-                let f = self.term_box(f)?;
-                let x = self.term_box(x)?;
-                match *f {
-                    Lam(p, b) if !noinline(x.as_ref()) => {
-                        self.rho.insert(p.var, x);
-                        self.term(*b)?
-                    }
-                    f => App(Box::new(f), ai, x),
+            App(f, ai, x) => match self.term(*f)? {
+                Lam(p, b) if !noinline(x.as_ref()) => {
+                    let x = self.term_box(x)?;
+                    self.rho.insert(p.var, x);
+                    self.term(*b)?
                 }
-            }
+                f => App(Box::new(f), ai, self.term_box(x)?),
+            },
             Sigma(p, b) => Sigma(self.param(p)?, self.term_box(b)?),
             Tuple(a, b) => Tuple(self.term_box(a)?, self.term_box(b)?),
             TupleBind(p, q, a, b) => {
@@ -556,7 +553,7 @@ impl<'a> Normalizer<'a> {
             Unionify(a) => Unionify(self.term_box(a)?),
             Instanceof(a, i) => {
                 let a = self.term_box(a)?;
-                if !matches!(*a, Ref(_) | MetaRef(_, _, _)) {
+                if !a.is_unsolved() {
                     self.check_constraint(&a, &i)?;
                 }
                 Instanceof(a, i)
@@ -575,7 +572,7 @@ impl<'a> Normalizer<'a> {
 
                 let ty = self.term_box(ty)?;
                 match *ty {
-                    Ref(_) | MetaRef(_, _, _) => Find {
+                    Ref(..) | MetaRef(..) => Find {
                         instance_ty: ty,
                         interface: i,
                         interface_fn: f,
@@ -595,7 +592,7 @@ impl<'a> Normalizer<'a> {
             Reflect(ty, a) => {
                 let ty = self.term(*ty)?;
                 let a = Box::new(self.term(*a)?);
-                if matches!(&ty, Ref(..) | MetaRef(..)) {
+                if ty.is_unsolved() {
                     Reflect(Box::new(ty), a)
                 } else {
                     self.term(App(self.reflector().reflect(ty)?, UnnamedExplicit, a))?
