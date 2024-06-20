@@ -37,7 +37,6 @@ pub enum Term {
     Extern(Var),
     MetaRef(MetaKind, Var, Spine),
     Undef(Var),
-    UndefType(Var),
 
     Const(Param<Self>, Box<Self>, Box<Self>),
     Let(Param<Self>, Box<Self>, Box<Self>),
@@ -324,7 +323,7 @@ impl Display for Term {
         use Term::*;
         f.write_str(
             match self {
-                Ref(r) | Extern(r) | Undef(r) | UndefType(r) => r.to_string(),
+                Ref(r) | Extern(r) | Undef(r) => r.to_string(),
                 Qualified(m, r) => format!("{m}::{r}"),
                 MetaRef(k, r, ..) => format!("{k}{r}"),
                 Const(p, a, b) => format!("const {p} = {a};\n\t{b}"),

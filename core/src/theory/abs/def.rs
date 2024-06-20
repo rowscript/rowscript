@@ -105,10 +105,7 @@ impl Def<Term> {
             Associated(t) => self.to_lam_term(*t.clone()),
             Method { f, .. } => self.to_lam_term(*f.clone()),
 
-            Undefined => match self.ret.as_ref() {
-                Term::Univ => Term::UndefType(v),
-                _ => Term::Undef(v),
-            },
+            Undefined => Term::Undef(v),
             Meta(_, s) => match s {
                 None => unreachable!(),
                 Some(f) => self.to_lam_term(*f.clone()),
