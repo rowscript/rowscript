@@ -41,6 +41,13 @@ impl<'a> Unifier<'a> {
         })
     }
 
+    fn swap_err(err: Error) -> Error {
+        match err {
+            NonUnifiable(lhs, rhs, loc) => NonUnifiable(rhs, lhs, loc),
+            e => e,
+        }
+    }
+
     fn unify_impl(&mut self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
         use Term::*;
 
@@ -159,11 +166,11 @@ impl<'a> Unifier<'a> {
             (Object(a), Object(b)) => self.unify(a, b),
             (Obj(a), Obj(b)) => self.unify(a, b),
             (Downcast(a, m), Object(b)) => self.downcast(m, a, b),
-            (Object(a), Downcast(b, m)) => self.downcast(m, b, a),
+            (Object(a), Downcast(b, m)) => self.downcast(m, b, a).map_err(Self::swap_err),
             (Enum(a), Enum(b)) => self.unify(a, b),
             (Variant(a), Variant(b)) => self.unify(a, b),
             (Upcast(a), Enum(b)) => self.upcast(a, b),
-            (Enum(a), Upcast(b)) => self.upcast(b, a),
+            (Enum(a), Upcast(b)) => self.upcast(b, a).map_err(Self::swap_err),
             (Reflected(a), Reflected(b)) => self.unify(a, b),
 
             (Extern(a), Extern(b)) if a == b => Ok(()),
