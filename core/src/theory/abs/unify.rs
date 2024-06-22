@@ -67,11 +67,11 @@ impl<'a> Unifier<'a> {
             (Ref(a), Ref(b)) if a == b => Ok(()),
             (Qualified(_, a), Qualified(_, b)) if a == b => Ok(()),
 
-            (Ref(a), b) | (Qualified(_, a), b) | (Undef(a), b) => match self.sigma.get(a) {
+            (Ref(a), b) | (Qualified(_, a), b) | (Mu(a), b) => match self.sigma.get(a) {
                 Some(d) => self.unify(&d.to_term(a.clone()), b),
                 None => self.unify_err(lhs, rhs),
             },
-            (a, Ref(b)) | (a, Qualified(_, b)) | (a, Undef(b)) => match self.sigma.get(b) {
+            (a, Ref(b)) | (a, Qualified(_, b)) | (a, Mu(b)) => match self.sigma.get(b) {
                 Some(d) => self.unify(a, &d.to_term(b.clone())),
                 None => self.unify_err(lhs, rhs),
             },

@@ -106,7 +106,7 @@ impl Def<Term> {
             Method { f, .. } => self.to_lam_term(*f.clone()),
 
             Undefined => match self.ret.as_ref() {
-                Term::Univ => self.to_lam_term(Term::Undef(v)),
+                Term::Univ => Term::Mu(v),
                 _ => Term::Undef(v),
             },
             Meta(_, s) => match s {

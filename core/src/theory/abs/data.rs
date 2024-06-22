@@ -37,6 +37,7 @@ pub enum Term {
     Extern(Var),
     MetaRef(MetaKind, Var, Spine),
     Undef(Var),
+    Mu(Var),
 
     Const(Param<Self>, Box<Self>, Box<Self>),
     Let(Param<Self>, Box<Self>, Box<Self>),
@@ -325,6 +326,7 @@ impl Display for Term {
             match self {
                 Ref(r) | Extern(r) | Undef(r) => r.to_string(),
                 Qualified(m, r) => format!("{m}::{r}"),
+                Mu(r) => format!("mu({r})"),
                 MetaRef(k, r, ..) => format!("{k}{r}"),
                 Const(p, a, b) => format!("const {p} = {a};\n\t{b}"),
                 Let(p, a, b) => format!("let {p} = {a};\n\t{b}"),
