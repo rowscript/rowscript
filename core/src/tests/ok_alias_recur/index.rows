@@ -19,6 +19,14 @@ function f2(): List<number> {
 console.log(f2());
 
 // TODO: This loops.
+//function foldNat<T>(init: T, n: Nat, f: (a: T) => T): T {
+//    switch (n) {
+//        case S(x): foldNat(f(init), x, f)
+//        case Z: init
+//    }
+//}
+
+// TODO: This loops.
 //function fold<T, ItemT>(init: T, list: List<ItemT>, f: (a: T, i: ItemT) => T): T {
 //    switch (list) {
 //        case Append(item): fold(f(init, item.value), item.rest, f)

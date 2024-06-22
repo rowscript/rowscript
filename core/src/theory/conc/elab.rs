@@ -289,14 +289,14 @@ impl Elaborator {
     fn check(&mut self, e: Expr, eff: &Term, ty: &Term) -> Result<Term, Error> {
         maybe_grow(move || {
             self.check_impl(e, eff, ty).inspect(|tm| {
-                debug!(target: "elab", "expression checked successfully: tm={tm}, eff={eff}, ty={ty}");
+                trace!(target: "elab", "expression checked successfully: tm={tm}, eff={eff}, ty={ty}");
             })
         })
     }
 
     fn check_impl(&mut self, e: Expr, eff: &Term, ty: &Term) -> Result<Term, Error> {
         use Expr::*;
-        trace!(target: "elab", "checking expression: e={e}, ty={ty}");
+        debug!(target: "elab", "checking expression: e={e}, ty={ty}");
         Ok(match e {
             Const(_, var, maybe_typ, a, b) => {
                 let a_loc = a.loc();
@@ -383,7 +383,7 @@ impl Elaborator {
                 }
                 ty => return Err(ExpectedPi(ty, loc)),
             },
-            Tuple(loc, a, b) => match self.nf(loc).term(ty.clone())? {
+            Tuple(loc, a, b) => match ty {
                 Term::Sigma(p, body) => match p.typ.as_ref() {
                     Term::Varargs(t) => {
                         let args = match *a {
@@ -417,17 +417,17 @@ impl Elaborator {
                     }
                     _ => {
                         let a = self.check(*a, eff, &p.typ)?;
-                        let body = self.nf(loc).with([(&p.var, &a)], *body)?;
+                        let body = self.nf(loc).with([(&p.var, &a)], *body.clone())?;
                         Term::Tuple(Box::new(a), Box::new(self.check(*b, eff, &body)?))
                     }
                 },
                 Term::AnonVarargs(ty) => {
                     let ret = self.infer(Tuple(loc, a, b))?;
                     self.unifier(loc).unify_eff(eff, &ret.eff)?;
-                    self.unifier(loc).unify(&ty, &ret.ty)?;
+                    self.unifier(loc).unify(ty, &ret.ty)?;
                     ret.tm
                 }
-                ty => return Err(ExpectedSigma(ty, loc)),
+                ty => return Err(ExpectedSigma(ty.clone(), loc)),
             },
             TupleBind(_, x, y, a, b) => {
                 let a_loc = a.loc();
@@ -540,7 +540,7 @@ impl Elaborator {
         maybe_grow(move || {
             self.infer_impl(e).map(|InferResult { tm, eff, ty }| {
                 let (tm, ty) = Term::unwrap_solved_implicit_lambda(tm, ty);
-                debug!(target: "elab", "expression inferred successfully: tm={tm}, eff={eff}, ty={ty}");
+                trace!(target: "elab", "expression inferred successfully: tm={tm}, eff={eff}, ty={ty}");
                 InferResult{ tm, eff, ty }
             })
         })
@@ -549,7 +549,7 @@ impl Elaborator {
     fn infer_impl(&mut self, e: Expr) -> Result<InferResult, Error> {
         use Expr::*;
         use MetaKind::*;
-        trace!(target: "elab", "inferring expression: e={e}");
+        debug!(target: "elab", "inferring expression: e={e}");
         Ok(match e {
             Resolved(loc, v) => {
                 let local = self.gamma.get(&v);
