@@ -13,13 +13,10 @@ function f1(): List<number> {
     Empty
 }
 
-// TODO: This fails.
-//function f2(): List<number> {
-//    const a0: List<number> = Empty;
-//    const a1: List<number> = Append({value: 1, rest: a0});
-//    const a2: List<number> = Append({value: 2, rest: a1});
-//    a2
-//}
+function f2(): List<number> {
+    Append({value: 2, rest: Append({value: 1, rest: Empty})})
+}
+console.log(f2());
 
 // TODO: This loops.
 //function fold<T, ItemT>(init: T, list: List<ItemT>, f: (a: T, i: ItemT) => T): T {

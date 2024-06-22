@@ -315,6 +315,21 @@ impl Term {
                 | UnitBind(..)
         )
     }
+
+    pub fn has_mu(&self) -> bool {
+        use Term::*;
+        let mut tm = self;
+        loop {
+            match tm {
+                App(f, ..) => {
+                    tm = f.as_ref();
+                    continue;
+                }
+                Mu(..) => return true,
+                _ => return false,
+            }
+        }
+    }
 }
 
 impl Syntax for Term {}

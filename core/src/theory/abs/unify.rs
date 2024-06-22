@@ -74,11 +74,11 @@ impl<'a> Unifier<'a> {
             (Ref(a), Ref(b)) if a == b => Ok(()),
             (Qualified(_, a), Qualified(_, b)) if a == b => Ok(()),
 
-            (Ref(a), b) | (Qualified(_, a), b) | (Mu(a), b) => match self.sigma.get(a) {
+            (Ref(a), b) | (Qualified(_, a), b) => match self.sigma.get(a) {
                 Some(d) => self.unify(&d.to_term(a.clone()), b),
                 None => self.unify_err(lhs, rhs),
             },
-            (a, Ref(b)) | (a, Qualified(_, b)) | (a, Mu(b)) => match self.sigma.get(b) {
+            (a, Ref(b)) | (a, Qualified(_, b)) => match self.sigma.get(b) {
                 Some(d) => self.unify(a, &d.to_term(b.clone())),
                 None => self.unify_err(lhs, rhs),
             },
@@ -173,7 +173,17 @@ impl<'a> Unifier<'a> {
             (Enum(a), Upcast(b)) => self.upcast(b, a).map_err(Self::swap_err),
             (Reflected(a), Reflected(b)) => self.unify(a, b),
 
+            (a, Object(..)) | (a, Downcast(..)) | (a, Enum(..)) | (a, Upcast(..)) if a.has_mu() => {
+                let a = self.nf().with_expand_once(a.clone())?;
+                self.unify(&a, rhs)
+            }
+            (Object(..), b) | (Downcast(..), b) | (Enum(..), b) | (Upcast(..), b) if b.has_mu() => {
+                let b = self.nf().with_expand_once(b.clone())?;
+                self.unify(lhs, &b)
+            }
+
             (Extern(a), Extern(b)) if a == b => Ok(()),
+            (Mu(a), Mu(b)) if a == b => Ok(()),
             (Str(a), Str(b)) if a == b => Ok(()),
             (Num(a), Num(b)) if a == b => Ok(()),
             (Big(a), Big(b)) if a == b => Ok(()),

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use log::trace;
 
@@ -25,6 +25,9 @@ pub struct Normalizer<'a> {
     loc: Loc,
 
     instances: HashMap<Var, Term>,
+
+    expand_mu: bool,
+    expanded: HashSet<Var>,
 }
 
 impl<'a> Normalizer<'a> {
@@ -35,6 +38,8 @@ impl<'a> Normalizer<'a> {
             rho: Default::default(),
             loc,
             instances: Default::default(),
+            expand_mu: false,
+            expanded: Default::default(),
         }
     }
 
@@ -79,6 +84,10 @@ impl<'a> Normalizer<'a> {
                 } else {
                     ret
                 }
+            }
+            Mu(v) if self.expand_mu && !self.expanded.contains(&v) => {
+                self.expanded.insert(v.clone());
+                self.sigma.get(&v).unwrap().to_term(v)
             }
             MetaRef(k, x, sp) => {
                 let mut def = self.sigma.get(&x).unwrap().clone();
@@ -621,6 +630,11 @@ impl<'a> Normalizer<'a> {
 
     pub fn with_instances(&mut self, m: HashMap<Var, Term>, tm: Term) -> Result<Term, Error> {
         self.instances = m;
+        self.term(tm)
+    }
+
+    pub fn with_expand_once(&mut self, tm: Term) -> Result<Term, Error> {
+        self.expand_mu = true;
         self.term(tm)
     }
 
