@@ -1122,7 +1122,7 @@ impl Ecma {
             BoolEq(a, b) => self.bin_expr(sigma, loc, BinaryOp::EqEqEq, a, b)?,
             BoolNeq(a, b) => self.bin_expr(sigma, loc, BinaryOp::NotEqEq, a, b)?,
             Str(s) => Expr::Lit(Lit::Str(Self::js_raw_str(loc, s))),
-            StrAdd(a, b) => self.bin_expr(sigma, loc, BinaryOp::Sub, a, b)?,
+            StrAdd(a, b) => self.bin_expr(sigma, loc, BinaryOp::Add, a, b)?,
             StrEq(a, b) => self.bin_expr(sigma, loc, BinaryOp::EqEqEq, a, b)?,
             StrNeq(a, b) => self.bin_expr(sigma, loc, BinaryOp::NotEqEq, a, b)?,
             Num(v) => Expr::Lit(Lit::Num(JsNumber {

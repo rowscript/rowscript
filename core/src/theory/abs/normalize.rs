@@ -79,7 +79,7 @@ impl<'a> Normalizer<'a> {
             }
             Undef(v) => {
                 let ret = self.sigma.get(&v).unwrap().to_term(v.clone());
-                if noinline(&ret) {
+                if noinline(self.sigma, &ret) {
                     Undef(v)
                 } else {
                     ret
@@ -94,13 +94,7 @@ impl<'a> Normalizer<'a> {
                 *def.ret = self.term(*def.ret)?;
                 let ret = match &def.body {
                     Meta(_, s) => match s {
-                        Some(solved) => {
-                            let mut ret = *rename(Box::new(Term::lam(&def.tele, *solved.clone())));
-                            for (p, x) in sp {
-                                ret = App(Box::new(ret), p.into(), Box::new(x))
-                            }
-                            self.term(ret)?
-                        }
+                        Some(solved) => self.term(*solved.clone())?,
                         None => {
                             if let Some(tm) = def.ret.auto_implicit() {
                                 def.body = Meta(k, Some(Box::new(tm.clone())));
@@ -139,7 +133,7 @@ impl<'a> Normalizer<'a> {
             }
             Const(p, a, b) => {
                 let a = self.term_box(a)?;
-                if noinline(a.as_ref()) {
+                if noinline(self.sigma, a.as_ref()) {
                     Const(p, a, self.term_box(b)?)
                 } else {
                     self.rho.insert(p.var, a);
@@ -174,7 +168,7 @@ impl<'a> Normalizer<'a> {
             },
             Lam(p, b) => Lam(self.param(p)?, self.term_box(b)?),
             App(f, ai, x) => match self.term(*f)? {
-                Lam(p, b) if !noinline(x.as_ref()) => {
+                Lam(p, b) if !noinline(self.sigma, x.as_ref()) => {
                     let x = self.term_box(x)?;
                     self.rho.insert(p.var, x);
                     self.term(*b)?

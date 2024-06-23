@@ -362,13 +362,13 @@ impl Elaborator {
                 let r = self.check(*r, eff, ty)?;
                 Term::Guard(Box::new(p), Box::new(b), e, Box::new(r))
             }
-            Lam(loc, var, body) => match self.nf(loc).term(ty.clone())? {
+            Lam(loc, var, body) => match ty {
                 Term::Pi {
                     param: ty_param,
                     eff: ty_eff,
                     body: ty_body,
                 } => {
-                    self.unifier(loc).unify_eff(eff, &ty_eff)?;
+                    self.unifier(loc).unify_eff(eff, ty_eff)?;
 
                     let p = Param {
                         var: var.clone(),
@@ -377,11 +377,11 @@ impl Elaborator {
                     };
                     let b_ty = self
                         .nf(loc)
-                        .with([(&ty_param.var, &Term::Ref(var))], *ty_body)?;
+                        .with([(&ty_param.var, &Term::Ref(var))], *ty_body.clone())?;
                     let b = self.guarded_check([&p], *body, eff, &b_ty)?;
                     Term::Lam(p, Box::new(b))
                 }
-                ty => return Err(ExpectedPi(ty, loc)),
+                ty => return Err(ExpectedPi(ty.clone(), loc)),
             },
             Tuple(loc, a, b) => match ty {
                 Term::Sigma(p, body) => match p.typ.as_ref() {
@@ -541,7 +541,7 @@ impl Elaborator {
             self.infer_impl(e).map(|InferResult { tm, eff, ty }| {
                 let (tm, ty) = Term::unwrap_solved_implicit_lambda(tm, ty);
                 trace!(target: "elab", "expression inferred successfully: tm={tm}, eff={eff}, ty={ty}");
-                InferResult{ tm, eff, ty }
+                InferResult { tm, eff, ty }
             })
         })
     }
