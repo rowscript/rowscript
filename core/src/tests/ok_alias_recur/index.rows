@@ -24,6 +24,7 @@ function foldNat<T>(init: T, n: Nat, f: (a: T) => T): T {
         case Z: init
     }
 }
+const a3 = foldNat(0, S(S(Z)), (n) => n + 1);
 
 function fold<T, ItemT>(init: T, list: List<ItemT>, f: (a: T, i: ItemT) => T): T {
     switch (list) {
@@ -31,3 +32,4 @@ function fold<T, ItemT>(init: T, list: List<ItemT>, f: (a: T, i: ItemT) => T): T
         case Empty: init
     }
 }
+const a4 = fold(0, f2(), (n, i) => n + i);

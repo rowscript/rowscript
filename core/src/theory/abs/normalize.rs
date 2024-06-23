@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use log::trace;
 
-use crate::theory::abs::data::{CaseDefault, CaseMap, PartialClass, Term};
+use crate::theory::abs::data::{PartialClass, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::inline::noinline;
 use crate::theory::abs::reflect::Reflector;
@@ -548,9 +548,9 @@ impl<'a> Normalizer<'a> {
                                 _ => return Err(NonExhaustive(*a, self.loc)),
                             }
                         }
-                        _ => Switch(a, self.case_map(cs)?, self.case_default(d)?),
+                        _ => Switch(a, cs, d),
                     },
-                    _ => Switch(a, self.case_map(cs)?, self.case_default(d)?),
+                    _ => Switch(a, cs, d),
                 }
             }
             Unionify(a) => Unionify(self.term_box(a)?),
@@ -661,24 +661,6 @@ impl<'a> Normalizer<'a> {
     fn param(&mut self, mut p: Param<Term>) -> Result<Param<Term>, Error> {
         *p.typ = self.term(*p.typ)?;
         Ok(p)
-    }
-
-    fn case_map(&mut self, mut cs: CaseMap) -> Result<CaseMap, Error> {
-        for (_, tm) in cs.values_mut() {
-            // FIXME: not unwind-safe, refactor `Self::term` to accept a `&mut Term`
-            unsafe {
-                let tmp = std::ptr::read(tm);
-                std::ptr::write(tm, self.term(tmp)?);
-            }
-        }
-        Ok(cs)
-    }
-
-    fn case_default(&mut self, d: CaseDefault) -> Result<CaseDefault, Error> {
-        Ok(match d {
-            Some((v, tm)) => Some((v, self.term_box(tm)?)),
-            None => None,
-        })
     }
 
     fn check_constraint(&mut self, x: &Term, i: &Var) -> Result<(), Error> {
