@@ -79,7 +79,7 @@ impl<'a> Normalizer<'a> {
             }
             Undef(v) => {
                 let ret = self.sigma.get(&v).unwrap().to_term(v.clone());
-                if noinline(self.sigma, &ret) {
+                if noinline(&ret) {
                     Undef(v)
                 } else {
                     ret
@@ -133,7 +133,7 @@ impl<'a> Normalizer<'a> {
             }
             Const(p, a, b) => {
                 let a = self.term_box(a)?;
-                if noinline(self.sigma, a.as_ref()) {
+                if noinline(a.as_ref()) {
                     Const(p, a, self.term_box(b)?)
                 } else {
                     self.rho.insert(p.var, a);
@@ -168,7 +168,7 @@ impl<'a> Normalizer<'a> {
             },
             Lam(p, b) => Lam(self.param(p)?, self.term_box(b)?),
             App(f, ai, x) => match self.term(*f)? {
-                Lam(p, b) if !noinline(self.sigma, x.as_ref()) => {
+                Lam(p, b) => {
                     let x = self.term_box(x)?;
                     self.rho.insert(p.var, x);
                     self.term(*b)?
@@ -221,7 +221,7 @@ impl<'a> Normalizer<'a> {
             If(p, t, e) => match self.term(*p)? {
                 True => self.term(*t)?,
                 False => self.term(*e)?,
-                p => If(Box::new(p), self.term_box(t)?, self.term_box(e)?),
+                p => If(Box::new(p), t, e),
             },
             BoolOr(a, b) => {
                 let a = self.term_box(a)?;

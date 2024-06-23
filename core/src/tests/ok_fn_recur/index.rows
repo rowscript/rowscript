@@ -12,7 +12,6 @@ function g(): number {
 }
 
 function f0<T>(init: T, n: number, f: (a: T) => T): T {
-    (n < 0) ? init : f0(f(init), n - 1, f)
+    (n <= 0) ? init : f0(f(init), n - 1, f)
 }
-// This fails...
-//const a = f0("", 3, (s) => s + "0");
+const a = f0("", 3, (s) => s + "0");

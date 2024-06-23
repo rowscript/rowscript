@@ -1,48 +1,41 @@
 use crate::theory::abs::data::Term;
-use crate::theory::abs::def::Sigma;
 
-pub fn noinline(sigma: &Sigma, tm: &Term) -> bool {
+pub fn noinline(tm: &Term) -> bool {
     use Term::*;
     match tm {
-        MetaRef(_, v, _) => {
-            let tm = sigma.get(v).unwrap().to_term(v.clone());
-            noinline(sigma, &tm)
-        }
         Fields(fields) => {
             for tm in fields.values() {
-                if noinline(sigma, tm) {
+                if noinline(tm) {
                     return true;
                 }
             }
             false
         }
         Switch(a, b, d) => {
-            if noinline(sigma, a) {
+            if noinline(a) {
                 return true;
             }
             for (_, a) in b.values() {
-                if noinline(sigma, a) {
+                if noinline(a) {
                     return true;
                 }
             }
             if let Some((_, tm)) = d {
-                if noinline(sigma, tm) {
+                if noinline(tm) {
                     return true;
                 }
             }
             false
         }
         Guard(p, a, e, b) => {
-            let mut fold = noinline(sigma, p) || noinline(sigma, a) || noinline(sigma, b);
+            let mut fold = noinline(p) || noinline(a) || noinline(b);
             if let Some(e) = e {
-                fold = fold || noinline(sigma, e);
+                fold = fold || noinline(e);
             }
             fold
         }
 
-        While(a, b, c) | If(a, b, c) => {
-            noinline(sigma, a) || noinline(sigma, b) || noinline(sigma, c)
-        }
+        While(a, b, c) | If(a, b, c) => noinline(a) || noinline(b) || noinline(c),
 
         Const(_, a, b)
         | Fori(a, b)
@@ -69,7 +62,7 @@ pub fn noinline(sigma: &Sigma, tm: &Term) -> bool {
         | NumLt(a, b)
         | NumGt(a, b)
         | Combine(.., a, b)
-        | Concat(a, b) => noinline(sigma, a) || noinline(sigma, b),
+        | Concat(a, b) => noinline(a) || noinline(b),
 
         Lam(.., a)
         | BoolNot(a)
@@ -81,38 +74,16 @@ pub fn noinline(sigma: &Sigma, tm: &Term) -> bool {
         | Variant(a)
         | Up(a, ..)
         | Spread(a)
-        | Reflect(.., a) => noinline(sigma, a),
+        | Reflect(.., a) => noinline(a),
 
-        Extern(..)
-        | Let(..)
-        | Update(..)
-        | Return(..)
-        | Continue
-        | Break
-        | ArrIterNext(..)
-        | Arr(..)
-        | ArrLength(..)
-        | ArrPush(..)
-        | ArrForeach(..)
-        | ArrAt(..)
-        | ArrInsert(..)
-        | ArrIter(..)
-        | MapIterNext(..)
-        | Kv(..)
-        | MapHas(..)
-        | MapGet(..)
-        | MapSet(..)
-        | MapDelete(..)
-        | MapClear(..)
-        | MapIter(..)
-        | Unionify(..)
-        | Find { .. }
-        | Panic(..)
-        | ConsoleLog(..)
-        | SetTimeout(..)
-        | EmitAsync(..) => true,
+        Extern(..) | Let(..) | Update(..) | Return(..) | Continue | Break | ArrIterNext(..)
+        | Arr(..) | ArrLength(..) | ArrPush(..) | ArrForeach(..) | ArrAt(..) | ArrInsert(..)
+        | ArrIter(..) | MapIterNext(..) | Kv(..) | MapHas(..) | MapGet(..) | MapSet(..)
+        | MapDelete(..) | MapClear(..) | MapIter(..) | Unionify(..) | Panic(..)
+        | ConsoleLog(..) | SetTimeout(..) | EmitAsync(..) => true,
 
         Ref(..)
+        | MetaRef(..)
         | Qualified(..)
         | Undef(..)
         | Mu(..)
@@ -144,6 +115,7 @@ pub fn noinline(sigma: &Sigma, tm: &Term) -> bool {
         | Downcast(..)
         | Enum(..)
         | Upcast(..)
+        | Find { .. }
         | Instanceof(..)
         | InstanceofSat
         | Varargs(..)
