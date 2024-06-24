@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use log::trace;
 
-use crate::theory::abs::data::{PartialClass, Term};
+use crate::theory::abs::data::{FieldMap, PartialClass, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::inline::noinline;
 use crate::theory::abs::reflect::Reflector;
@@ -517,6 +517,16 @@ impl<'a> Normalizer<'a> {
             Enum(r) => Enum(self.term_box(r)?),
             Variant(r) => Variant(self.term_box(r)?),
             Upcast(r) => Upcast(self.term_box(r)?),
+            Disjoint(a, b) => {
+                let a = self.term_box(a)?;
+                let b = self.term_box(b)?;
+                if let (Enum(a), Enum(b)) = (*a, *b) {
+                    if let (Fields(a), Fields(b)) = (*a, *b) {
+                        return Ok(Enum(Box::new(Fields(self.fields_disjoint(a, b)?))));
+                    }
+                }
+                unreachable!()
+            }
             Up(r, from, to) => {
                 let r = self.term_box(r)?;
                 let from = self.term_box(from)?;
@@ -752,5 +762,16 @@ impl<'a> Normalizer<'a> {
         }
 
         Ok(meth)
+    }
+
+    fn fields_disjoint(&mut self, mut a: FieldMap, b: FieldMap) -> Result<FieldMap, Error> {
+        for (x, x_ty) in a.iter() {
+            match b.get(x) {
+                Some(y_ty) => self.unifier().unify(x_ty, y_ty)?,
+                None => continue,
+            }
+        }
+        a.extend(b);
+        Ok(a)
     }
 }

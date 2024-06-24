@@ -114,6 +114,7 @@ impl Renamer {
             Enum(f) => Enum(self.term(f)),
             Variant(f) => Variant(self.term(f)),
             Upcast(a) => Upcast(self.term(a)),
+            Disjoint(a, b) => Disjoint(self.term(a), self.term(b)),
             Up(r, from, to) => Up(self.term(r), self.term(from), self.term(to)),
             Switch(a, cs, d) => {
                 let a = self.term(a);

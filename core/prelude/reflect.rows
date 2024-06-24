@@ -1,3 +1,26 @@
+type List<T> = [
+    Append: {value: T, list: List<T>}
+    | Empty
+];
+
+function map<From, To>(list: List<From>, f: (item: From) => To): List<To> {
+    switch (list) {
+        case Empty: Empty
+        case Append(item): Append({value: f(item.value), list: map(item.list, f)})
+    }
+}
+
+function reduce<Value, Item>(
+    list: List<Item>,
+    init: Value,
+    f: (value: Value, item: Item) => Value
+): Value {
+    switch (list) {
+        case Append(item): reduce(item.list, f(init, item.value), f)
+        case Empty: init
+    }
+}
+
 type RepKind =
     [ RepKindNumber
     | RepKindString

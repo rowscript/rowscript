@@ -4,17 +4,17 @@ function f0(): Nat {
     S(S(Z))
 }
 
-type List<T> = [
-    Append: {value: T, rest: List<T>}
+type MyList<T> = [
+    Append: {value: T, list: MyList<T>}
     | Empty
 ];
 
-function f1(): List<number> {
+function f1(): MyList<number> {
     Empty
 }
 
-function f2(): List<number> {
-    Append({value: 2, rest: Append({value: 1, rest: Empty})})
+function f2(): MyList<number> {
+    Append({value: 2, list: Append({value: 1, list: Empty})})
 }
 console.log(f2());
 
@@ -26,10 +26,10 @@ function foldNat<T>(init: T, n: Nat, f: (a: T) => T): T {
 }
 const a3 = foldNat(0, S(S(Z)), (n) => n + 1);
 
-function fold<T, ItemT>(init: T, list: List<ItemT>, f: (a: T, i: ItemT) => T): T {
+function myFold<T, ItemT>(init: T, list: MyList<ItemT>, f: (a: T, i: ItemT) => T): T {
     switch (list) {
-        case Append(item): fold(f(init, item.value), item.rest, f)
+        case Append(item): myFold(f(init, item.value), item.list, f)
         case Empty: init
     }
 }
-const a4 = fold(0, f2(), (n, i) => n + i);
+const a4 = myFold(0, f2(), (n, i) => n + i);

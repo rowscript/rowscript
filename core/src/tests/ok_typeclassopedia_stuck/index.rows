@@ -1,11 +1,11 @@
 interface Functor<T> {
-    map<A, B>(f: (a: A) => B, x: Functor<A>): Functor<B>;
+    myMap<A, B>(f: (a: A) => B, x: Functor<A>): Functor<B>;
 }
 
 type Foo<T> = {n: T};
 
 instanceof Functor for Foo {
-    map<A, B>(f: (a: A) => B, x: Foo<A>): Foo<B> {
+    myMap<A, B>(f: (a: A) => B, x: Foo<A>): Foo<B> {
         {n: f(x.n)}
     }
 }
@@ -15,7 +15,7 @@ function numToStr(n: number): string;
 function f0<M: type => type, A, B>(f: (a: A) => B, x: M<A>): M<B>
 where M instanceof Functor
 {
-    map<M>(f, x)
+    myMap<M>(f, x)
 }
 
 function f1(): string {

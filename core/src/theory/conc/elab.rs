@@ -1097,7 +1097,6 @@ impl Elaborator {
                 }
             }
             Switch(loc, a, cs, d) => {
-                let mut ret_ty = None;
                 let a_loc = a.loc();
                 let InferResult {
                     tm: a,
@@ -1118,6 +1117,7 @@ impl Elaborator {
                     _ => return Err(ExpectedEnum(en, a_loc)),
                 };
                 let mut m = CaseMap::default();
+                let mut ret_ty = None;
                 for (n, v, e) in cs {
                     let ty = match fields {
                         Some(f) => f
@@ -1138,7 +1138,25 @@ impl Elaborator {
                             ret_ty = Some(ty);
                             tm
                         }
-                        Some(ret) => self.guarded_check([&pat], e, &a_eff, ret)?,
+                        Some(ret) => match ret {
+                            // If every branch's inferred type is upcast, we try to create a disjoint union of each.
+                            Term::Upcast(a_ty) => {
+                                let InferResult { tm, eff, ty } = self.guarded_infer([&pat], e)?;
+                                match ty {
+                                    Term::Upcast(b_ty) => {
+                                        ret_ty = Some(self.nf(loc).term(Term::Upcast(Box::new(
+                                            Term::Disjoint(a_ty.clone(), b_ty),
+                                        )))?)
+                                    }
+                                    ty => {
+                                        self.unifier(loc).unify_eff(&a_eff, &eff)?;
+                                        self.unifier(loc).unify(ret, &ty)?;
+                                    }
+                                }
+                                tm
+                            }
+                            ret => self.guarded_check([&pat], e, &a_eff, ret)?,
+                        },
                     };
                     m.insert(n, (v, tm));
                 }
