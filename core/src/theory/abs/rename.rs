@@ -118,11 +118,12 @@ impl Renamer {
             Up(r, from, to) => Up(self.term(r), self.term(from), self.term(to)),
             Switch(a, cs, d) => {
                 let a = self.term(a);
-                let mut m = CaseMap::default();
+                let mut cm = CaseMap::default();
                 for (n, (v, tm)) in cs {
-                    m.insert(n, (v, *self.term(Box::new(tm))));
+                    cm.insert(n, (self.param_var(v), *self.term(Box::new(tm))));
                 }
-                Switch(a, m, d.map(|(v, tm)| (v, self.term(tm))))
+                let dc = d.map(|(v, tm)| (self.param_var(v), self.term(tm)));
+                Switch(a, cm, dc)
             }
             Unionify(a) => Unionify(self.term(a)),
             Find {
@@ -164,13 +165,18 @@ impl Renamer {
 
     fn param(&mut self, p: Param<Term>) -> Param<Term> {
         let typ = self.term(p.typ);
-        let var = Var::new(p.var.name.as_str());
-        self.0.insert(p.var, var.clone());
+        let var = self.param_var(p.var);
         Param {
             var,
             info: p.info,
             typ,
         }
+    }
+
+    fn param_var(&mut self, old: Var) -> Var {
+        let new = Var::new(old.name.as_str());
+        self.0.insert(old, new.clone());
+        new
     }
 }
 
