@@ -6,7 +6,7 @@ type List<T> = [
 function map<From, To>(list: List<From>, f: (item: From) => To): List<To> {
     switch (list) {
         case Empty: Empty
-        case Append(item): Append({value: f(item.value), list: map(item.list, f)})
+        case Append(item): Append({value: f(item.value), list: item.list.map(f)})
     }
 }
 
@@ -16,20 +16,30 @@ function reduce<Value, Item>(
     f: (value: Value, item: Item) => Value
 ): Value {
     switch (list) {
-        case Append(item): reduce(item.list, f(init, item.value), f)
         case Empty: init
+        case Append(item): item.list.reduce(f(init, item.value), f)
     }
 }
 
-type RepKind =
-    [ RepKindNumber
+function join(list: List<string>, sep: string): string {
+    switch (list) {
+        case Empty: ""
+        case Append(a): switch (a.list) {
+            case Empty: a.value
+            case Append(b): a.value + a.list.reduce("", (s, item) => s + sep + item)
+        }
+    }
+}
+
+type RepKind = [
+    RepKindNumber
     | RepKindString
     | RepKindBoolean
     | RepKindBigint
     | RepKindUnit
     | RepKindObject
     | RepKindEnum
-    ];
+];
 
 function unreflect<'R, T>(r: {'R}): T
 where (value: T) keyof 'R

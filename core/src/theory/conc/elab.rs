@@ -1103,7 +1103,7 @@ impl Elaborator {
                     eff: a_eff,
                     ty: a_ty,
                 } = self.infer(*a)?;
-                let en = self.nf(loc).term(a_ty)?;
+                let en = self.nf(loc).with_expand_once(a_ty)?;
                 let fields = match &en {
                     Term::Enum(y) => match y.as_ref() {
                         Term::Fields(f) => {
