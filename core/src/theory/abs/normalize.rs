@@ -1,12 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
-use log::trace;
+use log::{debug, trace};
 
-use crate::theory::abs::data::{FieldMap, PartialClass, Term};
+use crate::theory::abs::data::{CaseDefault, CaseMap, FieldMap, PartialClass, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::inline::noinline;
 use crate::theory::abs::reflect::Reflector;
-use crate::theory::abs::rename::rename;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::{UnnamedExplicit, UnnamedImplicit};
@@ -26,6 +25,8 @@ pub struct Normalizer<'a> {
 
     instances: HashMap<Var, Term>,
 
+    expand_undef: bool,
+
     expand_mu: bool,
     expanded: HashSet<Var>,
 }
@@ -38,6 +39,7 @@ impl<'a> Normalizer<'a> {
             rho: Default::default(),
             loc,
             instances: Default::default(),
+            expand_undef: true,
             expand_mu: false,
             expanded: Default::default(),
         }
@@ -68,16 +70,16 @@ impl<'a> Normalizer<'a> {
         use Body::*;
         use Term::*;
 
-        trace!(target: "normalize", "normalizing term: {tm}");
+        debug!(target: "normalize", "normalizing term: {tm}");
         Ok(match tm {
             Ref(x) => {
                 if let Some(y) = self.rho.get(&x) {
-                    *self.term_box(rename(y.clone()))?
+                    *y.clone()
                 } else {
                     Ref(x)
                 }
             }
-            Undef(v) => {
+            Undef(v) if self.expand_undef => {
                 let ret = self.sigma.get(&v).unwrap().to_term(v.clone());
                 if noinline(&ret) {
                     Undef(v)
@@ -132,15 +134,16 @@ impl<'a> Normalizer<'a> {
                 }
             }
             Const(p, a, b) => {
+                let p = self.param(p)?;
                 let a = self.term_box(a)?;
                 if noinline(a.as_ref()) {
-                    Const(p, a, self.term_box(b)?)
+                    Const(p, a, Box::new(self.without_expand_undef(*b)?))
                 } else {
                     self.rho.insert(p.var, a);
                     self.term(*b)?
                 }
             }
-            Let(p, a, b) => Let(p, self.term_box(a)?, self.term_box(b)?),
+            Let(p, a, b) => Let(self.param(p)?, self.term_box(a)?, self.term_box(b)?),
             Update(p, a, b) => Update(p, self.term_box(a)?, self.term_box(b)?),
             While(p, b, r) => While(self.term_box(p)?, self.term_box(b)?, self.term_box(r)?),
             Fori(b, r) => Fori(self.term_box(b)?, self.term_box(r)?),
@@ -207,7 +210,7 @@ impl<'a> Normalizer<'a> {
                                 .rfold(body, |b, (p, a)| Const(p, a, Box::new(b))),
                         )?
                     }
-                    a => TupleBind(p, q, Box::new(a), self.term_box(b)?),
+                    _ => TupleBind(p, q, a, Box::new(self.without_expand_undef(*b)?)),
                 }
             }
             UnitBind(a, b) => {
@@ -558,9 +561,9 @@ impl<'a> Normalizer<'a> {
                                 _ => return Err(NonExhaustive(*a, self.loc)),
                             }
                         }
-                        _ => Switch(a, cs, d),
+                        _ => Switch(a, self.case_map(cs)?, self.case_default(d)?),
                     },
-                    _ => Switch(a, cs, d),
+                    _ => Switch(a, self.case_map(cs)?, self.case_default(d)?),
                 }
             }
             Unionify(a) => Unionify(self.term_box(a)?),
@@ -637,8 +640,13 @@ impl<'a> Normalizer<'a> {
         self.term(tm)
     }
 
-    pub fn with_expand_once(&mut self, tm: Term) -> Result<Term, Error> {
+    pub fn with_expand_mu(&mut self, tm: Term) -> Result<Term, Error> {
         self.expand_mu = true;
+        self.term(tm)
+    }
+
+    fn without_expand_undef(&mut self, tm: Term) -> Result<Term, Error> {
+        self.expand_undef = false;
         self.term(tm)
     }
 
@@ -671,6 +679,26 @@ impl<'a> Normalizer<'a> {
     fn param(&mut self, mut p: Param<Term>) -> Result<Param<Term>, Error> {
         *p.typ = self.term(*p.typ)?;
         Ok(p)
+    }
+
+    fn case_map(&mut self, mut cs: CaseMap) -> Result<CaseMap, Error> {
+        self.expand_undef = false;
+        for (_, tm) in cs.values_mut() {
+            // FIXME: not unwind-safe, refactor `Self::term` to accept a `&mut Term`
+            unsafe {
+                let tmp = std::ptr::read(tm);
+                std::ptr::write(tm, self.without_expand_undef(tmp)?);
+            }
+        }
+        Ok(cs)
+    }
+
+    fn case_default(&mut self, d: CaseDefault) -> Result<CaseDefault, Error> {
+        self.expand_undef = false;
+        Ok(match d {
+            Some((v, tm)) => Some((v, Box::new(self.without_expand_undef(*tm)?))),
+            None => None,
+        })
     }
 
     fn check_constraint(&mut self, x: &Term, i: &Var) -> Result<(), Error> {

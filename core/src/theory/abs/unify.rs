@@ -174,11 +174,11 @@ impl<'a> Unifier<'a> {
             (Reflected(a), Reflected(b)) => self.unify(a, b),
 
             (a, Object(..)) | (a, Downcast(..)) | (a, Enum(..)) | (a, Upcast(..)) if a.has_mu() => {
-                let a = self.nf().with_expand_once(a.clone())?;
+                let a = self.nf().with_expand_mu(a.clone())?;
                 self.unify(&a, rhs)
             }
             (Object(..), b) | (Downcast(..), b) | (Enum(..), b) | (Upcast(..), b) if b.has_mu() => {
-                let b = self.nf().with_expand_once(b.clone())?;
+                let b = self.nf().with_expand_mu(b.clone())?;
                 self.unify(lhs, &b)
             }
 

@@ -46,7 +46,8 @@ impl Renamer {
             Sigma(p, c) => Sigma(self.param(p), self.term(c)),
             Tuple(a, b) => Tuple(self.term(a), self.term(b)),
             TupleBind(x, y, a, b) => {
-                TupleBind(self.param(x), self.param(y), self.term(a), self.term(b))
+                let a = self.term(a);
+                TupleBind(self.param(x), self.param(y), a, self.term(b))
             }
             UnitBind(a, b) => UnitBind(self.term(a), self.term(b)),
             If(p, t, e) => If(self.term(p), self.term(t), self.term(e)),

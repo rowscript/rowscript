@@ -13,11 +13,11 @@ function map<From, To>(list: List<From>, f: (item: From) => To): List<To> {
 function reduce<Value, Item>(
     list: List<Item>,
     init: Value,
-    f: (value: Value, item: Item) => Value
+    acc: (value: Value, item: Item) => Value
 ): Value {
     switch (list) {
         case Empty: init
-        case Append(item): item.list.reduce(f(init, item.value), f)
+        case Append(item): item.list.reduce(init.acc(item.value), acc)
     }
 }
 
