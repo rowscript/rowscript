@@ -2,9 +2,6 @@ declare panic<T>(m: string): T;
 
 declare console#log<Args>(...: Args);
 
-declare Reflected<T>;
-declare reflect<T>(t: T): Reflected<T>;
-
 declare number#__add__(a: number, b: number): number;
 declare number#__sub__(a: number, b: number): number;
 declare number#__mul__(a: number, b: number): number;

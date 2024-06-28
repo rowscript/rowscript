@@ -74,7 +74,7 @@ pub fn noinline(tm: &Term) -> bool {
         | Variant(a)
         | Up(a, ..)
         | Spread(a)
-        | Reflect(.., a) => noinline(a),
+        | Typeof(.., a) => noinline(a),
 
         Extern(..) | Let(..) | Update(..) | Return(..) | Continue | Break | ArrIterNext(..)
         | Arr(..) | ArrLength(..) | ArrPush(..) | ArrForeach(..) | ArrAt(..) | ArrInsert(..)
@@ -121,7 +121,6 @@ pub fn noinline(tm: &Term) -> bool {
         | InstanceofSat
         | Varargs(..)
         | AnonVarargs(..)
-        | Reflected(..)
         | Cls { .. }
         | Pure
         | Effect(..) => false,

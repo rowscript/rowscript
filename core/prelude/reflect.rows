@@ -40,9 +40,3 @@ type RepKind = [
     | RepKindObject
     | RepKindEnum
 ];
-
-function unreflect<'R, T>(r: {'R}): T
-where (value: T) keyof 'R
-{
-    r.value
-}

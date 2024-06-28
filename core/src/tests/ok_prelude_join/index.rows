@@ -1,7 +1,7 @@
-const a0: List<string> = Empty;
-const a1: List<string> = Append({value: "a", list: Empty});
-const a2: List<string> = Append({value: "a", list: Append({value: "b", list: Empty})});
-const a3: List<string> = Append({value: "a", list: Append({value: "b", list: Append({value: "c", list: Empty})})});
+const a0 = Empty;
+const a1 = Append({value: "a", list: Empty});
+const a2 = Append({value: "a", list: Append({value: "b", list: Empty})});
+const a3 = Append({value: "a", list: Append({value: "b", list: Append({value: "c", list: Empty})})});
 
 console.log(a0.join(", "));
 console.log(a1.join(", "));

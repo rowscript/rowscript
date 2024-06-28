@@ -5,10 +5,9 @@ use log::{debug, trace};
 use crate::theory::abs::data::{CaseDefault, CaseMap, FieldMap, PartialClass, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::inline::noinline;
-use crate::theory::abs::reflect::Reflector;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo;
-use crate::theory::conc::data::ArgInfo::{UnnamedExplicit, UnnamedImplicit};
+use crate::theory::conc::data::ArgInfo::UnnamedImplicit;
 use crate::theory::{Loc, Param, Var};
 use crate::theory::{NameMap, ASYNC};
 use crate::Error::{
@@ -47,10 +46,6 @@ impl<'a> Normalizer<'a> {
 
     fn unifier(&mut self) -> Unifier {
         Unifier::new(self.ubiquitous, self.sigma, self.loc)
-    }
-
-    fn reflector(&self) -> Reflector {
-        Reflector::new(self.ubiquitous, self.loc)
     }
 
     pub fn term(&mut self, tm: Term) -> Result<Term, Error> {
@@ -601,17 +596,13 @@ impl<'a> Normalizer<'a> {
                     ty => self.find_instance(ty, i, f)?,
                 }
             }
-            Reflected(a) => {
-                let ty = *self.term_box(a)?;
-                *self.reflector().reflected(ty, true)?
-            }
-            Reflect(ty, a) => {
+            Typeof(ty, a) => {
                 let ty = self.term(*ty)?;
                 let a = Box::new(self.term(*a)?);
                 if ty.is_unsolved() {
-                    Reflect(Box::new(ty), a)
+                    Typeof(Box::new(ty), a)
                 } else {
-                    self.term(App(self.reflector().reflect(ty)?, UnnamedExplicit, a))?
+                    todo!()
                 }
             }
             Panic(a) => Panic(self.term_box(a)?),

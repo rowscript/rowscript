@@ -4,8 +4,8 @@ use crate::theory::abs::data::Term::{
     Array, ArrayIterator, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean, ConsoleLog,
     EmitAsync, Enum, Fields, Find, Map, MapClear, MapDelete, MapGet, MapHas, MapIter, MapIterNext,
     MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt, NumMod, NumMul, NumNeg,
-    NumNeq, NumSub, NumToStr, Number, Object, Panic, Pi, Pure, Ref, Reflect, Reflected, SetTimeout,
-    StrAdd, StrEq, StrNeq, String, TupleBind, Unit, Univ,
+    NumNeq, NumSub, NumToStr, Number, Object, Panic, Pi, Pure, Ref, SetTimeout, StrAdd, StrEq,
+    StrNeq, String, TupleBind, Unit, Univ,
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
@@ -169,8 +169,6 @@ impl Builtins {
             .panic()
             .console_log()
             .set_timeout()
-            .reflected()
-            .reflect()
             .boolean_or()
             .boolean_and()
             .boolean_not()
@@ -322,39 +320,6 @@ impl Builtins {
                     Ref(f_rhs),
                     SetTimeout(Box::new(Ref(f)), Box::new(Ref(d)), Box::new(Ref(ends))),
                 ),
-            ),
-        )
-    }
-
-    fn reflected(self) -> Self {
-        let t = Var::new("T");
-        self.func(
-            "Reflected",
-            vec![type_param(t.clone())],
-            Univ,
-            Reflected(Box::new(Ref(t))),
-        )
-    }
-
-    fn reflect(self) -> Self {
-        let r = self.ubiquitous.get("Reflected").unwrap().1.clone();
-        let reflected = self.sigma.get(&r).unwrap().to_term(r);
-        let t = Var::new("T");
-        let v = Var::new("v");
-        let (tupled, tele) = parameters([t.clone()], [(v.clone(), Ref(t.clone()))]);
-        self.func(
-            "reflect",
-            tele,
-            App(
-                Box::new(reflected),
-                ArgInfo::UnnamedImplicit,
-                Box::new(Ref(t.clone())),
-            ),
-            explicit_tuple_bind1(
-                v.clone(),
-                Ref(t.clone()),
-                tupled,
-                Reflect(Box::new(Ref(t)), Box::new(Ref(v))),
             ),
         )
     }

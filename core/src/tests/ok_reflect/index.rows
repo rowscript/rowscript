@@ -1,16 +1,4 @@
 type A = {a: number};
 type B = [B0: number | B1];
 
-const x0: Reflected<A> = reflect({a: 42});
-
-// This does not work since `B1` here is trivially inferred first.
-//const x1: Reflected<B> = reflect(B1);
-
-function f0(): Reflected<B> {
-    const b: B = B1;
-    reflect(b)
-}
-
-function f1(b: B): Reflected<B> {
-    reflect(b)
-}
+// TODO

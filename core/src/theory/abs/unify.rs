@@ -171,7 +171,6 @@ impl<'a> Unifier<'a> {
             (Variant(a), Variant(b)) => self.unify(a, b),
             (Upcast(a), Enum(b)) => self.upcast(a, b),
             (Enum(a), Upcast(b)) => self.upcast(b, a).map_err(Self::swap_err),
-            (Reflected(a), Reflected(b)) => self.unify(a, b),
 
             (a, Object(..)) | (a, Downcast(..)) | (a, Enum(..)) | (a, Upcast(..)) if a.has_mu() => {
                 let a = self.nf().with_expand_mu(a.clone())?;

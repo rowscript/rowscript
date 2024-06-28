@@ -162,8 +162,7 @@ pub enum Term {
     AnonVarargs(Box<Self>),
     Spread(Box<Self>),
 
-    Reflected(Box<Self>),
-    Reflect(Box<Self>, Box<Self>),
+    Typeof(Box<Self>, Box<Self>),
 
     Cls {
         class: Var,
@@ -489,8 +488,7 @@ impl Display for Term {
                 Varargs(t) => format!("...Array<{t}>"),
                 AnonVarargs(t) => format!("...{t}"),
                 Spread(a) => format!("...{a}"),
-                Reflected(a) => format!("Reflected<{a}>"),
-                Reflect(ty, tm) => format!("reflect<{ty}>({tm})"),
+                Typeof(ty, tm) => format!("reflect<{ty}>({tm})"),
                 Cls { class, .. } => format!("class {class}"),
                 Panic(a) => format!("panic({a})"),
                 ConsoleLog(m) => format!("console.log({m})"),
