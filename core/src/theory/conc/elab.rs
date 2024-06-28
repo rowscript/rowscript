@@ -1222,6 +1222,32 @@ impl Elaborator {
                     ty,
                 }
             }
+            Typeof(_, a) => {
+                let InferResult { ty, .. } = self.infer(*a)?;
+                let type_of = self.ubiquitous.get("Typeof").unwrap().1.clone();
+                let type_of = self.sigma.get(&type_of).unwrap().to_term(type_of);
+                InferResult {
+                    tm: Term::Typeof(Box::new(ty)),
+                    eff: Term::Pure,
+                    ty: type_of,
+                }
+            }
+            Keyof(loc, a) => {
+                let InferResult { ty, .. } = self.infer(*a)?;
+                let list_ty = self.ubiquitous.get("List").unwrap().1.clone();
+                let list_ty = self.sigma.get(&list_ty).unwrap().to_term(list_ty);
+                let label_list_ty = self.nf(loc).term(Term::App(
+                    Box::new(list_ty),
+                    UnnamedImplicit,
+                    Box::new(Term::String),
+                ))?;
+                InferResult {
+                    tm: Term::Keyof(Box::new(ty)),
+                    eff: Term::Pure,
+                    // TODO: DO NOT use String here, add a new type called Label.
+                    ty: label_list_ty,
+                }
+            }
             Pure(_) => InferResult::pure(Term::Pure, Term::Row),
             Effect(loc, a) => {
                 let mut effs = FieldSet::new();

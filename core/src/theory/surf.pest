@@ -328,10 +328,12 @@ type_app = { ("(" ~ type_expr ~ ")" | tyref) ~ implicit_args? ~ ("::" ~ type_id)
 expr = { prefix_op* ~ primary_expr ~ (infix_op ~ prefix_op* ~ primary_expr)* }
 prefix_op =
  _{ prefix_typeof
+  | prefix_keyof
   | prefix_not
   | prefix_neg
   }
 prefix_typeof = { "typeof" }
+prefix_keyof = { "keyof" }
 prefix_not = { "!" }
 prefix_neg = { "-" }
 infix_op =

@@ -96,6 +96,9 @@ pub enum Expr {
     Spread(Loc, Box<Self>),
     AnonSpread(Loc),
 
+    Typeof(Loc, Box<Self>),
+    Keyof(Loc, Box<Self>),
+
     Pure(Loc),
     Effect(Loc, Vec<Self>),
     EmitAsync(Loc, Box<Self>),
@@ -178,6 +181,8 @@ impl Expr {
             | AnonVarargs(loc, ..)
             | Spread(loc, ..)
             | AnonSpread(loc)
+            | Typeof(loc, ..)
+            | Keyof(loc, ..)
             | Pure(loc)
             | Effect(loc, ..)
             | EmitAsync(loc, ..)
@@ -384,6 +389,8 @@ impl Display for Expr {
                 AnonVarargs(_, t) => format!("...{t}"),
                 Spread(_, a) => format!("...{a}"),
                 AnonSpread(..) => "...".to_string(),
+                Typeof(_, a) => format!("typeof {a}"),
+                Keyof(_, a) => format!("keyof {a}"),
                 Pure(_) => "pure".to_string(),
                 Effect(_, a) => a
                     .iter()

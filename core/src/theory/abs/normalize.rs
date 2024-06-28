@@ -11,8 +11,8 @@ use crate::theory::conc::data::ArgInfo::UnnamedImplicit;
 use crate::theory::{Loc, Param, Var};
 use crate::theory::{NameMap, ASYNC};
 use crate::Error::{
-    ClassMethodNotImplemented, FieldsNonExtendable, NonExhaustive, UnresolvedField,
-    UnresolvedInstance, UnsatisfiedConstraint,
+    ClassMethodNotImplemented, ExpectedReflectable, FieldsNonExtendable, NonExhaustive,
+    UnresolvedField, UnresolvedInstance, UnsatisfiedConstraint,
 };
 use crate::{maybe_grow, Error};
 
@@ -596,13 +596,46 @@ impl<'a> Normalizer<'a> {
                     ty => self.find_instance(ty, i, f)?,
                 }
             }
-            Typeof(ty, a) => {
+            Typeof(ty) => {
                 let ty = self.term(*ty)?;
-                let a = Box::new(self.term(*a)?);
                 if ty.is_unsolved() {
-                    Typeof(Box::new(ty), a)
+                    Typeof(Box::new(ty))
                 } else {
-                    todo!()
+                    Variant(Box::new(Fields(FieldMap::from([(
+                        match ty {
+                            Number => "TypeofNumber",
+                            String => "TypeofString",
+                            Boolean => "TypeofBoolean",
+                            BigInt => "TypeofBigint",
+                            Unit => "TypeofUnit",
+                            Object(..) => "TypeofObject",
+                            Enum(..) => "TypeofEnum",
+                            _ => return Err(ExpectedReflectable(ty, self.loc)),
+                        }
+                        .to_string(),
+                        TT,
+                    )]))))
+                }
+            }
+            Keyof(ty) => {
+                let ty = self.term(*ty)?;
+                if ty.is_unsolved() {
+                    Keyof(Box::new(ty))
+                } else {
+                    match ty {
+                        Object(a) | Enum(a) => match *a {
+                            Fields(m) => {
+                                let mut ret = Term::list_empty();
+                                for (key, _) in m {
+                                    ret = Term::list_append(Str(format!("\"{key}\"")), ret);
+                                }
+                                ret
+                            }
+                            ty => return Err(ExpectedReflectable(ty, self.loc)),
+                        },
+                        Downcast(a, ..) | Upcast(a) => self.term(*a)?,
+                        _ => return Err(ExpectedReflectable(ty, self.loc)),
+                    }
                 }
             }
             Panic(a) => Panic(self.term_box(a)?),

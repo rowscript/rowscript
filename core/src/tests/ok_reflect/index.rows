@@ -1,4 +1,2 @@
-type A = {a: number};
-type B = [B0: number | B1];
-
-// TODO
+console.log(typeof {a: 42});
+console.log((keyof {a: 42, b: "hello"}).join(", "));

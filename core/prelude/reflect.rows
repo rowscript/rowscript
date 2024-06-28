@@ -31,12 +31,12 @@ function join(list: List<string>, sep: string): string {
     }
 }
 
-type RepKind = [
-    RepKindNumber
-    | RepKindString
-    | RepKindBoolean
-    | RepKindBigint
-    | RepKindUnit
-    | RepKindObject
-    | RepKindEnum
+type Typeof = [
+    TypeofNumber
+    | TypeofString
+    | TypeofBoolean
+    | TypeofBigint
+    | TypeofUnit
+    | TypeofObject
+    | TypeofEnum
 ];

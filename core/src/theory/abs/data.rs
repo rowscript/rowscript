@@ -162,7 +162,8 @@ pub enum Term {
     AnonVarargs(Box<Self>),
     Spread(Box<Self>),
 
-    Typeof(Box<Self>, Box<Self>),
+    Typeof(Box<Self>),
+    Keyof(Box<Self>),
 
     Cls {
         class: Var,
@@ -330,6 +331,25 @@ impl Term {
             }
         }
     }
+
+    pub fn list_empty() -> Self {
+        use Term::*;
+        Variant(Box::new(Fields(FieldMap::from([(
+            "Empty".to_string(),
+            TT,
+        )]))))
+    }
+
+    pub fn list_append(value: Self, list: Self) -> Self {
+        use Term::*;
+        Variant(Box::new(Fields(FieldMap::from([(
+            "Append".to_string(),
+            Obj(Box::new(Fields(FieldMap::from([
+                ("value".to_string(), value),
+                ("list".to_string(), list),
+            ])))),
+        )]))))
+    }
 }
 
 impl Syntax for Term {}
@@ -488,7 +508,8 @@ impl Display for Term {
                 Varargs(t) => format!("...Array<{t}>"),
                 AnonVarargs(t) => format!("...{t}"),
                 Spread(a) => format!("...{a}"),
-                Typeof(ty, tm) => format!("reflect<{ty}>({tm})"),
+                Typeof(ty) => format!("typeof<{ty}>()"),
+                Keyof(ty) => format!("keyof<{ty}>()"),
                 Cls { class, .. } => format!("class {class}"),
                 Panic(a) => format!("panic({a})"),
                 ConsoleLog(m) => format!("console.log({m})"),

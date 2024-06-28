@@ -10,8 +10,8 @@ use crate::theory::conc::load::{Import, ImportedDefs, Loaded};
 use crate::theory::{
     NameMap, Param, RawNameSet, ResolvedVar, Tele, Var, VarKind, TUPLED, UNBOUND, UNTUPLED_ENDS,
 };
-use crate::Error;
 use crate::Error::{DuplicateName, NonAnonVariadicDef, UnresolvedVar};
+use crate::{maybe_grow, Error};
 
 pub struct Resolver<'a> {
     ubiquitous: &'a NameMap,
@@ -265,6 +265,13 @@ impl<'a> Resolver<'a> {
     }
 
     fn expr(&mut self, #[allow(clippy::boxed_local)] e: Box<Expr>) -> Result<Box<Expr>, Error> {
+        maybe_grow(move || self.expr_impl(e))
+    }
+
+    fn expr_impl(
+        &mut self,
+        #[allow(clippy::boxed_local)] e: Box<Expr>,
+    ) -> Result<Box<Expr>, Error> {
         use Expr::*;
         Ok(Box::new(match *e {
             Unresolved(loc, m, r) => match m {
@@ -443,6 +450,8 @@ impl<'a> Resolver<'a> {
                 .1
                 .clone(),
             ),
+            Typeof(loc, a) => Typeof(loc, self.expr(a)?),
+            Keyof(loc, a) => Keyof(loc, self.expr(a)?),
             Effect(loc, a) => {
                 let mut resolved = Vec::default();
                 for e in a {
