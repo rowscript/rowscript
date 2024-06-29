@@ -17,10 +17,13 @@ declare number#__le__(a: number, b: number): boolean;
 declare number#__ge__(a: number, b: number): boolean;
 declare number#__lt__(a: number, b: number): boolean;
 declare number#__gt__(a: number, b: number): boolean;
+declare number#toString(a: number): string;
 
 declare boolean#__or__(a: boolean, b: boolean): boolean;
 declare boolean#__and__(a: boolean, b: boolean): boolean;
 declare boolean#__not__(a: boolean): boolean;
+
+declare bigint#toString(a: bigint): string;
 
 declare NativeArrayIterator<T>;
 declare arrayIter#next<T>(it: NativeArrayIterator<T>): [Ok: T | None];

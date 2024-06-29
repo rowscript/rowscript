@@ -1,10 +1,10 @@
 use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{
     AnonVarargs, App, ArrAt, ArrForeach, ArrInsert, ArrIter, ArrIterNext, ArrLength, ArrPush,
-    Array, ArrayIterator, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean, ConsoleLog,
-    EmitAsync, Enum, Fields, Find, JSONStringify, Map, MapClear, MapDelete, MapGet, MapHas,
-    MapIter, MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt,
-    NumMod, NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object, Panic, Pi, Pure, Ref,
+    Array, ArrayIterator, Bigint, BigintToStr, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean,
+    ConsoleLog, EmitAsync, Enum, Fields, Find, JSONStringify, Map, MapClear, MapDelete, MapGet,
+    MapHas, MapIter, MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe,
+    NumLt, NumMod, NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object, Panic, Pi, Pure, Ref,
     SetTimeout, StrAdd, StrEq, StrNeq, String, TupleBind, Unit, Univ,
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
@@ -190,6 +190,7 @@ impl Builtins {
             .number_gt()
             .number_neg()
             .number_to_string()
+            .bigint_to_string()
             .array_iterator_type()
             .array_iterator_next()
             .array_type()
@@ -353,6 +354,14 @@ impl Builtins {
         Number,
         String,
         NumToStr
+    );
+
+    un_op!(
+        bigint_to_string,
+        "bigint#toString",
+        Bigint,
+        String,
+        BigintToStr
     );
 
     fn array_iterator_type(self) -> Self {

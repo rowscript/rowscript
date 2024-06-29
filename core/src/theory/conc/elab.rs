@@ -1368,8 +1368,8 @@ impl Elaborator {
             Str(_, v) => InferResult::pure(Term::Str(v), Term::String),
             Number(_) => InferResult::pure(Term::Number, Term::Univ),
             Num(_, r) => InferResult::pure(Term::Num(r.parse().unwrap()), Term::Number),
-            BigInt(_) => InferResult::pure(Term::BigInt, Term::Univ),
-            Big(_, v) => InferResult::pure(Term::Big(v), Term::BigInt),
+            BigInt(_) => InferResult::pure(Term::Bigint, Term::Univ),
+            Big(_, v) => InferResult::pure(Term::Big(v), Term::Bigint),
             Row(_) => InferResult::pure(Term::Row, Term::Univ),
 
             _ => unreachable!(),

@@ -370,6 +370,15 @@ impl<'a> Normalizer<'a> {
                 Num(a) => Str(format!("\"{a}\"")),
                 a => NumToStr(Box::new(a)),
             },
+            BigintToStr(a) => match *self.term_box(a)? {
+                Big(mut a) => {
+                    if a.ends_with('n') {
+                        a.pop();
+                    }
+                    Str(format!("\"{a}\""))
+                }
+                a => BigintToStr(Box::new(a)),
+            },
             ArrayIterator(t) => ArrayIterator(self.term_box(t)?),
             ArrIterNext(it) => ArrIterNext(self.term_box(it)?),
             Array(t) => Array(self.term_box(t)?),
@@ -606,7 +615,7 @@ impl<'a> Normalizer<'a> {
                             Number => "TypeofNumber",
                             String => "TypeofString",
                             Boolean => "TypeofBoolean",
-                            BigInt => "TypeofBigint",
+                            Bigint => "TypeofBigint",
                             Unit => "TypeofUnit",
                             Object(..) => "TypeofObject",
                             Enum(..) => "TypeofEnum",

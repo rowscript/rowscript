@@ -197,6 +197,7 @@ builtin =
   | "number#__gt__"
   | "number#__neg__"
   | "number#toString"
+  | "bigint#toString"
   | "arrayIter#next"
   | "array#length"
   | "array#push"
@@ -386,8 +387,8 @@ chainable_operand =
   | paren_expr
   | string
   | multiline_string
-  | number
   | bigint
+  | number
   | boolean_false
   | boolean_true
   | object_literal

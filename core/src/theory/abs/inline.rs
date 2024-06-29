@@ -68,6 +68,7 @@ pub fn noinline(tm: &Term) -> bool {
         | BoolNot(a)
         | NumNeg(a)
         | NumToStr(a)
+        | BigintToStr(a)
         | Obj(a)
         | Access(a, ..)
         | Down(a, ..)
@@ -98,7 +99,7 @@ pub fn noinline(tm: &Term) -> bool {
         | Str(..)
         | Number
         | Num(..)
-        | BigInt
+        | Bigint
         | Big(..)
         | ArrayIterator(..)
         | Array(..)

@@ -196,7 +196,7 @@ impl<'a> Unifier<'a> {
             (True, True) => Ok(()),
             (String, String) => Ok(()),
             (Number, Number) => Ok(()),
-            (BigInt, BigInt) => Ok(()),
+            (Bigint, Bigint) => Ok(()),
             (Row, Row) => Ok(()),
             (Pure, Pure) => Ok(()),
 

@@ -72,6 +72,7 @@ impl Renamer {
             NumGt(a, b) => NumGt(self.term(a), self.term(b)),
             NumNeg(a) => NumNeg(self.term(a)),
             NumToStr(a) => NumToStr(self.term(a)),
+            BigintToStr(a) => BigintToStr(self.term(a)),
             ArrayIterator(t) => ArrayIterator(self.term(t)),
             ArrIterNext(it) => ArrIterNext(self.term(it)),
             Array(t) => Array(self.term(t)),

@@ -1,5 +1,7 @@
+const u = ().toJSON();
 const s = "s".toJSON();
 const n = 42.toJSON();
 const b = true.toJSON();
+const i = 100n.toJSON();
 
 // TODO: Automatic instance creation.
