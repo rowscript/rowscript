@@ -2,10 +2,10 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{
     AnonVarargs, App, ArrAt, ArrForeach, ArrInsert, ArrIter, ArrIterNext, ArrLength, ArrPush,
     Array, ArrayIterator, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean, ConsoleLog,
-    EmitAsync, Enum, Fields, Find, Map, MapClear, MapDelete, MapGet, MapHas, MapIter, MapIterNext,
-    MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt, NumMod, NumMul, NumNeg,
-    NumNeq, NumSub, NumToStr, Number, Object, Panic, Pi, Pure, Ref, SetTimeout, StrAdd, StrEq,
-    StrNeq, String, TupleBind, Unit, Univ,
+    EmitAsync, Enum, Fields, Find, JSONStringify, Map, MapClear, MapDelete, MapGet, MapHas,
+    MapIter, MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt,
+    NumMod, NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object, Panic, Pi, Pure, Ref,
+    SetTimeout, StrAdd, StrEq, StrNeq, String, TupleBind, Unit, Univ,
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
@@ -210,6 +210,7 @@ impl Builtins {
             .map_iter()
             .await_all()
             .await_any()
+            .json_stringify()
     }
 
     fn func(self, name: &str, tele: Tele<Term>, ret: Term, f: Term) -> Self {
@@ -850,6 +851,18 @@ impl Builtins {
             eff,
             Ref(t),
             Self::emit_async(tupled, executors_ty, async_var, await_any_var),
+        )
+    }
+
+    fn json_stringify(self) -> Self {
+        let t = Var::new("T");
+        let a = Var::new("a");
+        let (tupled, tele) = parameters([t.clone()], [(a.clone(), Ref(t.clone()))]);
+        self.func(
+            "json#stringify",
+            tele,
+            String,
+            explicit_tuple_bind1(a.clone(), Ref(t), tupled, JSONStringify(Box::new(Ref(a)))),
         )
     }
 }

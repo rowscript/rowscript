@@ -79,7 +79,7 @@ pub fn noinline(tm: &Term) -> bool {
         | Arr(..) | ArrLength(..) | ArrPush(..) | ArrForeach(..) | ArrAt(..) | ArrInsert(..)
         | ArrIter(..) | MapIterNext(..) | Kv(..) | MapHas(..) | MapGet(..) | MapSet(..)
         | MapDelete(..) | MapClear(..) | MapIter(..) | Unionify(..) | Panic(..)
-        | ConsoleLog(..) | SetTimeout(..) | EmitAsync(..) => true,
+        | ConsoleLog(..) | SetTimeout(..) | JSONStringify(..) | EmitAsync(..) => true,
 
         Ref(..)
         | MetaRef(..)

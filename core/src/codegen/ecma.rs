@@ -1433,6 +1433,16 @@ impl Ecma {
                     type_args: None,
                 })
             }
+            JSONStringify(a) => Expr::Call(CallExpr {
+                span: loc.into(),
+                callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
+                    span: loc.into(),
+                    obj: Box::new(Expr::Ident(Self::special_ident("JSON"))),
+                    prop: MemberProp::Ident(Self::special_ident("stringify")),
+                }))),
+                args: vec![Self::non_spread(self.expr(sigma, loc, a)?)],
+                type_args: None,
+            }),
             EmitAsync(a) => self.expr(sigma, loc, a)?,
 
             tm if matches!(tm, Fori(..) | While(..) | Guard(..)) => {

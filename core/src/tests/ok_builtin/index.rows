@@ -7,3 +7,5 @@ function f0(): number {
 function f1(): number {
     number#__add__(rand(), rand())
 }
+
+console.log(json#stringify({hello: 42}));

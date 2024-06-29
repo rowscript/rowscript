@@ -175,6 +175,7 @@ pub enum Term {
     Panic(Box<Self>),
     ConsoleLog(Box<Self>),
     SetTimeout(Box<Self>, Box<Self>, Box<Self>),
+    JSONStringify(Box<Self>),
 
     Pure,
     Effect(FieldSet),
@@ -514,6 +515,7 @@ impl Display for Term {
                 Panic(a) => format!("panic({a})"),
                 ConsoleLog(m) => format!("console.log({m})"),
                 SetTimeout(f, d, x) => format!("setTimeout({f}, {d}, {x})"),
+                JSONStringify(a) => format!("JSON.stringify({a})"),
                 Pure => "pure".to_string(),
                 Effect(a) => a
                     .iter()

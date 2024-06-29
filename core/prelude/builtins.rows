@@ -42,3 +42,5 @@ declare map#iter<K, V>(m: NativeMap<K, V>): NativeMapIterator<{key: K, value: V}
 
 declare async await#all<T>(executors: NativeArray<(resolve: (value: T) => unit) => unit>): NativeArray<T>;
 declare async await#any<T>(executors: NativeArray<(resolve: (value: T) => unit) => unit>): T;
+
+declare json#stringify<T>(a: T): string;

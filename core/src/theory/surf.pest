@@ -213,6 +213,7 @@ builtin =
   | "map#iter"
   | "await#all"
   | "await#any"
+  | "json#stringify"
   }
 
 tyref =

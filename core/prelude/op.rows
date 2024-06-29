@@ -178,6 +178,18 @@ instanceof ToString for number {
     }
 }
 
+instanceof ToString for string {
+    toString(a: string): string {
+        a
+    }
+}
+
+instanceof ToString for boolean {
+    toString(a: boolean): string {
+        a ? "true" : "false"
+    }
+}
+
 // Duration of time represented in milliseconds for convenience.
 //
 // TODO: This definition should not be here lol.
