@@ -887,6 +887,7 @@ impl Trans {
             Rule::bigint_type => BigInt(loc),
             Rule::boolean_type => Boolean(loc),
             Rule::unit_type => Unit(loc),
+            Rule::rowkey_type => Rowkey(loc),
             _ => unreachable!(),
         }
     }

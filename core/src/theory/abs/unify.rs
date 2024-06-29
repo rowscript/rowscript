@@ -198,6 +198,7 @@ impl<'a> Unifier<'a> {
             (Number, Number) => Ok(()),
             (Bigint, Bigint) => Ok(()),
             (Row, Row) => Ok(()),
+            (Rowkey, Rowkey) => Ok(()),
             (Pure, Pure) => Ok(()),
 
             _ => self.unify_err(lhs, rhs),

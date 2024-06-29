@@ -1239,7 +1239,7 @@ impl Elaborator {
                 let label_list_ty = self.nf(loc).term(Term::App(
                     Box::new(list_ty),
                     UnnamedImplicit,
-                    Box::new(Term::String),
+                    Box::new(Term::Rowkey),
                 ))?;
                 InferResult {
                     tm: Term::Keyof(Box::new(ty)),
@@ -1371,6 +1371,7 @@ impl Elaborator {
             BigInt(_) => InferResult::pure(Term::Bigint, Term::Univ),
             Big(_, v) => InferResult::pure(Term::Big(v), Term::Bigint),
             Row(_) => InferResult::pure(Term::Row, Term::Univ),
+            Rowkey(_) => InferResult::pure(Term::Rowkey, Term::Univ),
 
             _ => unreachable!(),
         })

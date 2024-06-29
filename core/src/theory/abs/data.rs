@@ -126,6 +126,9 @@ pub enum Term {
     MapIter(Box<Self>),
 
     Row,
+    Rowkey,
+    Rk(String),
+    RkToStr(Box<Self>),
     Fields(FieldMap),
     Associate(Box<Self>, String),
     Combine(bool, Box<Self>, Box<Self>),
@@ -421,7 +424,7 @@ impl Display for Term {
                 NumLt(a, b) => format!("{a} < {b}"),
                 NumGt(a, b) => format!("{a} > {b}"),
                 NumNeg(a) => format!("-{a}"),
-                NumToStr(a) | BigintToStr(a) => format!("{a}.toString()"),
+                NumToStr(a) | BigintToStr(a) | RkToStr(a) => format!("{a}.toString()"),
                 Bigint => "bigint".to_string(),
                 Big(v) => v.clone(),
                 ArrayIterator(t) => format!("NativeArrayIterator<{t}>"),
@@ -457,6 +460,8 @@ impl Display for Term {
                 MapClear(m) => format!("{m}.clear()"),
                 MapIter(m) => format!("{m}.iter()"),
                 Row => "row".to_string(),
+                Rowkey => "rowkey".to_string(),
+                Rk(k) => k.clone(),
                 Fields(fields) => format!(
                     "({})",
                     fields

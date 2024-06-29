@@ -25,6 +25,8 @@ declare boolean#__not__(a: boolean): boolean;
 
 declare bigint#toString(a: bigint): string;
 
+declare rowkey#toString(a: rowkey): string;
+
 declare NativeArrayIterator<T>;
 declare arrayIter#next<T>(it: NativeArrayIterator<T>): [Ok: T | None];
 

@@ -69,6 +69,7 @@ pub fn noinline(tm: &Term) -> bool {
         | NumNeg(a)
         | NumToStr(a)
         | BigintToStr(a)
+        | RkToStr(a)
         | Obj(a)
         | Access(a, ..)
         | Down(a, ..)
@@ -106,6 +107,8 @@ pub fn noinline(tm: &Term) -> bool {
         | MapIterator(..)
         | Map(..)
         | Row
+        | Rowkey
+        | Rk(..)
         | Associate(..)
         | RowOrd(..)
         | RowSat

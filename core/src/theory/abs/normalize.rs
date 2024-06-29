@@ -413,6 +413,10 @@ impl<'a> Normalizer<'a> {
             MapDelete(m, k) => MapDelete(self.term_box(m)?, self.term_box(k)?),
             MapClear(m) => MapClear(self.term_box(m)?),
             MapIter(a) => MapIter(self.term_box(a)?),
+            RkToStr(a) => match *self.term_box(a)? {
+                Rk(k) => Str(format!("\"{k}\"")),
+                a => RkToStr(Box::new(a)),
+            },
             Fields(mut fields) => {
                 for tm in fields.values_mut() {
                     // FIXME: not unwind-safe, refactor `Self::term` to accept a `&mut Term`

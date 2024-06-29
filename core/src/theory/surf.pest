@@ -198,6 +198,7 @@ builtin =
   | "number#__neg__"
   | "number#toString"
   | "bigint#toString"
+  | "rowkey#toString"
   | "arrayIter#next"
   | "array#length"
   | "array#push"
@@ -313,6 +314,7 @@ primitive_type =
   | bigint_type
   | boolean_type
   | unit_type
+  | rowkey_type
   }
 paren_type_expr = { "(" ~ type_expr ~ ")" }
 fn_type = { params ~ "=>" ~ type_expr }
@@ -321,6 +323,7 @@ number_type = { "number" }
 bigint_type = { "bigint" }
 boolean_type = { "boolean" }
 unit_type = { "unit" }
+rowkey_type = { "rowkey" }
 object_type_ref = { "{" ~ row_id ~ "}" }
 object_type_literal = { "{" ~ property ~ ("," ~ property)* ~ "}" }
 enum_type_ref = { "[" ~ row_id ~ "]" }

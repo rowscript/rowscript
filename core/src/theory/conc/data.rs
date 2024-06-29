@@ -66,6 +66,7 @@ pub enum Expr {
     Kv(Loc, Vec<(Self, Self)>),
 
     Row(Loc),
+    Rowkey(Loc),
     Associate(Loc, Box<Self>, String),
     Fields(Loc, Vec<(String, Self)>),
     Combine(Loc, Box<Self>, Box<Self>),
@@ -162,6 +163,7 @@ impl Expr {
             | Arr(loc, ..)
             | Kv(loc, ..)
             | Row(loc)
+            | Rowkey(loc)
             | Associate(loc, ..)
             | Fields(loc, ..)
             | Combine(loc, ..)
@@ -355,6 +357,7 @@ impl Display for Expr {
                         .join(", ")
                 ),
                 Row(_) => "row".to_string(),
+                Rowkey(_) => "rowkey".to_string(),
                 Associate(_, a, n) => format!("{a}::{n}"),
                 Fields(_, fields) => format!(
                     "({})",
