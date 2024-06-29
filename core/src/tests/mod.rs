@@ -78,6 +78,7 @@ mod ok_implicit_named;
 mod ok_implicit_unnamed;
 mod ok_interface;
 mod ok_interface_stuck;
+mod ok_json_encode;
 mod ok_map;
 mod ok_map_iter;
 mod ok_modsys;

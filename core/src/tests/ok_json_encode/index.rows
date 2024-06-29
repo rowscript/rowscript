@@ -1,0 +1,5 @@
+const s = "s".toJSON();
+const n = 42.toJSON();
+const b = true.toJSON();
+
+// TODO: Automatic instance creation.

@@ -2,6 +2,10 @@ declare panic<T>(m: string): T;
 
 declare console#log<Args>(...: Args);
 
+declare setTimeout<Args, T>(f: (...: Args) => T, milli: number, ...: Args);
+
+declare json#stringify<T>(a: T): string;
+
 declare number#__add__(a: number, b: number): number;
 declare number#__sub__(a: number, b: number): number;
 declare number#__mul__(a: number, b: number): number;
@@ -42,5 +46,3 @@ declare map#iter<K, V>(m: NativeMap<K, V>): NativeMapIterator<{key: K, value: V}
 
 declare async await#all<T>(executors: NativeArray<(resolve: (value: T) => unit) => unit>): NativeArray<T>;
 declare async await#any<T>(executors: NativeArray<(resolve: (value: T) => unit) => unit>): T;
-
-declare json#stringify<T>(a: T): string;

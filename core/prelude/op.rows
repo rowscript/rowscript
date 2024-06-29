@@ -203,4 +203,24 @@ function seconds(d: number): Duration {
     d * 1000
 }
 
-declare setTimeout<Args, T>(f: (...: Args) => T, dur: Duration, ...: Args);
+interface ToJSON {
+    toJSON(a: ToJSON): string;
+}
+
+instanceof ToJSON for number {
+    toJSON(a: number): string {
+        a.toString()
+    }
+}
+
+instanceof ToJSON for string {
+    toJSON(a: string): string {
+        json#stringify(a)
+    }
+}
+
+instanceof ToJSON for boolean {
+    toJSON(a: boolean): string {
+        a.toString()
+    }
+}
