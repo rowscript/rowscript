@@ -1142,7 +1142,7 @@ impl Ecma {
             NumLt(a, b) => self.bin_expr(sigma, loc, BinaryOp::Lt, a, b)?,
             NumGt(a, b) => self.bin_expr(sigma, loc, BinaryOp::Gt, a, b)?,
             NumNeg(a) => self.unary_expr(sigma, loc, UnaryOp::Minus, a)?,
-            NumToStr(a) | BigintToStr(a) | RkToStr(a) => {
+            NumToStr(a) | BigintToStr(a) => {
                 Self::prototype(loc, self.expr(sigma, loc, a)?, "toString", [])
             }
             Big(v) => Expr::Lit(Lit::BigInt(JsBigInt {
@@ -1451,7 +1451,7 @@ impl Ecma {
                 Self::iife(loc, self.block(sigma, loc, tm, true)?, false)
             }
 
-            Typeof(..) | Keyof(..) => return Err(NonErasable(tm.clone(), loc)),
+            RkToStr(..) | Typeof(..) | Keyof(..) => return Err(NonErasable(tm.clone(), loc)),
 
             _ => unreachable!(),
         })

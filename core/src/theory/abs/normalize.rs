@@ -208,18 +208,18 @@ impl<'a> Normalizer<'a> {
                     _ => TupleBind(p, q, a, Box::new(self.without_expand_undef(*b)?)),
                 }
             }
-            UnitBind(a, b) => {
-                let a = self.term_box(a)?;
-                let b = self.term_box(b)?;
-                match *a {
-                    TT => *b,
-                    _ => UnitBind(a, b),
-                }
-            }
+            UnitBind(a, b) => match self.term(*a)? {
+                TT => self.term(*b)?,
+                a => UnitBind(Box::new(a), Box::new(self.without_expand_undef(*b)?)),
+            },
             If(p, t, e) => match self.term(*p)? {
                 True => self.term(*t)?,
                 False => self.term(*e)?,
-                p => If(Box::new(p), t, e),
+                p => If(
+                    Box::new(p),
+                    Box::new(self.without_expand_undef(*t)?),
+                    Box::new(self.without_expand_undef(*e)?),
+                ),
             },
             BoolOr(a, b) => {
                 let a = self.term_box(a)?;

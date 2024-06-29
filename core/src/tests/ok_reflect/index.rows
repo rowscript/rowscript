@@ -1,4 +1,4 @@
 console.log(typeof {a: 42});
 // FIXME: It broke again, sigh.
-const a1 = (keyof {a: 42, b: "hello"}).map(rowkey#toString);
+const a1 = (keyof {a: 42, b: "hello"}).map(toString);
 //console.log((keyof {a: 42, b: "hello"}).map(toString).join(", "));
