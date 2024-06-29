@@ -200,10 +200,13 @@ impl<'a> Normalizer<'a> {
                                 }
                             }
                         }
-                        self.term(
-                            tms.into_iter()
-                                .rfold(body, |b, (p, a)| Const(p, a, Box::new(b))),
-                        )?
+                        for (p, tm) in tms {
+                            if noinline(tm.as_ref()) {
+                                continue;
+                            }
+                            self.rho.insert(p.var, tm);
+                        }
+                        self.term(body)?
                     }
                     _ => TupleBind(p, q, a, Box::new(self.without_expand_undef(*b)?)),
                 }
@@ -720,7 +723,6 @@ impl<'a> Normalizer<'a> {
     }
 
     fn case_map(&mut self, mut cs: CaseMap) -> Result<CaseMap, Error> {
-        self.expand_undef = false;
         for (_, tm) in cs.values_mut() {
             // FIXME: not unwind-safe, refactor `Self::term` to accept a `&mut Term`
             unsafe {
@@ -732,7 +734,6 @@ impl<'a> Normalizer<'a> {
     }
 
     fn case_default(&mut self, d: CaseDefault) -> Result<CaseDefault, Error> {
-        self.expand_undef = false;
         Ok(match d {
             Some((v, tm)) => Some((v, Box::new(self.without_expand_undef(*tm)?))),
             None => None,
