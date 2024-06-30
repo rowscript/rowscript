@@ -179,33 +179,17 @@ impl<'a> Normalizer<'a> {
                 let p = self.param(p)?;
                 let q = self.param(q)?;
                 let a = self.term_box(a)?;
-                match *a {
-                    Tuple(x, y) => {
-                        let mut tms = vec![(p, x)];
-                        let mut tm = *y;
-                        let mut body = *b;
-                        let mut rhs_param = q;
-                        loop {
-                            match (tm, body) {
-                                (Tuple(x, y), TupleBind(p, q, _, b)) => {
-                                    tms.push((p, x));
-                                    tm = *y;
-                                    body = *b;
-                                    rhs_param = q;
-                                }
-                                (a, b) => {
-                                    tms.push((rhs_param, Box::new(a))); // for anonymous variadic arguments
-                                    body = b;
-                                    break;
-                                }
-                            }
+                if noinline(a.as_ref()) {
+                    TupleBind(p, q, a, Box::new(self.without_expand_undef(*b)?))
+                } else {
+                    match *a {
+                        Tuple(x, y) => {
+                            self.rho.insert(p.var, x);
+                            self.rho.insert(q.var, y);
+                            *self.term_box(b)?
                         }
-                        self.term(
-                            tms.into_iter()
-                                .rfold(body, |b, (p, a)| Const(p, a, Box::new(b))),
-                        )?
+                        _ => TupleBind(p, q, a, Box::new(self.without_expand_undef(*b)?)),
                     }
-                    _ => TupleBind(p, q, a, Box::new(self.without_expand_undef(*b)?)),
                 }
             }
             UnitBind(a, b) => match self.term(*a)? {

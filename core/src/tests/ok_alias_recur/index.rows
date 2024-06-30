@@ -14,7 +14,7 @@ function f1(): MyList<number> {
 }
 
 function f2(): MyList<number> {
-    Append({value: 2, list: Append({value: 1, list: Empty})})
+    Append({value: 42, list: Append({value: 69, list: Empty})})
 }
 console.log(f2());
 
