@@ -200,13 +200,10 @@ impl<'a> Normalizer<'a> {
                                 }
                             }
                         }
-                        for (p, tm) in tms {
-                            if noinline(tm.as_ref()) {
-                                continue;
-                            }
-                            self.rho.insert(p.var, tm);
-                        }
-                        self.term(body)?
+                        self.term(
+                            tms.into_iter()
+                                .rfold(body, |b, (p, a)| Const(p, a, Box::new(b))),
+                        )?
                     }
                     _ => TupleBind(p, q, a, Box::new(self.without_expand_undef(*b)?)),
                 }
@@ -687,8 +684,11 @@ impl<'a> Normalizer<'a> {
     }
 
     fn without_expand_undef(&mut self, tm: Term) -> Result<Term, Error> {
+        let old = self.expand_undef;
         self.expand_undef = false;
-        self.term(tm)
+        let ret = self.term(tm);
+        self.expand_undef = old;
+        ret
     }
 
     pub fn apply(&mut self, f: Term, ai: ArgInfo, args: &[Term]) -> Result<Term, Error> {
