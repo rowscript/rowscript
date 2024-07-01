@@ -7,3 +7,13 @@ function f1(): string {
     (keyof {a: 42, b: "hello"}).map(toString).join(", ")
 }
 console.log(f1());
+
+// FIXME: Put `rowkey#access` into concrete syntax.
+function f2(): number {
+    const a = {a: 42};
+    switch (keyof a) {
+        case Append(b): reflects.access(a, b.value)
+        case Empty: panic("impossible")
+    }
+}
+console.log(f2());

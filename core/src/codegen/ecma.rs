@@ -1451,7 +1451,9 @@ impl Ecma {
                 Self::iife(loc, self.block(sigma, loc, tm, true)?, false)
             }
 
-            RkToStr(..) | Typeof(..) | Keyof(..) => return Err(NonErasable(tm.clone(), loc)),
+            Rk(..) | RkAccess(..) | RkToStr(..) | Typeof(..) | Keyof(..) => {
+                return Err(NonErasable(tm.clone(), loc))
+            }
 
             _ => unreachable!(),
         })

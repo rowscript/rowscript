@@ -397,6 +397,10 @@ impl<'a> Normalizer<'a> {
             MapDelete(m, k) => MapDelete(self.term_box(m)?, self.term_box(k)?),
             MapClear(m) => MapClear(self.term_box(m)?),
             MapIter(a) => MapIter(self.term_box(a)?),
+            RkAccess(a, k) => match self.term(*k)? {
+                Rk(k) => self.term(Access(a, k))?,
+                k => RkAccess(self.term_box(a)?, Box::new(k)),
+            },
             RkToStr(a) => {
                 let a = self.term_box(a)?;
                 match *a {

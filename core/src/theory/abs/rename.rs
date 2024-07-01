@@ -96,6 +96,7 @@ impl Renamer {
             MapDelete(m, k) => MapDelete(self.term(m), self.term(k)),
             MapClear(m) => MapClear(self.term(m)),
             MapIter(a) => MapIter(self.term(a)),
+            RkAccess(a, k) => RkAccess(self.term(a), self.term(k)),
             RkToStr(a) => RkToStr(self.term(a)),
             Fields(fields) => {
                 let mut m = FieldMap::default();

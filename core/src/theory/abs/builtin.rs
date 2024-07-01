@@ -5,7 +5,7 @@ use crate::theory::abs::data::Term::{
     ConsoleLog, EmitAsync, Enum, Fields, Find, JSONStringify, Map, MapClear, MapDelete, MapGet,
     MapHas, MapIter, MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe,
     NumLt, NumMod, NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object, Panic, Pi, Pure, Ref,
-    RkToStr, Rowkey, SetTimeout, StrAdd, StrEq, StrNeq, String, TupleBind, Unit, Univ,
+    RkAccess, RkToStr, Rowkey, SetTimeout, StrAdd, StrEq, StrNeq, String, TupleBind, Unit, Univ,
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
@@ -191,6 +191,7 @@ impl Builtins {
             .number_neg()
             .number_to_string()
             .bigint_to_string()
+            .rowkey_access()
             .rowkey_to_string()
             .array_iterator_type()
             .array_iterator_next()
@@ -364,6 +365,34 @@ impl Builtins {
         String,
         BigintToStr
     );
+
+    fn rowkey_access(self) -> Self {
+        let o = Var::new("O");
+        let t = Var::new("T");
+        let a = Var::new("a");
+        let a_rhs = a.untupled_rhs();
+        let k = Var::new("key");
+        let (tupled, tele) = parameters(
+            [o.clone(), t.clone()],
+            [(a.clone(), Ref(o.clone())), (k.clone(), Rowkey)],
+        );
+        self.func(
+            "rowkey#access",
+            tele,
+            Ref(t.clone()),
+            explicit_tuple_bind(
+                (a.clone(), Ref(o)),
+                (a_rhs.clone(), explicit_sigma1(k.clone(), Rowkey)),
+                tupled,
+                explicit_tuple_bind1(
+                    k.clone(),
+                    Rowkey,
+                    Ref(a_rhs),
+                    RkAccess(Box::new(Ref(a)), Box::new(Ref(k))),
+                ),
+            ),
+        )
+    }
 
     un_op!(rowkey_to_string, "rowkey#toString", Rowkey, String, RkToStr);
 

@@ -198,6 +198,7 @@ builtin =
   | "number#__neg__"
   | "number#toString"
   | "bigint#toString"
+  | "rowkey#access"
   | "rowkey#toString"
   | "arrayIter#next"
   | "array#length"
@@ -660,6 +661,14 @@ interface_fn =
   ~ ";"
   }
 
+implements_def =
+  { "implements"
+  ~ type_id
+  ~ "{"
+  ~ interface_fn+
+  ~ "}"
+  }
+
 instance_def =
   { "instanceof"
   ~ type_id
@@ -738,6 +747,7 @@ def =
   | type_postulate
   | type_alias
   | interface_def
+  | implements_def
   | instance_def
   | const_def
   | class_def
