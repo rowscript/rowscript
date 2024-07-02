@@ -584,20 +584,15 @@ impl<'a> Normalizer<'a> {
                 if let Some(ty) = self.instances.get(&i) {
                     return self.find_instance(ty.clone(), i, f);
                 }
-
                 let ty = self.term_box(ty)?;
-                match *ty {
-                    Ref(..) | MetaRef(..) => Find {
+                if ty.is_unsolved() || i.as_str() == ASYNC {
+                    Find {
                         instance_ty: ty,
                         interface: i,
                         interface_fn: f,
-                    },
-                    ty if i.as_str() == ASYNC => Find {
-                        instance_ty: Box::new(ty),
-                        interface: i,
-                        interface_fn: f,
-                    },
-                    ty => self.find_instance(ty, i, f)?,
+                    }
+                } else {
+                    self.find_instance(*ty, i, f)?
                 }
             }
             Typeof(ty) => {
