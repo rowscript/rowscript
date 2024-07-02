@@ -397,13 +397,10 @@ impl<'a> Normalizer<'a> {
             MapDelete(m, k) => MapDelete(self.term_box(m)?, self.term_box(k)?),
             MapClear(m) => MapClear(self.term_box(m)?),
             MapIter(a) => MapIter(self.term_box(a)?),
-            RkToStr(a) => {
-                let a = self.term_box(a)?;
-                match *a {
-                    Rk(k) => Str(format!("\"{k}\"")),
-                    a => RkToStr(Box::new(a)),
-                }
-            }
+            RkToStr(a) => match *self.term_box(a)? {
+                Rk(k) => Str(format!("\"{k}\"")),
+                a => RkToStr(Box::new(a)),
+            },
             Fields(mut fields) => {
                 for tm in fields.values_mut() {
                     // FIXME: not unwind-safe, refactor `Self::term` to accept a `&mut Term`
@@ -480,16 +477,13 @@ impl<'a> Normalizer<'a> {
                     _ => Concat(a, b),
                 }
             }
-            Access(a, n) => {
-                let a = self.term_box(a)?;
-                match a.as_ref() {
-                    Obj(x) => match x.as_ref() {
-                        Fields(fields) => fields.get(&n).unwrap().clone(),
-                        _ => Access(a, n),
-                    },
-                    _ => Access(a, n),
-                }
-            }
+            Access(a, n) => match *self.term_box(a)? {
+                Obj(x) => match *x {
+                    Fields(mut fields) => fields.remove(&n).unwrap(),
+                    f => Access(Box::new(Obj(Box::new(f))), n),
+                },
+                a => Access(Box::new(a), n),
+            },
             At(a, k) => match self.term(*k)? {
                 Rk(k) => self.term(Access(a, k))?,
                 k => At(self.term_box(a)?, Box::new(k)),

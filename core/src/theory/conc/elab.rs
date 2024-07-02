@@ -19,9 +19,8 @@ use crate::theory::{
 use crate::Error;
 use crate::Error::{
     CatchAsyncEffect, DuplicateEffect, ExpectedCapability, ExpectedEnum, ExpectedInstanceof,
-    ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedReflectable, ExpectedSigma,
-    NonCatchableExpr, NonExhaustive, NonVariadicType, UnresolvedEffect, UnresolvedField,
-    UnresolvedImplicitParam, UnresolvedVar,
+    ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedSigma, NonCatchableExpr, NonExhaustive,
+    NonVariadicType, UnresolvedEffect, UnresolvedField, UnresolvedImplicitParam, UnresolvedVar,
 };
 
 #[derive(Debug)]
@@ -1066,12 +1065,11 @@ impl Elaborator {
                             },
                             None => return Err(UnresolvedField(n, Term::Fields(m), a_loc)),
                         },
-                        (Term::Fields(..), k) => InferResult {
+                        (_, k) => InferResult {
                             tm: Term::At(Box::new(tm), Box::new(k)),
                             eff,
                             ty: self.insert_meta(loc, InsertedMeta).0,
                         },
-                        (m, _) => return Err(ExpectedReflectable(m, a_loc)),
                     },
                     ty => return Err(ExpectedObject(ty, a_loc)),
                 }
