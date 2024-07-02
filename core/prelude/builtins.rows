@@ -26,7 +26,6 @@ declare boolean#__not__(a: boolean): boolean;
 declare bigint#toString(a: bigint): string;
 
 declare rowkey#toString(a: rowkey): string;
-declare rowkey#access<O, T>(a: O, key: rowkey): T;
 
 declare NativeArrayIterator<T>;
 declare arrayIter#next<T>(it: NativeArrayIterator<T>): [Ok: T | None];

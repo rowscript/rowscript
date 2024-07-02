@@ -61,9 +61,9 @@ pub fn noinline(tm: &Term) -> bool {
         | NumGe(a, b)
         | NumLt(a, b)
         | NumGt(a, b)
-        | RkAccess(a, b)
         | Combine(.., a, b)
-        | Concat(a, b) => noinline(a) || noinline(b),
+        | Concat(a, b)
+        | At(a, b) => noinline(a) || noinline(b),
 
         Lam(.., a)
         | BoolNot(a)

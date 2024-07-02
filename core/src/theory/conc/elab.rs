@@ -19,8 +19,9 @@ use crate::theory::{
 use crate::Error;
 use crate::Error::{
     CatchAsyncEffect, DuplicateEffect, ExpectedCapability, ExpectedEnum, ExpectedInstanceof,
-    ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedSigma, NonCatchableExpr, NonExhaustive,
-    NonVariadicType, UnresolvedEffect, UnresolvedField, UnresolvedImplicitParam, UnresolvedVar,
+    ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedReflectable, ExpectedSigma,
+    NonCatchableExpr, NonExhaustive, NonVariadicType, UnresolvedEffect, UnresolvedField,
+    UnresolvedImplicitParam, UnresolvedVar,
 };
 
 #[derive(Debug)]
@@ -1049,6 +1050,31 @@ impl Elaborator {
                     ))),
                     *rename(Box::new(Term::pi(&tele, Term::Pure, Term::Ref(t)))),
                 )
+            }
+            At(loc, a, k) => {
+                let a_loc = a.loc();
+                let k = self.check(*k, &Term::Pure, &Term::Rowkey)?;
+                let InferResult { tm, eff, ty } = self.infer(*a)?;
+                self.unifier(a_loc).unify_eff(&Term::Pure, &eff)?;
+                match ty {
+                    Term::Object(f) => match (*f, k) {
+                        (Term::Fields(mut m), Term::Rk(n)) => match m.remove(&n) {
+                            Some(ty) => InferResult {
+                                tm: Term::At(Box::new(tm), Box::new(Term::Rk(n))),
+                                eff,
+                                ty,
+                            },
+                            None => return Err(UnresolvedField(n, Term::Fields(m), a_loc)),
+                        },
+                        (Term::Fields(..), k) => InferResult {
+                            tm: Term::At(Box::new(tm), Box::new(k)),
+                            eff,
+                            ty: self.insert_meta(loc, InsertedMeta).0,
+                        },
+                        (m, _) => return Err(ExpectedReflectable(m, a_loc)),
+                    },
+                    ty => return Err(ExpectedObject(ty, a_loc)),
+                }
             }
             Downcast(loc, a) => {
                 let InferResult { tm: a, eff, ty } = self.infer(*a)?;

@@ -96,7 +96,6 @@ impl Renamer {
             MapDelete(m, k) => MapDelete(self.term(m), self.term(k)),
             MapClear(m) => MapClear(self.term(m)),
             MapIter(a) => MapIter(self.term(a)),
-            RkAccess(a, k) => RkAccess(self.term(a), self.term(k)),
             RkToStr(a) => RkToStr(self.term(a)),
             Fields(fields) => {
                 let mut m = FieldMap::default();
@@ -113,6 +112,7 @@ impl Renamer {
             Obj(f) => Obj(self.term(f)),
             Concat(a, b) => Concat(self.term(a), self.term(b)),
             Access(a, n) => Access(self.term(a), n),
+            At(a, k) => At(self.term(a), self.term(k)),
             Downcast(a, m) => Downcast(self.term(a), self.term(m)),
             Down(r, to) => Down(self.term(r), self.term(to)),
             Enum(f) => Enum(self.term(f)),

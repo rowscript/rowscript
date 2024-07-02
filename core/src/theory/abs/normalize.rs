@@ -397,10 +397,6 @@ impl<'a> Normalizer<'a> {
             MapDelete(m, k) => MapDelete(self.term_box(m)?, self.term_box(k)?),
             MapClear(m) => MapClear(self.term_box(m)?),
             MapIter(a) => MapIter(self.term_box(a)?),
-            RkAccess(a, k) => match self.term(*k)? {
-                Rk(k) => self.term(Access(a, k))?,
-                k => RkAccess(self.term_box(a)?, Box::new(k)),
-            },
             RkToStr(a) => {
                 let a = self.term_box(a)?;
                 match *a {
@@ -494,6 +490,10 @@ impl<'a> Normalizer<'a> {
                     _ => Access(a, n),
                 }
             }
+            At(a, k) => match self.term(*k)? {
+                Rk(k) => self.term(Access(a, k))?,
+                k => At(self.term_box(a)?, Box::new(k)),
+            },
             Downcast(r, m) => Downcast(self.term_box(r)?, self.term_box(m)?),
             Down(a, m) => {
                 let a = self.term_box(a)?;

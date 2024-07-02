@@ -198,7 +198,6 @@ builtin =
   | "number#__neg__"
   | "number#toString"
   | "bigint#toString"
-  | "rowkey#access"
   | "rowkey#toString"
   | "arrayIter#next"
   | "array#length"
@@ -357,6 +356,7 @@ infix_op =
   | infix_and
   | infix_or
   | infix_concat
+  | infix_at
   }
 infix_add = { "+" }
 infix_sub = { "-" }
@@ -372,6 +372,7 @@ infix_gt = { ">" }
 infix_and = { "&&" }
 infix_or = { "||" }
 infix_concat = { "..." }
+infix_at = { "@" }
 primary_expr =
   { boolean_if
   | chainable_expr

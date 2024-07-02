@@ -128,7 +128,6 @@ pub enum Term {
     Row,
     Rowkey,
     Rk(String),
-    RkAccess(Box<Self>, Box<Self>),
     RkToStr(Box<Self>),
     Fields(FieldMap),
     Associate(Box<Self>, String),
@@ -144,6 +143,7 @@ pub enum Term {
     Obj(Box<Self>),
     Concat(Box<Self>, Box<Self>),
     Access(Box<Self>, String),
+    At(Box<Self>, Box<Self>),
     Downcast(Box<Self>, Box<Self>),
     Down(Box<Self>, Box<Self>),
 
@@ -463,7 +463,6 @@ impl Display for Term {
                 Row => "row".to_string(),
                 Rowkey => "rowkey".to_string(),
                 Rk(k) => k.clone(),
-                RkAccess(a, k) => format!("{a}[{k}]"),
                 Fields(fields) => format!(
                     "({})",
                     fields
@@ -488,6 +487,7 @@ impl Display for Term {
                 Obj(r) => format!("{{{r}}}"),
                 Concat(a, b) => format!("{a}...{b}"),
                 Access(a, n) => format!("{a}.{n}"),
+                At(a, k) => format!("{a}[{k}]"),
                 Downcast(a, _) => format!("downcast<{a}>"),
                 Down(a, _) => format!("{{...{a}}}"),
                 Enum(r) => format!("[{r}]"),

@@ -8,12 +8,8 @@ function f1(): string {
 }
 console.log(f1());
 
-// FIXME: Put `rowkey#access` into concrete syntax.
-function f2(): number {
-    const a = {a: 42};
-    switch (keyof a) {
-        case Append(b): reflects.access(a, b.value)
-        case Empty: panic("impossible")
-    }
+function f2(): string {
+    const a = {a: 42, b: "hello"};
+    "?" + (keyof a).map((k) => k.toString() + "=" + (a @ k).toString()).join("&")
 }
 console.log(f2());

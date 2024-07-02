@@ -413,6 +413,7 @@ impl<'a> Resolver<'a> {
             RowOrd(loc, a, b) => RowOrd(loc, self.expr(a)?, self.expr(b)?),
             RowEq(loc, a, b) => RowEq(loc, self.expr(a)?, self.expr(b)?),
             Object(loc, a) => Object(loc, self.expr(a)?),
+            At(loc, a, k) => At(loc, self.expr(a)?, self.expr(k)?),
             Obj(loc, a) => Obj(loc, self.expr(a)?),
             Concat(loc, a, b) => Concat(loc, self.expr(a)?, self.expr(b)?),
             Downcast(loc, a) => Downcast(loc, self.expr(a)?),

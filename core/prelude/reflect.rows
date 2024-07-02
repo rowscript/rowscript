@@ -40,10 +40,3 @@ type Typeof = [
     | TypeofObject
     | TypeofEnum
 ];
-
-namespace reflects {
-    // FIXME: Put `rowkey#access` into concrete syntax.
-    access<O, T>(a: O, k: rowkey): T {
-        rowkey#access(a, k)
-    }
-}
