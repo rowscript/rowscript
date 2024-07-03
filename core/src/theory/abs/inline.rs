@@ -76,13 +76,14 @@ pub fn noinline(tm: &Term) -> bool {
         | Down(a, ..)
         | Variant(a)
         | Up(a, ..)
-        | Spread(a) => noinline(a),
+        | Spread(a)
+        | JSONStringify(a) => noinline(a),
 
         Extern(..) | Let(..) | Update(..) | Return(..) | Continue | Break | ArrIterNext(..)
         | Arr(..) | ArrLength(..) | ArrPush(..) | ArrForeach(..) | ArrAt(..) | ArrInsert(..)
         | ArrIter(..) | MapIterNext(..) | Kv(..) | MapHas(..) | MapGet(..) | MapSet(..)
         | MapDelete(..) | MapClear(..) | MapIter(..) | Unionify(..) | Panic(..)
-        | ConsoleLog(..) | SetTimeout(..) | JSONStringify(..) | EmitAsync(..) => true,
+        | ConsoleLog(..) | SetTimeout(..) | EmitAsync(..) => true,
 
         Ref(..)
         | MetaRef(..)

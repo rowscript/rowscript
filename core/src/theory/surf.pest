@@ -242,7 +242,7 @@ unquoted_multiline_string_part = @{ (unescaped_multiline_string_fragment | escap
 unescaped_multiline_string_fragment = @{ (!("`" | "\\") ~ ANY)+ }
 escaped_string_fragment =
  @{ "\\"
-  ~ ( !("x" | "u" | ASCII_OCT_DIGIT)
+  ~ ( (!("x" | "u" | ASCII_OCT_DIGIT) ~ ANY)
     | ASCII_OCT_DIGIT{1,3}
     | "x" ~ ASCII_HEX_DIGIT{2}
     | "u" ~ ASCII_HEX_DIGIT{4}

@@ -14,6 +14,12 @@ function f2(): string {
 }
 console.log(f2());
 
+function f3(): string {
+    const a = {a: 42, b: false};
+    "{" + (keyof a).map((k) => "\"" + k.toString() + "\":" + (a @ k).toJSON()).join(",") + "}"
+}
+console.log(f3());
+
 // This cannot be done, because we don't normalize this whole function definition.
 //function f3(): string {
 //    const a = {b: "hello"};

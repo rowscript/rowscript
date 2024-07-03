@@ -15,7 +15,7 @@ codegen-ecma = [
 ]
 
 [dependencies.thiserror]
-version = "1.0.60"
+version = "1.0.61"
 
 [dependencies.ariadne]
 version = "0.4.1"
@@ -24,18 +24,18 @@ version = "0.4.1"
 version = "0.1.15"
 
 [dependencies.log]
-version = "0.4.21"
+version = "0.4.22"
 
 [dependencies.pest]
-version = "2.7.10"
+version = "2.7.11"
 
 [dependencies.pest_derive]
-version = "2.7.10"
+version = "2.7.11"
 
 [dependencies]
-swc_ecma_parser = { version = "0.144.1", optional = true }
-swc_ecma_ast = { version = "0.113.4", optional = true }
-swc_ecma_codegen = { version = "0.149.1", optional = true }
+swc_ecma_parser = { version = "0.146.8", optional = true }
+swc_ecma_ast = { version = "0.115.1", optional = true }
+swc_ecma_codegen = { version = "0.151.1", optional = true }
 swc_atoms = { version = "0.6.7", optional = true }
-swc_common = { version = "0.33.26", features = ["tty-emitter"], optional = true }
-num-bigint = { version = "0.4.5", optional = true }
+swc_common = { version = "0.34.3", features = ["tty-emitter"], optional = true }
+num-bigint = { version = "0.4.6", optional = true }
