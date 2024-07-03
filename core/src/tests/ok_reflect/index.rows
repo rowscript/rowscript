@@ -13,3 +13,12 @@ function f2(): string {
     "?" + (keyof a).map((k) => k.toString() + "=" + (a @ k).toString()).join("&")
 }
 console.log(f2());
+
+// This cannot be done, because we don't normalize this whole function definition.
+//function f3(): string {
+//    const a = {b: "hello"};
+//    switch (keyof a) {
+//        case Append(k): a @ k.value
+//        case Empty: panic("impossible")
+//    }
+//}
