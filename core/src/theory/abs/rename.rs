@@ -112,6 +112,10 @@ impl Renamer {
             Obj(f) => Obj(self.term(f)),
             Concat(a, b) => Concat(self.term(a), self.term(b)),
             Access(a, n) => Access(self.term(a), n),
+            AtResult { fields_ty, key } => AtResult {
+                fields_ty: self.term(fields_ty),
+                key: self.term(key),
+            },
             At(a, k) => At(self.term(a), self.term(k)),
             Downcast(a, m) => Downcast(self.term(a), self.term(m)),
             Down(r, to) => Down(self.term(r), self.term(to)),

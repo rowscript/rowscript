@@ -484,6 +484,18 @@ impl<'a> Normalizer<'a> {
                 },
                 a => Access(Box::new(a), n),
             },
+            AtResult { fields_ty, key } => {
+                match (*self.term_box(fields_ty)?, *self.term_box(key)?) {
+                    (Fields(mut f), Rk(k)) => match f.remove(&k) {
+                        Some(ty) => ty,
+                        None => return Err(UnresolvedField(k, Fields(f), self.loc)),
+                    },
+                    (f, k) => AtResult {
+                        fields_ty: Box::new(f),
+                        key: Box::new(k),
+                    },
+                }
+            }
             At(a, k) => match self.term(*k)? {
                 Rk(k) => self.term(Access(a, k))?,
                 k => At(self.term_box(a)?, Box::new(k)),

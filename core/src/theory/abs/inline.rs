@@ -116,6 +116,7 @@ pub fn noinline(tm: &Term) -> bool {
         | RowEq(..)
         | RowRefl
         | Object(..)
+        | AtResult { .. }
         | Downcast(..)
         | Enum(..)
         | Upcast(..)

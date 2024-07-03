@@ -1050,7 +1050,7 @@ impl Elaborator {
                     *rename(Box::new(Term::pi(&tele, Term::Pure, Term::Ref(t)))),
                 )
             }
-            At(loc, a, k) => {
+            At(_, a, k) => {
                 let a_loc = a.loc();
                 let k = self.check(*k, &Term::Pure, &Term::Rowkey)?;
                 let InferResult { tm, eff, ty } = self.infer(*a)?;
@@ -1065,10 +1065,13 @@ impl Elaborator {
                             },
                             None => return Err(UnresolvedField(n, Term::Fields(m), a_loc)),
                         },
-                        (_, k) => InferResult {
-                            tm: Term::At(Box::new(tm), Box::new(k)),
+                        (fields, k) => InferResult {
+                            tm: Term::At(Box::new(tm), Box::new(k.clone())),
                             eff,
-                            ty: self.insert_meta(loc, InsertedMeta).0,
+                            ty: Term::AtResult {
+                                fields_ty: Box::new(fields),
+                                key: Box::new(k),
+                            },
                         },
                     },
                     ty => return Err(ExpectedObject(ty, a_loc)),

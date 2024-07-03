@@ -143,6 +143,10 @@ pub enum Term {
     Obj(Box<Self>),
     Concat(Box<Self>, Box<Self>),
     Access(Box<Self>, String),
+    AtResult {
+        fields_ty: Box<Self>,
+        key: Box<Self>,
+    },
     At(Box<Self>, Box<Self>),
     Downcast(Box<Self>, Box<Self>),
     Down(Box<Self>, Box<Self>),
@@ -279,7 +283,7 @@ impl Term {
 
     pub fn is_unsolved(&self) -> bool {
         use Term::*;
-        matches!(self, MetaRef(..) | Ref(..))
+        matches!(self, MetaRef(..) | Ref(..) | AtResult { .. })
     }
 
     fn is_solved_auto_implicit(&self) -> bool {
@@ -487,6 +491,7 @@ impl Display for Term {
                 Obj(r) => format!("{{{r}}}"),
                 Concat(a, b) => format!("{a}...{b}"),
                 Access(a, n) => format!("{a}.{n}"),
+                AtResult { key, .. } => format!("?.{key}"),
                 At(a, k) => format!("{a}[{k}]"),
                 Downcast(a, _) => format!("downcast<{a}>"),
                 Down(a, _) => format!("{{...{a}}}"),
