@@ -574,7 +574,7 @@ row_primary_expr =
 row_literal = { "(" ~ pub_field ~ ("," ~ pub_field)* ~ ")" }
 row_concat = { row_primary_expr ~ "+" ~ row_expr }
 paren_row_expr = { "(" ~ row_expr ~ ")" }
-instanceof = { tyref ~ implicit_args? ~ "instanceof" ~ tyref }
+instanceof = { type_expr ~ implicit_args? ~ "instanceof" ~ tyref }
 
 capabilities = _{ "throw" ~ capability ~ ("," ~ capability)* }
 capability = { tyref }

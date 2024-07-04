@@ -283,7 +283,11 @@ impl Term {
 
     pub fn is_unsolved(&self) -> bool {
         use Term::*;
-        matches!(self, MetaRef(..) | Ref(..) | AtResult { .. })
+        let tm = match self {
+            Object(a) | Enum(a) => a.as_ref(),
+            tm => tm,
+        };
+        matches!(tm, MetaRef(..) | Ref(..) | AtResult { .. })
     }
 
     fn is_solved_auto_implicit(&self) -> bool {

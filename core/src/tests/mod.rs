@@ -76,6 +76,7 @@ mod ok_fori;
 mod ok_forof;
 mod ok_implicit_named;
 mod ok_implicit_unnamed;
+mod ok_instanceof;
 mod ok_interface;
 mod ok_interface_stuck;
 mod ok_json_encode;

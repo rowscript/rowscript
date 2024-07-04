@@ -1,0 +1,36 @@
+interface Show {
+    show(a: Show);
+}
+
+type Person = {
+    name: string,
+    age: number
+};
+
+instanceof Show for Person {
+    show(a: Person) {
+        console.log("Person:", a.name);
+    }
+}
+
+type Animal = {
+    name: string,
+    species: string
+};
+
+instanceof Show for Animal {
+    show(a: Animal) {
+        console.log("Animal:", a.name);
+    }
+}
+
+function showName<'R>(a: {'R})
+where
+    (name: string) keyof 'R,
+    {'R} instanceof Show
+{
+    a.show()
+}
+
+showName({name: "John", age: 42});
+showName({name: "Cheems", species: "doge"});

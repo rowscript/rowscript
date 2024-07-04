@@ -950,7 +950,7 @@ impl Trans {
 
     fn instanceof(&self, loc: Loc, i: Pair<Rule>) -> Expr {
         let mut p = i.into_inner();
-        let mut xs = vec![(UnnamedImplicit, self.maybe_qualified(p.next().unwrap()))];
+        let mut xs = vec![(UnnamedImplicit, self.type_expr(p.next().unwrap()))];
         for arg in p {
             match arg.as_rule() {
                 Rule::row_arg => xs.push(self.row_arg(arg)),
