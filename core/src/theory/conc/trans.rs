@@ -15,13 +15,15 @@ use crate::theory::{Loc, Param, Tele, Var};
 use crate::Rule;
 
 pub struct Trans {
-    pratt: PrattParser<Rule>,
+    type_pratt: PrattParser<Rule>,
+    expr_pratt: PrattParser<Rule>,
 }
 
 impl Default for Trans {
     fn default() -> Self {
         Self {
-            pratt: PrattParser::new()
+            type_pratt: PrattParser::new().op(Op::infix(Rule::infix_concat, Assoc::Left)),
+            expr_pratt: PrattParser::new()
                 .op(Op::infix(Rule::infix_or, Assoc::Left))
                 .op(Op::infix(Rule::infix_and, Assoc::Left))
                 .op(Op::infix(Rule::infix_eq, Assoc::Left)
@@ -831,6 +833,19 @@ impl Trans {
     }
 
     fn type_expr(&self, t: Pair<Rule>) -> Expr {
+        self.type_pratt
+            .map_primary(|p| self.primary_type_expr(p))
+            .map_infix(|lhs, op, rhs| {
+                let loc = Loc::from(op.as_span());
+                match op.as_rule() {
+                    Rule::infix_concat => Expr::Concat(loc, Box::new(lhs), Box::new(rhs)),
+                    _ => unreachable!(),
+                }
+            })
+            .parse(t.into_inner())
+    }
+
+    fn primary_type_expr(&self, t: Pair<Rule>) -> Expr {
         use Expr::*;
 
         let p = t.into_inner().next().unwrap();
@@ -1147,7 +1162,7 @@ impl Trans {
     }
 
     fn expr(&self, e: Pair<Rule>) -> Expr {
-        self.pratt
+        self.expr_pratt
             .map_primary(|p| self.primary_expr(p))
             .map_infix(|lhs, op, rhs| {
                 let loc = Loc::from(op.as_span());
@@ -1165,7 +1180,7 @@ impl Trans {
                     Rule::infix_mul => Self::infix_app(loc, "__mul__", lhs, rhs),
                     Rule::infix_div => Self::infix_app(loc, "__div__", lhs, rhs),
                     Rule::infix_mod => Self::infix_app(loc, "__mod__", lhs, rhs),
-                    Rule::infix_concat => Expr::Concat(loc, Box::new(lhs), Box::new(rhs)),
+                    Rule::infix_concat => Expr::Cat(loc, Box::new(lhs), Box::new(rhs)),
                     Rule::infix_at => Expr::At(loc, Box::new(lhs), Box::new(rhs)),
                     _ => unreachable!(),
                 }
@@ -1610,7 +1625,7 @@ impl Trans {
         let n = pairs.next().unwrap();
         let n_loc = Loc::from(n.as_span());
         let fields = vec![(n.as_str().to_string(), self.expr(pairs.next().unwrap()))];
-        let expr = Concat(
+        let expr = Cat(
             a_loc,
             Box::new(Unresolved(a_loc, None, a_var.clone())),
             Box::new(Obj(n_loc, Box::new(Fields(n_loc, fields)))),

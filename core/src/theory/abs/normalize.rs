@@ -462,7 +462,11 @@ impl<'a> Normalizer<'a> {
             }
             Object(r) => Object(self.term_box(r)?),
             Obj(a) => Obj(self.term_box(a)?),
-            Concat(a, b) => {
+            Concat(a, b) => match (self.term(*a)?, self.term(*b)?) {
+                (Object(a), Object(b)) => self.term(Object(Box::new(Combine(false, a, b))))?,
+                (a, b) => Concat(Box::new(a), Box::new(b)),
+            },
+            Cat(a, b) => {
                 let mut a = self.term_box(a)?;
                 let b = self.term_box(b)?;
                 match (a.as_mut(), b.as_ref()) {
@@ -472,9 +476,9 @@ impl<'a> Normalizer<'a> {
                             x.extend(y.iter().map(|(n, tm)| (n.clone(), tm.clone())));
                             *a
                         }
-                        _ => Concat(a, b),
+                        _ => Cat(a, b),
                     },
-                    _ => Concat(a, b),
+                    _ => Cat(a, b),
                 }
             }
             Access(a, n) => match *self.term_box(a)? {

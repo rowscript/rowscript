@@ -88,6 +88,7 @@ mod ok_namespace;
 mod ok_num_add;
 mod ok_object;
 mod ok_object_assign;
+mod ok_object_concat;
 mod ok_object_rowpoly;
 mod ok_op;
 mod ok_postulate_fn;

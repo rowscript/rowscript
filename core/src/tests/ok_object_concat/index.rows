@@ -1,0 +1,22 @@
+type Tree<E> = E ... {
+    children: Array<Tree<E>>
+};
+
+type Data = {
+    data: number
+};
+
+type MyTree = Tree<Data>;
+
+const a: MyTree = {
+    data: 42,
+    children: []
+};
+
+const b: MyTree = {
+    data: 69,
+    children: [a]
+};
+
+console.log(a);
+console.log(b);

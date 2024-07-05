@@ -416,6 +416,7 @@ impl<'a> Resolver<'a> {
             At(loc, a, k) => At(loc, self.expr(a)?, self.expr(k)?),
             Obj(loc, a) => Obj(loc, self.expr(a)?),
             Concat(loc, a, b) => Concat(loc, self.expr(a)?, self.expr(b)?),
+            Cat(loc, a, b) => Cat(loc, self.expr(a)?, self.expr(b)?),
             Downcast(loc, a) => Downcast(loc, self.expr(a)?),
             Enum(loc, a) => Enum(loc, self.expr(a)?),
             Variant(loc, n, a) => Variant(loc, n, self.expr(a)?),

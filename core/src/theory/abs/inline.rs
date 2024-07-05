@@ -3,6 +3,14 @@ use crate::theory::abs::data::Term;
 pub fn noinline(tm: &Term) -> bool {
     use Term::*;
     match tm {
+        Arr(xs) => {
+            for x in xs {
+                if noinline(x) {
+                    return true;
+                }
+            }
+            false
+        }
         Fields(fields) => {
             for tm in fields.values() {
                 if noinline(tm) {
@@ -62,7 +70,7 @@ pub fn noinline(tm: &Term) -> bool {
         | NumLt(a, b)
         | NumGt(a, b)
         | Combine(.., a, b)
-        | Concat(a, b)
+        | Cat(a, b)
         | At(a, b) => noinline(a) || noinline(b),
 
         Lam(.., a)
@@ -80,7 +88,7 @@ pub fn noinline(tm: &Term) -> bool {
         | JSONStringify(a) => noinline(a),
 
         Extern(..) | Let(..) | Update(..) | Return(..) | Continue | Break | ArrIterNext(..)
-        | Arr(..) | ArrLength(..) | ArrPush(..) | ArrForeach(..) | ArrAt(..) | ArrInsert(..)
+        | ArrLength(..) | ArrPush(..) | ArrForeach(..) | ArrAt(..) | ArrInsert(..)
         | ArrIter(..) | MapIterNext(..) | Kv(..) | MapHas(..) | MapGet(..) | MapSet(..)
         | MapDelete(..) | MapClear(..) | MapIter(..) | Unionify(..) | Panic(..)
         | ConsoleLog(..) | SetTimeout(..) | EmitAsync(..) => true,
@@ -117,6 +125,7 @@ pub fn noinline(tm: &Term) -> bool {
         | RowEq(..)
         | RowRefl
         | Object(..)
+        | Concat(..)
         | AtResult { .. }
         | Downcast(..)
         | Enum(..)

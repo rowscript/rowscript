@@ -77,6 +77,7 @@ pub enum Expr {
     Object(Loc, Box<Self>),
     Obj(Loc, Box<Self>),
     Concat(Loc, Box<Self>, Box<Self>),
+    Cat(Loc, Box<Self>, Box<Self>),
     Access(Loc, String),
     At(Loc, Box<Self>, Box<Self>),
     Downcast(Loc, Box<Self>),
@@ -173,6 +174,7 @@ impl Expr {
             | Object(loc, ..)
             | Obj(loc, ..)
             | Concat(loc, ..)
+            | Cat(loc, ..)
             | Access(loc, ..)
             | At(loc, ..)
             | Downcast(loc, ..)
@@ -373,7 +375,7 @@ impl Display for Expr {
                 RowOrd(_, a, b) => format!("{a} keyof {b}"),
                 RowEq(_, a, b) => format!("{a} = {b}"),
                 Object(_, r) | Obj(_, r) => format!("{{{r}}}"),
-                Concat(_, a, b) => format!("{a}...{b}"),
+                Concat(_, a, b) | Cat(_, a, b) => format!("{a}...{b}"),
                 Access(_, n) => format!(".{n}"),
                 At(_, a, k) => format!("{a} @ {k}"),
                 Downcast(_, a) => format!("{{...{a}}}"),

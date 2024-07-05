@@ -142,6 +142,7 @@ pub enum Term {
     Object(Box<Self>),
     Obj(Box<Self>),
     Concat(Box<Self>, Box<Self>),
+    Cat(Box<Self>, Box<Self>),
     Access(Box<Self>, String),
     AtResult {
         fields_ty: Box<Self>,
@@ -493,7 +494,7 @@ impl Display for Term {
                 RowRefl => "refl".to_string(),
                 Object(r) => format!("{{{r}}}"),
                 Obj(r) => format!("{{{r}}}"),
-                Concat(a, b) => format!("{a}...{b}"),
+                Concat(a, b) | Cat(a, b) => format!("{a}...{b}"),
                 Access(a, n) => format!("{a}.{n}"),
                 AtResult { key, .. } => format!("?.{key}"),
                 At(a, k) => format!("{a}[{k}]"),

@@ -1261,7 +1261,7 @@ impl Ecma {
                 }
                 _ => unreachable!(),
             },
-            Concat(a, b) => Expr::Object(ObjectLit {
+            Cat(a, b) => Expr::Object(ObjectLit {
                 span: loc.into(),
                 props: vec![
                     PropOrSpread::Spread(SpreadElement {

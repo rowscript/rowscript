@@ -295,7 +295,11 @@ property = { prop_id ~ ":" ~ type_expr }
 label = { prop_id ~ ":" ~ expr }
 variant = { variant_id ~ (":" ~ type_expr)? }
 
-type_expr =
+type_expr = { primary_type_expr ~ (type_infix_op ~ primary_type_expr)* }
+type_infix_op =
+ _{ infix_concat
+  }
+primary_type_expr =
   { fn_type
   | primitive_type
   | object_type_ref

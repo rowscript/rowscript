@@ -956,7 +956,23 @@ impl Elaborator {
                 }
                 _ => unreachable!(),
             },
-            Concat(loc, a, b) => {
+            Concat(_, a, b) => {
+                let a = self.check(*a, &Term::Pure, &Term::Univ)?;
+                let b = self.check(*b, &Term::Pure, &Term::Univ)?;
+                match (a, b) {
+                    (Term::Object(a), Term::Object(b)) => InferResult {
+                        tm: Term::Object(Box::new(Term::Combine(false, a, b))),
+                        eff: Term::Pure,
+                        ty: Term::Univ,
+                    },
+                    (a, b) => InferResult {
+                        tm: Term::Concat(Box::new(a), Box::new(b)),
+                        eff: Term::Pure,
+                        ty: Term::Univ,
+                    },
+                }
+            }
+            Cat(loc, a, b) => {
                 let x_loc = a.loc();
                 let y_loc = b.loc();
 
@@ -999,7 +1015,7 @@ impl Elaborator {
                     (x_ty, _) => return Err(ExpectedObject(x_ty, x_loc)),
                 };
                 InferResult {
-                    tm: Term::Concat(Box::new(x), Box::new(y)),
+                    tm: Term::Cat(Box::new(x), Box::new(y)),
                     eff: x_eff,
                     ty,
                 }
