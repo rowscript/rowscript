@@ -528,7 +528,7 @@ impl Display for Term {
                 AnonVarargs(t) => format!("...{t}"),
                 Spread(a) => format!("...{a}"),
                 Typeof(ty) => format!("typeof<{ty}>()"),
-                Keyof(ty) => format!("keyof<{ty}>()"),
+                Keyof(o) => format!("keyof<{o}>()"),
                 Cls { class, .. } => format!("class {class}"),
                 Panic(a) => format!("panic({a})"),
                 ConsoleLog(m) => format!("console.log({m})"),

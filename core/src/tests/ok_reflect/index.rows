@@ -28,3 +28,9 @@ console.log(f3());
 //        case Empty: panic("impossible")
 //    }
 //}
+
+function f4(): string {
+    const a = Hello(42);
+    "{" + (keyof a).map((k) => "\"" + k.toString() + "\":" + (a @ k).toJSON()).join(",") + "}"
+}
+console.log(f4());

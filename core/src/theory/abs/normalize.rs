@@ -501,7 +501,17 @@ impl<'a> Normalizer<'a> {
                 }
             }
             At(a, k) => match self.term(*k)? {
-                Rk(k) => self.term(Access(a, k))?,
+                Rk(k) => match *self.term_box(a)? {
+                    Obj(a) => match *a {
+                        Fields(f) => self.at(f, k)?,
+                        a => At(Box::new(Obj(Box::new(a))), Box::new(Rk(k))),
+                    },
+                    Variant(a) => match *a {
+                        Fields(f) => self.at(f, k)?,
+                        a => At(Box::new(Variant(Box::new(a))), Box::new(Rk(k))),
+                    },
+                    a => At(Box::new(a), Box::new(Rk(k))),
+                },
                 k => At(self.term_box(a)?, Box::new(k)),
             },
             Downcast(r, m) => Downcast(self.term_box(r)?, self.term_box(m)?),
@@ -626,27 +636,19 @@ impl<'a> Normalizer<'a> {
                     )]))))
                 }
             }
-            Keyof(ty) => {
-                let ty = self.term(*ty)?;
-                if ty.is_unsolved() {
-                    Keyof(Box::new(ty))
-                } else {
-                    match ty {
-                        Object(a) | Enum(a) => match *a {
-                            Fields(m) => {
-                                let mut ret = Term::list_empty();
-                                for (key, _) in m {
-                                    ret = Term::list_append(Rk(key), ret);
-                                }
-                                ret
-                            }
-                            ty => return Err(ExpectedReflectable(ty, self.loc)),
-                        },
-                        Downcast(a, ..) | Upcast(a) => self.term(*a)?,
-                        _ => return Err(ExpectedReflectable(ty, self.loc)),
+            Keyof(o) => match self.term(*o)? {
+                Obj(a) | Variant(a) => match *a {
+                    Fields(m) => {
+                        let mut ret = Term::list_empty();
+                        for (key, _) in m {
+                            ret = Term::list_append(Rk(key), ret);
+                        }
+                        ret
                     }
-                }
-            }
+                    ty => return Err(ExpectedReflectable(ty, self.loc)),
+                },
+                o => return Err(ExpectedReflectable(o, self.loc)),
+            },
             Panic(a) => Panic(self.term_box(a)?),
             ConsoleLog(m) => ConsoleLog(self.term_box(m)?),
             SetTimeout(f, d, x) => {
@@ -836,5 +838,12 @@ impl<'a> Normalizer<'a> {
         }
         a.extend(b);
         Ok(a)
+    }
+
+    fn at(&self, mut fields: FieldMap, k: String) -> Result<Term, Error> {
+        match fields.remove(&k) {
+            Some(tm) => Ok(tm),
+            None => Err(UnresolvedField(k, Term::Fields(fields), self.loc)),
+        }
     }
 }

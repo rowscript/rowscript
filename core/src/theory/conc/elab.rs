@@ -19,8 +19,9 @@ use crate::theory::{
 use crate::Error;
 use crate::Error::{
     CatchAsyncEffect, DuplicateEffect, ExpectedCapability, ExpectedEnum, ExpectedInstanceof,
-    ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedSigma, NonCatchableExpr, NonExhaustive,
-    NonVariadicType, UnresolvedEffect, UnresolvedField, UnresolvedImplicitParam, UnresolvedVar,
+    ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedReflectable, ExpectedSigma,
+    NonCatchableExpr, NonExhaustive, NonVariadicType, UnresolvedEffect, UnresolvedField,
+    UnresolvedImplicitParam, UnresolvedVar,
 };
 
 #[derive(Debug)]
@@ -1069,10 +1070,14 @@ impl Elaborator {
             At(_, a, k) => {
                 let a_loc = a.loc();
                 let k = self.check(*k, &Term::Pure, &Term::Rowkey)?;
-                let InferResult { tm, eff, ty } = self.infer(*a)?;
+                let InferResult { tm, eff, mut ty } = self.infer(*a)?;
                 self.unifier(a_loc).unify_eff(&Term::Pure, &eff)?;
+                ty = match ty {
+                    Term::Downcast(ty, ..) | Term::Upcast(ty) => *ty,
+                    ty => ty,
+                };
                 match ty {
-                    Term::Object(f) => match (*f, k) {
+                    Term::Object(f) | Term::Enum(f) => match (*f, k) {
                         (Term::Fields(mut m), Term::Rk(n)) => match m.remove(&n) {
                             Some(ty) => InferResult {
                                 tm: Term::At(Box::new(tm), Box::new(Term::Rk(n))),
@@ -1090,7 +1095,7 @@ impl Elaborator {
                             },
                         },
                     },
-                    ty => return Err(ExpectedObject(ty, a_loc)),
+                    ty => return Err(ExpectedReflectable(ty, a_loc)),
                 }
             }
             Downcast(loc, a) => {
@@ -1276,7 +1281,7 @@ impl Elaborator {
                 }
             }
             Keyof(loc, a) => {
-                let InferResult { ty, .. } = self.infer(*a)?;
+                let InferResult { tm, .. } = self.infer(*a)?;
                 let list_ty = self.ubiquitous.get("List").unwrap().1.clone();
                 let list_ty = self.sigma.get(&list_ty).unwrap().to_term(list_ty);
                 let label_list_ty = self.nf(loc).term(Term::App(
@@ -1285,9 +1290,8 @@ impl Elaborator {
                     Box::new(Term::Rowkey),
                 ))?;
                 InferResult {
-                    tm: Term::Keyof(Box::new(ty)),
+                    tm: Term::Keyof(Box::new(tm)),
                     eff: Term::Pure,
-                    // TODO: DO NOT use String here, add a new type called Label.
                     ty: label_list_ty,
                 }
             }

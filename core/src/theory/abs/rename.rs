@@ -149,7 +149,7 @@ impl Renamer {
             AnonVarargs(t) => AnonVarargs(self.term(t)),
             Spread(a) => Spread(self.term(a)),
             Typeof(ty) => Typeof(self.term(ty)),
-            Keyof(ty) => Keyof(self.term(ty)),
+            Keyof(o) => Keyof(self.term(o)),
             Cls {
                 class,
                 type_args: t,
