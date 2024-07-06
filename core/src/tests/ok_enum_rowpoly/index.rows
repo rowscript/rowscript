@@ -1,6 +1,6 @@
-function f0<'A, 'B, 'C>(a: ['A], b: ['B]): ['C]
+function f0<'a, 'b, 'c>(a: ['a], b: ['b]): ['c]
 where
-    'C = 'A + 'B
+    'c = 'a + 'b
 {
     [...a]
 }

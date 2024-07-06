@@ -1,6 +1,6 @@
-function f0<'A, T>(v: T): T
+function f0<'a, T>(v: T): T
 where
-    (n: string) keyof 'A
+    (n: string) keyof 'a
 {
     v
 }

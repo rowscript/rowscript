@@ -1,4 +1,4 @@
-function f0<'A>(a: ['A]): ['A] {
+function f0<'a>(a: ['a]): ['a] {
     a
 }
 

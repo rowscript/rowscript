@@ -24,10 +24,10 @@ instanceof Show for Animal {
     }
 }
 
-function showName<'R>(a: {'R})
+function showName<'a>(a: {'a})
 where
-    (name: string) keyof 'R,
-    {'R} instanceof Show
+    (name: string) keyof 'a,
+    {'a} instanceof Show
 {
     a.show()
 }
