@@ -69,9 +69,9 @@ pub fn noinline(tm: &Term) -> bool {
         | NumGe(a, b)
         | NumLt(a, b)
         | NumGt(a, b)
+        | At(a, b)
         | Combine(.., a, b)
-        | Cat(a, b)
-        | At(a, b) => noinline(a) || noinline(b),
+        | Cat(a, b) => noinline(a) || noinline(b),
 
         Lam(.., a)
         | BoolNot(a)
@@ -119,6 +119,7 @@ pub fn noinline(tm: &Term) -> bool {
         | Row
         | Rowkey
         | Rk(..)
+        | AtResult { .. }
         | Associate(..)
         | RowOrd(..)
         | RowSat
@@ -126,7 +127,6 @@ pub fn noinline(tm: &Term) -> bool {
         | RowRefl
         | Object(..)
         | Concat(..)
-        | AtResult { .. }
         | Downcast(..)
         | Enum(..)
         | Upcast(..)

@@ -400,6 +400,7 @@ impl<'a> Resolver<'a> {
                 Kv(loc, resolved)
             }
             Associate(loc, a, n) => Associate(loc, self.expr(a)?, n),
+            At(loc, a, k) => At(loc, self.expr(a)?, self.expr(k)?),
             Fields(loc, fields) => {
                 let mut names = RawNameSet::default();
                 let mut resolved = Vec::default();
@@ -413,7 +414,6 @@ impl<'a> Resolver<'a> {
             RowOrd(loc, a, b) => RowOrd(loc, self.expr(a)?, self.expr(b)?),
             RowEq(loc, a, b) => RowEq(loc, self.expr(a)?, self.expr(b)?),
             Object(loc, a) => Object(loc, self.expr(a)?),
-            At(loc, a, k) => At(loc, self.expr(a)?, self.expr(k)?),
             Obj(loc, a) => Obj(loc, self.expr(a)?),
             Concat(loc, a, b) => Concat(loc, self.expr(a)?, self.expr(b)?),
             Cat(loc, a, b) => Cat(loc, self.expr(a)?, self.expr(b)?),

@@ -67,6 +67,7 @@ pub enum Expr {
 
     Row(Loc),
     Rowkey(Loc),
+    At(Loc, Box<Self>, Box<Self>),
     Associate(Loc, Box<Self>, String),
     Fields(Loc, Vec<(String, Self)>),
     Combine(Loc, Box<Self>, Box<Self>),
@@ -79,7 +80,6 @@ pub enum Expr {
     Concat(Loc, Box<Self>, Box<Self>),
     Cat(Loc, Box<Self>, Box<Self>),
     Access(Loc, String),
-    At(Loc, Box<Self>, Box<Self>),
     Downcast(Loc, Box<Self>),
 
     Enum(Loc, Box<Self>),
@@ -166,6 +166,7 @@ impl Expr {
             | Kv(loc, ..)
             | Row(loc)
             | Rowkey(loc)
+            | At(loc, ..)
             | Associate(loc, ..)
             | Fields(loc, ..)
             | Combine(loc, ..)
@@ -176,7 +177,6 @@ impl Expr {
             | Concat(loc, ..)
             | Cat(loc, ..)
             | Access(loc, ..)
-            | At(loc, ..)
             | Downcast(loc, ..)
             | Enum(loc, ..)
             | Variant(loc, ..)
@@ -362,6 +362,7 @@ impl Display for Expr {
                 ),
                 Row(_) => "row".to_string(),
                 Rowkey(_) => "rowkey".to_string(),
+                At(_, a, k) => format!("{a} @ {k}"),
                 Associate(_, a, n) => format!("{a}::{n}"),
                 Fields(_, fields) => format!(
                     "({})",
@@ -377,7 +378,6 @@ impl Display for Expr {
                 Object(_, r) | Obj(_, r) => format!("{{{r}}}"),
                 Concat(_, a, b) | Cat(_, a, b) => format!("{a}...{b}"),
                 Access(_, n) => format!(".{n}"),
-                At(_, a, k) => format!("{a} @ {k}"),
                 Downcast(_, a) => format!("{{...{a}}}"),
                 Enum(_, r) => format!("[{r}]"),
                 Variant(_, n, a) => format!("{n}({a})"),

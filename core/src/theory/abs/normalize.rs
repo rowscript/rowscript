@@ -401,6 +401,32 @@ impl<'a> Normalizer<'a> {
                 Rk(k) => Str(format!("\"{k}\"")),
                 a => RkToStr(Box::new(a)),
             },
+            AtResult { fields_ty, key } => {
+                match (*self.term_box(fields_ty)?, *self.term_box(key)?) {
+                    (Fields(mut f), Rk(k)) => match f.remove(&k) {
+                        Some(ty) => ty,
+                        None => return Err(UnresolvedField(k, Fields(f), self.loc)),
+                    },
+                    (f, k) => AtResult {
+                        fields_ty: Box::new(f),
+                        key: Box::new(k),
+                    },
+                }
+            }
+            At(a, k) => match self.term(*k)? {
+                Rk(k) => match *self.term_box(a)? {
+                    Obj(a) => match *a {
+                        Fields(f) => self.at(f, k)?,
+                        a => At(Box::new(Obj(Box::new(a))), Box::new(Rk(k))),
+                    },
+                    Variant(a) => match *a {
+                        Fields(f) => self.at(f, k)?,
+                        a => At(Box::new(Variant(Box::new(a))), Box::new(Rk(k))),
+                    },
+                    a => At(Box::new(a), Box::new(Rk(k))),
+                },
+                k => At(self.term_box(a)?, Box::new(k)),
+            },
             Fields(mut fields) => {
                 for tm in fields.values_mut() {
                     // FIXME: not unwind-safe, refactor `Self::term` to accept a `&mut Term`
@@ -487,32 +513,6 @@ impl<'a> Normalizer<'a> {
                     f => Access(Box::new(Obj(Box::new(f))), n),
                 },
                 a => Access(Box::new(a), n),
-            },
-            AtResult { fields_ty, key } => {
-                match (*self.term_box(fields_ty)?, *self.term_box(key)?) {
-                    (Fields(mut f), Rk(k)) => match f.remove(&k) {
-                        Some(ty) => ty,
-                        None => return Err(UnresolvedField(k, Fields(f), self.loc)),
-                    },
-                    (f, k) => AtResult {
-                        fields_ty: Box::new(f),
-                        key: Box::new(k),
-                    },
-                }
-            }
-            At(a, k) => match self.term(*k)? {
-                Rk(k) => match *self.term_box(a)? {
-                    Obj(a) => match *a {
-                        Fields(f) => self.at(f, k)?,
-                        a => At(Box::new(Obj(Box::new(a))), Box::new(Rk(k))),
-                    },
-                    Variant(a) => match *a {
-                        Fields(f) => self.at(f, k)?,
-                        a => At(Box::new(Variant(Box::new(a))), Box::new(Rk(k))),
-                    },
-                    a => At(Box::new(a), Box::new(Rk(k))),
-                },
-                k => At(self.term_box(a)?, Box::new(k)),
             },
             Downcast(r, m) => Downcast(self.term_box(r)?, self.term_box(m)?),
             Down(a, m) => {

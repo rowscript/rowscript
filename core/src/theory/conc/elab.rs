@@ -904,6 +904,37 @@ impl Elaborator {
                     }
                 }
             }
+            At(_, a, k) => {
+                let a_loc = a.loc();
+                let k = self.check(*k, &Term::Pure, &Term::Rowkey)?;
+                let InferResult { tm, eff, mut ty } = self.infer(*a)?;
+                self.unifier(a_loc).unify_eff(&Term::Pure, &eff)?;
+                ty = match ty {
+                    Term::Downcast(ty, ..) | Term::Upcast(ty) => *ty,
+                    ty => ty,
+                };
+                match ty {
+                    Term::Object(f) | Term::Enum(f) => match (*f, k) {
+                        (Term::Fields(mut m), Term::Rk(n)) => match m.remove(&n) {
+                            Some(ty) => InferResult {
+                                tm: Term::At(Box::new(tm), Box::new(Term::Rk(n))),
+                                eff,
+                                ty,
+                            },
+                            None => return Err(UnresolvedField(n, Term::Fields(m), a_loc)),
+                        },
+                        (fields, k) => InferResult {
+                            tm: Term::At(Box::new(tm), Box::new(k.clone())),
+                            eff,
+                            ty: Term::AtResult {
+                                fields_ty: Box::new(fields),
+                                key: Box::new(k),
+                            },
+                        },
+                    },
+                    ty => return Err(ExpectedReflectable(ty, a_loc)),
+                }
+            }
             Associate(loc, a, n) => InferResult::pure(
                 Term::Associate(Box::new(self.check(*a, &Term::Pure, &Term::Univ)?), n),
                 self.insert_meta(loc, InsertedMeta).0,
@@ -961,16 +992,11 @@ impl Elaborator {
                 let a = self.check(*a, &Term::Pure, &Term::Univ)?;
                 let b = self.check(*b, &Term::Pure, &Term::Univ)?;
                 match (a, b) {
-                    (Term::Object(a), Term::Object(b)) => InferResult {
-                        tm: Term::Object(Box::new(Term::Combine(false, a, b))),
-                        eff: Term::Pure,
-                        ty: Term::Univ,
-                    },
-                    (a, b) => InferResult {
-                        tm: Term::Concat(Box::new(a), Box::new(b)),
-                        eff: Term::Pure,
-                        ty: Term::Univ,
-                    },
+                    (Term::Object(a), Term::Object(b)) => InferResult::pure(
+                        Term::Object(Box::new(Term::Combine(false, a, b))),
+                        Term::Univ,
+                    ),
+                    (a, b) => InferResult::pure(Term::Concat(Box::new(a), Box::new(b)), Term::Univ),
                 }
             }
             Cat(loc, a, b) => {
@@ -1066,37 +1092,6 @@ impl Elaborator {
                     ))),
                     *rename(Box::new(Term::pi(&tele, Term::Pure, Term::Ref(t)))),
                 )
-            }
-            At(_, a, k) => {
-                let a_loc = a.loc();
-                let k = self.check(*k, &Term::Pure, &Term::Rowkey)?;
-                let InferResult { tm, eff, mut ty } = self.infer(*a)?;
-                self.unifier(a_loc).unify_eff(&Term::Pure, &eff)?;
-                ty = match ty {
-                    Term::Downcast(ty, ..) | Term::Upcast(ty) => *ty,
-                    ty => ty,
-                };
-                match ty {
-                    Term::Object(f) | Term::Enum(f) => match (*f, k) {
-                        (Term::Fields(mut m), Term::Rk(n)) => match m.remove(&n) {
-                            Some(ty) => InferResult {
-                                tm: Term::At(Box::new(tm), Box::new(Term::Rk(n))),
-                                eff,
-                                ty,
-                            },
-                            None => return Err(UnresolvedField(n, Term::Fields(m), a_loc)),
-                        },
-                        (fields, k) => InferResult {
-                            tm: Term::At(Box::new(tm), Box::new(k.clone())),
-                            eff,
-                            ty: Term::AtResult {
-                                fields_ty: Box::new(fields),
-                                key: Box::new(k),
-                            },
-                        },
-                    },
-                    ty => return Err(ExpectedReflectable(ty, a_loc)),
-                }
             }
             Downcast(loc, a) => {
                 let InferResult { tm: a, eff, ty } = self.infer(*a)?;
@@ -1274,11 +1269,7 @@ impl Elaborator {
                 let InferResult { ty, .. } = self.infer(*a)?;
                 let type_of = self.ubiquitous.get("Typeof").unwrap().1.clone();
                 let type_of = self.sigma.get(&type_of).unwrap().to_term(type_of);
-                InferResult {
-                    tm: Term::Typeof(Box::new(ty)),
-                    eff: Term::Pure,
-                    ty: type_of,
-                }
+                InferResult::pure(Term::Typeof(Box::new(ty)), type_of)
             }
             Keyof(loc, a) => {
                 let InferResult { tm, .. } = self.infer(*a)?;
@@ -1289,11 +1280,7 @@ impl Elaborator {
                     UnnamedImplicit,
                     Box::new(Term::Rowkey),
                 ))?;
-                InferResult {
-                    tm: Term::Keyof(Box::new(tm)),
-                    eff: Term::Pure,
-                    ty: label_list_ty,
-                }
+                InferResult::pure(Term::Keyof(Box::new(tm)), label_list_ty)
             }
             Pure(_) => InferResult::pure(Term::Pure, Term::Row),
             Effect(loc, a) => {
