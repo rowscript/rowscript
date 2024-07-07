@@ -2,10 +2,11 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{
     AnonVarargs, App, ArrAt, ArrForeach, ArrInsert, ArrIter, ArrIterNext, ArrLength, ArrPush,
     Array, ArrayIterator, Bigint, BigintToStr, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean,
-    ConsoleLog, EmitAsync, Enum, Fields, Find, JSONStringify, Map, MapClear, MapDelete, MapGet,
-    MapHas, MapIter, MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe,
-    NumLt, NumMod, NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object, Panic, Pi, Pure, Ref,
-    RkToStr, Rowkey, SetTimeout, StrAdd, StrEq, StrNeq, String, TupleBind, Unit, Univ,
+    ConsoleLog, Discriminants, EmitAsync, Enum, Fields, Find, JSONStringify, Map, MapClear,
+    MapDelete, MapGet, MapHas, MapIter, MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq,
+    NumGe, NumGt, NumLe, NumLt, NumMod, NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object,
+    Panic, Pi, Pure, Ref, RkToStr, Row, Rowkey, SetTimeout, StrAdd, StrEq, StrNeq, String,
+    TupleBind, Undef, Unit, Univ,
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
@@ -23,6 +24,10 @@ fn implicit(var: Var, typ: Term) -> Param<Term> {
 
 fn type_param(var: Var) -> Param<Term> {
     implicit(var, Univ)
+}
+
+fn row_param(var: Var) -> Param<Term> {
+    implicit(var, Row)
 }
 
 fn explicit(var: Var, typ: Term) -> Param<Term> {
@@ -160,6 +165,7 @@ impl Builtins {
     pub fn new() -> Self {
         Self::default()
             .reserved([
+                Var::list(),
                 Var::async_effect(),
                 Var::await_one(),
                 Var::await_mul(),
@@ -192,6 +198,7 @@ impl Builtins {
             .number_to_string()
             .bigint_to_string()
             .rowkey_to_string()
+            .reflect_discriminants()
             .array_iterator_type()
             .array_iterator_next()
             .array_type()
@@ -240,8 +247,7 @@ impl Builtins {
     }
 
     fn defined(&self, name: &str) -> Term {
-        let var = self.ubiquitous.get(name).unwrap().1.clone();
-        self.sigma.get(&var).unwrap().to_term(var)
+        Undef(self.ubiquitous.get(name).unwrap().1.clone())
     }
 
     fn reserved<const N: usize>(mut self, vars: [Var; N]) -> Self {
@@ -366,6 +372,34 @@ impl Builtins {
     );
 
     un_op!(rowkey_to_string, "rowkey#toString", Rowkey, String, RkToStr);
+
+    fn reflect_discriminants(self) -> Self {
+        let r = Var::new("'a");
+        let a = Var::new("a");
+        let tupled = Var::tupled();
+        let list_ty = self.defined("List");
+        self.func(
+            "reflect#discriminants",
+            vec![
+                row_param(r.clone()),
+                tuple_param(
+                    tupled.clone(),
+                    [(a.clone(), Enum(Box::new(Ref(r.clone()))))],
+                ),
+            ],
+            App(
+                Box::new(list_ty),
+                ArgInfo::UnnamedImplicit,
+                Box::new(Rowkey),
+            ),
+            explicit_tuple_bind1(
+                a,
+                Enum(Box::new(Ref(r.clone()))),
+                Ref(tupled),
+                Discriminants(Box::new(Ref(r))),
+            ),
+        )
+    }
 
     fn array_iterator_type(self) -> Self {
         let t = Var::new("T");

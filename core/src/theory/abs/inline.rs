@@ -138,6 +138,7 @@ pub fn noinline(tm: &Term) -> bool {
         | AnonVarargs(..)
         | Typeof(..)
         | Keyof(..)
+        | Discriminants(..)
         | Cls { .. }
         | Pure
         | Effect(..) => false,

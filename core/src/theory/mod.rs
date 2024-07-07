@@ -84,6 +84,8 @@ pub const AWAIT_ANY: &str = "__await_any__";
 
 pub const NAMESPACE_PREFIX: &str = "__namespace_";
 
+pub const LIST: &str = "List";
+
 impl Var {
     fn new<S: Into<String>>(name: S) -> Self {
         Self {
@@ -177,6 +179,10 @@ impl Var {
 
     pub fn namespace_class(&self) -> Self {
         Self::new(format!("{NAMESPACE_PREFIX}{self}"))
+    }
+
+    pub fn list() -> Self {
+        Self::new(LIST)
     }
 
     pub fn id(&self) -> usize {

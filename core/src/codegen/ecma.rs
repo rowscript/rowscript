@@ -1451,7 +1451,7 @@ impl Ecma {
                 Self::iife(loc, self.block(sigma, loc, tm, true)?, false)
             }
 
-            Rk(..) | RkToStr(..) | At(..) | Typeof(..) | Keyof(..) => {
+            Rk(..) | RkToStr(..) | At(..) | Typeof(..) | Keyof(..) | Discriminants(..) => {
                 return Err(NonErasable(tm.clone(), loc))
             }
 

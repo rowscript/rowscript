@@ -174,6 +174,7 @@ pub enum Term {
 
     Typeof(Box<Self>),
     Keyof(Box<Self>),
+    Discriminants(Box<Self>),
 
     Cls {
         class: Var,
@@ -347,7 +348,7 @@ impl Term {
         }
     }
 
-    pub fn list_empty() -> Self {
+    fn list_empty() -> Self {
         use Term::*;
         Variant(Box::new(Fields(FieldMap::from([(
             "Empty".to_string(),
@@ -355,7 +356,7 @@ impl Term {
         )]))))
     }
 
-    pub fn list_append(value: Self, list: Self) -> Self {
+    fn list_append(value: Self, list: Self) -> Self {
         use Term::*;
         Variant(Box::new(Fields(FieldMap::from([(
             "Append".to_string(),
@@ -364,6 +365,12 @@ impl Term {
                 ("list".to_string(), list),
             ])))),
         )]))))
+    }
+
+    pub fn rowkey_list(m: FieldMap) -> Self {
+        use Term::*;
+        m.into_keys()
+            .fold(Self::list_empty(), |ret, k| Self::list_append(Rk(k), ret))
     }
 }
 
@@ -529,6 +536,7 @@ impl Display for Term {
                 Spread(a) => format!("...{a}"),
                 Typeof(ty) => format!("typeof<{ty}>()"),
                 Keyof(o) => format!("keyof<{o}>()"),
+                Discriminants(ty) => format!("discriminants<{ty}>()"),
                 Cls { class, .. } => format!("class {class}"),
                 Panic(a) => format!("panic({a})"),
                 ConsoleLog(m) => format!("console.log({m})"),

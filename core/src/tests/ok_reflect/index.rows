@@ -34,3 +34,9 @@ function f4(): string {
     "{" + (keyof a).map((k) => "\"" + k.toString() + "\":" + (a @ k).toJSON()).join(",") + "}"
 }
 console.log(f4());
+
+function f5(): string {
+    const a: Option<number> = Ok(42);
+    reflects.discriminants(a).map(toString).join(", ")
+}
+console.log(f5());

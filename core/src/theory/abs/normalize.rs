@@ -638,16 +638,14 @@ impl<'a> Normalizer<'a> {
             }
             Keyof(o) => match self.term(*o)? {
                 Obj(a) | Variant(a) => match *a {
-                    Fields(m) => {
-                        let mut ret = Term::list_empty();
-                        for (key, _) in m {
-                            ret = Term::list_append(Rk(key), ret);
-                        }
-                        ret
-                    }
+                    Fields(m) => Term::rowkey_list(m),
                     ty => return Err(ExpectedReflectable(ty, self.loc)),
                 },
                 o => return Err(ExpectedReflectable(o, self.loc)),
+            },
+            Discriminants(ty) => match self.term(*ty)? {
+                Fields(m) => Term::rowkey_list(m),
+                ty => Discriminants(Box::new(ty)),
             },
             Panic(a) => Panic(self.term_box(a)?),
             ConsoleLog(m) => ConsoleLog(self.term_box(m)?),

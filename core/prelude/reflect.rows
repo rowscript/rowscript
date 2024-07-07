@@ -40,3 +40,11 @@ type Typeof = [
     | TypeofObject
     | TypeofEnum
 ];
+
+declare reflect#discriminants<'a>(a: ['a]): List<rowkey>;
+
+namespace reflects {
+    discriminants<'a>(a: ['a]): List<rowkey> {
+        reflect#discriminants(a)
+    }
+}

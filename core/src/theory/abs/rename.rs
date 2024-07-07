@@ -150,6 +150,7 @@ impl Renamer {
             Spread(a) => Spread(self.term(a)),
             Typeof(ty) => Typeof(self.term(ty)),
             Keyof(o) => Keyof(self.term(o)),
+            Discriminants(ty) => Discriminants(self.term(ty)),
             Cls {
                 class,
                 type_args: t,

@@ -199,6 +199,7 @@ builtin =
   | "number#toString"
   | "bigint#toString"
   | "rowkey#toString"
+  | "reflect#discriminants"
   | "arrayIter#next"
   | "array#length"
   | "array#push"
