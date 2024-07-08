@@ -664,15 +664,7 @@ interface_fn =
   ~ (":" ~ type_expr)?
   ~ preds?
   ~ capabilities?
-  ~ ";"
-  }
-
-implements_def =
-  { "implements"
-  ~ type_id
-  ~ "{"
-  ~ interface_fn+
-  ~ "}"
+  ~ (";" | fn_body_block)
   }
 
 instance_def =
@@ -753,7 +745,6 @@ def =
   | type_postulate
   | type_alias
   | interface_def
-  | implements_def
   | instance_def
   | const_def
   | class_def

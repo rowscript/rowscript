@@ -216,19 +216,17 @@ function seconds(d: number): Duration {
 }
 
 interface ToJSON {
-    toJSON(a: ToJSON): string;
-}
-
-// TODO: Automatic instance creation.
-//implements ToJSON {
-//    toJSON(a: ToJSON): string {
+    toJSON(a: ToJSON): string; // {
 //        switch (typeof a) {
-//            case TypeofObject: // TODO
-//            case TypeofEnum: // TODO
-//            case a: a.toJSON()
+//            case TypeofObject:
+//                "{" + (keyof a).map((k) => "\"" + k.toString() + "\":" + (a @ k.value).toJSON()).join(",") + "}"
+//            case TypeofEnum:
+//                "{" + (keyof a).map((k) => "\"" + k.toString() + "\":" + (a @ k.value).toJSON()).join(",") + "}"
+//            case a:
+//                a.toJSON()
 //        }
 //    }
-//}
+}
 
 instanceof ToJSON for unit {
     toJSON(a: unit): string {
