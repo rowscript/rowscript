@@ -32,3 +32,15 @@ f1();
 //    open(dsn: string): MySQL { {conn: dsn.connectMySQL()} }
 //    close(db: MySQL) { db.conn.closeMySQL() }
 //}
+
+type Data = {n: number};
+
+interface UseDB {
+    useDB() throw DB;
+}
+
+instanceof UseDB for Data {
+    useDB() throw DB {
+        f0();
+    }
+}

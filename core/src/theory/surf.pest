@@ -682,6 +682,7 @@ instance_fn =
   ~ implicits?
   ~ params
   ~ (":" ~ type_expr)?
+  ~ capabilities?
   ~ fn_body_block
   }
 
