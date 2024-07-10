@@ -653,7 +653,7 @@ interface_def =
   ~ type_id
   ~ implicits?
   ~ "{"
-  ~ interface_fn+
+  ~ (interface_fn+ | instance_fn+)
   ~ "}"
   }
 interface_fn =
@@ -664,7 +664,7 @@ interface_fn =
   ~ (":" ~ type_expr)?
   ~ preds?
   ~ capabilities?
-  ~ (";" | fn_body_block)
+  ~ ";"
   }
 
 instance_def =

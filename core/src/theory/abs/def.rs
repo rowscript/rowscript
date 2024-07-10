@@ -78,6 +78,7 @@ impl Def<Term> {
             }
             Instance { .. } => unreachable!(),
             InstanceFn(f) => self.to_lam_term(*f.clone()),
+            ImplementsFn(f) => self.to_lam_term(*f.clone()),
 
             Class {
                 associated,
@@ -201,6 +202,12 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
+                ImplementsFn(f) => format!(
+                    "implements function {} {}: {} {{\n\t{f}\n}}",
+                    self.name,
+                    Param::tele_to_string(&self.tele),
+                    self.ret,
+                ),
 
                 Class {
                     associated,
@@ -271,6 +278,7 @@ pub enum Body<T: Syntax> {
     InterfaceFn(Var),
     Instance(Box<InstanceBody<T>>),
     InstanceFn(Box<T>),
+    ImplementsFn(Box<T>),
 
     Class {
         ctor: Var,

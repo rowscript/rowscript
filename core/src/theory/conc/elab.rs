@@ -146,6 +146,7 @@ impl Elaborator {
             InterfaceFn(i) => InterfaceFn(i),
             Instance(body) => Instance(self.check_instance_body(&d.name, *body, false)?),
             InstanceFn(f) => InstanceFn(Box::new(self.check(*f, &eff, &ret)?)),
+            ImplementsFn(f) => ImplementsFn(Box::new(self.check(*f, &eff, &ret)?)),
 
             Class {
                 ctor,

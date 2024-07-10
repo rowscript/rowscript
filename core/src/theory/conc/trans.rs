@@ -386,12 +386,22 @@ impl Trans {
         let mut inst_tele = Tele::default();
         let mut fn_defs = Vec::default();
         let mut fns = Vec::default();
+
         for p in pairs {
             match p.as_rule() {
                 Rule::row_id => inst_tele.push(Self::row_param(p)),
                 Rule::implicit_id => inst_tele.push(Self::implicit_param(p)),
-                Rule::interface_fn => {
-                    let mut d = self.fn_postulate(p);
+                _ => {
+                    let is_implements_fn = match p.as_rule() {
+                        Rule::interface_fn => false,
+                        Rule::instance_fn => true,
+                        _ => unreachable!(),
+                    };
+                    let mut d = if is_implements_fn {
+                        self.fn_def(p, None)
+                    } else {
+                        self.fn_postulate(p)
+                    };
                     let mut tele = vec![Param {
                         var: name.clone(),
                         info: Implicit,
@@ -399,6 +409,16 @@ impl Trans {
                     }];
                     tele.extend(d.tele);
                     d.tele = tele;
+
+                    if is_implements_fn {
+                        let mut implements_def = d.clone();
+                        implements_def.name = implements_def.name.implements_fn(&name);
+                        implements_def.body = match implements_def.body {
+                            Fn(f) => ImplementsFn(f),
+                            _ => unreachable!(),
+                        };
+                        todo!("implements function: {implements_def}");
+                    }
 
                     d.body = InterfaceFn(name.clone());
                     if is_capability {
@@ -410,7 +430,6 @@ impl Trans {
                     fns.push(d.name.clone());
                     fn_defs.push(d);
                 }
-                _ => unreachable!(),
             }
         }
 

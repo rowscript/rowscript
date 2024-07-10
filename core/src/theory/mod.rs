@@ -141,6 +141,10 @@ impl Var {
         Self::new(format!("{i}__for__{inst}__{self}"))
     }
 
+    pub fn implements_fn(&self, i: &Self) -> Self {
+        Self::new(format!("{i}__implements__{self}"))
+    }
+
     pub fn catch(&self) -> Self {
         Self::new(format!("catch__{}", self.id()))
     }

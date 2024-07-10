@@ -74,6 +74,7 @@ mod ok_fn;
 mod ok_fn_recur;
 mod ok_fori;
 mod ok_forof;
+mod ok_implements;
 mod ok_implicit_named;
 mod ok_implicit_unnamed;
 mod ok_instanceof;
