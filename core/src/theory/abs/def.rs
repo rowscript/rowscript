@@ -173,6 +173,7 @@ impl<T: Syntax> Display for Def<T> {
                     is_capability,
                     fns,
                     instances,
+                    ..
                 } => format!(
                     "{} {} {}: {} {{\n{}\n{}}}",
                     if *is_capability { "throw" } else { "interface" },
@@ -274,6 +275,7 @@ pub enum Body<T: Syntax> {
         is_capability: bool,
         fns: Vec<Var>,
         instances: Vec<Var>,
+        implements: Vec<Var>,
     },
     InterfaceFn(Var),
     Instance(Box<InstanceBody<T>>),

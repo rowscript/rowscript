@@ -1,4 +1,4 @@
 interface Ask {
-    ask0(); // { console.log("ask0") }
-    ask1(); // { console.log("ask1") }
+    ask0() { console.log("ask0") }
+    ask1() { console.log("ask1") }
 }

@@ -136,11 +136,13 @@ impl<'a> Resolver<'a> {
             Interface {
                 is_capability,
                 fns,
-                instances: ims,
+                instances,
+                implements,
             } => Interface {
                 is_capability,
                 fns,
-                instances: ims,
+                instances,
+                implements,
             },
             InterfaceFn(i) => InterfaceFn(i),
             Instance(body) => {

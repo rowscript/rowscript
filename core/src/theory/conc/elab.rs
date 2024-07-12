@@ -138,10 +138,12 @@ impl Elaborator {
                 is_capability,
                 fns,
                 instances,
+                implements,
             } => Interface {
                 is_capability,
                 fns,
                 instances,
+                implements,
             },
             InterfaceFn(i) => InterfaceFn(i),
             Instance(body) => Instance(self.check_instance_body(&d.name, *body, false)?),
@@ -233,6 +235,7 @@ impl Elaborator {
                 is_capability,
                 fns,
                 instances,
+                ..
             } => {
                 if !can_be_capability && *is_capability {
                     return Err(ExpectedInterface(Term::Ref(ret.i.clone()), i_def_loc));

@@ -384,8 +384,11 @@ impl Trans {
         let name = Var::from(name_pair);
 
         let mut inst_tele = Tele::default();
-        let mut fn_defs = Vec::default();
         let mut fns = Vec::default();
+        let mut fn_defs = Vec::default();
+
+        let mut implements_fns = Vec::default();
+        let mut implements_fn_defs = Vec::default();
 
         for p in pairs {
             match p.as_rule() {
@@ -411,13 +414,14 @@ impl Trans {
                     d.tele = tele;
 
                     if is_implements_fn {
-                        let mut implements_def = d.clone();
-                        implements_def.name = implements_def.name.implements_fn(&name);
-                        implements_def.body = match implements_def.body {
+                        let mut implements_fn = d.clone();
+                        implements_fn.name = implements_fn.name.implements_fn(&name);
+                        implements_fn.body = match implements_fn.body {
                             Fn(f) => ImplementsFn(f),
                             _ => unreachable!(),
                         };
-                        todo!("implements function: {implements_def}");
+                        implements_fns.push(implements_fn.name.clone());
+                        implements_fn_defs.push(implements_fn);
                     }
 
                     d.body = InterfaceFn(name.clone());
@@ -447,9 +451,11 @@ impl Trans {
                 is_capability,
                 fns,
                 instances: Default::default(),
+                implements: implements_fns,
             },
         }];
         defs.extend(fn_defs);
+        defs.extend(implements_fn_defs);
         defs
     }
 
