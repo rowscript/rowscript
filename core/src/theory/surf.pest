@@ -584,6 +584,8 @@ instanceof = { type_expr ~ implicit_args? ~ "instanceof" ~ tyref }
 capabilities = _{ "throw" ~ capability ~ ("," ~ capability)* }
 capability = { tyref }
 
+implements = { "implements" ~ tyref }
+
 fn_def =
   { is_async?
   ~ "function"
@@ -645,6 +647,7 @@ type_alias =
   ~ implicits?
   ~ "="
   ~ type_expr
+  ~ implements?
   ~ ";"
   }
 

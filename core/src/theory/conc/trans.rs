@@ -325,11 +325,13 @@ impl Trans {
         let name = Var::from(pairs.next().unwrap());
         let mut tele = Tele::default();
         let mut target = None;
+        let mut implements = None;
         for p in pairs {
             match p.as_rule() {
                 Rule::row_id => tele.push(Self::row_param(p)),
                 Rule::implicit_id => tele.push(Self::implicit_param(p)),
                 Rule::type_expr => target = Some(self.type_expr(p)),
+                Rule::implements => implements = Some(Box::new(self.maybe_qualified(p))),
                 _ => unreachable!(),
             }
         }
@@ -340,7 +342,10 @@ impl Trans {
             tele,
             eff: Box::new(Pure(loc)),
             ret: Box::new(Univ(loc)),
-            body: Alias(Box::new(target.unwrap())),
+            body: Alias {
+                ty: Box::new(target.unwrap()),
+                implements,
+            },
         }
     }
 

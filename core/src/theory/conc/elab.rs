@@ -110,7 +110,12 @@ impl Elaborator {
         let body = match d.body {
             Fn(f) => Fn(Box::new(self.check(*f, &eff, &ret)?)),
             Postulate => Postulate,
-            Alias(t) => Alias(Box::new(self.check(*t, &eff, &ret)?)),
+            Alias { ty, .. } => {
+                Alias {
+                    ty: Box::new(self.check(*ty, &eff, &ret)?),
+                    implements: None, // TODO
+                }
+            }
             Constant(anno, f) => Constant(
                 anno,
                 Box::new(if anno {

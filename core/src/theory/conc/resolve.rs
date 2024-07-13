@@ -129,7 +129,10 @@ impl<'a> Resolver<'a> {
         d.body = match d.body {
             Fn(f) => Fn(self.self_referencing(&d.name, f)?),
             Postulate => Postulate,
-            Alias(t) => Alias(self.self_referencing(&d.name, t)?),
+            Alias { ty, implements } => Alias {
+                ty: self.self_referencing(&d.name, ty)?,
+                implements: implements.map(|t| self.expr(t)).transpose()?,
+            },
             Constant(anno, f) => Constant(anno, self.expr(f)?),
             Verify(a) => Verify(self.expr(a)?),
 

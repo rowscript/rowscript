@@ -52,7 +52,7 @@ impl Def<Term> {
         match &self.body {
             Fn(f) => self.to_lam_term(*f.clone()),
             Postulate => Term::Extern(v),
-            Alias(t) => self.to_lam_term(*t.clone()),
+            Alias { ty, .. } => self.to_lam_term(*ty.clone()),
             Constant(_, f) => self.to_lam_term(*f.clone()),
             Verify(..) => unreachable!(),
 
@@ -151,11 +151,16 @@ impl<T: Syntax> Display for Def<T> {
                     Param::tele_to_string(&self.tele),
                     self.ret,
                 ),
-                Alias(t) => format!(
-                    "type {} {}: {} = {t};",
+                Alias { ty, implements } => format!(
+                    "type {} {}: {} = {ty}{};",
                     self.name,
                     Param::tele_to_string(&self.tele),
                     self.ret,
+                    if let Some(t) = implements {
+                        format!(" implements {t}")
+                    } else {
+                        "".to_string()
+                    }
                 ),
                 Constant(anno, f) => {
                     if *anno {
@@ -267,7 +272,10 @@ impl<T: Syntax> Display for Def<T> {
 pub enum Body<T: Syntax> {
     Fn(Box<T>),
     Postulate,
-    Alias(Box<T>),
+    Alias {
+        ty: Box<T>,
+        implements: Option<Box<T>>,
+    },
     Constant(bool, Box<T>),
     Verify(Box<T>),
 
@@ -316,7 +324,7 @@ impl InstanceBody<Term> {
             Ref(inst) => {
                 let inst = inst.clone();
                 let def = sigma.get(&inst).unwrap();
-                if !matches!(def.body, Alias(_)) {
+                if !matches!(def.body, Alias { .. }) {
                     return Err(ExpectedAlias(Ref(inst), def.loc));
                 }
                 def.to_term(inst.clone())
