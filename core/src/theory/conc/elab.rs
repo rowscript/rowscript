@@ -110,10 +110,13 @@ impl Elaborator {
         let body = match d.body {
             Fn(f) => Fn(Box::new(self.check(*f, &eff, &ret)?)),
             Postulate => Postulate,
-            Alias { ty, .. } => {
+            Alias { ty, implements } => {
+                let ty = self.check(*ty, &eff, &ret)?;
                 Alias {
-                    ty: Box::new(self.check(*ty, &eff, &ret)?),
-                    implements: None, // TODO
+                    ty: Box::new(ty.clone()),
+                    implements: implements
+                        .map(|i| self.insert_implements(*i, d.name.clone(), ty))
+                        .transpose()?,
                 }
             }
             Constant(anno, f) => Constant(
@@ -153,7 +156,10 @@ impl Elaborator {
             InterfaceFn(i) => InterfaceFn(i),
             Instance(body) => Instance(self.check_instance_body(&d.name, *body, false)?),
             InstanceFn(f) => InstanceFn(Box::new(self.check(*f, &eff, &ret)?)),
-            ImplementsFn(f) => ImplementsFn(Box::new(self.check(*f, &eff, &ret)?)),
+            ImplementsFn { name, f } => ImplementsFn {
+                name,
+                f: Box::new(self.check(*f, &eff, &ret)?),
+            },
 
             Class {
                 ctor,
@@ -215,6 +221,69 @@ impl Elaborator {
         debug!(target: "elab", "definition checked successfully: {checked}");
 
         Ok(checked.clone())
+    }
+
+    fn insert_implements(&mut self, i: Expr, name: Var, ty: Term) -> Result<Box<Term>, Error> {
+        use Body::*;
+        use Expr::*;
+
+        let (loc, i) = match i {
+            Resolved(loc, i) => (loc, i),
+            _ => unreachable!(),
+        };
+        let inst = Resolved(loc, name.clone());
+        let inst_tm = Box::new(Term::Ref(name));
+        let implements = match &self.sigma.get(&i).unwrap().body {
+            Interface { implements, .. } => implements.clone(),
+            _ => unreachable!(),
+        };
+
+        let mut fns = HashMap::default();
+        for f in implements {
+            let mut d = self.sigma.get(&f).unwrap().clone();
+            let ty_var = d.tele.remove(0).var;
+            d.tele = d
+                .tele
+                .into_iter()
+                .map(|p| {
+                    Ok::<_, Error>(Param {
+                        var: p.var,
+                        info: p.info,
+                        typ: Box::new(self.nf(d.loc).with([(&ty_var, &ty)], *p.typ)?),
+                    })
+                })
+                .collect::<Result<Tele<_>, _>>()?;
+            d.ret = Box::new(self.nf(d.loc).with([(&ty_var, &ty)], *d.ret)?);
+            let (f_name, f) = match d.body {
+                ImplementsFn { name, f } => (name, f),
+                _ => unreachable!(),
+            };
+            d.body = InstanceFn(Box::new(self.nf(d.loc).with([(&ty_var, &ty)], *f)?));
+            d.name = f_name.instance_fn(&i, &inst);
+
+            fns.insert(f_name, d.name.clone());
+            self.sigma.insert(d.name.clone(), d);
+        }
+
+        let inst_def = Def {
+            loc,
+            name: i.instance(&inst),
+            tele: Default::default(),
+            eff: Box::new(Term::Pure),
+            ret: Box::new(Term::Univ),
+            body: Instance(Box::new(InstanceBody {
+                i: i.clone(),
+                inst: inst_tm,
+                fns,
+            })),
+        };
+        match &mut self.sigma.get_mut(&i).unwrap().body {
+            Interface { instances, .. } => instances.push(inst_def.name.clone()),
+            _ => unreachable!(),
+        };
+        self.sigma.insert(inst_def.name.clone(), inst_def);
+
+        Ok(Box::new(Term::Ref(i)))
     }
 
     fn check_instance_body(

@@ -164,7 +164,11 @@ impl<'a> Resolver<'a> {
                 Instance(Box::new(InstanceBody { i, inst, fns }))
             }
             InstanceFn(f) => InstanceFn(self.expr(f)?), // FIXME: currently cannot be recursive
-            ImplementsFn(f) => ImplementsFn(self.expr(f)?), // FIXME: currently cannot be recursive
+            // FIXME: currently cannot be recursive
+            ImplementsFn { name, f } => ImplementsFn {
+                name,
+                f: self.expr(f)?,
+            },
 
             Class {
                 ctor,

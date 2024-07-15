@@ -420,11 +420,14 @@ impl Trans {
 
                     if is_implements_fn {
                         let mut implements_fn = d.clone();
-                        implements_fn.name = implements_fn.name.implements_fn(&name);
                         implements_fn.body = match implements_fn.body {
-                            Fn(f) => ImplementsFn(f),
+                            Fn(f) => ImplementsFn {
+                                name: implements_fn.name.clone(),
+                                f,
+                            },
                             _ => unreachable!(),
                         };
+                        implements_fn.name = implements_fn.name.implements_fn(&name);
                         implements_fns.push(implements_fn.name.clone());
                         implements_fn_defs.push(implements_fn);
                     }

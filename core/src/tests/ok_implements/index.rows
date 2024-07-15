@@ -1,6 +1,15 @@
-interface Ask {
-    ask0() { console.log("ask0") }
-    ask1() { console.log("ask1") }
+interface Foo {
+    ask() { console.log("foo") }
+    id(a: Foo): Foo { a }
 }
 
-type Data = {n: number} implements Ask;
+type Data = {n: number} implements Foo;
+
+function f0<T>(a: T)
+where T instanceof Foo
+{
+    ask<T>()
+}
+f0({n: 42});
+
+const a1 = id({n: 42});
