@@ -19,9 +19,8 @@ use crate::theory::{
 use crate::Error;
 use crate::Error::{
     CatchAsyncEffect, DuplicateEffect, ExpectedCapability, ExpectedEnum, ExpectedInstanceof,
-    ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedReflectable, ExpectedSigma,
-    NonCatchableExpr, NonExhaustive, NonVariadicType, UnresolvedEffect, UnresolvedField,
-    UnresolvedImplicitParam, UnresolvedVar,
+    ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedSigma, NonCatchableExpr, NonExhaustive,
+    NonVariadicType, UnresolvedEffect, UnresolvedField, UnresolvedImplicitParam, UnresolvedVar,
 };
 
 #[derive(Debug)]
@@ -991,26 +990,13 @@ impl Elaborator {
                     Term::Downcast(ty, ..) | Term::Upcast(ty) => *ty,
                     ty => ty,
                 };
-                match ty {
-                    Term::Object(f) | Term::Enum(f) => match (*f, k) {
-                        (Term::Fields(mut m), Term::Rk(n)) => match m.remove(&n) {
-                            Some(ty) => InferResult {
-                                tm: Term::At(Box::new(tm), Box::new(Term::Rk(n))),
-                                eff,
-                                ty,
-                            },
-                            None => return Err(UnresolvedField(n, Term::Fields(m), a_loc)),
-                        },
-                        (fields, k) => InferResult {
-                            tm: Term::At(Box::new(tm), Box::new(k.clone())),
-                            eff,
-                            ty: Term::AtResult {
-                                fields_ty: Box::new(fields),
-                                key: Box::new(k),
-                            },
-                        },
+                InferResult {
+                    tm: Term::At(Box::new(tm), Box::new(k.clone())),
+                    eff,
+                    ty: Term::AtResult {
+                        ty: Box::new(ty),
+                        key: Box::new(k),
                     },
-                    ty => return Err(ExpectedReflectable(ty, a_loc)),
                 }
             }
             Associate(loc, a, n) => InferResult::pure(

@@ -97,8 +97,8 @@ impl Renamer {
             MapClear(m) => MapClear(self.term(m)),
             MapIter(a) => MapIter(self.term(a)),
             RkToStr(a) => RkToStr(self.term(a)),
-            AtResult { fields_ty, key } => AtResult {
-                fields_ty: self.term(fields_ty),
+            AtResult { ty, key } => AtResult {
+                ty: self.term(ty),
                 key: self.term(key),
             },
             At(a, k) => At(self.term(a), self.term(k)),

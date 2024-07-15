@@ -130,7 +130,7 @@ pub enum Term {
     Rk(String),
     RkToStr(Box<Self>),
     AtResult {
-        fields_ty: Box<Self>,
+        ty: Box<Self>,
         key: Box<Self>,
     },
     At(Box<Self>, Box<Self>),

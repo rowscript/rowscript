@@ -11,5 +11,23 @@ where T instanceof Foo
     ask<T>()
 }
 f0({n: 42});
+const a0 = id({n: 42});
 
-const a1 = id({n: 42});
+interface Query {
+    toQuery(a: Query): string {
+        "?" + switch (typeof a) {
+            case TypeofObject:
+                (keyof a).map((k) => k.toString() + "=" + (a @ k).toString()).join("&")
+            case TypeofEnum:
+                (keyof a).map((k) => k.toString() + "=" + (a @ k).toString()).join("&")
+            case x: a.toString()
+        }
+    }
+}
+
+type Person = {
+    name: string,
+    age: number
+} implements Query;
+
+const a1 = {name: "John", age: 42}.toQuery();

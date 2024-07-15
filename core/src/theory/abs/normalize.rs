@@ -401,16 +401,27 @@ impl<'a> Normalizer<'a> {
                 Rk(k) => Str(format!("\"{k}\"")),
                 a => RkToStr(Box::new(a)),
             },
-            AtResult { fields_ty, key } => {
-                match (*self.term_box(fields_ty)?, *self.term_box(key)?) {
-                    (Fields(mut f), Rk(k)) => match f.remove(&k) {
-                        Some(ty) => ty,
-                        None => return Err(UnresolvedField(k, Fields(f), self.loc)),
-                    },
-                    (f, k) => AtResult {
-                        fields_ty: Box::new(f),
-                        key: Box::new(k),
-                    },
+            AtResult { ty, key } => {
+                let ty = self.term_box(ty)?;
+                let key = self.term_box(key)?;
+                if ty.is_unsolved() {
+                    return Ok(AtResult { ty, key });
+                }
+                match *key {
+                    Rk(k) => {
+                        let mut fields = match *ty {
+                            Object(f) | Enum(f) => match *f {
+                                Fields(f) => f,
+                                _ => unreachable!(),
+                            },
+                            _ => unreachable!(),
+                        };
+                        match fields.remove(&k) {
+                            Some(ty) => ty,
+                            None => return Err(UnresolvedField(k, Fields(fields), self.loc)),
+                        }
+                    }
+                    _ => return Ok(AtResult { ty, key }),
                 }
             }
             At(a, k) => match self.term(*k)? {
@@ -641,6 +652,7 @@ impl<'a> Normalizer<'a> {
                     Fields(m) => Term::rowkey_list(m),
                     ty => return Err(ExpectedReflectable(ty, self.loc)),
                 },
+                o if o.is_unsolved() => Keyof(Box::new(o)),
                 o => return Err(ExpectedReflectable(o, self.loc)),
             },
             Discriminants(ty) => match self.term(*ty)? {
