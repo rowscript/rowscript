@@ -438,15 +438,12 @@ impl<'a> Normalizer<'a> {
                 },
                 k => At(self.term_box(a)?, Box::new(k)),
             },
-            Fields(mut fields) => {
-                for tm in fields.values_mut() {
-                    // FIXME: not unwind-safe, refactor `Self::term` to accept a `&mut Term`
-                    unsafe {
-                        let tmp = std::ptr::read(tm);
-                        std::ptr::write(tm, self.term(tmp)?);
-                    }
+            Fields(fields) => {
+                let mut f = FieldMap::default();
+                for (n, tm) in fields {
+                    f.insert(n, self.term(tm)?);
                 }
-                Fields(fields)
+                Fields(f)
             }
             Associate(a, n) => {
                 let a = *self.term_box(a)?;

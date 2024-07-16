@@ -165,6 +165,7 @@ impl Builtins {
     pub fn new() -> Self {
         Self::default()
             .reserved([
+                Var::r#typeof(),
                 Var::list(),
                 Var::async_effect(),
                 Var::await_one(),

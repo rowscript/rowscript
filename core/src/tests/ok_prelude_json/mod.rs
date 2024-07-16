@@ -1,6 +1,6 @@
 use crate::tests::run_ok;
 
 #[test]
-fn test_json_encode() {
+fn test_prelude_json() {
     run_ok(module_path!())
 }

@@ -86,6 +86,8 @@ pub const NAMESPACE_PREFIX: &str = "__namespace_";
 
 pub const LIST: &str = "List";
 
+pub const TYPEOF: &str = "Typeof";
+
 impl Var {
     fn new<S: Into<String>>(name: S) -> Self {
         Self {
@@ -187,6 +189,10 @@ impl Var {
 
     pub fn list() -> Self {
         Self::new(LIST)
+    }
+
+    pub fn r#typeof() -> Self {
+        Self::new(TYPEOF)
     }
 
     pub fn id(&self) -> usize {
