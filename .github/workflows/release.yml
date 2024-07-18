@@ -25,7 +25,7 @@ jobs:
           tar -czvf rowscript-linux-x64.tar.gz target/release/rowscript
           tar -czvf rowscript-linux-arm64.tar.gz target/aarch64-unknown-linux-gnu/release/rowscript
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: rowscript-linux
           path: rowscript*.tar.gz
@@ -41,7 +41,7 @@ jobs:
           rustup target add aarch64-pc-windows-msvc
           cargo build --release --verbose --target aarch64-pc-windows-msvc
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: rowscript-win32
           path: |
@@ -61,7 +61,7 @@ jobs:
           tar -czvf rowscript-darwin-x64.tar.gz target/release/rowscript
           tar -czvf rowscript-darwin-arm64.tar.gz target/aarch64-apple-darwin/release/rowscript
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: rowscript-darwin
           path: rowscript*.tar.gz

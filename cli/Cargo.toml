@@ -12,9 +12,9 @@ path = "../core"
 default-features = false
 
 [dependencies.clap]
-version = "4.5.4"
+version = "4.5.9"
 features = ["derive"]
 
 [dependencies]
-log = "0.4.21"
+log = "0.4.22"
 env_logger = "0.11.3"

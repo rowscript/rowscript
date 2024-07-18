@@ -11,7 +11,7 @@ use swc_ecma_ast::{
     ArrayLit, ArrayPat, ArrowExpr, AssignExpr, AssignOp, AssignTarget, AwaitExpr,
     BigInt as JsBigInt, BinExpr, BinaryOp, BindingIdent, BlockStmt, BlockStmtOrExpr, Bool,
     BreakStmt, CallExpr, Callee, ComputedPropName, CondExpr, ContinueStmt, Decl, ExportDecl, Expr,
-    ExprOrSpread, ExprStmt, FnDecl, ForStmt, Function, Ident, IfStmt, ImportDecl,
+    ExprOrSpread, ExprStmt, FnDecl, ForStmt, Function, Ident, IdentName, IfStmt, ImportDecl,
     ImportNamedSpecifier, ImportSpecifier, ImportStarAsSpecifier, KeyValueProp, Lit, MemberExpr,
     MemberProp, MethodProp, Module, ModuleDecl, ModuleItem, NewExpr, Number as JsNumber, Number,
     ObjectLit, Param as JsParam, ParenExpr, Pat, Prop, PropName, PropOrSpread, RestPat, ReturnStmt,
@@ -40,7 +40,6 @@ impl From<Loc> for Span {
         Self {
             lo: BytePos(loc.start as u32),
             hi: BytePos(loc.end as u32),
-            ctxt: Default::default(),
         }
     }
 }
@@ -66,6 +65,7 @@ impl Ecma {
     fn special_ident(s: &str) -> Ident {
         Ident {
             span: DUMMY_SP,
+            ctxt: Default::default(),
             sym: s.into(),
             optional: false,
         }
@@ -74,6 +74,7 @@ impl Ecma {
     fn str_ident(loc: Loc, s: &str) -> Ident {
         Ident {
             span: loc.into(),
+            ctxt: Default::default(),
             sym: match s {
                 THIS => JS_ESCAPED_THIS,
                 s => s,
@@ -90,6 +91,7 @@ impl Ecma {
     fn asis_ident(loc: Loc, v: &Var) -> Ident {
         Ident {
             span: loc.into(),
+            ctxt: Default::default(),
             sym: v.as_str().into(),
             optional: false,
         }
@@ -147,6 +149,7 @@ impl Ecma {
     fn paren_call(loc: Loc, f: Expr, e: Expr) -> Expr {
         Expr::Call(CallExpr {
             span: loc.into(),
+            ctxt: Default::default(),
             callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
                 span: loc.into(),
                 expr: Box::new(f),
@@ -194,11 +197,11 @@ impl Ecma {
             span: loc.into(),
             props: vec![
                 PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                    key: PropName::Ident(Self::str_ident(loc, "key")),
+                    key: PropName::Ident(IdentName::from(Self::str_ident(loc, "key"))),
                     value: Box::new(k),
                 }))),
                 PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                    key: PropName::Ident(Self::str_ident(loc, "value")),
+                    key: PropName::Ident(IdentName::from(Self::str_ident(loc, "value"))),
                     value: Box::new(v),
                 }))),
             ],
@@ -215,6 +218,7 @@ impl Ecma {
     fn short_arrow(loc: Loc, params: Vec<Pat>, e: Expr) -> Expr {
         Expr::Arrow(ArrowExpr {
             span: loc.into(),
+            ctxt: Default::default(),
             params,
             body: Box::new(BlockStmtOrExpr::Expr(Box::new(e))),
             is_async: false,
@@ -227,6 +231,7 @@ impl Ecma {
     fn block_arrow(loc: Loc, params: Vec<Pat>, block: BlockStmt, is_async: bool) -> Expr {
         Expr::Arrow(ArrowExpr {
             span: loc.into(),
+            ctxt: Default::default(),
             params,
             body: Box::new(BlockStmtOrExpr::BlockStmt(block)),
             is_async,
@@ -270,13 +275,14 @@ impl Ecma {
                 span: loc.into(),
                 expr: Box::new(a),
             })),
-            prop: MemberProp::Ident(Self::str_ident(loc, n)),
+            prop: MemberProp::Ident(IdentName::from(Self::str_ident(loc, n))),
         })
     }
 
     fn prototype<const N: usize>(loc: Loc, a: Expr, m: &str, args: [Expr; N]) -> Expr {
         Expr::Call(CallExpr {
             span: loc.into(),
+            ctxt: Default::default(),
             callee: Callee::Expr(Box::new(Self::access(loc, a, m))),
             args: args.into_iter().map(Self::non_spread).collect(),
             type_args: None,
@@ -301,7 +307,7 @@ impl Ecma {
                 expr: Box::new(Expr::Member(MemberExpr {
                     span: loc.into(),
                     obj: Box::new(Expr::Ident(Self::special_ident("Symbol"))),
-                    prop: MemberProp::Ident(Self::special_ident(sym)),
+                    prop: MemberProp::Ident(IdentName::from(Self::special_ident(sym))),
                 })),
             }),
         }))
@@ -316,6 +322,7 @@ impl Ecma {
     ) -> Result<Expr, Error> {
         Ok(Expr::Call(CallExpr {
             span: loc.into(),
+            ctxt: Default::default(),
             callee: Callee::Expr(Box::new(self.well_known_symbol(sigma, loc, v, sym)?)),
             args: Default::default(),
             type_args: None,
@@ -377,6 +384,7 @@ impl Ecma {
     fn new_promise(loc: Loc, args: Vec<ExprOrSpread>) -> Expr {
         Expr::New(NewExpr {
             span: loc.into(),
+            ctxt: Default::default(),
             callee: Box::new(Expr::Ident(Self::special_ident("Promise"))),
             args: Some(args),
             type_args: None,
@@ -527,6 +535,7 @@ impl Ecma {
 
         Ok(Expr::Call(CallExpr {
             span: loc.into(),
+            ctxt: Default::default(),
             callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
                 span: loc.into(),
                 expr: Box::new(self.expr(sigma, loc, f)?),
@@ -585,6 +594,7 @@ impl Ecma {
             params: Self::type_erased_params(def.loc, &def.tele, body),
             decorators: Default::default(),
             span: def.loc.into(),
+            ctxt: Default::default(),
             body: Some(self.block(sigma, def.loc, body, true)?),
             is_generator: false,
             is_async: Self::is_async(def),
@@ -770,6 +780,7 @@ impl Ecma {
     fn bind_decl(&mut self, sigma: &Sigma, loc: Loc, v: &Var, tm: &Term) -> Result<VarDecl, Error> {
         Ok(VarDecl {
             span: loc.into(),
+            ctxt: Default::default(),
             kind: VarDeclKind::Var,
             declare: false,
             decls: vec![VarDeclarator {
@@ -798,6 +809,7 @@ impl Ecma {
             span: loc.into(),
             expr: Box::new(Expr::Call(CallExpr {
                 span: loc.into(),
+                ctxt: Default::default(),
                 callee: Callee::Expr(Box::from(Expr::Paren(ParenExpr {
                     span: loc.into(),
                     expr: Box::new(Self::block_arrow(loc, Default::default(), b, is_async)),
@@ -965,6 +977,7 @@ impl Ecma {
                     let (elems, body) = Self::tuple_binds_to_pats(loc, p, b);
                     stmts.push(Stmt::Decl(Decl::Var(Box::new(VarDecl {
                         span,
+                        ctxt: Default::default(),
                         kind: VarDeclKind::Var,
                         declare: false,
                         decls: vec![VarDeclarator {
@@ -1004,7 +1017,11 @@ impl Ecma {
                 }
             }
         }
-        Ok(BlockStmt { span, stmts })
+        Ok(BlockStmt {
+            span,
+            ctxt: Default::default(),
+            stmts,
+        })
     }
 
     fn non_spread(e: Expr) -> ExprOrSpread {
@@ -1080,7 +1097,7 @@ impl Ecma {
             Extern(r) => Expr::Member(MemberExpr {
                 span: loc.into(),
                 obj: Box::new(Expr::Ident(Self::lib())),
-                prop: MemberProp::Ident(Self::ident(loc, r)),
+                prop: MemberProp::Ident(IdentName::from(Self::ident(loc, r))),
             }),
             Qualified(m, r) => Expr::Member(MemberExpr {
                 span: loc.into(),
@@ -1088,7 +1105,7 @@ impl Ecma {
                     loc,
                     self.to_qualifier(m).as_str(),
                 ))),
-                prop: MemberProp::Ident(Self::ident(loc, r)),
+                prop: MemberProp::Ident(IdentName::from(Self::ident(loc, r))),
             }),
             Lam(p, b) => match p.info {
                 Explicit => Self::block_arrow(
@@ -1215,6 +1232,7 @@ impl Ecma {
                 }
                 Expr::New(NewExpr {
                     span: loc.into(),
+                    ctxt: Default::default(),
                     callee: Box::new(Expr::Ident(Self::special_ident("Map"))),
                     args: Some(vec![Self::non_spread(Expr::Array(ArrayLit {
                         span: loc.into(),
@@ -1247,7 +1265,10 @@ impl Ecma {
                     let mut props = Vec::default();
                     for (name, tm) in fields {
                         props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                            key: PropName::Ident(Self::str_ident(loc, name.as_str())),
+                            key: PropName::Ident(IdentName::from(Self::str_ident(
+                                loc,
+                                name.as_str(),
+                            ))),
                             value: Box::new(self.expr(sigma, loc, &tm.clone())?),
                         }))));
                     }
@@ -1298,14 +1319,14 @@ impl Ecma {
                 let mut props = Vec::default();
                 for name in fields.keys() {
                     props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                        key: PropName::Ident(Self::str_ident(loc, name)),
+                        key: PropName::Ident(IdentName::from(Self::str_ident(loc, name))),
                         value: Box::new(Expr::Member(MemberExpr {
                             span: loc.into(),
                             obj: Box::new(Expr::Paren(ParenExpr {
                                 span: loc.into(),
                                 expr: Box::new(Expr::Ident(x.clone())),
                             })),
-                            prop: MemberProp::Ident(Self::str_ident(loc, name)),
+                            prop: MemberProp::Ident(IdentName::from(Self::str_ident(loc, name))),
                         })),
                     }))))
                 }
@@ -1375,6 +1396,7 @@ impl Ecma {
                         vec![Self::str_ident_pat(loc, "x")],
                         BlockStmt {
                             span: loc.into(),
+                            ctxt: Default::default(),
                             stmts,
                         },
                         false,
@@ -1397,6 +1419,7 @@ impl Ecma {
                 loc,
                 BlockStmt {
                     span: loc.into(),
+                    ctxt: Default::default(),
                     stmts: vec![Stmt::Throw(ThrowStmt {
                         span: loc.into(),
                         arg: Box::new(Self::paren_call(
@@ -1410,10 +1433,11 @@ impl Ecma {
             ),
             ConsoleLog(m) => Expr::Call(CallExpr {
                 span: loc.into(),
+                ctxt: Default::default(),
                 callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
                     span: loc.into(),
                     obj: Box::new(Expr::Ident(Self::special_ident("console"))),
-                    prop: MemberProp::Ident(Self::special_ident("log")),
+                    prop: MemberProp::Ident(IdentName::from(Self::special_ident("log"))),
                 }))),
                 args: match m.as_ref() {
                     Tuple(..) => self.untuple_args(sigma, loc, m)?,
@@ -1430,6 +1454,7 @@ impl Ecma {
                 args.extend(self.untuple_args(sigma, loc, x)?);
                 Expr::Call(CallExpr {
                     span: loc.into(),
+                    ctxt: Default::default(),
                     callee: Callee::Expr(Box::new(Expr::Ident(Self::special_ident("setTimeout")))),
                     args,
                     type_args: None,
@@ -1437,10 +1462,11 @@ impl Ecma {
             }
             JSONStringify(a) => Expr::Call(CallExpr {
                 span: loc.into(),
+                ctxt: Default::default(),
                 callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
                     span: loc.into(),
                     obj: Box::new(Expr::Ident(Self::special_ident("JSON"))),
-                    prop: MemberProp::Ident(Self::special_ident("stringify")),
+                    prop: MemberProp::Ident(IdentName::from(Self::special_ident("stringify"))),
                 }))),
                 args: vec![Self::non_spread(self.expr(sigma, loc, a)?)],
                 type_args: None,
@@ -1512,6 +1538,7 @@ impl Ecma {
                     span: DUMMY_SP,
                     local: Ident {
                         span: DUMMY_SP,
+                        ctxt: Default::default(),
                         sym: ns.clone().into(),
                         optional: false,
                     },
@@ -1525,6 +1552,7 @@ impl Ecma {
                 dot3_token: DUMMY_SP,
                 expr: Box::new(Expr::Ident(Ident {
                     span: DUMMY_SP,
+                    ctxt: Default::default(),
                     sym: ns.into(),
                     optional: false,
                 })),
@@ -1533,6 +1561,7 @@ impl Ecma {
         if !props.is_empty() {
             items.push(ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(VarDecl {
                 span: DUMMY_SP,
+                ctxt: Default::default(),
                 kind: VarDeclKind::Const,
                 declare: false,
                 decls: vec![VarDeclarator {
@@ -1621,6 +1650,7 @@ impl Ecma {
             span: def.loc.into(),
             decl: Decl::Var(Box::new(VarDecl {
                 span: def.loc.into(),
+                ctxt: Default::default(),
                 kind: VarDeclKind::Const,
                 declare: false,
                 decls: vec![VarDeclarator {
@@ -1629,7 +1659,7 @@ impl Ecma {
                     init: Some(Box::new(Expr::Member(MemberExpr {
                         span: def.loc.into(),
                         obj: Box::new(Expr::Ident(Self::special_ident(JS_LIB))),
-                        prop: MemberProp::Ident(Self::ident(def.loc, &def.name)),
+                        prop: MemberProp::Ident(IdentName::from(Self::ident(def.loc, &def.name))),
                     }))),
                     definite: false,
                 }],
@@ -1660,6 +1690,7 @@ impl Ecma {
                 def,
                 Decl::Var(Box::new(VarDecl {
                     span: def.loc.into(),
+                    ctxt: Default::default(),
                     kind: VarDeclKind::Const,
                     declare: false,
                     decls: vec![VarDeclarator {
@@ -1712,17 +1743,20 @@ impl Ecma {
 
             // Simply a proxy call.
             meths.push(Prop::Method(MethodProp {
-                key: PropName::Ident(Self::str_ident(meth_def.loc, short)),
+                key: PropName::Ident(IdentName::from(Self::str_ident(meth_def.loc, short))),
                 function: Box::new(Function {
                     params,
                     decorators: Default::default(),
                     span: meth_def.loc.into(),
+                    ctxt: Default::default(),
                     body: Some(BlockStmt {
                         span: meth_def.loc.into(),
+                        ctxt: Default::default(),
                         stmts: vec![Stmt::Return(ReturnStmt {
                             span: meth_def.loc.into(),
                             arg: Some(Box::new(Expr::Call(CallExpr {
                                 span: meth_def.loc.into(),
+                                ctxt: Default::default(),
                                 callee: Callee::Expr(Box::new(Expr::Ident(Self::ident(
                                     meth_def.loc,
                                     m,
@@ -1742,6 +1776,7 @@ impl Ecma {
 
         ctor_func.body = Some(BlockStmt {
             span: ctor_def.loc.into(),
+            ctxt: Default::default(),
             stmts: {
                 let mut stmts = Vec::default();
                 for stmt in ctor_func.body.unwrap().stmts {

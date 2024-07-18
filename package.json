@@ -12,7 +12,9 @@
     "std/",
     "core/prelude/"
   ],
-  "bin": "cli/npm/index.js",
+  "bin": {
+    "rowscript": "cli/npm/index.js"
+  },
   "optionalDependencies": {
     "@rowscript/cli-darwin-x64": "1.0.0-alpha.5",
     "@rowscript/cli-darwin-arm64": "1.0.0-alpha.5",
