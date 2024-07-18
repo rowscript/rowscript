@@ -17,7 +17,9 @@ jobs:
       - name: Build x64
         run: cargo build --release --verbose
       - name: Build arm64
-        run: cargo build --release --verbose --target aarch64-unknown-linux-gnu --config 'target.aarch64-unknown-linux-gnu.linker = "aarch64-linux-gnu-gcc"'
+        run: |
+          rustup target add aarch64-unknown-linux-gnu
+          cargo build --release --verbose --target aarch64-unknown-linux-gnu --config 'target.aarch64-unknown-linux-gnu.linker = "aarch64-linux-gnu-gcc"'
       - name: Tar artifacts
         run: |
           tar -czvf rowscript-linux-x64.tar.gz target/release/rowscript
@@ -35,7 +37,9 @@ jobs:
       - name: Build x64
         run: cargo build --release --verbose
       - name: Build arm64
-        run: cargo build --release --verbose --target aarch64-pc-windows-msvc
+        run: |
+          rustup target add aarch64-pc-windows-msvc
+          cargo build --release --verbose --target aarch64-pc-windows-msvc
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
