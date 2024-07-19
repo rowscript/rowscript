@@ -4,7 +4,7 @@ class Foo<T> {
 }
 
 interface Updater<T> {
-    update<T>(a: Updater<T>);
+    update<T>(a: this<T>);
 }
 
 function doSomething<U: type => type, T>(updater: U<T>)

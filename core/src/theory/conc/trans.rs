@@ -411,7 +411,7 @@ impl Trans {
                         self.fn_postulate(p)
                     };
                     let mut tele = vec![Param {
-                        var: name.clone(),
+                        var: Var::this(),
                         info: Implicit,
                         typ: Box::new(alias_type(name_loc, &inst_tele)),
                     }];

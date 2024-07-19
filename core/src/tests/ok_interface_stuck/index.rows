@@ -3,7 +3,7 @@ function numAdd(a: number, b: number): number;
 type Foo = {n: number};
 
 interface NatLike {
-    add(a: NatLike, b: NatLike): NatLike;
+    add(a: this, b: this): this;
 }
 
 instanceof NatLike for Foo {

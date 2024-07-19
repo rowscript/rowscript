@@ -223,6 +223,7 @@ tyref =
   { qualifier ~ tyref
   | implicit_id
   | type_id
+  | this_id
   }
 importable = { pub_fn_id | pub_type_id }
 

@@ -7,7 +7,7 @@ class Foo {
 }
 
 interface Updater {
-    update(a: Updater);
+    update(a: this);
 }
 
 function doSomething<U>(updater: U)

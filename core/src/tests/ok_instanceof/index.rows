@@ -1,5 +1,5 @@
 interface Show {
-    show(a: Show);
+    show(a: this);
 }
 
 type Person = {

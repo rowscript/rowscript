@@ -21,11 +21,11 @@ where (Ok: T) keyof 'a
 }
 
 interface Iterator {
-    next(it: Iterator): Option<Iterator::Item>;
+    next(it: this): Option<this::Item>;
 }
 
 interface Iterable {
-    iter<T>(a: Iterable): T where T instanceof Iterator;
+    iter<T>(a: this): T where T instanceof Iterator;
 }
 
 class ArrayIterator<T> {

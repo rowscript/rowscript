@@ -51,7 +51,7 @@ namespace reflects {
 
 // TODO: This definition should not be here lol.
 interface ToJSON {
-    toJSON(a: ToJSON): string {
+    toJSON(a: this): string {
         switch (typeof a) {
             case TypeofObject:
                 "{" + (keyof a).map((k) => "\"" + k.toString() + "\":" + (a @ k).toJSON()).join(",") + "}"

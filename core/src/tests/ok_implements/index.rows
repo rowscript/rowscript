@@ -1,6 +1,6 @@
 interface Foo {
     ask() { console.log("foo") }
-    id(a: Foo): Foo { a }
+    id(a: this): this { a }
 }
 
 type Data = {n: number} implements Foo;
@@ -14,7 +14,7 @@ f0({n: 42});
 const a0 = id({n: 42});
 
 interface Query {
-    toQuery(a: Query): string {
+    toQuery(a: this): string {
         "?" + switch (typeof a) {
             case TypeofObject:
                 (keyof a).map((k) => k.toString() + "=" + (a @ k).toString()).join("&")

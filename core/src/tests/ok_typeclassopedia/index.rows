@@ -1,5 +1,5 @@
 interface Functor<T> {
-    myMap<A, B>(f: (a: A) => B, x: Functor<A>): Functor<B>;
+    myMap<A, B>(f: (a: A) => B, x: this<A>): this<B>;
 }
 
 type Foo<T> = {n: T};

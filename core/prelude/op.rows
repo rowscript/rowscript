@@ -1,5 +1,5 @@
 interface EqOp {
-    __eq__(a: EqOp, b: EqOp): boolean;
+    __eq__(a: this, b: this): boolean;
 }
 
 instanceof EqOp for string {
@@ -15,7 +15,7 @@ instanceof EqOp for number {
 }
 
 interface NeqOp {
-    __neq__(a: NeqOp, b: NeqOp): boolean;
+    __neq__(a: this, b: this): boolean;
 }
 
 instanceof NeqOp for string {
@@ -31,7 +31,7 @@ instanceof NeqOp for number {
 }
 
 interface NotOp {
-    __not__(a: NotOp): NotOp;
+    __not__(a: this): this;
 }
 
 instanceof NotOp for boolean {
@@ -39,7 +39,7 @@ instanceof NotOp for boolean {
 }
 
 interface NegOp {
-    __neg__(a: NegOp): NegOp;
+    __neg__(a: this): this;
 }
 
 instanceof NegOp for number {
@@ -47,7 +47,7 @@ instanceof NegOp for number {
 }
 
 interface OrOp {
-    __or__(a: OrOp, b: OrOp): OrOp;
+    __or__(a: this, b: this): this;
 }
 
 instanceof OrOp for boolean {
@@ -55,7 +55,7 @@ instanceof OrOp for boolean {
 }
 
 interface AndOp {
-    __and__(a: AndOp, b: AndOp): AndOp;
+    __and__(a: this, b: this): this;
 }
 
 instanceof AndOp for boolean {
@@ -63,7 +63,7 @@ instanceof AndOp for boolean {
 }
 
 interface LeOp {
-    __le__(a: LeOp, b: LeOp): boolean;
+    __le__(a: this, b: this): boolean;
 }
 
 instanceof LeOp for number {
@@ -71,7 +71,7 @@ instanceof LeOp for number {
 }
 
 interface GeOp {
-    __ge__(a: GeOp, b: GeOp): boolean;
+    __ge__(a: this, b: this): boolean;
 }
 
 instanceof GeOp for number {
@@ -79,7 +79,7 @@ instanceof GeOp for number {
 }
 
 interface LtOp {
-    __lt__(a: LtOp, b: LtOp): boolean;
+    __lt__(a: this, b: this): boolean;
 }
 
 instanceof LtOp for number {
@@ -87,7 +87,7 @@ instanceof LtOp for number {
 }
 
 interface GtOp {
-    __gt__(a: GtOp, b: GtOp): boolean;
+    __gt__(a: this, b: this): boolean;
 }
 
 instanceof GtOp for number {
@@ -95,7 +95,7 @@ instanceof GtOp for number {
 }
 
 interface AddOp {
-    __add__(a: AddOp, b: AddOp): AddOp;
+    __add__(a: this, b: this): this;
 }
 
 instanceof AddOp for number {
@@ -107,7 +107,7 @@ instanceof AddOp for string {
 }
 
 interface SubOp {
-    __sub__(a: SubOp, b: SubOp): SubOp;
+    __sub__(a: this, b: this): this;
 }
 
 instanceof SubOp for number {
@@ -115,7 +115,7 @@ instanceof SubOp for number {
 }
 
 interface MulOp {
-    __mul__(a: MulOp, b: MulOp): MulOp;
+    __mul__(a: this, b: this): this;
 }
 
 instanceof MulOp for number {
@@ -123,7 +123,7 @@ instanceof MulOp for number {
 }
 
 interface DivOp {
-    __div__(a: DivOp, b: DivOp): DivOp;
+    __div__(a: this, b: this): this;
 }
 
 instanceof DivOp for number {
@@ -131,7 +131,7 @@ instanceof DivOp for number {
 }
 
 interface ModOp {
-    __mod__(a: ModOp, b: ModOp): ModOp;
+    __mod__(a: this, b: this): this;
 }
 
 instanceof ModOp for number {
@@ -139,15 +139,15 @@ instanceof ModOp for number {
 }
 
 interface GetOp {
-    __getitem__(a: GetOp, key: GetOp::Key): GetOp::Value;
+    __getitem__(a: this, key: this::Key): this::Value;
 }
 
 interface SetOp {
-    __setitem__(a: SetOp, key: SetOp::Key, value: SetOp::Value);
+    __setitem__(a: this, key: this::Key, value: this::Value);
 }
 
 interface Default {
-    default(): Default;
+    default(): this;
 }
 
 instanceof Default for number {
@@ -169,7 +169,7 @@ instanceof Default for boolean {
 }
 
 interface ToString {
-    toString(a: ToString): string;
+    toString(a: this): string;
 }
 
 instanceof ToString for number {

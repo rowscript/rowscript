@@ -1,6 +1,6 @@
 throw DB {
-    open(dsn: string): DB;
-    close(db: DB);
+    open(dsn: string): this;
+    close(db: this);
 }
 
 const dsn = "mysql://john:pass@localhost:3306/my_db";
