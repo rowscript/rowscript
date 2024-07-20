@@ -8,17 +8,10 @@ RowScript
 
 ![Build](https://github.com/rowscript/rowscript/actions/workflows/build.yml/badge.svg)
 
-[RowScript] is a robustly-typed functional language that compiles to efficient and reliable JavaScript.
+[RowScript] is a robustly-typed functional language that compiles to efficient and reliable JavaScript. It has a
+user-friendly syntax like TypeScript, and many advanced features like typeclass, effect system, and static reflection.
 
-What if you have a language to have all these for a better frontend development experience?
-
-| Features            | In RowScript |
-|---------------------|--------------|
-| Haskell's typeclass | `interface`  |
-| Rust's `impl`       | `class`      |
-| Go's interface      | `interface`  |
-
-And luckily, the overall syntax would be in the style of TypeScript!
+[RowScript]: https://rows.ro
 
 ## Example
 
@@ -30,6 +23,8 @@ console.log("Hello, RowScript!");
 
 More complicated example with classes and interfaces:
 
+<!-- @formatter:off -->
+
 ```ts
 class Person {
     name: string;
@@ -40,24 +35,27 @@ class Person {
 }
 
 interface Phonebook {
-    dial(a: Phonebook);
+    dial(a: this);
 }
 
-function dialPerson<P>(person: P) where Phonebook<P> {
+function dialPerson<P>(person: P)
+where P instanceof Phonebook
+{
     person.dial();
 }
 
 dialPerson(new Person("John Doe"));
-
 ```
 
-[RowScript]: https://rowscript.github.io
+<!-- @formatter:on -->
 
 ## Installation
 
 ```bash
-$ npm install -D rowscript
+$ pnpm install -D rowscript
 ```
+
+Oh, `npm` is okay too.
 
 ## Development status
 
