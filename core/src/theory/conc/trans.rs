@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
 use pest::iterators::{Pair, Pairs};
 use pest::pratt_parser::{Assoc, Op, PrattParser};
@@ -14,39 +15,39 @@ use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var};
 use crate::Rule;
 
-pub struct Trans {
-    type_pratt: PrattParser<Rule>,
-    expr_pratt: PrattParser<Rule>,
+fn type_pratt() -> &'static PrattParser<Rule> {
+    static ONCE: OnceLock<PrattParser<Rule>> = OnceLock::new();
+    ONCE.get_or_init(|| PrattParser::new().op(Op::infix(Rule::infix_concat, Assoc::Left)))
 }
 
-impl Default for Trans {
-    fn default() -> Self {
-        Self {
-            type_pratt: PrattParser::new().op(Op::infix(Rule::infix_concat, Assoc::Left)),
-            expr_pratt: PrattParser::new()
-                .op(Op::infix(Rule::infix_or, Assoc::Left))
-                .op(Op::infix(Rule::infix_and, Assoc::Left))
-                .op(Op::infix(Rule::infix_eq, Assoc::Left)
-                    | Op::infix(Rule::infix_neq, Assoc::Left)
-                    | Op::infix(Rule::infix_le, Assoc::Left)
-                    | Op::infix(Rule::infix_ge, Assoc::Left)
-                    | Op::infix(Rule::infix_lt, Assoc::Left)
-                    | Op::infix(Rule::infix_gt, Assoc::Left))
-                .op(Op::infix(Rule::infix_add, Assoc::Left)
-                    | Op::infix(Rule::infix_sub, Assoc::Left))
-                .op(Op::infix(Rule::infix_mul, Assoc::Left)
-                    | Op::infix(Rule::infix_div, Assoc::Left)
-                    | Op::infix(Rule::infix_mod, Assoc::Left))
-                .op(Op::infix(Rule::infix_concat, Assoc::Left))
-                .op(Op::infix(Rule::infix_at, Assoc::Left))
-                .op(Op::prefix(Rule::prefix_not) | Op::prefix(Rule::prefix_neg))
-                .op(Op::prefix(Rule::prefix_typeof) | Op::prefix(Rule::prefix_keyof)),
-        }
-    }
+fn expr_pratt() -> &'static PrattParser<Rule> {
+    static ONCE: OnceLock<PrattParser<Rule>> = OnceLock::new();
+    ONCE.get_or_init(|| {
+        PrattParser::new()
+            .op(Op::infix(Rule::infix_or, Assoc::Left))
+            .op(Op::infix(Rule::infix_and, Assoc::Left))
+            .op(Op::infix(Rule::infix_eq, Assoc::Left)
+                | Op::infix(Rule::infix_neq, Assoc::Left)
+                | Op::infix(Rule::infix_le, Assoc::Left)
+                | Op::infix(Rule::infix_ge, Assoc::Left)
+                | Op::infix(Rule::infix_lt, Assoc::Left)
+                | Op::infix(Rule::infix_gt, Assoc::Left))
+            .op(Op::infix(Rule::infix_add, Assoc::Left) | Op::infix(Rule::infix_sub, Assoc::Left))
+            .op(Op::infix(Rule::infix_mul, Assoc::Left)
+                | Op::infix(Rule::infix_div, Assoc::Left)
+                | Op::infix(Rule::infix_mod, Assoc::Left))
+            .op(Op::infix(Rule::infix_concat, Assoc::Left))
+            .op(Op::infix(Rule::infix_at, Assoc::Left))
+            .op(Op::prefix(Rule::prefix_not) | Op::prefix(Rule::prefix_neg))
+            .op(Op::prefix(Rule::prefix_typeof) | Op::prefix(Rule::prefix_keyof))
+    })
 }
+
+#[derive(Default)]
+pub struct Trans {}
 
 impl Trans {
-    pub fn file(&self, mut f: Pairs<Rule>) -> (Vec<Import>, Vec<Def<Expr>>) {
+    pub fn file(&mut self, mut f: Pairs<Rule>) -> (Vec<Import>, Vec<Def<Expr>>) {
         let mut imports = Vec::default();
         let mut defs = Vec::default();
         for d in f.next().unwrap().into_inner() {
@@ -72,7 +73,7 @@ impl Trans {
         (imports, defs)
     }
 
-    fn import(&self, d: Pair<Rule>) -> Import {
+    fn import(&mut self, d: Pair<Rule>) -> Import {
         use ImportedDefs::*;
         use ImportedPkg::*;
 
@@ -124,7 +125,7 @@ impl Trans {
         )
     }
 
-    fn vendor_pkg(&self, v: Pair<Rule>) -> ImportedPkg {
+    fn vendor_pkg(&mut self, v: Pair<Rule>) -> ImportedPkg {
         let mut p = v.into_inner();
         Vendor(
             p.next().unwrap().as_str().to_string(),
@@ -132,7 +133,7 @@ impl Trans {
         )
     }
 
-    fn fn_def(&self, f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
+    fn fn_def(&mut self, f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
         use Body::*;
         use Expr::*;
 
@@ -203,18 +204,18 @@ impl Trans {
         }
     }
 
-    fn name_maybe_async(&self, pairs: &mut Pairs<Rule>) -> (Var, Box<Expr>) {
+    fn name_maybe_async(&mut self, pairs: &mut Pairs<Rule>) -> (Var, Box<Expr>) {
         let (p, eff) = self.name_pair_maybe_async(pairs);
         (Var::from(p), eff)
     }
 
-    fn idref_maybe_async(&self, pairs: &mut Pairs<Rule>) -> (Expr, Box<Expr>) {
+    fn idref_maybe_async(&mut self, pairs: &mut Pairs<Rule>) -> (Expr, Box<Expr>) {
         let (p, eff) = self.name_pair_maybe_async(pairs);
         (self.maybe_qualified(p), eff)
     }
 
     fn name_pair_maybe_async<'a>(
-        &self,
+        &mut self,
         pairs: &mut Pairs<'a, Rule>,
     ) -> (Pair<'a, Rule>, Box<Expr>) {
         let p = pairs.next().unwrap();
@@ -242,7 +243,7 @@ impl Trans {
     }
 
     fn fn_signature(
-        &self,
+        &mut self,
         pairs: Pairs<Rule>,
         loc: Loc,
         async_eff: Expr,
@@ -276,7 +277,7 @@ impl Trans {
         (tele, Self::concat_effects(async_eff, capabilities), ret)
     }
 
-    fn fn_postulate(&self, f: Pair<Rule>) -> Def<Expr> {
+    fn fn_postulate(&mut self, f: Pair<Rule>) -> Def<Expr> {
         let loc = Loc::from(f.as_span());
         let mut pairs = f.into_inner();
         let (name, eff) = self.name_maybe_async(&mut pairs);
@@ -291,7 +292,7 @@ impl Trans {
         }
     }
 
-    fn type_postulate(&self, t: Pair<Rule>) -> Def<Expr> {
+    fn type_postulate(&mut self, t: Pair<Rule>) -> Def<Expr> {
         use Body::*;
         use Expr::*;
         let loc = Loc::from(t.as_span());
@@ -315,7 +316,7 @@ impl Trans {
         }
     }
 
-    fn type_alias(&self, t: Pair<Rule>) -> Def<Expr> {
+    fn type_alias(&mut self, t: Pair<Rule>) -> Def<Expr> {
         use Body::*;
         use Expr::*;
 
@@ -363,7 +364,7 @@ impl Trans {
         e
     }
 
-    fn interface_def(&self, i: Pair<Rule>) -> Vec<Def<Expr>> {
+    fn interface_def(&mut self, i: Pair<Rule>) -> Vec<Def<Expr>> {
         fn alias_type(loc: Loc, tele: &Tele<Expr>) -> Expr {
             Expr::pi(tele, Univ(loc))
         }
@@ -467,7 +468,7 @@ impl Trans {
         defs
     }
 
-    fn instance_def(&self, i: Pair<Rule>) -> Vec<Def<Expr>> {
+    fn instance_def(&mut self, i: Pair<Rule>) -> Vec<Def<Expr>> {
         use Body::*;
         use Expr::*;
 
@@ -510,7 +511,7 @@ impl Trans {
         defs
     }
 
-    fn const_def(&self, c: Pair<Rule>) -> Def<Expr> {
+    fn const_def(&mut self, c: Pair<Rule>) -> Def<Expr> {
         use Body::*;
         use Expr::*;
         let loc = Loc::from(c.as_span());
@@ -540,7 +541,7 @@ impl Trans {
         unreachable!()
     }
 
-    fn class_def(&self, c: Pair<Rule>) -> Vec<Def<Expr>> {
+    fn class_def(&mut self, c: Pair<Rule>) -> Vec<Def<Expr>> {
         use Body::*;
         use Expr::*;
 
@@ -717,7 +718,7 @@ impl Trans {
         defs
     }
 
-    fn namespace_def(&self, n: Pair<Rule>) -> Vec<Def<Expr>> {
+    fn namespace_def(&mut self, n: Pair<Rule>) -> Vec<Def<Expr>> {
         use Body::*;
         use Expr::*;
 
@@ -827,7 +828,7 @@ impl Trans {
         defs
     }
 
-    fn type_verify(&self, t: Pair<Rule>) -> Def<Expr> {
+    fn type_verify(&mut self, t: Pair<Rule>) -> Def<Expr> {
         let loc = Loc::from(t.as_span());
         let mut pairs = t.into_inner();
         let target = self.maybe_qualified(pairs.next().unwrap());
@@ -850,7 +851,7 @@ impl Trans {
         }
     }
 
-    fn fn_verify(&self, f: Pair<Rule>) -> Def<Expr> {
+    fn fn_verify(&mut self, f: Pair<Rule>) -> Def<Expr> {
         let loc = Loc::from(f.as_span());
         let mut pairs = f.into_inner();
         let (target, eff) = self.idref_maybe_async(&mut pairs);
@@ -865,8 +866,8 @@ impl Trans {
         }
     }
 
-    fn type_expr(&self, t: Pair<Rule>) -> Expr {
-        self.type_pratt
+    fn type_expr(&mut self, t: Pair<Rule>) -> Expr {
+        type_pratt()
             .map_primary(|p| self.primary_type_expr(p))
             .map_infix(|lhs, op, rhs| {
                 let loc = Loc::from(op.as_span());
@@ -878,7 +879,7 @@ impl Trans {
             .parse(t.into_inner())
     }
 
-    fn primary_type_expr(&self, t: Pair<Rule>) -> Expr {
+    fn primary_type_expr(&mut self, t: Pair<Rule>) -> Expr {
         use Expr::*;
 
         let p = t.into_inner().next().unwrap();
@@ -926,7 +927,7 @@ impl Trans {
         }
     }
 
-    fn primitive_type(&self, p: Pair<Rule>) -> Expr {
+    fn primitive_type(&mut self, p: Pair<Rule>) -> Expr {
         use Expr::*;
         let loc = Loc::from(p.as_span());
         let t = p.into_inner().next().unwrap();
@@ -941,7 +942,7 @@ impl Trans {
         }
     }
 
-    fn type_app(&self, a: Pair<Rule>) -> Expr {
+    fn type_app(&mut self, a: Pair<Rule>) -> Expr {
         use Expr::*;
 
         let mut pairs = a.into_inner();
@@ -969,7 +970,7 @@ impl Trans {
         f
     }
 
-    fn pred(&self, pred: Pair<Rule>) -> Param<Expr> {
+    fn pred(&mut self, pred: Pair<Rule>) -> Param<Expr> {
         use Expr::*;
 
         let p = pred.into_inner().next().unwrap();
@@ -996,7 +997,7 @@ impl Trans {
         }
     }
 
-    fn instanceof(&self, loc: Loc, i: Pair<Rule>) -> Expr {
+    fn instanceof(&mut self, loc: Loc, i: Pair<Rule>) -> Expr {
         let mut p = i.into_inner();
         let mut xs = vec![(UnnamedImplicit, self.type_expr(p.next().unwrap()))];
         for arg in p {
@@ -1016,7 +1017,7 @@ impl Trans {
         unreachable!()
     }
 
-    fn row_expr(&self, e: Pair<Rule>) -> Expr {
+    fn row_expr(&mut self, e: Pair<Rule>) -> Expr {
         use Expr::*;
 
         let p = e.into_inner().next().unwrap();
@@ -1033,7 +1034,7 @@ impl Trans {
         }
     }
 
-    fn row_primary_expr(&self, e: Pair<Rule>) -> Expr {
+    fn row_primary_expr(&mut self, e: Pair<Rule>) -> Expr {
         let p = e.into_inner().next().unwrap();
         match p.as_rule() {
             Rule::row_id => Self::unresolved(p),
@@ -1043,7 +1044,7 @@ impl Trans {
         }
     }
 
-    fn type_arg(&self, a: Pair<Rule>) -> (ArgInfo, Expr) {
+    fn type_arg(&mut self, a: Pair<Rule>) -> (ArgInfo, Expr) {
         let mut p = a.into_inner();
         let id_or_type = p.next().unwrap();
         match id_or_type.as_rule() {
@@ -1056,7 +1057,7 @@ impl Trans {
         }
     }
 
-    fn row_arg(&self, a: Pair<Rule>) -> (ArgInfo, Expr) {
+    fn row_arg(&mut self, a: Pair<Rule>) -> (ArgInfo, Expr) {
         let mut p = a.into_inner();
         let id_or_fields = p.next().unwrap();
         match id_or_fields.as_rule() {
@@ -1069,7 +1070,7 @@ impl Trans {
         }
     }
 
-    fn fn_body(&self, b: Pair<Rule>) -> Expr {
+    fn fn_body(&mut self, b: Pair<Rule>) -> Expr {
         use Expr::*;
 
         let p = b.into_inner().next().unwrap();
@@ -1099,7 +1100,9 @@ impl Trans {
             }
             Rule::fn_body_const_variadic => {
                 let mut pairs = p.into_inner();
-                self.multi_bind(pairs.next().unwrap(), self.fn_body(pairs.next().unwrap()))
+                let stmt = pairs.next().unwrap();
+                let body = self.fn_body(pairs.next().unwrap());
+                self.multi_bind(stmt, body)
             }
             Rule::fn_body_unit_const => {
                 let mut pairs = p.into_inner();
@@ -1194,8 +1197,8 @@ impl Trans {
         }
     }
 
-    fn expr(&self, e: Pair<Rule>) -> Expr {
-        self.expr_pratt
+    fn expr(&mut self, e: Pair<Rule>) -> Expr {
+        expr_pratt()
             .map_primary(|p| self.primary_expr(p))
             .map_infix(|lhs, op, rhs| {
                 let loc = Loc::from(op.as_span());
@@ -1241,7 +1244,7 @@ impl Trans {
         Self::call1(Unresolved(loc, None, Var::new(r)), x)
     }
 
-    fn primary_expr(&self, e: Pair<Rule>) -> Expr {
+    fn primary_expr(&mut self, e: Pair<Rule>) -> Expr {
         use Expr::*;
 
         let p = e.into_inner().next().unwrap();
@@ -1261,7 +1264,7 @@ impl Trans {
         }
     }
 
-    fn chainable_operand(&self, c: Pair<Rule>) -> Expr {
+    fn chainable_operand(&mut self, c: Pair<Rule>) -> Expr {
         use Expr::*;
         let p = c.into_inner().next().unwrap();
         let loc = Loc::from(p.as_span());
@@ -1375,7 +1378,7 @@ impl Trans {
         }
     }
 
-    fn chainable_expr(&self, e: Pair<Rule>) -> Expr {
+    fn chainable_expr(&mut self, e: Pair<Rule>) -> Expr {
         let mut pairs = e.into_inner();
         let f = self.chainable_operand(pairs.next().unwrap());
         pairs.fold(f, |ret, p| {
@@ -1383,7 +1386,7 @@ impl Trans {
         })
     }
 
-    fn chainable_operator(&self, p: Pair<Rule>, mut f: Expr) -> Expr {
+    fn chainable_operator(&mut self, p: Pair<Rule>, mut f: Expr) -> Expr {
         use Expr::*;
         let loc = Loc::from(p.as_span());
         match p.as_rule() {
@@ -1443,7 +1446,7 @@ impl Trans {
         f
     }
 
-    fn new_expr(&self, e: Pair<Rule>) -> Expr {
+    fn new_expr(&mut self, e: Pair<Rule>) -> Expr {
         use Expr::*;
         let mut pairs = e.into_inner();
         let cls = match self.maybe_qualified(pairs.next().unwrap()) {
@@ -1463,7 +1466,7 @@ impl Trans {
             .fold(cls, |a, (loc, i, x)| App(loc, Box::new(a), i, Box::new(x)))
     }
 
-    fn branch(&self, b: Pair<Rule>, inside_loop: bool) -> Expr {
+    fn branch(&mut self, b: Pair<Rule>, inside_loop: bool) -> Expr {
         use Expr::*;
 
         let p = b.into_inner().next().unwrap();
@@ -1493,10 +1496,9 @@ impl Trans {
             }
             Rule::branch_const_variadic | Rule::loop_branch_const_variadic => {
                 let mut pairs = p.into_inner();
-                self.multi_bind(
-                    pairs.next().unwrap(),
-                    self.branch(pairs.next().unwrap(), inside_loop),
-                )
+                let stmt = pairs.next().unwrap();
+                let branch = self.branch(pairs.next().unwrap(), inside_loop);
+                self.multi_bind(stmt, branch)
             }
             Rule::branch_unit_const | Rule::loop_branch_unit_const => {
                 let mut pairs = p.into_inner();
@@ -1600,7 +1602,7 @@ impl Trans {
         }
     }
 
-    fn bind(&self, s: Pair<Rule>) -> (Var, Option<Box<Expr>>, Expr) {
+    fn bind(&mut self, s: Pair<Rule>) -> (Var, Option<Box<Expr>>, Expr) {
         let mut pairs = s.into_inner();
         let id = Var::from(pairs.next().unwrap());
         let mut typ = None;
@@ -1631,7 +1633,7 @@ impl Trans {
     /// const (c, d) = untupled_b;
     /// rest
     /// ```
-    fn multi_bind(&self, s: Pair<Rule>, rest: Expr) -> Expr {
+    fn multi_bind(&mut self, s: Pair<Rule>, rest: Expr) -> Expr {
         let pairs = s.into_inner();
         let mut ids = Vec::default();
         let mut expr = None;
@@ -1645,11 +1647,11 @@ impl Trans {
         Expr::wrap_expr_tuple_binds(expr.unwrap(), ids, rest)
     }
 
-    fn expr_stmt(&self, s: Pair<Rule>) -> Expr {
+    fn expr_stmt(&mut self, s: Pair<Rule>) -> Expr {
         self.expr(s.into_inner().next().unwrap())
     }
 
-    fn object_update_stmt(&self, s: Pair<Rule>) -> (Var, Expr) {
+    fn object_update_stmt(&mut self, s: Pair<Rule>) -> (Var, Expr) {
         use Expr::*;
         let mut pairs = s.into_inner();
         let a = pairs.next().unwrap();
@@ -1666,7 +1668,7 @@ impl Trans {
         (a_var, expr)
     }
 
-    fn item_update_stmt(&self, s: Pair<Rule>) -> Expr {
+    fn item_update_stmt(&mut self, s: Pair<Rule>) -> Expr {
         let mut pairs = s.into_inner();
         let a = self.maybe_qualified(pairs.next().unwrap());
         let k = self.expr(pairs.next().unwrap());
@@ -1675,7 +1677,7 @@ impl Trans {
         Self::call3(f, a, k, v)
     }
 
-    fn update_stmt(&self, s: Pair<Rule>) -> (Var, Expr) {
+    fn update_stmt(&mut self, s: Pair<Rule>) -> (Var, Expr) {
         let mut pairs = s.into_inner();
         (
             Var::from(pairs.next().unwrap()),
@@ -1683,7 +1685,7 @@ impl Trans {
         )
     }
 
-    fn fori(&self, clause: Pair<Rule>, body: Expr, rest: Expr) -> Expr {
+    fn fori(&mut self, clause: Pair<Rule>, body: Expr, rest: Expr) -> Expr {
         use Expr::*;
 
         let clause_loc = Loc::from(clause.as_span());
@@ -1782,7 +1784,7 @@ impl Trans {
     /// /* rest */
     /// ```
     fn forof(
-        &self,
+        &mut self,
         loc: Loc,
         l: Pair<Rule>,
         v: Pair<Rule>,
@@ -1847,7 +1849,7 @@ impl Trans {
         )
     }
 
-    fn maybe_qualified(&self, p: Pair<Rule>) -> Expr {
+    fn maybe_qualified(&mut self, p: Pair<Rule>) -> Expr {
         use Expr::*;
         let loc = Loc::from(p.as_span());
         let mut i = p.into_inner();
@@ -1860,7 +1862,7 @@ impl Trans {
         }
     }
 
-    fn qualifier(&self, q: Pair<Rule>) -> ModuleID {
+    fn qualifier(&mut self, q: Pair<Rule>) -> ModuleID {
         use ImportedPkg::*;
         let mut pairs = q.into_inner();
         let prefix = pairs.next().unwrap();
@@ -1923,7 +1925,7 @@ impl Trans {
         }
     }
 
-    fn variadic_param(&self, p: Pair<Rule>) -> VariadicParam {
+    fn variadic_param(&mut self, p: Pair<Rule>) -> VariadicParam {
         use Expr::*;
         let loc = Loc::from(p.as_span());
         let mut pairs = p.into_inner();
@@ -1941,7 +1943,7 @@ impl Trans {
         }
     }
 
-    fn param(&self, p: Pair<Rule>) -> Param<Expr> {
+    fn param(&mut self, p: Pair<Rule>) -> Param<Expr> {
         let mut pairs = p.into_inner();
         Param {
             var: Var::from(pairs.next().unwrap()),
@@ -1950,7 +1952,7 @@ impl Trans {
         }
     }
 
-    fn fields(&self, p: Pair<Rule>) -> Expr {
+    fn fields(&mut self, p: Pair<Rule>) -> Expr {
         use Expr::*;
 
         let loc = Loc::from(p.as_span());
@@ -1966,7 +1968,7 @@ impl Trans {
         Fields(loc, fields)
     }
 
-    fn label(&self, l: Pair<Rule>) -> (String, Expr) {
+    fn label(&mut self, l: Pair<Rule>) -> (String, Expr) {
         let mut p = l.into_inner();
         (
             p.next().unwrap().as_str().to_string(),
@@ -1974,7 +1976,7 @@ impl Trans {
         )
     }
 
-    fn object_literal(&self, l: Pair<Rule>) -> Expr {
+    fn object_literal(&mut self, l: Pair<Rule>) -> Expr {
         use Expr::*;
         let loc = Loc::from(l.as_span());
         Obj(
@@ -1983,7 +1985,7 @@ impl Trans {
         )
     }
 
-    fn enum_variant(&self, v: Pair<Rule>) -> Expr {
+    fn enum_variant(&mut self, v: Pair<Rule>) -> Expr {
         use Expr::*;
         let loc = Loc::from(v.as_span());
         let mut pairs = v.into_inner();
@@ -1994,7 +1996,7 @@ impl Trans {
         Variant(loc, n, Box::new(a))
     }
 
-    fn tupled_args(&self, a: Pair<Rule>) -> Expr {
+    fn tupled_args(&mut self, a: Pair<Rule>) -> Expr {
         use Expr::*;
         let mut ends = TT(Loc::from(a.as_span()));
         let mut args = Vec::default();
@@ -2015,7 +2017,7 @@ impl Trans {
         ends
     }
 
-    fn catch(&self, c: Pair<Rule>) -> Catch {
+    fn catch(&mut self, c: Pair<Rule>) -> Catch {
         let mut pairs = c.into_inner();
         let i = self.maybe_qualified(pairs.next().unwrap());
         let inst_ty = self.type_expr(pairs.next().unwrap());
@@ -2167,7 +2169,7 @@ impl UntupledParams {
         self.1.push((loc, p))
     }
 
-    fn unresolved(&self) -> Vec<Expr> {
+    fn unresolved(&mut self) -> Vec<Expr> {
         use Expr::*;
         self.1
             .iter()
