@@ -44,7 +44,9 @@ fn expr_pratt() -> &'static PrattParser<Rule> {
 }
 
 #[derive(Default)]
-pub struct Trans {}
+pub struct Trans {
+    predicates: Vec<Param<Expr>>,
+}
 
 impl Trans {
     pub fn file(&mut self, mut f: Pairs<Rule>) -> (Vec<Import>, Vec<Def<Expr>>) {
@@ -137,6 +139,8 @@ impl Trans {
         use Body::*;
         use Expr::*;
 
+        self.predicates.clear();
+
         let loc = Loc::from(f.as_span());
         let mut pairs = f.into_inner();
 
@@ -182,6 +186,9 @@ impl Trans {
                 _ => unreachable!(),
             }
         }
+
+        preds.extend(self.predicates.clone());
+
         let untupled_vars = untupled.unresolved();
         let untupled_loc = untupled.0;
         let tupled_param = untupled.param(untupled_ends);
@@ -913,12 +920,38 @@ impl Trans {
                 loc,
                 Box::new(Self::unresolved(p.into_inner().next().unwrap())),
             ),
-            Rule::object_type_literal => Object(loc, Box::new(self.fields(p))),
+            Rule::object_type_refined => {
+                let mut pairs = p.into_inner();
+                let fields = self.fields(pairs.next().unwrap());
+                let row_id = Self::unresolved(pairs.next().unwrap());
+                self.predicates.push(Param::predicate(RowOrd(
+                    fields.loc(),
+                    Box::new(fields),
+                    Box::new(row_id.clone()),
+                )));
+                Object(loc, Box::new(row_id))
+            }
+            Rule::object_type_literal => {
+                Object(loc, Box::new(self.fields(p.into_inner().next().unwrap())))
+            }
             Rule::enum_type_ref => Enum(
                 loc,
                 Box::new(Self::unresolved(p.into_inner().next().unwrap())),
             ),
-            Rule::enum_type_literal => Enum(loc, Box::new(self.fields(p))),
+            Rule::enum_type_refined => {
+                let mut pairs = p.into_inner();
+                let variants = self.fields(pairs.next().unwrap());
+                let row_id = Self::unresolved(pairs.next().unwrap());
+                self.predicates.push(Param::predicate(RowOrd(
+                    variants.loc(),
+                    Box::new(variants),
+                    Box::new(row_id.clone()),
+                )));
+                Enum(loc, Box::new(row_id))
+            }
+            Rule::enum_type_literal => {
+                Enum(loc, Box::new(self.fields(p.into_inner().next().unwrap())))
+            }
             Rule::type_app => self.type_app(p),
             Rule::tyref => self.maybe_qualified(p),
             Rule::paren_type_expr => self.type_expr(p.into_inner().next().unwrap()),
@@ -975,26 +1008,22 @@ impl Trans {
 
         let p = pred.into_inner().next().unwrap();
         let loc = Loc::from(p.as_span());
-        Param {
-            var: Var::unbound(),
-            info: Implicit,
-            typ: Box::new(match p.as_rule() {
-                Rule::row_ord => {
-                    let mut p = p.into_inner();
-                    let lhs = self.row_expr(p.next().unwrap());
-                    let rhs = self.row_expr(p.next().unwrap());
-                    RowOrd(loc, Box::new(lhs), Box::new(rhs))
-                }
-                Rule::row_eq => {
-                    let mut p = p.into_inner();
-                    let lhs = self.row_expr(p.next().unwrap());
-                    let rhs = self.row_expr(p.next().unwrap());
-                    RowEq(loc, Box::new(lhs), Box::new(rhs))
-                }
-                Rule::instanceof => self.instanceof(loc, p),
-                _ => unreachable!(),
-            }),
-        }
+        Param::predicate(match p.as_rule() {
+            Rule::row_ord => {
+                let mut p = p.into_inner();
+                let lhs = self.row_expr(p.next().unwrap());
+                let rhs = self.row_expr(p.next().unwrap());
+                RowOrd(loc, Box::new(lhs), Box::new(rhs))
+            }
+            Rule::row_eq => {
+                let mut p = p.into_inner();
+                let lhs = self.row_expr(p.next().unwrap());
+                let rhs = self.row_expr(p.next().unwrap());
+                RowEq(loc, Box::new(lhs), Box::new(rhs))
+            }
+            Rule::instanceof => self.instanceof(loc, p),
+            _ => unreachable!(),
+        })
     }
 
     fn instanceof(&mut self, loc: Loc, i: Pair<Rule>) -> Expr {

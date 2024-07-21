@@ -294,8 +294,10 @@ params =
 field = { field_id ~ ":" ~ type_expr }
 pub_field = { pub_field_id ~ ":" ~ type_expr }
 property = { prop_id ~ ":" ~ type_expr }
+properties = { property ~ ("," ~ property)* }
 label = { prop_id ~ ":" ~ expr }
 variant = { variant_id ~ (":" ~ type_expr)? }
+variants = { variant ~ ("|" ~ variant)* }
 
 type_expr = { primary_type_expr ~ (type_infix_op ~ primary_type_expr)* }
 type_infix_op =
@@ -305,8 +307,10 @@ primary_type_expr =
   { fn_type
   | primitive_type
   | object_type_ref
+  | object_type_refined
   | object_type_literal
   | enum_type_ref
+  | enum_type_refined
   | enum_type_literal
   | type_app
   | tyref
@@ -331,9 +335,11 @@ boolean_type = { "boolean" }
 unit_type = { "unit" }
 rowkey_type = { "rowkey" }
 object_type_ref = { "{" ~ row_id ~ "}" }
-object_type_literal = { "{" ~ property ~ ("," ~ property)* ~ "}" }
+object_type_refined = { "{" ~ properties ~ "," ~ row_id ~ "}" }
+object_type_literal = { "{" ~ properties ~ "}" }
 enum_type_ref = { "[" ~ row_id ~ "]" }
-enum_type_literal = { "[" ~ variant ~ ("|" ~ variant)* ~ "]" }
+enum_type_refined = { "[" ~ variants ~ "|" ~ row_id ~ "]" }
+enum_type_literal = { "[" ~ variants ~ "]" }
 type_app = { ("(" ~ type_expr ~ ")" | tyref) ~ implicit_args? ~ ("::" ~ type_id)? }
 
 expr = { prefix_op* ~ primary_expr ~ (infix_op ~ prefix_op* ~ primary_expr)* }

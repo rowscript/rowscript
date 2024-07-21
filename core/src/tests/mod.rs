@@ -97,6 +97,7 @@ mod ok_prelude_join;
 mod ok_prelude_json;
 mod ok_reflect;
 mod ok_rev_app;
+mod ok_sugar_roword;
 mod ok_time;
 mod ok_typeclassopedia;
 mod ok_typeclassopedia_stuck;

@@ -273,6 +273,14 @@ impl<T: Syntax> Param<T> {
             .collect::<Vec<_>>()
             .join(" ")
     }
+
+    pub fn predicate(typ: T) -> Self {
+        Self {
+            var: Var::unbound(),
+            info: ParamInfo::Implicit,
+            typ: Box::new(typ),
+        }
+    }
 }
 
 impl<T: Syntax> Display for Param<T> {
