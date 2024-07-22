@@ -16,7 +16,7 @@ pub trait Target {
         &mut self,
         buf: &mut Vec<u8>,
         sigma: &Sigma,
-        includes: &[PathBuf],
+        includes: &[Box<Path>],
         file: ModuleFile,
     ) -> Result<(), Error>;
 }
@@ -66,11 +66,9 @@ impl Codegen {
         }
 
         let module_dir = module.to_source_path(&self.outdir);
-        let module_dir_path = module_dir.as_path();
-        let module_index_file = module_dir.join(self.target.filename());
-        create_dir_all(&module_dir).map_err(|e| Error::IO(module_dir_path.into(), e))?;
-        write(&module_index_file, &buf)
-            .map_err(|e| Error::IO(module_index_file.into_boxed_path(), e))?;
+        let module_index_file = module_dir.join(self.target.filename()).into_boxed_path();
+        create_dir_all(&module_dir).map_err(|e| Error::IO(module_dir.clone(), e))?;
+        write(&module_index_file, &buf).map_err(|e| Error::IO(module_index_file, e))?;
 
         for file in includes {
             let to = module_dir.join(file.file_name().unwrap());

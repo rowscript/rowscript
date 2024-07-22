@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::codegen::Target;
 use crate::theory::abs::def::Sigma;
@@ -25,7 +25,7 @@ impl Target for Noop {
         &mut self,
         _: &mut Vec<u8>,
         _: &Sigma,
-        _: &[PathBuf],
+        _: &[Box<Path>],
         _: ModuleFile,
     ) -> Result<(), Error> {
         Ok(())

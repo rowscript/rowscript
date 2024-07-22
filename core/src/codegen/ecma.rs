@@ -1523,7 +1523,7 @@ impl Ecma {
         Ok(items)
     }
 
-    fn includes(&mut self, includes: &[PathBuf]) -> Result<Vec<ModuleItem>, Error> {
+    fn includes(&mut self, includes: &[Box<Path>]) -> Result<Vec<ModuleItem>, Error> {
         let mut items = Vec::default();
         let mut props = Vec::default();
         for i in includes {
@@ -1852,7 +1852,7 @@ impl Target for Ecma {
         &mut self,
         buf: &mut Vec<u8>,
         sigma: &Sigma,
-        includes: &[PathBuf],
+        includes: &[Box<Path>],
         file: ModuleFile,
     ) -> Result<(), Error> {
         let mut body = vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {

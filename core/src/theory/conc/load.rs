@@ -18,37 +18,41 @@ const STD_PKG_DIR: &str = "std";
 const PRELUDE_DIR: &str = "prelude";
 
 #[cfg(not(test))]
-pub fn prelude_path() -> PathBuf {
+pub fn prelude_path() -> Box<Path> {
     use std::env::var;
     match var("ROWS_PRELUDE_DIR") {
-        Ok(p) => p.into(),
+        Ok(p) => PathBuf::from(p),
         Err(_) => Path::new(MODULES_DIR)
             .join(PKG_DIR)
             .join("core")
             .join(PRELUDE_DIR),
     }
+    .into()
 }
 
 #[cfg(test)]
-pub fn prelude_path() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join(PRELUDE_DIR)
+pub fn prelude_path() -> Box<Path> {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join(PRELUDE_DIR)
+        .into()
 }
 
-#[derive(Debug, Hash, Eq, PartialEq, Clone)]
+#[derive(Default, Debug, Hash, Eq, PartialEq, Clone)]
 pub enum ImportedPkg {
+    #[default]
+    Root,
     Std(String),
     Vendor(String, String),
-    Root,
 }
 
-#[derive(Debug, Hash, Eq, PartialEq, Clone)]
+#[derive(Default, Debug, Hash, Eq, PartialEq, Clone)]
 pub struct ModuleID {
     pub pkg: ImportedPkg,
     pub modules: PathBuf,
 }
 
 impl ModuleID {
-    pub fn to_source_path(&self, base: &Path) -> PathBuf {
+    pub fn to_source_path(&self, base: &Path) -> Box<Path> {
         use ImportedPkg::*;
         let mut ret = match &self.pkg {
             Std(pkg) => base
@@ -60,10 +64,10 @@ impl ModuleID {
             Root => base.to_path_buf(),
         };
         ret.extend(&self.modules);
-        ret
+        ret.into()
     }
 
-    pub fn to_generated_path(&self) -> PathBuf {
+    pub fn to_generated_path(&self) -> Box<Path> {
         use ImportedPkg::*;
         let mut p = match &self.pkg {
             Std(p) => Path::new(PKG_DIR).join(STD_PKG_DIR).join(OUTDIR).join(p),
@@ -71,7 +75,7 @@ impl ModuleID {
             Root => PathBuf::from("."),
         };
         p.extend(&self.modules);
-        p
+        p.into()
     }
 
     pub fn should_generate(&self) -> bool {
@@ -79,15 +83,6 @@ impl ModuleID {
         match self.pkg {
             Std(_) | Vendor(_, _) => false,
             Root => true,
-        }
-    }
-}
-
-impl Default for ModuleID {
-    fn default() -> Self {
-        Self {
-            pkg: ImportedPkg::Root,
-            modules: Default::default(),
         }
     }
 }

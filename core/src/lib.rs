@@ -1,9 +1,10 @@
 use std::fs::read_to_string;
 use std::io;
 use std::ops::Range;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use ariadne::{Color, Label, Report, ReportKind, Source};
+use pest::error::Error as PestError;
 use pest::error::InputLocation;
 use pest::Parser;
 use pest_derive::Parser;
@@ -29,7 +30,7 @@ pub enum Error {
     #[error("IO error on file \"{0}\": \"{1}\"")]
     IO(Box<Path>, io::Error),
     #[error("parse error")]
-    Parsing(#[from] Box<pest::error::Error<Rule>>),
+    Parsing(#[from] Box<PestError<Rule>>),
 
     #[error("unresolved variable")]
     UnresolvedVar(Loc),
@@ -192,7 +193,7 @@ pub struct ModuleFile {
 pub struct Module {
     module: ModuleID,
     files: Vec<ModuleFile>,
-    includes: Vec<PathBuf>,
+    includes: Vec<Box<Path>>,
 }
 
 pub struct Driver {
@@ -205,7 +206,7 @@ pub struct Driver {
 
 enum Loadable {
     ViaID(ModuleID),
-    ViaPath(PathBuf),
+    ViaPath(Box<Path>),
 }
 
 impl Driver {
@@ -238,43 +239,39 @@ impl Driver {
         let mut files = Vec::default();
         let mut includes = Vec::default();
 
-        let (path, module) = match loadable {
+        let (module_path, module) = match loadable {
             ViaID(m) => (m.to_source_path(self.path.as_ref()), Some(m)),
             ViaPath(p) => (p, None),
         };
 
-        for r in path
+        let entries = module_path
             .read_dir()
-            .map_err(|e| Error::IO(path.into_boxed_path(), e))?
-        {
+            .map_err(|e| Error::IO(module_path, e))?;
+        for r in entries {
             let entry = r.unwrap();
             if entry.file_type().unwrap().is_dir() {
                 continue;
             }
-            let file = entry.path();
-            match file.extension() {
-                None => continue,
-                Some(e) => {
-                    if self.codegen.should_include(&file) {
-                        includes.push(file.clone());
-                        continue;
-                    }
-
-                    if e != FILE_EXT {
-                        continue;
-                    }
-
-                    let filepath = file.as_path();
-                    let src = read_to_string(&file).map_err(|e| Error::IO(filepath.into(), e))?;
-                    let (imports, defs) = self
-                        .load_src(&module, src.as_str(), is_ubiquitous)
-                        .map_err(|e| print_err(e, &file, src))?;
-                    files.push(ModuleFile {
-                        file: filepath.into(),
-                        imports,
-                        defs,
-                    });
+            let file = entry.path().into_boxed_path();
+            if let Some(e) = file.extension() {
+                if self.codegen.should_include(&file) {
+                    includes.push(file);
+                    continue;
                 }
+
+                if e != FILE_EXT {
+                    continue;
+                }
+
+                let src = read_to_string(&file).map_err(|e| Error::IO(file.clone(), e))?;
+                let (imports, defs) = self
+                    .load_src(&module, src.as_str(), is_ubiquitous)
+                    .map_err(|e| print_err(e, &file, src))?;
+                files.push(ModuleFile {
+                    file,
+                    imports,
+                    defs,
+                });
             }
         }
 
