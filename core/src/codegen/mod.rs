@@ -5,7 +5,6 @@ use crate::theory::abs::def::Sigma;
 use crate::theory::conc::load::ModuleID;
 use crate::{print_err, Error, Module, ModuleFile};
 
-#[cfg(feature = "codegen-ecma")]
 pub mod ecma;
 pub mod noop;
 

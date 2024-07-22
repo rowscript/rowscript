@@ -13,21 +13,15 @@ use rowscript_core::Driver;
 struct Args {
     #[arg(index = 1, default_value = ".")]
     path: PathBuf,
-    #[arg(short, long, value_enum, default_value_t = DEFAULT_TARGET_ID)]
+    #[arg(short, long, value_enum, default_value_t = TargetID::Ecma)]
     target: TargetID,
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
 }
 
-#[cfg(feature = "codegen-ecma")]
-const DEFAULT_TARGET_ID: TargetID = TargetID::Ecma;
-#[cfg(not(feature = "codegen-ecma"))]
-const DEFAULT_TARGET_ID: TargetID = TargetID::Noop;
-
 #[derive(Copy, Clone, ValueEnum)]
 enum TargetID {
     Noop,
-    #[cfg(feature = "codegen-ecma")]
     Ecma,
 }
 

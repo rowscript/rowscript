@@ -3,13 +3,8 @@ name = "rowscript"
 version = "1.0.0-alpha.5"
 edition = "2021"
 
-[features]
-default = ["codegen-ecma"]
-codegen-ecma = ["rowscript-core/codegen-ecma"]
-
 [dependencies.rowscript-core]
 path = "../core"
-default-features = false
 
 [dependencies.clap]
 version = "4.5.9"

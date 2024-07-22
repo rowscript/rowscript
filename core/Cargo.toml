@@ -3,18 +3,6 @@ name = "rowscript-core"
 version = "1.0.0-alpha.5"
 edition = "2021"
 
-[features]
-default = ["codegen-ecma"]
-codegen-ecma = [
-    "dep:swc_ecma_parser",
-    "dep:swc_ecma_ast",
-    "dep:swc_ecma_codegen",
-    "dep:swc_atoms",
-    "dep:swc_common",
-    "dep:swc_allocator",
-    "dep:num-bigint",
-]
-
 [dependencies.thiserror]
 version = "1.0.63"
 
@@ -34,10 +22,10 @@ version = "2.7.11"
 version = "2.7.11"
 
 [dependencies]
-swc_ecma_parser = { version = "0.148.1", optional = true }
-swc_ecma_ast = { version = "0.117.2", optional = true }
-swc_ecma_codegen = { version = "0.154.2", optional = true }
-swc_atoms = { version = "0.6.7", optional = true }
-swc_common = { version = "0.36.1", features = ["tty-emitter"], optional = true }
-swc_allocator = { version = "0.1.8", optional = true, default-features = false }
-num-bigint = { version = "0.4.6", optional = true }
+swc_ecma_parser = { version = "0.148.1" }
+swc_ecma_ast = { version = "0.117.2" }
+swc_ecma_codegen = { version = "0.154.2" }
+swc_atoms = { version = "0.6.7" }
+swc_common = { version = "0.36.1", features = ["tty-emitter"] }
+swc_allocator = { version = "0.1.8", default-features = false }
+num-bigint = { version = "0.4.6" }

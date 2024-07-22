@@ -1,24 +1,14 @@
 use std::env;
 use std::path::Path;
-#[cfg(feature = "codegen-ecma")]
 use std::rc::Rc;
 
-#[cfg(feature = "codegen-ecma")]
-use swc_common::{
-    errors::{ColorConfig, Handler},
-    input::StringInput,
-    SourceMap,
-};
-#[cfg(feature = "codegen-ecma")]
-use swc_ecma_parser::{
-    lexer::Lexer,
-    {Parser, Syntax},
-};
+use swc_common::errors::{ColorConfig, Handler};
+use swc_common::input::StringInput;
+use swc_common::SourceMap;
+use swc_ecma_parser::lexer::Lexer;
+use swc_ecma_parser::{Parser, Syntax};
 
-#[cfg(feature = "codegen-ecma")]
 use crate::codegen::ecma::{Ecma, OUT_FILE};
-#[cfg(not(feature = "codegen-ecma"))]
-use crate::codegen::noop::Noop;
 use crate::codegen::Target;
 use crate::{Driver, Error};
 
@@ -107,12 +97,6 @@ mod ok_varargs_anon;
 mod ok_varargs_anon_ret;
 mod ok_verify;
 
-#[cfg(not(feature = "codegen-ecma"))]
-fn run_target() -> Box<dyn Target> {
-    Box::new(Noop::default())
-}
-
-#[cfg(feature = "codegen-ecma")]
 fn run_target() -> Box<dyn Target> {
     Box::new(Ecma::default())
 }
@@ -128,12 +112,6 @@ fn run_helper(mod_path: &str) -> Result<(), Error> {
     parse_outfiles(&driver.codegen.outdir)
 }
 
-#[cfg(not(feature = "codegen-ecma"))]
-fn parse_outfiles(_: &Path) -> Result<(), Error> {
-    Ok(())
-}
-
-#[cfg(feature = "codegen-ecma")]
 fn parse_outfiles(d: &Path) -> Result<(), Error> {
     for r in d
         .to_path_buf()
@@ -159,7 +137,6 @@ fn parse_outfiles(d: &Path) -> Result<(), Error> {
     Ok(())
 }
 
-#[cfg(feature = "codegen-ecma")]
 fn parse_outfile(file: &Path) -> Result<(), Error> {
     let cm = Rc::<SourceMap>::default();
     let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, false, Some(cm.clone()));
