@@ -13,11 +13,12 @@ use thiserror::Error;
 use crate::codegen::{Codegen, Target};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
+use crate::theory::conc::data::Expr;
 use crate::theory::conc::elab::Elaborator;
 use crate::theory::conc::load::{prelude_path, Import, Loaded, ModuleID};
 use crate::theory::conc::resolve::Resolver;
 use crate::theory::conc::trans::Trans;
-use crate::theory::{Loc, Var};
+use crate::theory::{Loc, Syntax, Var};
 use crate::theory::{ResolvedVar, VarKind};
 
 pub mod codegen;
@@ -184,15 +185,15 @@ pub struct RowsParser;
 pub const OUTDIR: &str = "dist";
 pub const FILE_EXT: &str = "rows";
 
-pub struct ModuleFile {
-    file: Box<Path>,
+pub struct File<T: Syntax> {
+    path: Box<Path>,
     imports: Vec<Import>,
-    defs: Vec<Def<Term>>,
+    defs: Vec<Def<T>>,
 }
 
-pub struct Module {
+pub struct Module<T: Syntax> {
     module: ModuleID,
-    files: Vec<ModuleFile>,
+    files: Vec<File<T>>,
     includes: Vec<Box<Path>>,
 }
 
@@ -236,13 +237,13 @@ impl Driver {
     fn load(&mut self, loadable: Loadable, is_ubiquitous: bool) -> Result<(), Error> {
         use Loadable::*;
 
-        let mut files = Vec::default();
-        let mut includes = Vec::default();
-
         let (module_path, module) = match loadable {
             ViaID(m) => (m.to_source_path(self.path.as_ref()), Some(m)),
             ViaPath(p) => (p, None),
         };
+
+        let mut unchecked = Vec::default();
+        let mut includes = Vec::default();
 
         let entries = module_path
             .read_dir()
@@ -263,16 +264,13 @@ impl Driver {
                     continue;
                 }
 
-                let src = read_to_string(&file).map_err(|e| Error::IO(file.clone(), e))?;
-                let (imports, defs) = self
-                    .load_src(&module, src.as_str(), is_ubiquitous)
-                    .map_err(|e| print_err(e, &file, src))?;
-                files.push(ModuleFile {
-                    file,
-                    imports,
-                    defs,
-                });
+                unchecked.push(self.load_file(file)?);
             }
+        }
+
+        let mut files = Vec::default();
+        for f in unchecked {
+            files.push(self.check_file(&module, f, is_ubiquitous)?);
         }
 
         if let Some(module) = module {
@@ -289,19 +287,33 @@ impl Driver {
         Ok(())
     }
 
-    fn load_src(
-        &mut self,
-        module: &Option<ModuleID>,
-        src: &str,
-        is_ubiquitous: bool,
-    ) -> Result<(Vec<Import>, Vec<Def<Term>>), Error> {
-        let (mut imports, defs) = RowsParser::parse(Rule::file, src)
+    fn load_file(&mut self, path: Box<Path>) -> Result<File<Expr>, Error> {
+        let src = read_to_string(&path).map_err(|e| Error::IO(path.clone(), e))?;
+        let (imports, defs) = RowsParser::parse(Rule::file, src.as_str())
             .map_err(Box::new)
             .map_err(Error::from)
             .map(|p| self.trans.file(p))?;
         imports
             .iter()
             .try_fold((), |_, i| self.load_module(i.module.clone()))?;
+        Ok(File {
+            path,
+            imports,
+            defs,
+        })
+    }
+
+    fn check_file(
+        &mut self,
+        module: &Option<ModuleID>,
+        file: File<Expr>,
+        is_ubiquitous: bool,
+    ) -> Result<File<Term>, Error> {
+        let File {
+            path,
+            mut imports,
+            defs,
+        } = file;
         let defs = Resolver::new(&self.elab.ubiquitous, &self.loaded)
             .file(&mut imports, defs)
             .and_then(|d| self.elab.defs(d))?;
@@ -317,7 +329,11 @@ impl Driver {
                 _ => {}
             }
         }
-        Ok((imports, defs))
+        Ok(File {
+            path,
+            imports,
+            defs,
+        })
     }
 }
 

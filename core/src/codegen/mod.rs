@@ -1,9 +1,10 @@
 use std::fs::{copy, create_dir_all, read_to_string, write};
 use std::path::{Path, PathBuf};
 
+use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Sigma;
 use crate::theory::conc::load::ModuleID;
-use crate::{print_err, Error, Module, ModuleFile};
+use crate::{print_err, Error, File, Module};
 
 pub mod ecma;
 pub mod noop;
@@ -12,12 +13,12 @@ pub trait Target {
     fn filename(&self) -> &'static str;
     fn to_qualifier(&self, module: &ModuleID) -> String;
     fn should_include(&self, path: &Path) -> bool;
-    fn module(
+    fn file(
         &mut self,
         buf: &mut Vec<u8>,
         sigma: &Sigma,
         includes: &[Box<Path>],
-        file: ModuleFile,
+        file: File<Term>,
     ) -> Result<(), Error>;
 }
 
@@ -35,7 +36,7 @@ impl Codegen {
         self.target.should_include(path)
     }
 
-    pub fn module(&mut self, sigma: &Sigma, module: Module) -> Result<(), Error> {
+    pub fn module(&mut self, sigma: &Sigma, module: Module<Term>) -> Result<(), Error> {
         let Module {
             module,
             files,
@@ -50,9 +51,9 @@ impl Codegen {
         let mut buf = Vec::default();
 
         for f in files {
-            let file = f.file.clone();
-            let file = file.as_ref();
-            if let Err(e) = self.target.module(&mut buf, sigma, &includes, f) {
+            let p = f.path.clone();
+            let file = p.as_ref();
+            if let Err(e) = self.target.file(&mut buf, sigma, &includes, f) {
                 return Err(print_err(
                     e,
                     file,
