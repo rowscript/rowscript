@@ -33,7 +33,7 @@ use crate::theory::{
     UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX,
 };
 use crate::Error::{NonErasable, UnsolvedMeta};
-use crate::{Error, ModuleFile};
+use crate::{Error, File};
 
 impl From<Loc> for Span {
     fn from(loc: Loc) -> Self {
@@ -1853,7 +1853,7 @@ impl Target for Ecma {
         buf: &mut Vec<u8>,
         sigma: &Sigma,
         includes: &[Box<Path>],
-        file: ModuleFile,
+        file: File,
     ) -> Result<(), Error> {
         let mut body = vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
             span: DUMMY_SP,

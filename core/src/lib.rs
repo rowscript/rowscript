@@ -105,7 +105,7 @@ const CHECKER_FAILED: &str = "failed while typechecking";
 const UNIFIER_FAILED: &str = "failed while unifying";
 const CODEGEN_FAILED: &str = "failed while generating code";
 
-fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
+fn print_err(e: Error, file: &Path) -> Error {
     fn simple_message<'a>(
         e: &Error,
         loc: &Loc,
@@ -116,11 +116,16 @@ fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
 
     use Error::*;
 
+    let source = match read_to_string(file) {
+        Ok(s) => s,
+        _ => unreachable!(),
+    };
+
     let (range, title, msg) = match &e {
         IO(..) => (Range::default(), PARSER_FAILED, None),
         Parsing(e) => {
             let range = match e.location {
-                InputLocation::Pos(start) => start..source.as_ref().len(),
+                InputLocation::Pos(start) => start..source.len(),
                 InputLocation::Span((start, end)) => start..end,
             };
             (range, PARSER_FAILED, Some(e.variant.message().to_string()))
@@ -160,20 +165,18 @@ fn print_err<S: AsRef<str>>(e: Error, file: &Path, source: S) -> Error {
         #[cfg(test)]
         CodegenTest => (Default::default(), CODEGEN_FAILED, None),
     };
-    let file_str = file.to_str().unwrap();
-    let mut b = Report::build(ReportKind::Error, file_str, range.start)
+    let file_str = file.to_string_lossy();
+    let mut b = Report::build(ReportKind::Error, &file_str, range.start)
         .with_message(title)
         .with_code(1);
     if let Some(m) = msg {
         b = b.with_label(
-            Label::new((file_str, range))
+            Label::new((&file_str, range))
                 .with_message(m)
                 .with_color(Color::Red),
         );
     }
-    b.finish()
-        .print((file_str, Source::from(source.as_ref())))
-        .unwrap();
+    b.finish().print((&file_str, Source::from(source))).unwrap();
     e
 }
 
@@ -184,7 +187,7 @@ pub struct RowsParser;
 pub const OUTDIR: &str = "dist";
 pub const FILE_EXT: &str = "rows";
 
-pub struct ModuleFile {
+pub struct File {
     file: Box<Path>,
     imports: Vec<Import>,
     defs: Vec<Def<Term>>,
@@ -192,7 +195,7 @@ pub struct ModuleFile {
 
 pub struct Module {
     module: ModuleID,
-    files: Vec<ModuleFile>,
+    files: Vec<File>,
     includes: Vec<Box<Path>>,
 }
 
@@ -266,8 +269,8 @@ impl Compiler {
                 let src = read_to_string(&file).map_err(|e| Error::IO(file.clone(), e))?;
                 let (imports, defs) = self
                     .load_src(&module, src.as_str(), is_ubiquitous)
-                    .map_err(|e| print_err(e, &file, src))?;
-                files.push(ModuleFile {
+                    .map_err(|e| print_err(e, &file))?;
+                files.push(File {
                     file,
                     imports,
                     defs,
