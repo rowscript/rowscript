@@ -1,9 +1,9 @@
-use std::fs::{copy, create_dir_all, read_to_string, write};
+use std::fs::{copy, create_dir_all, write};
 use std::path::Path;
 
 use crate::theory::abs::def::Sigma;
 use crate::theory::conc::load::ModuleID;
-use crate::{print_err, Error, Module, ModuleFile};
+use crate::{print_err, Error, File, Module};
 
 pub mod ecma;
 pub mod noop;
@@ -17,7 +17,7 @@ pub trait Target {
         buf: &mut Vec<u8>,
         sigma: &Sigma,
         includes: &[Box<Path>],
-        file: ModuleFile,
+        file: File,
     ) -> Result<(), Error>;
 }
 
@@ -51,13 +51,8 @@ impl Codegen {
 
         for f in files {
             let file = f.file.clone();
-            let file = file.as_ref();
             if let Err(e) = self.target.module(&mut buf, sigma, &includes, f) {
-                return Err(print_err(
-                    e,
-                    file,
-                    read_to_string(file).map_err(|e| Error::IO(file.into(), e))?,
-                ));
+                return Err(print_err(e, &file));
             }
         }
 

@@ -3,7 +3,7 @@ use std::path::Path;
 use crate::codegen::Target;
 use crate::theory::abs::def::Sigma;
 use crate::theory::conc::load::ModuleID;
-use crate::{Error, ModuleFile};
+use crate::{Error, File};
 
 #[derive(Default)]
 pub struct Noop;
@@ -26,7 +26,7 @@ impl Target for Noop {
         _: &mut Vec<u8>,
         _: &Sigma,
         _: &[Box<Path>],
-        _: ModuleFile,
+        _: File,
     ) -> Result<(), Error> {
         Ok(())
     }
