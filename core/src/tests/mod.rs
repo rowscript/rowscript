@@ -9,7 +9,6 @@ use swc_ecma_parser::lexer::Lexer;
 use swc_ecma_parser::{Parser, Syntax};
 
 use crate::codegen::ecma::{Ecma, OUT_FILE};
-use crate::codegen::Target;
 use crate::{Compiler, Error};
 
 mod playground;
@@ -97,19 +96,14 @@ mod ok_varargs_anon;
 mod ok_varargs_anon_ret;
 mod ok_verify;
 
-fn run_target() -> Box<dyn Target> {
-    Box::new(Ecma::default())
-}
-
 fn run_helper(mod_path: &str) -> Result<(), Error> {
-    let target = run_target();
     let pkg = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("src")
         .join("tests")
         .join(mod_path.to_string().split("::").last().unwrap());
-    let mut driver = Compiler::new(pkg.as_path(), target);
-    driver.run()?;
-    parse_outfiles(&driver.codegen.out_dir)
+    let mut compiler = Compiler::new(pkg.as_path(), Box::new(Ecma::default()));
+    compiler.run()?;
+    parse_outfiles(&compiler.codegen.out_dir)
 }
 
 fn parse_outfiles(d: &Path) -> Result<(), Error> {

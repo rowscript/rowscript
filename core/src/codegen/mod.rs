@@ -1,6 +1,7 @@
 use std::fs::{copy, create_dir_all, write};
 use std::path::Path;
 
+use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Sigma;
 use crate::theory::conc::load::ModuleID;
 use crate::{print_err, Error, File, Module};
@@ -17,7 +18,7 @@ pub trait Target {
         buf: &mut Vec<u8>,
         sigma: &Sigma,
         includes: &[Box<Path>],
-        file: File,
+        file: File<Term>,
     ) -> Result<(), Error>;
 }
 
@@ -35,7 +36,7 @@ impl Codegen {
         self.target.should_include(path)
     }
 
-    pub fn module(&mut self, sigma: &Sigma, module: Module) -> Result<(), Error> {
+    pub fn module(&mut self, sigma: &Sigma, module: Module<Term>) -> Result<(), Error> {
         let Module {
             module,
             files,

@@ -1853,7 +1853,7 @@ impl Target for Ecma {
         buf: &mut Vec<u8>,
         sigma: &Sigma,
         includes: &[Box<Path>],
-        file: File,
+        file: File<Term>,
     ) -> Result<(), Error> {
         let mut body = vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
             span: DUMMY_SP,
