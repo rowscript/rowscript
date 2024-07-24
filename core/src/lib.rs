@@ -196,7 +196,7 @@ pub struct Module {
     includes: Vec<Box<Path>>,
 }
 
-pub struct Driver {
+pub struct Compiler {
     path: Box<Path>,
     trans: Trans,
     loaded: Loaded,
@@ -209,9 +209,9 @@ enum Loadable {
     ViaPath(Box<Path>),
 }
 
-impl Driver {
+impl Compiler {
     pub fn new(path: &Path, target: Box<dyn Target>) -> Self {
-        let codegen = Codegen::new(target, path.join(OUTDIR));
+        let codegen = Codegen::new(target, path.join(OUTDIR).into_boxed_path());
         Self {
             path: path.into(),
             trans: Default::default(),

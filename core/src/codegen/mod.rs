@@ -1,5 +1,5 @@
 use std::fs::{copy, create_dir_all, read_to_string, write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::theory::abs::def::Sigma;
 use crate::theory::conc::load::ModuleID;
@@ -23,12 +23,12 @@ pub trait Target {
 
 pub struct Codegen {
     target: Box<dyn Target>,
-    pub outdir: PathBuf,
+    pub out_dir: Box<Path>,
 }
 
 impl Codegen {
-    pub fn new(target: Box<dyn Target>, outdir: PathBuf) -> Self {
-        Self { target, outdir }
+    pub fn new(target: Box<dyn Target>, out_dir: Box<Path>) -> Self {
+        Self { target, out_dir }
     }
 
     pub fn should_include(&mut self, path: &Path) -> bool {
@@ -65,7 +65,7 @@ impl Codegen {
             return Ok(());
         }
 
-        let module_dir = module.to_source_path(&self.outdir);
+        let module_dir = module.to_source_path(&self.out_dir);
         let module_index_file = module_dir.join(self.target.filename()).into_boxed_path();
         create_dir_all(&module_dir).map_err(|e| Error::IO(module_dir.clone(), e))?;
         write(&module_index_file, &buf).map_err(|e| Error::IO(module_index_file, e))?;

@@ -6,7 +6,7 @@ use clap::{Parser, ValueEnum};
 use log::error;
 
 use rowscript_core::codegen::{ecma, noop, Target};
-use rowscript_core::Driver;
+use rowscript_core::Compiler;
 
 #[derive(Parser)]
 #[command(version)]
@@ -51,7 +51,7 @@ fn main() -> ExitCode {
     }
     env_logger::init();
 
-    Driver::new(&path, target.into())
+    Compiler::new(&path, target.into())
         .run()
         .map_err(|e| error!("compilation failed: {e}"))
         .map_or(ExitCode::FAILURE, |_| ExitCode::SUCCESS)

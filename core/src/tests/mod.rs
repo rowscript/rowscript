@@ -10,7 +10,7 @@ use swc_ecma_parser::{Parser, Syntax};
 
 use crate::codegen::ecma::{Ecma, OUT_FILE};
 use crate::codegen::Target;
-use crate::{Driver, Error};
+use crate::{Compiler, Error};
 
 mod playground;
 
@@ -107,9 +107,9 @@ fn run_helper(mod_path: &str) -> Result<(), Error> {
         .join("src")
         .join("tests")
         .join(mod_path.to_string().split("::").last().unwrap());
-    let mut driver = Driver::new(pkg.as_path(), target);
+    let mut driver = Compiler::new(pkg.as_path(), target);
     driver.run()?;
-    parse_outfiles(&driver.codegen.outdir)
+    parse_outfiles(&driver.codegen.out_dir)
 }
 
 fn parse_outfiles(d: &Path) -> Result<(), Error> {
