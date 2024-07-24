@@ -328,7 +328,7 @@ impl Compiler {
             if is_ubiquitous {
                 self.elab.ubiquitous.insert(
                     d.name.to_string(),
-                    ResolvedVar(VarKind::InModule, d.name.clone()),
+                    ResolvedVar(VarKind::Inside, d.name.clone()),
                 );
             }
             match module {

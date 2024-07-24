@@ -241,7 +241,7 @@ impl Builtins {
     fn define(mut self, def: Def<Term>) -> Self {
         self.ubiquitous.insert(
             def.name.to_string(),
-            ResolvedVar(VarKind::InModule, def.name.clone()),
+            ResolvedVar(VarKind::Inside, def.name.clone()),
         );
         self.sigma.insert(def.name.clone(), def);
         self

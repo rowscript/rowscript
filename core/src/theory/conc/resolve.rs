@@ -7,8 +7,9 @@ use crate::theory::abs::def::{ClassMembers, Def};
 use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::conc::data::{Catch, Expr};
 use crate::theory::conc::load::{Import, ImportedDefs, Loaded};
+use crate::theory::VarKind::{Inside, Outside, Reserved};
 use crate::theory::{
-    NameMap, Param, RawNameSet, ResolvedVar, Tele, Var, VarKind, TUPLED, UNBOUND, UNTUPLED_ENDS,
+    Loc, NameMap, Param, RawNameSet, ResolvedVar, Tele, Var, TUPLED, UNBOUND, UNTUPLED_ENDS,
 };
 use crate::Error::{DuplicateName, NonAnonVariadicDef, UnresolvedVar};
 use crate::{maybe_grow, Error};
@@ -16,7 +17,9 @@ use crate::{maybe_grow, Error};
 pub struct Resolver<'a> {
     ubiquitous: &'a NameMap,
     loaded: &'a Loaded,
-    names: NameMap,
+    locals: NameMap,
+    imported: NameMap,
+    globals: NameMap,
     is_def_anon_variadic: bool,
 }
 
@@ -25,8 +28,10 @@ impl<'a> Resolver<'a> {
         Self {
             ubiquitous,
             loaded,
-            names: Default::default(),
-            is_def_anon_variadic: Default::default(),
+            locals: Default::default(),
+            imported: Default::default(),
+            globals: Default::default(),
+            is_def_anon_variadic: false,
         }
     }
 
@@ -35,47 +40,39 @@ impl<'a> Resolver<'a> {
         imports: &mut Vec<Import>,
         defs: Vec<Def<Expr>>,
     ) -> Result<Vec<Def<Expr>>, Error> {
-        let mut names = RawNameSet::default();
-        self.imports(&mut names, imports)?;
-        self.defs(&mut names, defs)
+        self.imports(imports)?;
+        self.defs(defs)
     }
 
-    fn imports(&mut self, names: &mut RawNameSet, imports: &mut Vec<Import>) -> Result<(), Error> {
+    fn imports(&mut self, imports: &mut Vec<Import>) -> Result<(), Error> {
         use ImportedDefs::*;
-        for Import { loc, module, defs } in imports {
+        for Import { module, defs, .. } in imports {
             match defs {
                 Unqualified(xs) => {
                     for (loc, name) in xs {
-                        names.raw(*loc, name.clone())?;
                         match self.loaded.get(module, name) {
-                            Some(v) => self.insert_imported(v),
+                            Some(v) => self.insert_imported(v.clone()),
                             None => return Err(UnresolvedVar(*loc)),
                         };
                     }
                 }
-                Qualified => names.raw(*loc, module.to_string())?,
-                Loaded => continue,
+                _ => continue,
             }
         }
         Ok(())
     }
 
-    fn defs(
-        &mut self,
-        names: &mut RawNameSet,
-        defs: Vec<Def<Expr>>,
-    ) -> Result<Vec<Def<Expr>>, Error> {
+    fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<Vec<Def<Expr>>, Error> {
         let mut ret = Vec::default();
         for mut d in defs {
             if d.name.as_str() != UNBOUND {
                 if let Some(rv) = self.ubiquitous.get(d.name.as_str()) {
-                    if !matches!(rv.0, VarKind::Reserved) {
+                    if !matches!(rv.0, Reserved) {
                         return Err(DuplicateName(d.loc));
                     }
                     // Use the reserved definition name.
                     d.name = rv.1.clone();
                 }
-                names.var(d.loc, &d.name)?;
             }
             let resolved = self.def(d)?;
             debug!(target: "resolve", "definition resolved successfully: {resolved}");
@@ -88,20 +85,12 @@ impl<'a> Resolver<'a> {
         use Body::*;
 
         self.is_def_anon_variadic = false;
-        let mut recoverable = Vec::default();
-        let mut removable = Vec::default();
 
         match &d.body {
             Method { associated, .. } | Class { associated, .. } => {
                 for (raw, v) in associated.iter() {
-                    let old = self
-                        .names
-                        .insert(raw.clone(), ResolvedVar(VarKind::InModule, v.clone()));
-                    if let Some(old) = old {
-                        recoverable.push(old);
-                    } else {
-                        removable.push(v.clone());
-                    }
+                    self.locals
+                        .insert(raw.clone(), ResolvedVar(Inside, v.clone()));
                 }
             }
             _ => {}
@@ -112,11 +101,7 @@ impl<'a> Resolver<'a> {
             if matches!(p.typ.as_ref(), Expr::AnonVarargs(..)) {
                 self.is_def_anon_variadic = true;
             }
-            if let Some(old) = self.insert(&p.var) {
-                recoverable.push(old);
-            } else {
-                removable.push(p.var.clone());
-            }
+            self.insert_local(p.var.clone());
             tele.push(Param {
                 var: p.var,
                 info: p.info,
@@ -127,10 +112,10 @@ impl<'a> Resolver<'a> {
         d.eff = self.expr(d.eff)?;
         d.ret = self.expr(d.ret)?;
         d.body = match d.body {
-            Fn(f) => Fn(self.self_referencing(&d.name, f)?),
+            Fn(f) => Fn(self.self_referencing(d.loc, d.name.clone(), f)?),
             Postulate => Postulate,
             Alias { ty, implements } => Alias {
-                ty: self.self_referencing(&d.name, ty)?,
+                ty: self.self_referencing(d.loc, d.name.clone(), ty)?,
                 implements: implements.map(|t| self.expr(t)).transpose()?,
             },
             Constant(anno, f) => Constant(anno, self.expr(f)?),
@@ -210,56 +195,65 @@ impl<'a> Resolver<'a> {
             Meta(_, _) => unreachable!(),
         };
 
-        for x in removable {
-            self.remove(&x);
+        if !matches!(&d.body, Fn(..) | Alias { .. }) {
+            self.insert_global(d.loc, d.name.clone())?;
         }
-        for x in recoverable {
-            self.insert_resolved(x);
-        }
-        self.insert(&d.name);
+
+        self.clear_locals();
 
         Ok(d)
     }
 
     fn get(&self, v: &Var) -> Option<&ResolvedVar> {
         let k = v.as_str();
-        self.names
+        self.locals
             .get(k)
-            .or_else(|| self.names.get(v.bind_let().as_str()))
+            .or_else(|| self.locals.get(v.bind_let().as_str()))
+            .or_else(|| self.globals.get(k))
+            .or_else(|| self.imported.get(k))
             .or_else(|| self.ubiquitous.get(k))
     }
 
-    fn insert(&mut self, v: &Var) -> Option<ResolvedVar> {
-        self.names
-            .insert(v.to_string(), ResolvedVar(VarKind::InModule, v.clone()))
+    fn insert_local(&mut self, v: Var) -> Option<ResolvedVar> {
+        self.locals.insert(v.to_string(), ResolvedVar(Inside, v))
     }
 
-    fn insert_imported(&mut self, v: &Var) -> Option<ResolvedVar> {
-        self.names
-            .insert(v.to_string(), ResolvedVar(VarKind::Imported, v.clone()))
+    fn insert_imported(&mut self, v: Var) {
+        self.imported.insert(v.to_string(), ResolvedVar(Outside, v));
     }
 
-    fn insert_resolved(&mut self, v: ResolvedVar) {
-        self.names.insert(v.1.to_string(), v);
-    }
-
-    fn remove(&mut self, v: &Var) {
-        self.names.remove(v.as_str());
-    }
-
-    fn bodied(&mut self, vars: &[&Var], e: Box<Expr>) -> Result<Box<Expr>, Error> {
-        let mut olds = Vec::default();
-
-        for &v in vars {
-            olds.push(self.insert(v));
+    fn insert_global(&mut self, loc: Loc, v: Var) -> Result<(), Error> {
+        if v.as_str() != UNBOUND {
+            self.globals
+                .insert(v.to_string(), ResolvedVar(Inside, v))
+                .map_or(Ok(()), |_| Err(DuplicateName(loc)))?;
         }
+        Ok(())
+    }
+
+    fn remove_local(&mut self, v: &Var) {
+        self.locals.remove(v.as_str());
+    }
+
+    fn clear_locals(&mut self) {
+        self.locals.clear();
+    }
+
+    fn bodied<const N: usize>(
+        &mut self,
+        vars: [&Var; N],
+        e: Box<Expr>,
+    ) -> Result<Box<Expr>, Error> {
+        let olds = vars.map(|v| self.insert_local(v.clone()));
 
         let ret = self.expr(e)?;
 
-        for i in 0..vars.len() {
-            match olds.get(i).unwrap() {
-                Some(v) => self.insert_resolved(v.clone()),
-                None => self.remove(vars.get(i).unwrap()),
+        for (old, var) in olds.into_iter().zip(vars.into_iter()) {
+            match old {
+                Some(v) => {
+                    self.locals.insert(v.1.to_string(), v);
+                }
+                None => self.remove_local(var),
             }
         }
 
@@ -297,8 +291,8 @@ impl<'a> Resolver<'a> {
                             let k = v.0;
                             let v = v.1.clone();
                             match k {
-                                VarKind::Reserved | VarKind::InModule => Resolved(loc, v),
-                                VarKind::Imported => Imported(loc, v),
+                                Reserved | Inside => Resolved(loc, v),
+                                Outside => Imported(loc, v),
                             }
                         }
                         _ => return Err(UnresolvedVar(loc)),
@@ -306,7 +300,7 @@ impl<'a> Resolver<'a> {
                 }
             },
             Const(loc, x, typ, a, b) => {
-                let b = self.bodied(&[&x], b)?;
+                let b = self.bodied([&x], b)?;
                 Const(
                     loc,
                     x,
@@ -322,11 +316,11 @@ impl<'a> Resolver<'a> {
             Let(loc, mut x, typ, a, b) => {
                 if x.as_str() != UNBOUND {
                     x = x.bind_let();
-                    if self.names.contains_key(x.as_str()) {
+                    if self.locals.contains_key(x.as_str()) {
                         return Err(DuplicateName(loc));
                     }
                 }
-                let b = self.bodied(&[&x], b)?;
+                let b = self.bodied([&x], b)?;
                 Let(
                     loc,
                     x,
@@ -339,7 +333,7 @@ impl<'a> Resolver<'a> {
                     b,
                 )
             }
-            Update(loc, x, a, b) => match self.names.get(x.bind_let().as_str()) {
+            Update(loc, x, a, b) => match self.locals.get(x.bind_let().as_str()) {
                 Some(x) => Update(loc, x.1.clone(), self.expr(a)?, self.expr(b)?),
                 None => return Err(UnresolvedVar(loc)),
             },
@@ -358,17 +352,17 @@ impl<'a> Resolver<'a> {
             ),
             Return(loc, a) => Return(loc, self.expr(a)?),
             Pi(loc, p, b) => {
-                let b = self.bodied(&[&p.var], b)?;
+                let b = self.bodied([&p.var], b)?;
                 Pi(loc, self.param(p)?, b)
             }
             TupledLam(loc, vars, b) => {
                 let x = Var::tupled();
                 let wrapped = Expr::wrap_tuple_binds(loc, x.clone(), vars, *b);
                 let desugared = Lam(loc, x.clone(), Box::new(wrapped));
-                *self.bodied(&[&x], Box::new(desugared))?
+                *self.bodied([&x], Box::new(desugared))?
             }
             Lam(loc, x, b) => {
-                let b = self.bodied(&[&x], b)?;
+                let b = self.bodied([&x], b)?;
                 Lam(loc, x, b)
             }
             App(loc, f, i, x) => App(loc, self.expr(f)?, i, self.expr(x)?),
@@ -385,12 +379,12 @@ impl<'a> Resolver<'a> {
                 }
             }
             Sigma(loc, p, b) => {
-                let b = self.bodied(&[&p.var], b)?;
+                let b = self.bodied([&p.var], b)?;
                 Sigma(loc, self.param(p)?, b)
             }
             Tuple(loc, a, b) => Tuple(loc, self.expr(a)?, self.expr(b)?),
             TupleBind(loc, x, y, a, b) => {
-                let b = self.bodied(&[&x, &y], b)?;
+                let b = self.bodied([&x, &y], b)?;
                 TupleBind(loc, x, y, self.expr(a)?, b)
             }
             UnitBind(loc, a, b) => UnitBind(loc, self.expr(a)?, self.expr(b)?),
@@ -436,12 +430,12 @@ impl<'a> Resolver<'a> {
                 let mut new = Vec::default();
                 for (n, v, e) in cs {
                     names.raw(loc, n.clone())?;
-                    let e = self.bodied(&[&v], Box::new(e))?;
+                    let e = self.bodied([&v], Box::new(e))?;
                     new.push((n, v, *e));
                 }
                 let d = match d {
                     Some((v, e)) => {
-                        let e = self.bodied(&[&v], Box::new(*e))?;
+                        let e = self.bodied([&v], Box::new(*e))?;
                         Some((v, e))
                     }
                     None => None,
@@ -454,9 +448,9 @@ impl<'a> Resolver<'a> {
             Spread(loc, a) => Spread(loc, self.expr(a)?),
             AnonSpread(loc) => Resolved(
                 loc,
-                match self.names.get(UNTUPLED_ENDS) {
+                match self.locals.get(UNTUPLED_ENDS) {
                     Some(v) => v,
-                    None if self.is_def_anon_variadic => self.names.get(TUPLED).unwrap(),
+                    None if self.is_def_anon_variadic => self.locals.get(TUPLED).unwrap(),
                     _ => return Err(NonAnonVariadicDef(loc)),
                 }
                 .1
@@ -495,8 +489,8 @@ impl<'a> Resolver<'a> {
         }))
     }
 
-    fn self_referencing(&mut self, name: &Var, f: Box<Expr>) -> Result<Box<Expr>, Error> {
-        self.insert(name);
+    fn self_referencing(&mut self, loc: Loc, v: Var, f: Box<Expr>) -> Result<Box<Expr>, Error> {
+        self.insert_global(loc, v)?;
         self.expr(f)
     }
 }

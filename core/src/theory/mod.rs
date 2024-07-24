@@ -298,8 +298,8 @@ impl<T: Syntax> Display for Param<T> {
 #[derive(Debug, Copy, Clone)]
 pub enum VarKind {
     Reserved,
-    InModule,
-    Imported,
+    Inside,
+    Outside,
 }
 
 #[derive(Debug, Clone)]
