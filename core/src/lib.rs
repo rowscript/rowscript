@@ -271,14 +271,15 @@ impl Compiler {
             }
         }
 
-        let mut files = Vec::default();
-        for f in unchecked {
-            let path = f.file.clone();
-            files.push(
+        let files = Resolver::new(&self.elab.ubiquitous, &self.loaded)
+            .files(unchecked)?
+            .into_iter()
+            .map(|f| {
+                let path = f.file.clone();
                 self.check_file(&module, f, is_ubiquitous)
-                    .map_err(|e| print_err(e, &path))?,
-            );
-        }
+                    .map_err(|e| print_err(e, &path))
+            })
+            .collect::<Result<_, _>>()?;
 
         if let Some(module) = module {
             self.codegen.module(
@@ -318,12 +319,10 @@ impl Compiler {
     ) -> Result<File<Term>, Error> {
         let File {
             file,
-            mut imports,
+            imports,
             defs,
         } = file;
-        let defs = Resolver::new(&self.elab.ubiquitous, &self.loaded)
-            .file(&mut imports, defs)
-            .and_then(|d| self.elab.defs(d))?;
+        let defs = self.elab.defs(defs)?;
         for d in &defs {
             if is_ubiquitous {
                 self.elab.ubiquitous.insert(

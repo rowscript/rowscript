@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use log::debug;
-
 use crate::theory::abs::def::{Body, InstanceBody};
 use crate::theory::abs::def::{ClassMembers, Def};
 use crate::theory::conc::data::Expr::Unresolved;
@@ -12,7 +10,7 @@ use crate::theory::{
     Loc, NameMap, Param, RawNameSet, ResolvedVar, Tele, Var, TUPLED, UNBOUND, UNTUPLED_ENDS,
 };
 use crate::Error::{DuplicateName, NonAnonVariadicDef, UnresolvedVar};
-use crate::{maybe_grow, Error};
+use crate::{maybe_grow, print_err, Error, File};
 
 pub struct Resolver<'a> {
     ubiquitous: &'a NameMap,
@@ -35,16 +33,43 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub fn file(
-        &mut self,
-        imports: &mut Vec<Import>,
-        defs: Vec<Def<Expr>>,
-    ) -> Result<Vec<Def<Expr>>, Error> {
-        self.imports(imports)?;
-        self.defs(defs)
+    pub fn files(&mut self, mut files: Vec<File<Expr>>) -> Result<Vec<File<Expr>>, Error> {
+        for f in &mut files {
+            for d in &mut f.defs {
+                let name_str = d.name.as_str();
+                if name_str != UNBOUND {
+                    if let Some(rv) = self.ubiquitous.get(name_str) {
+                        if !matches!(rv.0, Reserved) {
+                            return Err(print_err(DuplicateName(d.loc), &f.file.clone()));
+                        }
+                        // Use the reserved definition name.
+                        d.name = rv.1.clone();
+                    }
+                }
+                self.insert_global(d.loc, d.name.clone())
+                    .map_err(|e| print_err(e, &f.file.clone()))?;
+            }
+        }
+        files
+            .into_iter()
+            .map(|d| {
+                let path = d.file.clone();
+                self.file(d).map_err(|e| print_err(e, &path))
+            })
+            .collect()
     }
 
-    fn imports(&mut self, imports: &mut Vec<Import>) -> Result<(), Error> {
+    fn file(&mut self, mut file: File<Expr>) -> Result<File<Expr>, Error> {
+        self.imports(&file.imports)?;
+        file.defs = file
+            .defs
+            .into_iter()
+            .map(|d| self.def(d))
+            .collect::<Result<_, _>>()?;
+        Ok(file)
+    }
+
+    fn imports(&mut self, imports: &Vec<Import>) -> Result<(), Error> {
         use ImportedDefs::*;
         for Import { module, defs, .. } in imports {
             match defs {
@@ -60,25 +85,6 @@ impl<'a> Resolver<'a> {
             }
         }
         Ok(())
-    }
-
-    fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<Vec<Def<Expr>>, Error> {
-        let mut ret = Vec::default();
-        for mut d in defs {
-            if d.name.as_str() != UNBOUND {
-                if let Some(rv) = self.ubiquitous.get(d.name.as_str()) {
-                    if !matches!(rv.0, Reserved) {
-                        return Err(DuplicateName(d.loc));
-                    }
-                    // Use the reserved definition name.
-                    d.name = rv.1.clone();
-                }
-            }
-            let resolved = self.def(d)?;
-            debug!(target: "resolve", "definition resolved successfully: {resolved}");
-            ret.push(resolved);
-        }
-        Ok(ret)
     }
 
     fn def(&mut self, mut d: Def<Expr>) -> Result<Def<Expr>, Error> {
@@ -112,10 +118,10 @@ impl<'a> Resolver<'a> {
         d.eff = self.expr(d.eff)?;
         d.ret = self.expr(d.ret)?;
         d.body = match d.body {
-            Fn(f) => Fn(self.self_referencing(d.loc, d.name.clone(), f)?),
+            Fn(f) => Fn(self.expr(f)?),
             Postulate => Postulate,
             Alias { ty, implements } => Alias {
-                ty: self.self_referencing(d.loc, d.name.clone(), ty)?,
+                ty: self.expr(ty)?,
                 implements: implements.map(|t| self.expr(t)).transpose()?,
             },
             Constant(anno, f) => Constant(anno, self.expr(f)?),
@@ -148,8 +154,7 @@ impl<'a> Resolver<'a> {
                 }
                 Instance(Box::new(InstanceBody { i, inst, fns }))
             }
-            InstanceFn(f) => InstanceFn(self.expr(f)?), // FIXME: currently cannot be recursive
-            // FIXME: currently cannot be recursive
+            InstanceFn(f) => InstanceFn(self.expr(f)?),
             ImplementsFn { name, f } => ImplementsFn {
                 name,
                 f: self.expr(f)?,
@@ -194,10 +199,6 @@ impl<'a> Resolver<'a> {
             Undefined => unreachable!(),
             Meta(_, _) => unreachable!(),
         };
-
-        if !matches!(&d.body, Fn(..) | Alias { .. }) {
-            self.insert_global(d.loc, d.name.clone())?;
-        }
 
         self.clear_locals();
 
@@ -487,10 +488,5 @@ impl<'a> Resolver<'a> {
 
             e => e,
         }))
-    }
-
-    fn self_referencing(&mut self, loc: Loc, v: Var, f: Box<Expr>) -> Result<Box<Expr>, Error> {
-        self.insert_global(loc, v)?;
-        self.expr(f)
     }
 }
