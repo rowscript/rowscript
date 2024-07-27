@@ -167,9 +167,7 @@ fn print_err(e: Error, file: &Path) -> Error {
         CodegenTest => (Default::default(), CODEGEN_FAILED, None),
     };
     let file_str = file.to_string_lossy();
-    let mut b = Report::build(ReportKind::Error, &file_str, range.start)
-        .with_message(title)
-        .with_code(1);
+    let mut b = Report::build(ReportKind::Error, &file_str, range.start).with_message(title);
     if let Some(m) = msg {
         b = b.with_label(
             Label::new((&file_str, range))
@@ -185,7 +183,7 @@ fn print_err(e: Error, file: &Path) -> Error {
 #[grammar = "theory/surf.pest"]
 pub struct RowsParser;
 
-pub const OUTDIR: &str = "dist";
+pub const OUT_DIR: &str = "dist";
 pub const FILE_EXT: &str = "rows";
 
 pub struct File<T: Syntax> {
@@ -215,7 +213,7 @@ enum Loadable {
 
 impl Compiler {
     pub fn new(path: &Path, target: Box<dyn Target>) -> Self {
-        let codegen = Codegen::new(target, path.join(OUTDIR).into_boxed_path());
+        let codegen = Codegen::new(target, path.join(OUT_DIR).into_boxed_path());
         Self {
             path: path.into(),
             trans: Default::default(),
@@ -248,10 +246,10 @@ impl Compiler {
         let mut unchecked = Vec::default();
         let mut includes = Vec::default();
 
-        let entries = module_path
+        for r in module_path
             .read_dir()
-            .map_err(|e| Error::IO(module_path, e))?;
-        for r in entries {
+            .map_err(|e| Error::IO(module_path, e))?
+        {
             let entry = r.unwrap();
             if entry.file_type().unwrap().is_dir() {
                 continue;
@@ -262,23 +260,16 @@ impl Compiler {
                     includes.push(file);
                     continue;
                 }
-
-                if e != FILE_EXT {
-                    continue;
+                if e == FILE_EXT {
+                    unchecked.push(self.load_file(&file).map_err(|e| print_err(e, &file))?);
                 }
-
-                unchecked.push(self.load_file(&file).map_err(|e| print_err(e, &file))?);
             }
         }
 
         let files = Resolver::new(&self.elab.ubiquitous, &self.loaded)
             .files(unchecked)?
             .into_iter()
-            .map(|f| {
-                let path = f.file.clone();
-                self.check_file(&module, f, is_ubiquitous)
-                    .map_err(|e| print_err(e, &path))
-            })
+            .map(|f| self.check(&module, is_ubiquitous, f))
             .collect::<Result<_, _>>()?;
 
         if let Some(module) = module {
@@ -311,18 +302,18 @@ impl Compiler {
         })
     }
 
-    fn check_file(
+    fn check(
         &mut self,
         module: &Option<ModuleID>,
-        file: File<Expr>,
         is_ubiquitous: bool,
+        file: File<Expr>,
     ) -> Result<File<Term>, Error> {
         let File {
             file,
             imports,
             defs,
         } = file;
-        let defs = self.elab.defs(defs)?;
+        let defs = self.elab.defs(defs).map_err(|e| print_err(e, &file))?;
         for d in &defs {
             if is_ubiquitous {
                 self.elab.ubiquitous.insert(
@@ -330,9 +321,10 @@ impl Compiler {
                     ResolvedVar(VarKind::Inside, d.name.clone()),
                 );
             }
-            match module {
-                Some(m) if !d.is_private() => self.loaded.insert(m, d)?,
-                _ => {}
+            if let Some(m) = module {
+                if !d.is_private() {
+                    self.loaded.insert(m, d).map_err(|e| print_err(e, &file))?
+                }
             }
         }
         Ok(File {

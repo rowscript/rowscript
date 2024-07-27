@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::{Loc, Var};
-use crate::{Error, OUTDIR};
+use crate::{Error, OUT_DIR};
 
 #[cfg(not(test))]
 const MODULES_DIR: &str = "node_modules";
@@ -70,8 +70,8 @@ impl ModuleID {
     pub fn to_generated_path(&self) -> Box<Path> {
         use ImportedPkg::*;
         let mut p = match &self.pkg {
-            Std(p) => Path::new(PKG_DIR).join(STD_PKG_DIR).join(OUTDIR).join(p),
-            Vendor(o, p) => Path::new(o).join(p).join(OUTDIR),
+            Std(p) => Path::new(PKG_DIR).join(STD_PKG_DIR).join(OUT_DIR).join(p),
+            Vendor(o, p) => Path::new(o).join(p).join(OUT_DIR),
             Root => PathBuf::from("."),
         };
         p.extend(&self.modules);

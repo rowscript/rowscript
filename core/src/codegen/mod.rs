@@ -52,9 +52,9 @@ impl Codegen {
 
         for f in files {
             let file = f.file.clone();
-            if let Err(e) = self.target.module(&mut buf, sigma, &includes, f) {
-                return Err(print_err(e, &file));
-            }
+            self.target
+                .module(&mut buf, sigma, &includes, f)
+                .map_err(|e| print_err(e, &file))?;
         }
 
         if buf.is_empty() {
