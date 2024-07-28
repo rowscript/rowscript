@@ -36,7 +36,7 @@ pub struct Def<T: Syntax> {
 
 impl<T: Syntax> Def<T> {
     pub fn is_private(&self) -> bool {
-        matches!( self.name.as_str().chars().next(), Some(b) if b == '_')
+        matches!(self.name.as_str().chars().next(), Some(b) if b == '_')
     }
 }
 

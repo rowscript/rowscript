@@ -1581,7 +1581,7 @@ impl Ecma {
         Ok(items)
     }
 
-    fn decls(&mut self, sigma: &Sigma, defs: Vec<Def<Term>>) -> Result<Vec<ModuleItem>, Error> {
+    fn defs(&mut self, sigma: &Sigma, defs: Vec<Def<Term>>) -> Result<Vec<ModuleItem>, Error> {
         use Body::*;
         let mut items = Vec::default();
         for def in defs {
@@ -1596,7 +1596,10 @@ impl Ecma {
                     self.not_escaping_this = false;
                     ret
                 }
-                Undefined => unreachable!(),
+                Undefined => match sigma.get(&def.name).unwrap().clone().body {
+                    Fn(f) => self.func_decl(&mut items, sigma, &def, &f),
+                    _ => unreachable!(),
+                },
                 _ => continue,
             } {
                 Ok(..) => continue,
@@ -1864,7 +1867,7 @@ impl Target for Ecma {
         }))];
         body.extend(self.imports(file.imports)?);
         body.extend(self.includes(includes)?);
-        body.extend(self.decls(sigma, file.defs)?);
+        body.extend(self.defs(sigma, file.defs)?);
 
         let m = Module {
             span: DUMMY_SP,
@@ -1879,7 +1882,7 @@ impl Target for Ecma {
             wr: JsWriter::new(cm, "\n", buf, None),
         }
         .emit_module(&m)
-        .map_err(|e| Error::IO(file.file, e))?;
+        .map_err(|e| Error::IO(file.path, e))?;
 
         Ok(())
     }
