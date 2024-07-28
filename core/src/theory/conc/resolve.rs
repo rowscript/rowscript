@@ -40,14 +40,14 @@ impl<'a> Resolver<'a> {
                 if name_str != UNBOUND {
                     if let Some(rv) = self.ubiquitous.get(name_str) {
                         if !matches!(rv.0, Reserved) {
-                            return Err(print_err(DuplicateName(d.loc), &f.file));
+                            return Err(print_err(DuplicateName(d.loc), &f.path));
                         }
                         // Use the reserved definition name.
                         d.name = rv.1.clone();
                     }
                 }
                 self.insert_global(d.loc, d.name.clone())
-                    .map_err(|e| print_err(e, &f.file))?;
+                    .map_err(|e| print_err(e, &f.path))?;
             }
         }
         files.into_iter().map(|d| self.file(d)).collect()
@@ -60,7 +60,7 @@ impl<'a> Resolver<'a> {
             .into_iter()
             .map(|d| self.def(d))
             .collect::<Result<_, _>>()
-            .map_err(|e| print_err(e, &file.file))?;
+            .map_err(|e| print_err(e, &file.path))?;
         Ok(file)
     }
 
@@ -219,12 +219,10 @@ impl<'a> Resolver<'a> {
     }
 
     fn insert_global(&mut self, loc: Loc, v: Var) -> Result<(), Error> {
-        if v.as_str() != UNBOUND {
-            self.globals
-                .insert(v.to_string(), ResolvedVar(Inside, v))
-                .map_or(Ok(()), |_| Err(DuplicateName(loc)))?;
+        match self.globals.insert(v.to_string(), ResolvedVar(Inside, v)) {
+            Some(old) if old.1.as_str() != UNBOUND => Err(DuplicateName(loc)),
+            _ => Ok(()),
         }
-        Ok(())
     }
 
     fn remove_local(&mut self, v: &Var) {

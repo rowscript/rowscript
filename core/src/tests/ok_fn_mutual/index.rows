@@ -1,2 +1,13 @@
-function f() { g() }
-function g() {}
+// We don't support this, since it's crazy:
+//const a0 = f2();
+
+function f0() {
+    f1();
+    f2();
+}
+
+function f1() {}
+function f2() {}
+
+const a0 = f0();
+const a1 = f2();

@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use log::{debug, info, trace};
 
-use crate::maybe_grow;
 use crate::theory::abs::builtin::Builtins;
 use crate::theory::abs::data::{CaseMap, FieldMap, FieldSet, MetaKind, PartialClass, Term};
 use crate::theory::abs::def::{gamma_to_tele, tele_to_refs, Body, ClassMembers, InstanceBody};
@@ -16,12 +15,14 @@ use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{
     Loc, NameMap, Param, Tele, Var, VarGen, ARRAY, ASYNC, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX,
 };
-use crate::Error;
 use crate::Error::{
     CatchAsyncEffect, DuplicateEffect, ExpectedCapability, ExpectedEnum, ExpectedInstanceof,
     ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedSigma, NonCatchableExpr, NonExhaustive,
-    NonVariadicType, UnresolvedEffect, UnresolvedField, UnresolvedImplicitParam, UnresolvedVar,
+    NonVariadicType, NotCheckedYet, UnresolvedEffect, UnresolvedField, UnresolvedImplicitParam,
+    UnresolvedVar,
 };
+use crate::{maybe_grow, File};
+use crate::{print_err, Error};
 
 #[derive(Debug)]
 pub struct Elaborator {
@@ -34,23 +35,48 @@ pub struct Elaborator {
     checking_eff: Option<Term>,
     checking_ret: Option<Term>,
     checking_class_type_args: Option<Box<[Term]>>,
+
+    delayed: HashMap<Var, (Loc, Var, Body<Expr>)>,
 }
 
 impl Elaborator {
-    fn unifier(&mut self, loc: Loc) -> Unifier {
-        Unifier::new(&self.ubiquitous, &mut self.sigma, loc)
+    pub fn files(&mut self, files: Vec<File<Expr>>) -> Result<Vec<File<Term>>, Error> {
+        files
+            .into_iter()
+            .map(|f| {
+                let p = f.path.clone();
+                self.file(f).map_err(|e| print_err(e, &p))
+            })
+            .collect()
     }
 
-    fn nf(&mut self, loc: Loc) -> Normalizer {
-        Normalizer::new(&self.ubiquitous, &mut self.sigma, loc)
-    }
+    fn file(&mut self, file: File<Expr>) -> Result<File<Term>, Error> {
+        let File {
+            path,
+            imports,
+            defs,
+        } = file;
 
-    pub fn defs(&mut self, defs: Vec<Def<Expr>>) -> Result<Vec<Def<Term>>, Error> {
-        let mut ret = Vec::default();
-        for d in defs {
-            ret.push(self.def(d)?);
+        let defs = defs
+            .into_iter()
+            .map(|d| {
+                let def = self.def(d)?;
+                if let Some((.., v, body)) = self.delayed.remove(&def.name) {
+                    self.fn_body(v, body)?;
+                }
+                Ok::<_, Error>(def)
+            })
+            .collect::<Result<_, _>>()?;
+
+        if let Some((v, (loc, ..))) = self.delayed.iter().next() {
+            return Err(NotCheckedYet(v.clone(), *loc));
         }
-        Ok(ret)
+
+        Ok(File {
+            path,
+            imports,
+            defs,
+        })
     }
 
     fn def(&mut self, d: Def<Expr>) -> Result<Def<Term>, Error> {
@@ -58,63 +84,72 @@ impl Elaborator {
 
         info!(target: "elab", "checking definition: {}", d.name);
 
+        let Def {
+            loc,
+            name,
+            tele,
+            eff,
+            ret,
+            body,
+        } = d;
+
         // Help to sugar the associated type argument insertion, see `self.try_sugar_type_args`.
-        if let Method { class, .. } = &d.body {
+        if let Method { class, .. } = &body {
             self.checking_class_type_args =
                 Some(tele_to_refs(&self.sigma.get(class).unwrap().tele));
         }
 
-        let mut checked = Vec::default();
-        let mut tele = Tele::default();
-        for p in d.tele {
-            let gamma_var = p.var.clone();
-            let checked_var = p.var.clone();
-            let var = p.var.clone();
-
-            let gamma_typ = self.check(*p.typ, &Term::Pure, &Term::Univ)?;
-            let typ = Box::new(gamma_typ.clone());
-
-            self.gamma.insert(gamma_var, Box::new(gamma_typ));
-            checked.push(checked_var);
-            tele.push(Param {
-                var,
-                info: p.info,
-                typ,
-            })
-        }
+        let tele = self.params(tele)?;
 
         // Help to sugar the associated type argument insertion, see `self.try_sugar_type_args`.
-        if matches!(d.body, Class { .. }) {
+        if matches!(body, Class { .. }) {
             self.checking_class_type_args = Some(tele_to_refs(&tele));
         }
 
-        let eff = self.check(*d.eff, &Term::Pure, &Term::Row)?;
-        let ret = self.check(*d.ret, &Term::Pure, &Term::Univ)?;
-        self.checking_eff = Some(eff.clone());
-        self.checking_ret = Some(ret.clone());
-        self.sigma.insert(
-            d.name.clone(),
-            Def {
-                loc: d.loc,
-                name: d.name.clone(),
-                tele,
-                eff: Box::new(eff.clone()),
-                ret: Box::new(ret.clone()),
-                body: Undefined,
-            },
-        );
-
+        let mut eff = Box::new(self.check(*eff, &Term::Pure, &Term::Row)?);
+        let mut ret = Box::new(self.check(*ret, &Term::Pure, &Term::Univ)?);
+        self.checking_eff = Some(*eff.clone());
+        self.checking_ret = Some(*ret.clone());
         let mut inferred_eff = None;
         let mut inferred_ret = None;
-        let body = match d.body {
-            Fn(f) => Fn(Box::new(self.check(*f, &eff, &ret)?)),
+
+        if matches!(body, Fn(..) | Alias { .. }) {
+            // Self-referencing definitions.
+            self.sigma.insert(
+                name.clone(),
+                Def {
+                    loc,
+                    name: name.clone(),
+                    tele: tele.clone(),
+                    eff: eff.clone(),
+                    ret: ret.clone(),
+                    body: Undefined,
+                },
+            );
+        }
+
+        let body = match body {
+            Fn(f) => {
+                let f_copied = f.clone();
+                let b = self.check(*f, &eff, &ret);
+                match b {
+                    Ok(f) => Fn(Box::new(f)),
+                    Err(e) => match e {
+                        NotCheckedYet(yet, loc) => {
+                            self.delayed.insert(yet, (loc, name.clone(), Fn(f_copied)));
+                            Undefined
+                        }
+                        e => return Err(e),
+                    },
+                }
+            }
             Postulate => Postulate,
             Alias { ty, implements } => {
                 let ty = self.check(*ty, &eff, &ret)?;
                 Alias {
                     ty: Box::new(ty.clone()),
                     implements: implements
-                        .map(|i| self.insert_implements(*i, d.name.clone(), ty))
+                        .map(|i| self.insert_implements(*i, name.clone(), ty))
                         .transpose()?,
                 }
             }
@@ -129,18 +164,12 @@ impl Elaborator {
                     tm
                 }),
             ),
-            Verify(a) => {
-                let d = self.sigma.get(&d.name).unwrap();
-                let expected_eff = d.to_eff();
-                let expected_ty = d.to_type();
-                Verify(Box::new(self.verify(
-                    d.loc,
-                    *a,
-                    expected_eff,
-                    expected_ty,
-                )?))
-            }
-
+            Verify(a) => Verify(Box::new(self.verify(
+                d.loc,
+                *a,
+                *eff.clone(),
+                *rename(Box::new(Term::pi(&tele, *eff.clone(), *ret.clone()))),
+            )?)),
             Interface {
                 is_capability,
                 fns,
@@ -153,13 +182,12 @@ impl Elaborator {
                 implements,
             },
             InterfaceFn(i) => InterfaceFn(i),
-            Instance(body) => Instance(self.check_instance_body(&d.name, *body, false)?),
+            Instance(body) => Instance(self.check_instance_body(&name, *body, false)?),
             InstanceFn(f) => InstanceFn(Box::new(self.check(*f, &eff, &ret)?)),
             ImplementsFn { name, f } => ImplementsFn {
                 name,
                 f: Box::new(self.check(*f, &eff, &ret)?),
             },
-
             Class {
                 ctor,
                 associated,
@@ -197,29 +225,120 @@ impl Elaborator {
                 associated,
                 f: Box::new(self.check(*f, &eff, &ret)?),
             },
-
-            Undefined | Meta(..) => unreachable!(),
+            _ => unreachable!(),
         };
 
-        for n in checked {
-            self.gamma.remove(&n);
+        if let Some(e) = inferred_eff {
+            eff = e;
         }
+        if let Some(r) = inferred_ret {
+            ret = r;
+        }
+        let def = Def {
+            loc,
+            name,
+            tele,
+            eff,
+            ret,
+            body,
+        };
 
-        let checked = self.sigma.get_mut(&d.name).unwrap();
-        checked.body = body;
-        if let Some(eff) = inferred_eff {
-            checked.eff = eff;
-        }
-        if let Some(ret) = inferred_ret {
-            checked.ret = ret;
-        }
+        self.sigma.insert(def.name.clone(), def.clone());
+
+        self.gamma.clear();
         self.checking_eff = None;
         self.checking_ret = None;
         self.checking_class_type_args = None;
 
-        debug!(target: "elab", "definition checked successfully: {checked}");
+        debug!(target: "elab", "definition checked successfully: {def}");
+        Ok(def)
+    }
 
-        Ok(checked.clone())
+    fn fn_body(&mut self, v: Var, b: Body<Expr>) -> Result<(), Error> {
+        let Def { tele, eff, ret, .. } = self.sigma.get(&v).unwrap().clone();
+
+        tele.into_iter().for_each(|p| {
+            self.gamma.insert(p.var, p.typ);
+        });
+
+        self.checking_eff = Some(*eff.clone());
+        self.checking_ret = Some(*ret.clone());
+
+        let r = match b.clone() {
+            Body::Fn(f) => self.check(*f, &eff, &ret),
+            _ => unreachable!(),
+        };
+        match r {
+            Ok(f) => {
+                self.sigma.get_mut(&v).unwrap().body = Body::Fn(Box::new(f));
+            }
+            Err(e) => match e {
+                NotCheckedYet(yet, loc) => {
+                    self.delayed.insert(yet, (loc, v, b));
+                }
+                e => return Err(e),
+            },
+        };
+
+        self.gamma.clear();
+        self.checking_eff = None;
+        self.checking_ret = None;
+
+        Ok(())
+    }
+
+    fn instance_fn_def(&mut self, d: Def<Expr>) -> Result<Def<Term>, Error> {
+        let mut checked = Vec::default();
+        let mut tele = Tele::default();
+        for p in &d.tele {
+            let typ = self.check(*p.typ.clone(), &Term::Pure, &Term::Univ)?;
+            self.gamma.insert(p.var.clone(), Box::new(typ.clone()));
+            checked.push(p.var.clone());
+            tele.push(Param {
+                var: p.var.clone(),
+                info: p.info,
+                typ: Box::new(typ),
+            })
+        }
+
+        let eff = Box::new(self.check(*d.eff.clone(), &Term::Pure, &Term::Row)?);
+        let ret = Box::new(self.check(*d.ret.clone(), &Term::Pure, &Term::Univ)?);
+
+        let body = match d.body {
+            Body::InstanceFn(f) => Body::InstanceFn(Box::new(self.check(*f, &eff, &ret)?)),
+            _ => unreachable!(),
+        };
+
+        for v in checked {
+            self.gamma.remove(&v);
+        }
+
+        Ok(Def {
+            loc: d.loc,
+            name: d.name.clone(),
+            tele,
+            eff,
+            ret,
+            body,
+        })
+    }
+
+    fn params(&mut self, tele: Tele<Expr>) -> Result<Tele<Term>, Error> {
+        tele.into_iter()
+            .map(|Param { var, info, typ }| {
+                let typ = Box::new(self.check(*typ, &Term::Pure, &Term::Univ)?);
+                self.gamma.insert(var.clone(), typ.clone());
+                Ok(Param { var, info, typ })
+            })
+            .collect()
+    }
+
+    fn unifier(&mut self, loc: Loc) -> Unifier {
+        Unifier::new(&self.ubiquitous, &mut self.sigma, loc)
+    }
+
+    fn nf(&mut self, loc: Loc) -> Normalizer {
+        Normalizer::new(&self.ubiquitous, &mut self.sigma, loc)
     }
 
     fn insert_implements(&mut self, i: Expr, name: Var, ty: Term) -> Result<Box<Term>, Error> {
@@ -629,25 +748,28 @@ impl Elaborator {
         use MetaKind::*;
         debug!(target: "elab", "inferring expression: e={e}");
         Ok(match e {
-            Resolved(loc, v) => {
-                let local = self.gamma.get(&v);
-                if local.is_none() {
-                    let d = self.sigma.get(&v).unwrap();
-                    let mut tm = d.to_term(v);
-                    let eff = d.to_eff();
-                    let mut ty = d.to_type();
-                    if matches!(d.body, Body::Associated(..)) {
-                        (tm, ty) = self.try_sugar_type_args(loc, tm, ty)?;
+            Resolved(loc, v) => match self.gamma.get(&v) {
+                Some(ty) => {
+                    let ty = *ty.clone();
+                    InferResult {
+                        tm: Term::Ref(v),
+                        eff: self.insert_meta(loc, InsertedMeta).0,
+                        ty,
                     }
-                    return Ok(InferResult { tm, eff, ty });
                 }
-                let ty = *local.unwrap().clone();
-                return Ok(InferResult {
-                    tm: Term::Ref(v),
-                    eff: self.insert_meta(loc, InsertedMeta).0,
-                    ty,
-                });
-            }
+                None => match self.sigma.get(&v) {
+                    Some(d) => {
+                        let mut tm = d.to_term(v);
+                        let eff = d.to_eff();
+                        let mut ty = d.to_type();
+                        if matches!(d.body, Body::Associated(..)) {
+                            (tm, ty) = self.try_sugar_type_args(loc, tm, ty)?;
+                        }
+                        InferResult { tm, eff, ty }
+                    }
+                    None => return Err(NotCheckedYet(v, loc)),
+                },
+            },
             Imported(_, v) => {
                 let d = self.sigma.get(&v).unwrap();
                 let tm = Term::Ref(v);
@@ -759,7 +881,7 @@ impl Elaborator {
                     return self.infer(App(f_loc, Box::new(f_e), ai, x));
                 }
 
-                match f_ty {
+                match self.nf(f_loc).term(f_ty)? {
                     Term::Pi {
                         param: p,
                         eff: b_eff,
@@ -1418,8 +1540,9 @@ impl Elaborator {
                         }
                         instance_fns.push(def);
                     }
-                    for d in self.defs(instance_fns)? {
-                        self.sigma.insert(d.name.clone(), d);
+                    for d in instance_fns {
+                        let inst_fn = self.instance_fn_def(d)?;
+                        self.sigma.insert(inst_fn.name.clone(), inst_fn);
                     }
 
                     let inst_name = self.vg.fresh().catch();
@@ -1691,6 +1814,7 @@ impl Default for Elaborator {
             checking_eff: Default::default(),
             checking_ret: Default::default(),
             checking_class_type_args: Default::default(),
+            delayed: Default::default(),
         }
     }
 }

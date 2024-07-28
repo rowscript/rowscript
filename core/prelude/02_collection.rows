@@ -1,25 +1,3 @@
-type Option<T> = [Ok: T | None];
-
-type Result<T, E> = [Ok: T | Err: E];
-
-function isOk<'a, T>(e: ['a]): boolean
-where (Ok: T) keyof 'a
-{
-    switch (e) {
-    case Ok(v): true
-    case v: false
-    }
-}
-
-function unwrap<'a, T>(e: ['a]): T
-where (Ok: T) keyof 'a
-{
-    switch (e) {
-    case Ok(v): v
-    case v: panic("unwrap error")
-    }
-}
-
 interface Iterator {
     next(it: this): Option<this::Item>;
 }
@@ -81,10 +59,6 @@ class Array<T> {
     }
 }
 
-type Entry<K, V> = {
-    key: K,
-    value: V
-};
 
 class MapIterator<K, V> {
     type Item = Entry<K, V>;
@@ -135,31 +109,3 @@ class Map<K, V> {
         new MapIterator(map#iter(this))
     }
 }
-
-// Effects.
-
-type Executor<T> = (resolve: (value: T) => unit) => unit;
-
-interface Async {
-    async __await__<T>(executor: Executor<T>): T;
-
-    async __await_mul__<Args>(...: Args): Args;
-
-    async __await_all__<T>(executors: NativeArray<Executor<T>>): NativeArray<T>;
-
-    async __await_any__<T>(executors: NativeArray<Executor<T>>): T;
-}
-
-class Awaits {
-    empty: unit;
-
-    async all<T>(executors: Array<Executor<T>>): Array<T> {
-        new Array(await#all(executors))
-    }
-
-    async any<T>(executors: Array<Executor<T>>): T {
-        await#any(executors)
-    }
-}
-
-const awaits = new Awaits(());

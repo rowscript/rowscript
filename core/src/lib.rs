@@ -82,6 +82,8 @@ pub enum Error {
     UnresolvedEffect(Var, Term, Loc),
     #[error("expected reflectable type, got \"{0}\"")]
     ExpectedReflectable(Term, Loc),
+    #[error("definition \"{0}\" not checked yet")]
+    NotCheckedYet(Var, Loc),
 
     #[error("expected \"{0}\", found \"{1}\"")]
     NonUnifiable(Term, Term, Loc),
@@ -155,7 +157,8 @@ fn print_err(e: Error, file: &Path) -> Error {
         | NonCatchableExpr(.., loc)
         | CatchAsyncEffect(.., loc)
         | UnresolvedEffect(.., loc)
-        | ExpectedReflectable(.., loc) => simple_message(&e, loc, CHECKER_FAILED),
+        | ExpectedReflectable(.., loc)
+        | NotCheckedYet(.., loc) => simple_message(&e, loc, CHECKER_FAILED),
 
         NonUnifiable(.., loc) | EffectNonUnifiable(.., loc) | NonRowSat(.., loc) => {
             simple_message(&e, loc, UNIFIER_FAILED)
@@ -187,7 +190,7 @@ pub const OUT_DIR: &str = "dist";
 pub const FILE_EXT: &str = "rows";
 
 pub struct File<T: Syntax> {
-    file: Box<Path>,
+    path: Box<Path>,
     imports: Vec<Import>,
     defs: Vec<Def<T>>,
 }
@@ -243,9 +246,8 @@ impl Compiler {
             ViaPath(p) => (p, None),
         };
 
-        let mut unchecked = Vec::default();
         let mut includes = Vec::default();
-
+        let mut paths = Vec::default();
         for r in module_path
             .read_dir()
             .map_err(|e| Error::IO(module_path, e))?
@@ -261,16 +263,21 @@ impl Compiler {
                     continue;
                 }
                 if e == FILE_EXT {
-                    unchecked.push(self.load_file(&file).map_err(|e| print_err(e, &file))?);
+                    paths.push(file);
                 }
             }
         }
+        // Files are forcibly loaded in alphabetical order.
+        paths.sort();
 
-        let files = Resolver::new(&self.elab.ubiquitous, &self.loaded)
-            .files(unchecked)?
+        let parsed = paths
             .into_iter()
-            .map(|f| self.check(&module, is_ubiquitous, f))
+            .map(|p| self.parse_and_import(&p).map_err(|e| print_err(e, &p)))
             .collect::<Result<_, _>>()?;
+
+        let resolved = Resolver::new(&self.elab.ubiquitous, &self.loaded).files(parsed)?;
+
+        let files = self.check(&module, is_ubiquitous, resolved)?;
 
         if let Some(module) = module {
             self.codegen.module(
@@ -286,8 +293,8 @@ impl Compiler {
         Ok(())
     }
 
-    fn load_file(&mut self, file: &Path) -> Result<File<Expr>, Error> {
-        let src = read_to_string(file).map_err(|e| Error::IO(file.into(), e))?;
+    fn parse_and_import(&mut self, path: &Path) -> Result<File<Expr>, Error> {
+        let src = read_to_string(path).map_err(|e| Error::IO(path.into(), e))?;
         let (imports, defs) = RowsParser::parse(Rule::file, src.as_ref())
             .map_err(Box::new)
             .map_err(Error::from)
@@ -296,7 +303,7 @@ impl Compiler {
             .iter()
             .try_fold((), |_, i| self.load_module(i.module.clone()))?;
         Ok(File {
-            file: file.into(),
+            path: path.into(),
             imports,
             defs,
         })
@@ -306,32 +313,27 @@ impl Compiler {
         &mut self,
         module: &Option<ModuleID>,
         is_ubiquitous: bool,
-        file: File<Expr>,
-    ) -> Result<File<Term>, Error> {
-        let File {
-            file,
-            imports,
-            defs,
-        } = file;
-        let defs = self.elab.defs(defs).map_err(|e| print_err(e, &file))?;
-        for d in &defs {
-            if is_ubiquitous {
-                self.elab.ubiquitous.insert(
-                    d.name.to_string(),
-                    ResolvedVar(VarKind::Inside, d.name.clone()),
-                );
-            }
-            if let Some(m) = module {
-                if !d.is_private() {
-                    self.loaded.insert(m, d).map_err(|e| print_err(e, &file))?
+        files: Vec<File<Expr>>,
+    ) -> Result<Vec<File<Term>>, Error> {
+        let files = self.elab.files(files)?;
+        for f in &files {
+            for d in &f.defs {
+                if is_ubiquitous {
+                    self.elab.ubiquitous.insert(
+                        d.name.to_string(),
+                        ResolvedVar(VarKind::Inside, d.name.clone()),
+                    );
+                }
+                if let Some(m) = module {
+                    if !d.is_private() {
+                        self.loaded
+                            .insert(m, d)
+                            .map_err(|e| print_err(e, &f.path))?
+                    }
                 }
             }
         }
-        Ok(File {
-            file,
-            imports,
-            defs,
-        })
+        Ok(files)
     }
 }
 

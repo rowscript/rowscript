@@ -201,16 +201,3 @@ instanceof ToString for rowkey {
         rowkey#toString(a)
     }
 }
-
-// Duration of time represented in milliseconds for convenience.
-//
-// TODO: This definition should not be here lol.
-type Duration = number;
-
-function milliseconds(d: number): Duration {
-    d
-}
-
-function seconds(d: number): Duration {
-    d * 1000
-}

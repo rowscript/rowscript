@@ -51,7 +51,7 @@ impl Codegen {
         let mut buf = Vec::default();
 
         for f in files {
-            let file = f.file.clone();
+            let file = f.path.clone();
             self.target
                 .module(&mut buf, sigma, &includes, f)
                 .map_err(|e| print_err(e, &file))?;
