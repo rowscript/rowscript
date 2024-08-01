@@ -33,7 +33,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub fn files(&mut self, mut files: Vec<File<Expr>>) -> Result<Vec<File<Expr>>, Error> {
+    pub fn files(&mut self, mut files: Vec<File<Expr>>) -> Result<Box<[File<Expr>]>, Error> {
         for f in &mut files {
             for d in &mut f.defs {
                 let name_str = d.name.as_str();
@@ -57,6 +57,7 @@ impl<'a> Resolver<'a> {
         self.imports(&file.imports)?;
         file.defs = file
             .defs
+            .into_vec()
             .into_iter()
             .map(|d| self.def(d))
             .collect::<Result<_, _>>()
@@ -64,7 +65,7 @@ impl<'a> Resolver<'a> {
         Ok(file)
     }
 
-    fn imports(&mut self, imports: &Vec<Import>) -> Result<(), Error> {
+    fn imports(&mut self, imports: &[Import]) -> Result<(), Error> {
         use ImportedDefs::*;
         for Import { module, defs, .. } in imports {
             match defs {

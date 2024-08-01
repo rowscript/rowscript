@@ -1485,7 +1485,7 @@ impl Ecma {
         })
     }
 
-    fn imports(&self, imports: Vec<Import>) -> Result<Vec<ModuleItem>, Error> {
+    fn imports(&self, imports: Box<[Import]>) -> Result<Vec<ModuleItem>, Error> {
         use ImportedDefs::*;
         let mut items = Vec::default();
         for i in imports {
@@ -1581,7 +1581,7 @@ impl Ecma {
         Ok(items)
     }
 
-    fn defs(&mut self, sigma: &Sigma, defs: Vec<Def<Term>>) -> Result<Vec<ModuleItem>, Error> {
+    fn defs(&mut self, sigma: &Sigma, defs: Box<[Def<Term>]>) -> Result<Vec<ModuleItem>, Error> {
         use Body::*;
         let mut items = Vec::default();
         for def in defs {

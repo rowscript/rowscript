@@ -49,7 +49,7 @@ pub struct Trans {
 }
 
 impl Trans {
-    pub fn file(&mut self, mut f: Pairs<Rule>) -> (Vec<Import>, Vec<Def<Expr>>) {
+    pub fn file(&mut self, mut f: Pairs<Rule>) -> (Box<[Import]>, Box<[Def<Expr>]>) {
         let mut imports = Vec::default();
         let mut defs = Vec::default();
         for d in f.next().unwrap().into_inner() {
@@ -72,7 +72,7 @@ impl Trans {
                 _ => unreachable!(),
             }
         }
-        (imports, defs)
+        (imports.into(), defs.into())
     }
 
     fn import(&mut self, d: Pair<Rule>) -> Import {

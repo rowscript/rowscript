@@ -191,14 +191,14 @@ pub const FILE_EXT: &str = "rows";
 
 pub struct File<T: Syntax> {
     path: Box<Path>,
-    imports: Vec<Import>,
-    defs: Vec<Def<T>>,
+    imports: Box<[Import]>,
+    defs: Box<[Def<T>]>,
 }
 
 pub struct Module<T: Syntax> {
     module: ModuleID,
-    files: Vec<File<T>>,
-    includes: Vec<Box<Path>>,
+    files: Box<[File<T>]>,
+    includes: Box<[Box<Path>]>,
 }
 
 pub struct Compiler {
@@ -285,7 +285,7 @@ impl Compiler {
                 Module {
                     module,
                     files,
-                    includes,
+                    includes: includes.into(),
                 },
             )?;
         }
@@ -313,8 +313,8 @@ impl Compiler {
         &mut self,
         module: &Option<ModuleID>,
         is_ubiquitous: bool,
-        files: Vec<File<Expr>>,
-    ) -> Result<Vec<File<Term>>, Error> {
+        files: Box<[File<Expr>]>,
+    ) -> Result<Box<[File<Term>]>, Error> {
         let files = self.elab.files(files)?;
         for f in &files {
             for d in &f.defs {
