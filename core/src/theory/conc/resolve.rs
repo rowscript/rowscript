@@ -437,6 +437,7 @@ impl<'a> Resolver<'a> {
                 };
                 Switch(loc, self.expr(a)?, new, d)
             }
+            Unionify(loc, a) => Unionify(loc, self.expr(a)?),
             Instanceof(loc, a) => Instanceof(loc, self.expr(a)?),
             Varargs(loc, a) => Varargs(loc, self.expr(a)?),
             AnonVarargs(loc, a) => AnonVarargs(loc, self.expr(a)?),

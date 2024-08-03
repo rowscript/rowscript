@@ -131,6 +131,7 @@ pub fn noinline(tm: &Term) -> bool {
         | Enum(..)
         | Upcast(..)
         | Disjoint(..)
+        | Union(..)
         | Find { .. }
         | Instanceof(..)
         | InstanceofSat

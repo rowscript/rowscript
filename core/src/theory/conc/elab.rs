@@ -17,9 +17,9 @@ use crate::theory::{
 };
 use crate::Error::{
     CatchAsyncEffect, DuplicateEffect, ExpectedCapability, ExpectedEnum, ExpectedInstanceof,
-    ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedSigma, NonCatchableExpr, NonExhaustive,
-    NonVariadicType, NotCheckedYet, UnresolvedEffect, UnresolvedField, UnresolvedImplicitParam,
-    UnresolvedVar,
+    ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedSigma, FieldsUnknown, NonCatchableExpr,
+    NonExhaustive, NonVariadicType, NotCheckedYet, UnresolvedEffect, UnresolvedField,
+    UnresolvedImplicitParam, UnresolvedVar,
 };
 use crate::{maybe_grow, File};
 use crate::{print_err, Error};
@@ -1419,6 +1419,18 @@ impl Elaborator {
                     eff: a_eff,
                     ty: ret_ty.unwrap(),
                 }
+            }
+            Unionify(loc, a) => {
+                let InferResult { tm, eff, ty } = self.infer(*a)?;
+                let ty = match ty {
+                    Term::Enum(r) => match *r {
+                        Term::Fields(f) => Term::Union(f.into_iter().map(|t| t.1).collect()),
+                        r => return Err(FieldsUnknown(r, loc)),
+                    },
+                    ty => return Err(ExpectedEnum(ty, loc)),
+                };
+                let tm = self.nf(loc).term(Term::Unionify(Box::new(tm)))?;
+                InferResult { tm, eff, ty }
             }
             Instanceof(loc, a) => {
                 let InferResult { tm, eff, ty } = self.infer(*a)?;

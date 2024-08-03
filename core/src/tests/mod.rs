@@ -91,6 +91,7 @@ mod ok_sugar_roword;
 mod ok_time;
 mod ok_typeclassopedia;
 mod ok_typeclassopedia_stuck;
+mod ok_union;
 mod ok_unit;
 mod ok_varargs;
 mod ok_varargs_anon;

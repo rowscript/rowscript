@@ -593,7 +593,18 @@ impl<'a> Normalizer<'a> {
                     _ => Switch(a, self.case_map(cs)?, self.case_default(d)?),
                 }
             }
-            Unionify(a) => Unionify(self.term_box(a)?),
+            Unionify(a) => match *self.term_box(a)? {
+                Variant(a) => match *a {
+                    Fields(f) => f.into_iter().next().unwrap().1,
+                    v => Unionify(Box::new(Variant(Box::new(v)))),
+                },
+                a => Unionify(Box::new(a)),
+            },
+            Union(ts) => Union(
+                ts.into_iter()
+                    .map(|t| self.term(t))
+                    .collect::<Result<_, _>>()?,
+            ),
             Instanceof(a, i) => {
                 let a = self.term_box(a)?;
                 if !a.is_unsolved() {

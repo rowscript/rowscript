@@ -159,6 +159,7 @@ pub enum Term {
     Up(Box<Self>, Box<Self>, Box<Self>),
     Switch(Box<Self>, CaseMap, CaseDefault),
     Unionify(Box<Self>),
+    Union(Vec<Self>),
 
     Find {
         instance_ty: Box<Self>,
@@ -523,6 +524,11 @@ impl Display for Term {
                     return write!(f, "}}");
                 }
                 Unionify(a) => format!("unionify({a})"),
+                Union(ts) => ts
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(" | "),
                 Find {
                     instance_ty,
                     interface,

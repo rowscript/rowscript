@@ -38,6 +38,7 @@ fn expr_pratt() -> &'static PrattParser<Rule> {
                 | Op::infix(Rule::infix_mod, Assoc::Left))
             .op(Op::infix(Rule::infix_cat, Assoc::Left))
             .op(Op::infix(Rule::infix_at, Assoc::Left))
+            .op(Op::postfix(Rule::postfix_bang))
             .op(Op::prefix(Rule::prefix_not) | Op::prefix(Rule::prefix_neg))
             .op(Op::prefix(Rule::prefix_typeof) | Op::prefix(Rule::prefix_keyof))
     })
@@ -1257,6 +1258,13 @@ impl Trans {
                     Rule::prefix_keyof => Expr::Keyof(loc, Box::new(x)),
                     Rule::prefix_not => Self::prefix_app(loc, "__not__", x),
                     Rule::prefix_neg => Self::prefix_app(loc, "__neg__", x),
+                    _ => unreachable!(),
+                }
+            })
+            .map_postfix(|x, op| {
+                let loc = Loc::from(op.as_span());
+                match op.as_rule() {
+                    Rule::postfix_bang => Expr::Unionify(loc, Box::new(x)),
                     _ => unreachable!(),
                 }
             })

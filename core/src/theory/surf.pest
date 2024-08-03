@@ -342,7 +342,9 @@ enum_type_refined = { "[" ~ variants ~ "|" ~ row_id ~ "]" }
 enum_type_literal = { "[" ~ variants ~ "]" }
 type_app = { ("(" ~ type_expr ~ ")" | tyref) ~ implicit_args? ~ ("::" ~ type_id)? }
 
-expr = { prefix_op* ~ primary_expr ~ (infix_op ~ prefix_op* ~ primary_expr)* }
+expr =
+  { prefix_op? ~ primary_expr ~ postfix_op? ~ (infix_op ~ prefix_op? ~ primary_expr ~ postfix_op?)*
+  }
 prefix_op =
  _{ prefix_typeof
   | prefix_keyof
@@ -386,6 +388,10 @@ infix_or = { "||" }
 infix_concat = { "&" }
 infix_cat = { "..." }
 infix_at = { "@" }
+postfix_op =
+ _{ postfix_bang
+  }
+postfix_bang = { "!" ~ !"=" }
 primary_expr =
   { boolean_if
   | chainable_expr

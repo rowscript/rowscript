@@ -1,0 +1,7 @@
+type E = [
+    A: {n: number}
+    | B: {n: number, s: string}
+];
+
+const a0: E = B({n: 42, s: "hello"});
+const a1 = a0!;

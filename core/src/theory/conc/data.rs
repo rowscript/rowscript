@@ -91,6 +91,7 @@ pub enum Expr {
         Vec<(String, Var, Self)>,
         Option<(Var, Box<Self>)>,
     ),
+    Unionify(Loc, Box<Self>),
 
     Instanceof(Loc, Box<Self>),
 
@@ -182,6 +183,7 @@ impl Expr {
             | Variant(loc, ..)
             | Upcast(loc, ..)
             | Switch(loc, ..)
+            | Unionify(loc, ..)
             | Instanceof(loc, ..)
             | Varargs(loc, ..)
             | AnonVarargs(loc, ..)
@@ -393,6 +395,7 @@ impl Display for Expr {
                     }
                     return write!(f, "}}");
                 }
+                Unionify(_, a) => format!("{a}!"),
                 Instanceof(_, a) => a.to_string(),
                 Varargs(_, t) => format!("...Array<{t}>"),
                 AnonVarargs(_, t) => format!("...{t}"),

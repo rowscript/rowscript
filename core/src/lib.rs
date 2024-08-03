@@ -58,6 +58,8 @@ pub enum Error {
     NonExhaustive(Term, Loc),
     #[error("unresolved field \"{0}\" in \"{1}\"")]
     UnresolvedField(String, Term, Loc),
+    #[error("field(s) unknown yet, got \"{0}\"")]
+    FieldsUnknown(Term, Loc),
     #[error("expected interface type, got \"{0}\"")]
     ExpectedInterface(Term, Loc),
     #[error("expected capability type, got \"{0}\"")]
@@ -146,6 +148,7 @@ fn print_err(e: Error, file: &Path) -> Error {
         | FieldsNonExtendable(.., loc)
         | NonExhaustive(.., loc)
         | UnresolvedField(.., loc)
+        | FieldsUnknown(.., loc)
         | ExpectedInterface(.., loc)
         | ExpectedCapability(.., loc)
         | ExpectedAlias(.., loc)

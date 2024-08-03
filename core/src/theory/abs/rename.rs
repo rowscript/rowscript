@@ -135,6 +135,7 @@ impl Renamer {
                 Switch(a, cm, dc)
             }
             Unionify(a) => Unionify(self.term(a)),
+            Union(ts) => Union(ts.into_iter().map(|t| *self.term(Box::new(t))).collect()),
             Find {
                 instance_ty: ty,
                 interface,
