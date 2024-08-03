@@ -367,7 +367,7 @@ infix_op =
   | infix_gt
   | infix_and
   | infix_or
-  | infix_concat
+  | infix_cat
   | infix_at
   }
 infix_add = { "+" }
@@ -383,7 +383,8 @@ infix_lt = { "<" }
 infix_gt = { ">" }
 infix_and = { "&&" }
 infix_or = { "||" }
-infix_concat = { "..." }
+infix_concat = { "&" }
+infix_cat = { "..." }
 infix_at = { "@" }
 primary_expr =
   { boolean_if

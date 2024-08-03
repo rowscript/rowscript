@@ -1,4 +1,4 @@
-type Tree<E> = E ... {
+type Tree<E> = E & {
     children: Array<Tree<E>>
 };
 

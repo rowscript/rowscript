@@ -36,7 +36,7 @@ fn expr_pratt() -> &'static PrattParser<Rule> {
             .op(Op::infix(Rule::infix_mul, Assoc::Left)
                 | Op::infix(Rule::infix_div, Assoc::Left)
                 | Op::infix(Rule::infix_mod, Assoc::Left))
-            .op(Op::infix(Rule::infix_concat, Assoc::Left))
+            .op(Op::infix(Rule::infix_cat, Assoc::Left))
             .op(Op::infix(Rule::infix_at, Assoc::Left))
             .op(Op::prefix(Rule::prefix_not) | Op::prefix(Rule::prefix_neg))
             .op(Op::prefix(Rule::prefix_typeof) | Op::prefix(Rule::prefix_keyof))
@@ -1245,7 +1245,7 @@ impl Trans {
                     Rule::infix_mul => Self::infix_app(loc, "__mul__", lhs, rhs),
                     Rule::infix_div => Self::infix_app(loc, "__div__", lhs, rhs),
                     Rule::infix_mod => Self::infix_app(loc, "__mod__", lhs, rhs),
-                    Rule::infix_concat => Expr::Cat(loc, Box::new(lhs), Box::new(rhs)),
+                    Rule::infix_cat => Expr::Cat(loc, Box::new(lhs), Box::new(rhs)),
                     Rule::infix_at => Expr::At(loc, Box::new(lhs), Box::new(rhs)),
                     _ => unreachable!(),
                 }
