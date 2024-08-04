@@ -1421,16 +1421,31 @@ impl Elaborator {
                 }
             }
             Unionify(loc, a) => {
-                let InferResult { tm, eff, ty } = self.infer(*a)?;
-                let ty = match ty {
+                let InferResult { tm, eff, mut ty } = self.infer(*a)?;
+                if let Term::Upcast(e) = ty {
+                    ty = *e;
+                }
+                let fields = match ty {
                     Term::Enum(r) => match *r {
-                        Term::Fields(f) => Term::Union(f.into_iter().map(|t| t.1).collect()),
+                        Term::Fields(f) => f,
                         r => return Err(FieldsUnknown(r, loc)),
                     },
                     ty => return Err(ExpectedEnum(ty, loc)),
                 };
-                let tm = self.nf(loc).term(Term::Unionify(Box::new(tm)))?;
-                InferResult { tm, eff, ty }
+                let mut u = Vec::default();
+                for (_, ty) in fields {
+                    let found = u
+                        .iter()
+                        .any(|t| self.unifier(loc).without_meta_solving(t, &ty).is_ok());
+                    if !found {
+                        u.push(ty);
+                    }
+                }
+                InferResult {
+                    tm: self.nf(loc).term(Term::Unionify(Box::new(tm)))?,
+                    eff,
+                    ty: Term::Union(u),
+                }
             }
             Instanceof(loc, a) => {
                 let InferResult { tm, eff, ty } = self.infer(*a)?;

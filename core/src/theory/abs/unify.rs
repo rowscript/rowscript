@@ -11,6 +11,7 @@ pub struct Unifier<'a> {
     ubiquitous: &'a NameMap,
     sigma: &'a mut Sigma,
     loc: Loc,
+    no_meta_solving: bool,
 }
 
 impl<'a> Unifier<'a> {
@@ -19,15 +20,8 @@ impl<'a> Unifier<'a> {
             ubiquitous,
             sigma,
             loc,
+            no_meta_solving: false,
         }
-    }
-
-    fn unify_err(&self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
-        Err(NonUnifiable(lhs.clone(), rhs.clone(), self.loc))
-    }
-
-    fn nf(&mut self) -> Normalizer {
-        Normalizer::new(self.ubiquitous, self.sigma, self.loc)
     }
 
     pub fn unify(&mut self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
@@ -39,6 +33,19 @@ impl<'a> Unifier<'a> {
             NonUnifiable(l, r, loc) => EffectNonUnifiable(l, r, loc),
             e => e,
         })
+    }
+
+    pub fn without_meta_solving(&mut self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
+        self.no_meta_solving = true;
+        self.unify(lhs, rhs)
+    }
+
+    fn unify_err(&self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
+        Err(NonUnifiable(lhs.clone(), rhs.clone(), self.loc))
+    }
+
+    fn nf(&mut self) -> Normalizer {
+        Normalizer::new(self.ubiquitous, self.sigma, self.loc)
     }
 
     fn swap_err(err: Error) -> Error {
@@ -53,11 +60,11 @@ impl<'a> Unifier<'a> {
 
         match (lhs, rhs) {
             (MetaRef(k, a, _), MetaRef(l, b, _)) if k == l && a == b => Ok(()),
-            (MetaRef(_, v, _), rhs) => {
+            (MetaRef(_, v, _), rhs) if !self.no_meta_solving => {
                 self.solve(v, rhs)?;
                 Ok(())
             }
-            (lhs, MetaRef(_, v, _)) => {
+            (lhs, MetaRef(_, v, _)) if !self.no_meta_solving => {
                 self.solve(v, lhs)?;
                 Ok(())
             }

@@ -1,7 +1,14 @@
-type E = [
-    A: {n: number}
-    | B: {n: number, s: string}
+type E0 = [
+    A0: number
+    | B0: string
 ];
 
-const a0: E = B({n: 42, s: "hello"});
-const a1 = a0!;
+const a0 = A0(42)!;
+
+type E1 = [
+    A1: {n: number}
+    | B1: {n: number, s: string}
+];
+
+const a1: E1 = B1({n: 42, s: "hello"});
+console.log(a1!);
