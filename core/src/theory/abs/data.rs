@@ -373,6 +373,13 @@ impl Term {
         m.into_keys()
             .fold(Self::list_empty(), |ret, k| Self::list_append(Rk(k), ret))
     }
+
+    pub fn to_subtypes(self) -> Vec<Term> {
+        match self {
+            Term::Union(u) => u,
+            ty => vec![ty],
+        }
+    }
 }
 
 impl Syntax for Term {}

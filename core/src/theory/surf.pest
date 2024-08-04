@@ -296,13 +296,16 @@ pub_field = { pub_field_id ~ ":" ~ type_expr }
 property = { prop_id ~ ":" ~ type_expr }
 properties = { property ~ ("," ~ property)* }
 label = { prop_id ~ ":" ~ expr }
-variant = { variant_id ~ (":" ~ type_expr)? }
+variant = { variant_id ~ ("(" ~ type_expr ~ ")")? }
 variants = { variant ~ ("|" ~ variant)* }
 
 type_expr = { primary_type_expr ~ (type_infix_op ~ primary_type_expr)* }
 type_infix_op =
  _{ infix_concat
+  | infix_union
   }
+infix_concat = { "&" }
+infix_union = { "|" }
 primary_type_expr =
   { fn_type
   | primitive_type
@@ -385,7 +388,6 @@ infix_lt = { "<" }
 infix_gt = { ">" }
 infix_and = { "&&" }
 infix_or = { "||" }
-infix_concat = { "&" }
 infix_cat = { "..." }
 infix_at = { "@" }
 postfix_op =

@@ -1,11 +1,11 @@
-type Nat = [Z | S: Nat];
+type Nat = [Z | S(Nat)];
 
 function f0(): Nat {
     S(S(Z))
 }
 
 type MyList<T> = [
-    Append: {value: T, list: MyList<T>}
+    Append({value: T, list: MyList<T>})
     | Empty
 ];
 

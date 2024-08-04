@@ -1,4 +1,4 @@
-type Optional<T> = [Some: T | None];
+type Optional<T> = [Some(T) | None];
 
 function isSome<'a, T>(o: ['a]): boolean
 where (Some: T) keyof 'a

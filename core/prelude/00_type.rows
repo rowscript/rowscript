@@ -1,6 +1,6 @@
-type Option<T> = [Ok: T | None];
+type Option<T> = [Ok(T) | None];
 
-type Result<T, E> = [Ok: T | Err: E];
+type Result<T, E> = [Ok(T) | Err(E)];
 
 function isOk<'a, T>(e: ['a]): boolean
 where (Ok: T) keyof 'a

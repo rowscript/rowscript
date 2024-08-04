@@ -4,7 +4,7 @@ function f0(): AppID {
     "123"
 }
 
-type Optional<T> = [None | Some: T];
+type Optional<T> = [None | Some(T)];
 
 function f1(): Optional<number> {
     Some(42)

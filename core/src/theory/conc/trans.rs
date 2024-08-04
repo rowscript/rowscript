@@ -17,7 +17,11 @@ use crate::Rule;
 
 fn type_pratt() -> &'static PrattParser<Rule> {
     static ONCE: OnceLock<PrattParser<Rule>> = OnceLock::new();
-    ONCE.get_or_init(|| PrattParser::new().op(Op::infix(Rule::infix_concat, Assoc::Left)))
+    ONCE.get_or_init(|| {
+        PrattParser::new()
+            .op(Op::infix(Rule::infix_union, Assoc::Left))
+            .op(Op::infix(Rule::infix_concat, Assoc::Left))
+    })
 }
 
 fn expr_pratt() -> &'static PrattParser<Rule> {
@@ -880,6 +884,7 @@ impl Trans {
             .map_infix(|lhs, op, rhs| {
                 let loc = Loc::from(op.as_span());
                 match op.as_rule() {
+                    Rule::infix_union => Expr::Union(loc, Box::new(lhs), Box::new(rhs)),
                     Rule::infix_concat => Expr::Concat(loc, Box::new(lhs), Box::new(rhs)),
                     _ => unreachable!(),
                 }

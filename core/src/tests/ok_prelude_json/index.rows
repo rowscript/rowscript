@@ -1,6 +1,6 @@
 type O0 = {n: number} implements ToJSON;
 
-type E0 = [N: number] implements ToJSON;
+type E0 = [N(number)] implements ToJSON;
 
 type D0 = {
     u: unit,

@@ -2,7 +2,7 @@ function f0<'a>(a: ['a]): ['a] {
     a
 }
 
-function f1(): [None | Data: number] {
+function f1(): [None | Data(number)] {
     // Type of expression `Data(42)` should simply be `[Data: number]`, because
     // if there is an inserted implicit lambda for implicit conversion into one
     // with a bigger enumeration type, the elaborator will loop.

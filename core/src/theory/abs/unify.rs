@@ -36,8 +36,11 @@ impl<'a> Unifier<'a> {
     }
 
     pub fn without_meta_solving(&mut self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
+        let no_meta_solving = self.no_meta_solving;
         self.no_meta_solving = true;
-        self.unify(lhs, rhs)
+        self.unify(lhs, rhs)?;
+        self.no_meta_solving = no_meta_solving;
+        Ok(())
     }
 
     fn unify_err(&self, lhs: &Term, rhs: &Term) -> Result<(), Error> {
@@ -107,6 +110,9 @@ impl<'a> Unifier<'a> {
             ) if m == n => self.unify(a, b),
             (Cls { object, .. }, b) => self.unify(object, b),
             (a, Cls { object, .. }) => self.unify(a, object),
+
+            (Union(a), Union(b)) if a.len() == b.len() && self.union_eq(a, b) => Ok(()),
+            (Union(a), b) if self.union_ord(a, b) => Ok(()),
 
             (Const(p, a, b), Const(q, x, y)) => {
                 self.unify(&p.typ, &q.typ)?;
@@ -293,5 +299,13 @@ impl<'a> Unifier<'a> {
             },
             _ => unreachable!(),
         }
+    }
+
+    fn union_eq(&mut self, a: &[Term], b: &[Term]) -> bool {
+        b.iter().all(|y| self.union_ord(a, y))
+    }
+
+    fn union_ord(&mut self, a: &[Term], b: &Term) -> bool {
+        a.iter().any(|a| self.without_meta_solving(a, b).is_ok())
     }
 }

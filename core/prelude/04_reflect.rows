@@ -1,5 +1,5 @@
 type List<T> = [
-    Append: {value: T, list: List<T>}
+    Append({value: T, list: List<T>})
     | Empty
 ];
 

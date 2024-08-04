@@ -1433,19 +1433,20 @@ impl Elaborator {
                     ty => return Err(ExpectedEnum(ty, loc)),
                 };
                 let mut u = Vec::default();
-                for (_, ty) in fields {
-                    let found = u
-                        .iter()
-                        .any(|t| self.unifier(loc).without_meta_solving(t, &ty).is_ok());
-                    if !found {
-                        u.push(ty);
-                    }
-                }
+                fields
+                    .into_iter()
+                    .for_each(|(_, ty)| self.union_add(loc, ty, &mut u));
                 InferResult {
                     tm: self.nf(loc).term(Term::Unionify(Box::new(tm)))?,
                     eff,
-                    ty: Term::Union(u),
+                    ty: Self::unwrap_singleton_union(u),
                 }
+            }
+            Union(loc, a, b) => {
+                let mut a = self.check(*a, &Term::Pure, &Term::Univ)?.to_subtypes();
+                let b = self.check(*b, &Term::Pure, &Term::Univ)?;
+                self.union_add(loc, b, &mut a);
+                InferResult::pure(Self::unwrap_singleton_union(a), Term::Univ)
             }
             Instanceof(loc, a) => {
                 let InferResult { tm, eff, ty } = self.infer(*a)?;
@@ -1828,6 +1829,24 @@ impl Elaborator {
                 _ => Term::App(f, i, x),
             },
             _ => fx,
+        }
+    }
+
+    fn union_add(&mut self, loc: Loc, ty: Term, u: &mut Vec<Term>) {
+        let found = u
+            .iter()
+            .any(|t| self.unifier(loc).without_meta_solving(t, &ty).is_ok());
+        if found {
+            return;
+        }
+        u.push(ty);
+    }
+
+    fn unwrap_singleton_union(u: Vec<Term>) -> Term {
+        match u.len() {
+            0 => unreachable!(),
+            1 => u.into_iter().next().unwrap(),
+            _ => Term::Union(u),
         }
     }
 }
