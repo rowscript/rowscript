@@ -9,10 +9,8 @@ type E1 = [
 
 const a1: E1 = B1({n: 42, s: "hello"});
 
-//function f<'a, T>(o: {n: number, 'a}) {
-//    console.log(o.n);
-//}
-//
-//const u: {n: number} | {n: number, s: string} = a1!;
-//
-//f(a1!);
+function f1<'a, T>(o: {n: number, 'a}) {
+    console.log(o.n);
+}
+const u1: {n: number} | {n: number, s: string} = a1!;
+f1(a1!);

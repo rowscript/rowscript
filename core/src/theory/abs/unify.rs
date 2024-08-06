@@ -4,7 +4,7 @@ use crate::theory::abs::def::Sigma;
 use crate::theory::abs::normalize::Normalizer;
 use crate::theory::NameMap;
 use crate::theory::{Loc, Var};
-use crate::Error::{EffectNonUnifiable, NonRowSat, NonUnifiable};
+use crate::Error::{EffectNonUnifiable, ExpectedObject, NonRowSat, NonUnifiable};
 use crate::{maybe_grow, Error};
 
 pub struct Unifier<'a> {
@@ -113,6 +113,9 @@ impl<'a> Unifier<'a> {
 
             (Union(a), Union(b)) if a.len() == b.len() && self.union_eq(a, b) => Ok(()),
             (Union(a), b) if self.union_ord(a, b) => Ok(()),
+            (Object(a), Union(b)) if matches!(a.as_ref(), MetaRef(..)) => {
+                self.solve_object_union(a, b)
+            }
 
             (Const(p, a, b), Const(q, x, y)) => {
                 self.unify(&p.typ, &q.typ)?;
@@ -307,5 +310,18 @@ impl<'a> Unifier<'a> {
 
     fn union_ord(&mut self, a: &[Term], b: &Term) -> bool {
         a.iter().any(|a| self.without_meta_solving(a, b).is_ok())
+    }
+
+    fn solve_object_union(&mut self, a: &Term, b: &[Term]) -> Result<(), Error> {
+        use Term::*;
+        let u = Union(
+            b.iter()
+                .map(|t| match t {
+                    Object(f) if matches!(f.as_ref(), Fields(..)) => Ok(*f.clone()),
+                    a => Err(ExpectedObject(a.clone(), self.loc)),
+                })
+                .collect::<Result<_, _>>()?,
+        );
+        self.unify(a, &u)
     }
 }

@@ -481,8 +481,13 @@ impl<'a> Normalizer<'a> {
             RowOrd(a, b) => {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;
-                if let (Fields(a), Fields(b)) = (a.as_ref(), b.as_ref()) {
-                    self.unifier().fields_ord(a, b)?;
+                match (a.as_ref(), b.as_ref()) {
+                    (Fields(x), Fields(y)) => self.unifier().fields_ord(x, y)?,
+                    (Fields(x), Union(ys)) => ys.iter().try_fold((), |_, y| match y {
+                        Fields(y) => self.unifier().fields_ord(x, y),
+                        _ => unreachable!(),
+                    })?,
+                    _ => {}
                 }
                 RowOrd(a, b)
             }
