@@ -1,7 +1,7 @@
 function getData(): [Age(number) | Name(string)];
-function setData(n: number, data: [Age(number) | Name(string)]);
+function setData(n: number, data: number | string);
 
-setData(42, getData());
+setData(42, getData()!);
 
 type WriteOptions = [None | WritePath({path: string})];
 

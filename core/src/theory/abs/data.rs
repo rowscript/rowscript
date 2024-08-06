@@ -158,6 +158,7 @@ pub enum Term {
     Disjoint(Box<Self>, Box<Self>),
     Up(Box<Self>, Box<Self>, Box<Self>),
     Switch(Box<Self>, CaseMap, CaseDefault),
+
     Unionify(Box<Self>),
     Union(Vec<Self>),
 
