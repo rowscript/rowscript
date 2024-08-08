@@ -805,15 +805,13 @@ impl Elaborator {
             Continue(_) => InferResult::pure(Term::Continue, Term::Unit),
             Break(_) => InferResult::pure(Term::Break, Term::Unit),
             Pi(loc, p, b) => {
-                let param_ty = self.infer(*p.typ)?.tm;
+                let param_ty = self.check(*p.typ, &Term::Pure, &Term::Univ)?;
                 let param = Param {
                     var: p.var,
                     info: p.info,
                     typ: Box::new(param_ty),
                 };
-                let InferResult {
-                    tm: b, ty: b_ty, ..
-                } = self.guarded_infer([&param], *b)?;
+                let b = self.guarded_check([&param], *b, &Term::Pure, &Term::Univ)?;
                 let eff = self.insert_meta(loc, InsertedMeta).0;
                 InferResult {
                     tm: Term::Pi {
@@ -822,7 +820,7 @@ impl Elaborator {
                         body: Box::new(b),
                     },
                     eff,
-                    ty: b_ty,
+                    ty: Term::Univ,
                 }
             }
             Lam(loc, var, b) => {
