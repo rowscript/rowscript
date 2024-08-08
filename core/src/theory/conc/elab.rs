@@ -1333,7 +1333,12 @@ impl Elaborator {
                     ty: a_ty,
                 } = self.infer(*a)?;
                 let en = self.nf(loc).with_expand_mu(a_ty)?;
-                let fields = match &en {
+
+                let mut enum_like = &en;
+                if let Term::Cls { object: o, .. } = enum_like {
+                    enum_like = o.as_ref();
+                }
+                let fields = match enum_like {
                     Term::Enum(y) => match y.as_ref() {
                         Term::Fields(f) => {
                             if d.is_none() && f.len() != cs.len() {
@@ -1345,6 +1350,7 @@ impl Elaborator {
                     },
                     _ => return Err(ExpectedEnum(en, a_loc)),
                 };
+
                 let mut m = CaseMap::default();
                 let mut ret_ty = None;
                 for (n, v, e) in cs {

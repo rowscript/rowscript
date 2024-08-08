@@ -3,8 +3,9 @@
   "version": "1.0.0-alpha.5",
   "description": "RowScript programming language",
   "scripts": {
+    "test": "cargo test",
     "build": "cargo build --release",
-    "prepublish": "npm run build && env ROWS_PRELUDE_DIR=core/prelude ./target/release/rowscript ./std"
+    "prepublish": "npm test && npm run build"
   },
   "files": [
     "api/",

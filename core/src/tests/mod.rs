@@ -8,10 +8,11 @@ use swc_common::SourceMap;
 use swc_ecma_parser::lexer::Lexer;
 use swc_ecma_parser::{Parser, Syntax};
 
-use crate::codegen::ecma::{Ecma, OUT_FILE};
+use crate::codegen::ecma::OUT_FILE;
 use crate::{Compiler, Error};
 
 mod playground;
+mod stdlib;
 
 mod example_eertree;
 mod example_fact;
@@ -103,7 +104,7 @@ fn run_helper(mod_path: &str) -> Result<(), Error> {
         .join("src")
         .join("tests")
         .join(mod_path.to_string().split("::").last().unwrap());
-    let mut compiler = Compiler::new(pkg.as_path(), Box::new(Ecma::default()));
+    let mut compiler = Compiler::new(pkg.as_path());
     compiler.run()?;
     parse_outfiles(&compiler.codegen.out_dir)
 }

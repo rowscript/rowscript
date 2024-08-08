@@ -1,9 +1,9 @@
-use std::env::set_var;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{Parser, ValueEnum};
 use log::error;
+use log::LevelFilter::{Debug, Info, Trace};
 
 use rowscript_core::codegen::{ecma, noop, Target};
 use rowscript_core::Compiler;
@@ -41,17 +41,17 @@ fn main() -> ExitCode {
         verbose,
     } = Args::parse();
 
-    if let Some(lvl) = match verbose {
-        1 => Some("info"),
-        2 => Some("debug"),
-        3 => Some("trace"),
+    match verbose {
+        1 => Some(Info),
+        2 => Some(Debug),
+        3 => Some(Trace),
         _ => None,
-    } {
-        set_var("RUST_LOG", lvl);
     }
-    env_logger::init();
+    .map_or_else(env_logger::init, |l| {
+        env_logger::builder().filter_level(l).init()
+    });
 
-    Compiler::new(&path, target.into())
+    Compiler::with_target(&path, target.into())
         .run()
         .map_err(|e| error!("compilation failed: {e}"))
         .map_or(ExitCode::FAILURE, |_| ExitCode::SUCCESS)

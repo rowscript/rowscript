@@ -88,13 +88,10 @@ reserved =
   | "undefined"
 
   // RowScript ones.
-  | "where"
-  | "then"
   | "string"
   | "number"
   | "bigint"
   | "unit"
-  | "type"
 
   // RowScript accepts these for fun.
   //| "get"

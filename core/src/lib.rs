@@ -10,6 +10,7 @@ use pest::Parser;
 use pest_derive::Parser;
 use thiserror::Error;
 
+use crate::codegen::ecma::Ecma;
 use crate::codegen::{Codegen, Target};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
@@ -218,7 +219,11 @@ enum Loadable {
 }
 
 impl Compiler {
-    pub fn new(path: &Path, target: Box<dyn Target>) -> Self {
+    pub fn new(path: &Path) -> Self {
+        Self::with_target(path, Box::new(Ecma::default()))
+    }
+
+    pub fn with_target(path: &Path, target: Box<dyn Target>) -> Self {
         let codegen = Codegen::new(target, path.join(OUT_DIR).into_boxed_path());
         Self {
             path: path.into(),

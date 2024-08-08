@@ -1,0 +1,39 @@
+class MouseEventType {
+    type EventData = {
+        type: string,
+        clientX: number,
+        clientY: number
+    };
+
+    [
+        Click
+    ];
+
+    toEventString(): string {
+        switch (this) {
+        case Click: "click"
+        }
+    }
+}
+
+interface EventType {
+    toEventString(event: this): string;
+}
+
+class HTMLElement {
+    innerText: string;
+
+    addEventListener<E>(eventType: E, listener: (event: E::EventData) => unit)
+    where
+        E instanceof EventType
+    {
+        // TODO
+    }
+}
+
+namespace document {
+    getElementById(id: string): Option<HTMLElement> {
+        // TODO
+        None
+    }
+}
