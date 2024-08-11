@@ -35,6 +35,7 @@ pub struct Elaborator {
     checking_eff: Option<Term>,
     checking_ret: Option<Term>,
     checking_class_type_args: Option<Box<[Term]>>,
+    checking_implements_interface: Option<Var>,
 
     delayed: HashMap<Var, (Loc, Var, Body<Expr>)>,
 }
@@ -186,10 +187,14 @@ impl Elaborator {
             InterfaceFn(i) => InterfaceFn(i),
             Instance(body) => Instance(self.check_instance_body(&name, *body, false)?),
             InstanceFn(f) => InstanceFn(Box::new(self.check(*f, &eff, &ret)?)),
-            ImplementsFn { name, f } => ImplementsFn {
-                name,
-                f: Box::new(self.check(*f, &eff, &ret)?),
-            },
+            ImplementsFn { i, name, f } => {
+                self.checking_implements_interface = Some(i.clone());
+                ImplementsFn {
+                    i,
+                    name,
+                    f: Box::new(self.check(*f, &eff, &ret)?),
+                }
+            }
             Class {
                 ctor,
                 associated,
@@ -251,6 +256,7 @@ impl Elaborator {
         self.checking_eff = None;
         self.checking_ret = None;
         self.checking_class_type_args = None;
+        self.checking_implements_interface = None;
 
         debug!(target: "elab", "definition checked successfully: {def}");
         Ok(def)
@@ -340,7 +346,11 @@ impl Elaborator {
     }
 
     fn nf(&mut self, loc: Loc) -> Normalizer {
-        Normalizer::new(&self.ubiquitous, &mut self.sigma, loc)
+        let n = Normalizer::new(&self.ubiquitous, &mut self.sigma, loc);
+        if let Some(i) = &self.checking_implements_interface {
+            return n.with_implements_interface(i);
+        }
+        n
     }
 
     fn insert_implements(&mut self, i: Expr, name: Var, ty: Term) -> Result<Box<Term>, Error> {
@@ -375,7 +385,7 @@ impl Elaborator {
                 .collect::<Result<Tele<_>, _>>()?;
             d.ret = Box::new(self.nf(d.loc).with([(&ty_var, &ty)], *d.ret)?);
             let (f_name, f) = match d.body {
-                ImplementsFn { name, f } => (name, f),
+                ImplementsFn { name, f, .. } => (name, f),
                 _ => unreachable!(),
             };
             d.body = InstanceFn(Box::new(self.nf(d.loc).with([(&ty_var, &ty)], *f)?));
@@ -1826,6 +1836,7 @@ impl Default for Elaborator {
             checking_eff: Default::default(),
             checking_ret: Default::default(),
             checking_class_type_args: Default::default(),
+            checking_implements_interface: Default::default(),
             delayed: Default::default(),
         }
     }

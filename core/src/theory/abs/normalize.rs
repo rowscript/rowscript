@@ -23,6 +23,7 @@ pub struct Normalizer<'a> {
     loc: Loc,
 
     instances: HashMap<Var, Term>,
+    implements_interface: Option<Var>,
 
     expand_undef: bool,
 
@@ -38,6 +39,7 @@ impl<'a> Normalizer<'a> {
             rho: Default::default(),
             loc,
             instances: Default::default(),
+            implements_interface: Default::default(),
             expand_undef: true,
             expand_mu: false,
             expanded: Default::default(),
@@ -633,7 +635,10 @@ impl<'a> Normalizer<'a> {
                     return self.find_instance(ty.clone(), i, f);
                 }
                 let ty = self.term_box(ty)?;
-                if ty.is_unsolved() || i.as_str() == ASYNC {
+                if ty.is_unsolved()
+                    || i.as_str() == ASYNC
+                    || matches!(&self.implements_interface, Some(j) if &i == j)
+                {
                     Find {
                         instance_ty: ty,
                         interface: i,
@@ -714,6 +719,11 @@ impl<'a> Normalizer<'a> {
         let ret = self.term(tm);
         self.expand_undef = old;
         ret
+    }
+
+    pub fn with_implements_interface(mut self, i: &Var) -> Self {
+        self.implements_interface = Some(i.clone());
+        self
     }
 
     pub fn apply(&mut self, f: Term, ai: ArgInfo, args: &[Term]) -> Result<Term, Error> {

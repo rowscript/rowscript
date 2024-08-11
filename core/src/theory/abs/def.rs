@@ -289,6 +289,7 @@ pub enum Body<T: Syntax> {
     Instance(Box<InstanceBody<T>>),
     InstanceFn(Box<T>),
     ImplementsFn {
+        i: Var,
         name: Var,
         f: Box<T>,
     },

@@ -346,7 +346,7 @@ impl Builtins {
     bin_op!(string_neq, "string#__neq__", String, Boolean, StrNeq);
     un_op!(
         string_to_lower_case,
-        "toLowerCase",
+        "string#toLowerCase",
         String,
         String,
         StrToLowerCase

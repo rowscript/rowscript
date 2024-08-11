@@ -86,6 +86,7 @@ mod ok_postulate_fn;
 mod ok_postulate_type;
 mod ok_prelude_join;
 mod ok_prelude_json;
+mod ok_prelude_lower;
 mod ok_reflect;
 mod ok_rev_app;
 mod ok_str;

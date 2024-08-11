@@ -435,6 +435,7 @@ impl Trans {
                         let mut implements_fn = d.clone();
                         implements_fn.body = match implements_fn.body {
                             Fn(f) => ImplementsFn {
+                                i: name.clone(),
                                 name: implements_fn.name.clone(),
                                 f,
                             },

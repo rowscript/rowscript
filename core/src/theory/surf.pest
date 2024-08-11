@@ -181,6 +181,7 @@ builtin =
   | "string#__add__"
   | "string#__eq__"
   | "string#__neq__"
+  | "string#toLowerCase"
   | "number#__add__"
   | "number#__sub__"
   | "number#__mul__"

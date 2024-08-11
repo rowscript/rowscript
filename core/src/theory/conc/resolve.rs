@@ -151,7 +151,8 @@ impl<'a> Resolver<'a> {
                 Instance(Box::new(InstanceBody { i, inst, fns }))
             }
             InstanceFn(f) => InstanceFn(self.expr(f)?),
-            ImplementsFn { name, f } => ImplementsFn {
+            ImplementsFn { i, name, f } => ImplementsFn {
+                i,
                 name,
                 f: self.expr(f)?,
             },

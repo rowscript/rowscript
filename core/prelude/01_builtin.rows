@@ -6,7 +6,7 @@ declare setTimeout<Args, T>(f: (...: Args) => T, milli: number, ...: Args);
 
 declare json#stringify<T>(a: T): string;
 
-declare toLowerCase(s: string): string;
+declare string#toLowerCase(s: string): string;
 
 declare number#__add__(a: number, b: number): number;
 declare number#__sub__(a: number, b: number): number;
