@@ -258,6 +258,10 @@ impl<'a> Normalizer<'a> {
                 (Str(a), Str(b)) => Term::bool(a != b),
                 (a, b) => StrNeq(Box::new(a), Box::new(b)),
             },
+            StrToLowerCase(a) => match *self.term_box(a)? {
+                Str(a) => Str(a.to_lowercase()),
+                a => StrToLowerCase(Box::new(a)),
+            },
             NumAdd(a, b) => {
                 let a = self.term_box(a)?;
                 let b = self.term_box(b)?;

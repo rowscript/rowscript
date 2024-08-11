@@ -1,0 +1,4 @@
+console.log("HELLO".toLowerCase());
+
+function f0(): string;
+console.log(f0().toLowerCase());

@@ -82,6 +82,7 @@ pub enum Term {
     StrAdd(Box<Self>, Box<Self>),
     StrEq(Box<Self>, Box<Self>),
     StrNeq(Box<Self>, Box<Self>),
+    StrToLowerCase(Box<Self>),
 
     Number,
     Num(f64),
@@ -436,6 +437,7 @@ impl Display for Term {
                 StrAdd(a, b) => format!("{a} + {b}"),
                 StrEq(a, b) => format!("{a} == {b}"),
                 StrNeq(a, b) => format!("{a} != {b}"),
+                StrToLowerCase(a) => format!("{a}.toLowerCase()"),
                 Number => "number".to_string(),
                 Num(v) => v.to_string(),
                 NumAdd(a, b) => format!("{a} + {b}"),

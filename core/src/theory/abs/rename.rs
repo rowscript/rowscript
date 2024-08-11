@@ -59,6 +59,7 @@ impl Renamer {
             StrAdd(a, b) => StrAdd(self.term(a), self.term(b)),
             StrEq(a, b) => StrEq(self.term(a), self.term(b)),
             StrNeq(a, b) => StrNeq(self.term(a), self.term(b)),
+            StrToLowerCase(a) => StrToLowerCase(self.term(a)),
             NumAdd(a, b) => NumAdd(self.term(a), self.term(b)),
             NumSub(a, b) => NumSub(self.term(a), self.term(b)),
             NumMul(a, b) => NumMul(self.term(a), self.term(b)),

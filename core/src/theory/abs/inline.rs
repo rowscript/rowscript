@@ -75,6 +75,7 @@ pub fn noinline(tm: &Term) -> bool {
 
         Lam(.., a)
         | BoolNot(a)
+        | StrToLowerCase(a)
         | NumNeg(a)
         | NumToStr(a)
         | BigintToStr(a)

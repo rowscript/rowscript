@@ -5,8 +5,8 @@ use crate::theory::abs::data::Term::{
     ConsoleLog, Discriminants, EmitAsync, Enum, Fields, Find, JSONStringify, Map, MapClear,
     MapDelete, MapGet, MapHas, MapIter, MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq,
     NumGe, NumGt, NumLe, NumLt, NumMod, NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object,
-    Panic, Pi, Pure, Ref, RkToStr, Row, Rowkey, SetTimeout, StrAdd, StrEq, StrNeq, String,
-    TupleBind, Undef, Unit, Univ,
+    Panic, Pi, Pure, Ref, RkToStr, Row, Rowkey, SetTimeout, StrAdd, StrEq, StrNeq, StrToLowerCase,
+    String, TupleBind, Undef, Unit, Univ,
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
@@ -184,6 +184,7 @@ impl Builtins {
             .string_add()
             .string_eq()
             .string_neq()
+            .string_to_lower_case()
             .number_add()
             .number_sub()
             .number_mul()
@@ -343,6 +344,13 @@ impl Builtins {
     bin_op!(string_add, "string#__add__", String, String, StrAdd);
     bin_op!(string_eq, "string#__eq__", String, Boolean, StrEq);
     bin_op!(string_neq, "string#__neq__", String, Boolean, StrNeq);
+    un_op!(
+        string_to_lower_case,
+        "toLowerCase",
+        String,
+        String,
+        StrToLowerCase
+    );
 
     bin_op!(number_add, "number#__add__", Number, Number, NumAdd);
     bin_op!(number_sub, "number#__sub__", Number, Number, NumSub);

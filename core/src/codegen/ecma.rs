@@ -1142,6 +1142,7 @@ impl Ecma {
             StrAdd(a, b) => self.bin_expr(sigma, loc, BinaryOp::Add, a, b)?,
             StrEq(a, b) => self.bin_expr(sigma, loc, BinaryOp::EqEqEq, a, b)?,
             StrNeq(a, b) => self.bin_expr(sigma, loc, BinaryOp::NotEqEq, a, b)?,
+            StrToLowerCase(a) => Self::prototype(loc, self.expr(sigma, loc, a)?, "toLowerCase", []),
             Num(v) => Expr::Lit(Lit::Num(JsNumber {
                 span: loc.into(),
                 value: *v,
