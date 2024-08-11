@@ -729,6 +729,7 @@ impl Ecma {
     fn tuple_binds_to_pats<'a>(
         loc: Loc,
         p: &Param<Term>,
+        q: &Param<Term>,
         mut body: &'a Term,
     ) -> (Vec<Option<Pat>>, &'a Term) {
         let mut elems = vec![Some(Self::ident_pat(loc, &p.var))];
@@ -739,6 +740,9 @@ impl Ecma {
                 continue;
             }
             break;
+        }
+        if q.var.as_str() == UNTUPLED_ENDS {
+            elems.push(Some(Self::ident_pat(loc, &q.var)));
         }
         (elems, body)
     }
@@ -903,9 +907,8 @@ impl Ecma {
 
             // Only strip the tupled lets from the parameters.
             if let TupleBind(_, _, a, _) = tm {
-                match a.as_ref() {
-                    Ref(v) if v.as_str() == TUPLED => {}
-                    _ => return tm,
+                if !matches!(a.as_ref(), Ref(v) if v.as_str() == TUPLED) {
+                    return tm;
                 }
             }
 
@@ -972,9 +975,9 @@ impl Ecma {
                     tm = &TT
                 }
                 // Only valid on syntax like `const (a, b, c, d) = expr`.
-                TupleBind(p, _, a, b) => {
+                TupleBind(p, q, a, b) => {
                     // Collect all tupled lets to form `const [a, b, c, d] = expr` in JS.
-                    let (elems, body) = Self::tuple_binds_to_pats(loc, p, b);
+                    let (elems, body) = Self::tuple_binds_to_pats(loc, p, q, b);
                     stmts.push(Stmt::Decl(Decl::Var(Box::new(VarDecl {
                         span,
                         ctxt: Default::default(),
@@ -1073,8 +1076,8 @@ impl Ecma {
             // Ditto.
             //
             // Transform into `((a, b, c, d) => stripped_body)(a)`.
-            TupleBind(p, _, a, b) => {
-                let (elems, body) = Self::tuple_binds_to_pats(loc, p, b);
+            TupleBind(p, q, a, b) => {
+                let (elems, body) = Self::tuple_binds_to_pats(loc, p, q, b);
                 Self::paren_call(
                     loc,
                     Self::block_arrow(
@@ -1443,7 +1446,7 @@ impl Ecma {
                 args: match m.as_ref() {
                     Tuple(..) => self.untuple_args(sigma, loc, m)?,
                     TT => Default::default(),
-                    m => vec![Self::spread(loc, self.expr(sigma, loc, m)?)],
+                    m => vec![Self::non_spread(self.expr(sigma, loc, m)?)],
                 },
                 type_args: None,
             }),
