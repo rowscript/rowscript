@@ -42,10 +42,10 @@ fn main() -> ExitCode {
     } = Args::parse();
 
     match verbose {
+        0 => None,
         1 => Some(Info),
         2 => Some(Debug),
-        3 => Some(Trace),
-        _ => None,
+        _ => Some(Trace),
     }
     .map_or_else(env_logger::init, |l| {
         env_logger::builder().filter_level(l).init()
