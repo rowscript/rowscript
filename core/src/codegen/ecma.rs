@@ -115,6 +115,10 @@ impl Ecma {
         Expr::Ident(Self::special_ident("undefined"))
     }
 
+    fn null() -> Expr {
+        Expr::Ident(Self::special_ident("null"))
+    }
+
     fn lib() -> Ident {
         Self::special_ident(JS_LIB)
     }
@@ -372,7 +376,7 @@ impl Ecma {
     }
 
     /// ```ts
-    /// ((x) => x === undefined ? None : Ok(x))(e)
+    /// ((x) => x == null ? None : Ok(x))(e)
     /// ```
     fn optionify(loc: Loc, e: Expr) -> Expr {
         Self::paren_call1(
@@ -384,9 +388,9 @@ impl Ecma {
                     span: loc.into(),
                     test: Box::new(Expr::Bin(BinExpr {
                         span: loc.into(),
-                        op: BinaryOp::EqEqEq,
+                        op: BinaryOp::EqEq,
                         left: Box::new(Expr::Ident(Self::str_ident(loc, "x"))),
-                        right: Box::new(Self::undefined()),
+                        right: Box::new(Self::null()),
                     })),
                     cons: Box::new(Self::none(loc)),
                     alt: Box::new(Self::ok(loc, Expr::Ident(Self::str_ident(loc, "x")))),
@@ -1463,14 +1467,19 @@ impl Ecma {
                 }),
                 vec![Self::non_spread(self.expr(sigma, loc, a)?)],
             ),
-            DocumentGetElementById(a) => Self::call(
+            DocumentGetElementById(a) => Self::optionify(
                 loc,
-                Expr::Member(MemberExpr {
-                    span: loc.into(),
-                    obj: Box::new(Expr::Ident(Self::special_ident("document"))),
-                    prop: MemberProp::Ident(IdentName::from(Self::special_ident("getElementById"))),
-                }),
-                vec![Self::non_spread(self.expr(sigma, loc, a)?)],
+                Self::call(
+                    loc,
+                    Expr::Member(MemberExpr {
+                        span: loc.into(),
+                        obj: Box::new(Expr::Ident(Self::special_ident("document"))),
+                        prop: MemberProp::Ident(IdentName::from(Self::special_ident(
+                            "getElementById",
+                        ))),
+                    }),
+                    vec![Self::non_spread(self.expr(sigma, loc, a)?)],
+                ),
             ),
             EmitAsync(a) => self.expr(sigma, loc, a)?,
 
