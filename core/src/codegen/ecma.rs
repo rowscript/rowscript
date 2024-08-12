@@ -172,14 +172,7 @@ impl Ecma {
     }
 
     fn paren_call1(loc: Loc, f: Expr, e: Expr) -> Expr {
-        Self::call(
-            loc,
-            Expr::Paren(ParenExpr {
-                span: loc.into(),
-                expr: Box::new(f),
-            }),
-            vec![Self::non_spread(e)],
-        )
+        Self::call(loc, Self::paren(loc, f), vec![Self::non_spread(e)])
     }
 
     fn variant(loc: Loc, tag: &str, v: Expr) -> Expr {
@@ -294,10 +287,7 @@ impl Ecma {
     fn access(loc: Loc, a: Expr, n: &str) -> Expr {
         Expr::Member(MemberExpr {
             span: loc.into(),
-            obj: Box::new(Expr::Paren(ParenExpr {
-                span: loc.into(),
-                expr: Box::new(a),
-            })),
+            obj: Box::new(Self::paren(loc, a)),
             prop: MemberProp::Ident(IdentName::from(Self::str_ident(loc, n))),
         })
     }
@@ -319,10 +309,7 @@ impl Ecma {
     ) -> Result<Expr, Error> {
         Ok(Expr::Member(MemberExpr {
             span: loc.into(),
-            obj: Box::new(Expr::Paren(ParenExpr {
-                span: loc.into(),
-                expr: Box::new(self.expr(sigma, loc, v)?),
-            })),
+            obj: Box::new(Self::paren(loc, self.expr(sigma, loc, v)?)),
             prop: MemberProp::Computed(ComputedPropName {
                 span: loc.into(),
                 expr: Box::new(Expr::Member(MemberExpr {
@@ -1205,9 +1192,9 @@ impl Ecma {
             ArrInsert(a, i, v) => Expr::Unary(UnaryExpr {
                 span: loc.into(),
                 op: UnaryOp::Void,
-                arg: Box::new(Expr::Paren(ParenExpr {
-                    span: loc.into(),
-                    expr: Box::new(Expr::Assign(AssignExpr {
+                arg: Box::new(Self::paren(
+                    loc,
+                    Expr::Assign(AssignExpr {
                         span: loc.into(),
                         op: AssignOp::Assign,
                         left: AssignTarget::Simple(SimpleAssignTarget::Member(MemberExpr {
@@ -1219,8 +1206,8 @@ impl Ecma {
                             }),
                         })),
                         right: Box::new(self.expr(sigma, loc, v)?),
-                    })),
-                })),
+                    }),
+                )),
             }),
             ArrIter(a) => self.well_known_symbol_call(sigma, loc, a, "iterator")?,
             MapIterNext(it) => Self::entryify_iteration_result(
@@ -1278,13 +1265,13 @@ impl Ecma {
                             value: Box::new(self.expr(sigma, loc, &tm.clone())?),
                         }))));
                     }
-                    Expr::Paren(ParenExpr {
-                        span: loc.into(),
-                        expr: Box::new(Expr::Object(ObjectLit {
+                    Self::paren(
+                        loc,
+                        Expr::Object(ObjectLit {
                             span: loc.into(),
                             props,
-                        })),
-                    })
+                        }),
+                    )
                 }
                 _ => unreachable!(),
             },
@@ -1328,22 +1315,19 @@ impl Ecma {
                         key: PropName::Ident(IdentName::from(Self::str_ident(loc, name))),
                         value: Box::new(Expr::Member(MemberExpr {
                             span: loc.into(),
-                            obj: Box::new(Expr::Paren(ParenExpr {
-                                span: loc.into(),
-                                expr: Box::new(Expr::Ident(x.clone())),
-                            })),
+                            obj: Box::new(Self::paren(loc, Expr::Ident(x.clone()))),
                             prop: MemberProp::Ident(IdentName::from(Self::str_ident(loc, name))),
                         })),
                     }))))
                 }
 
-                let body = Expr::Paren(ParenExpr {
-                    span: loc.into(),
-                    expr: Box::new(Expr::Object(ObjectLit {
+                let body = Self::paren(
+                    loc,
+                    Expr::Object(ObjectLit {
                         span: loc.into(),
                         props,
-                    })),
-                });
+                    }),
+                );
 
                 Self::paren_call1(
                     loc,
