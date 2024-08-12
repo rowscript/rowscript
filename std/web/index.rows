@@ -1,31 +1,35 @@
-class MouseEventType {
-    type EventData = {
-        type: string,
-        clientX: number,
-        clientY: number
-    };
+type MouseEventType = [
+    Click
+    | MouseUp
+    | MouseDown
+] implements ToLowerCase;
 
-    [
-        Click
-    ];
+type MouseEventData = {
+    type: string,
+    clientX: number,
+    clientY: number
+};
+
+class MouseEvent {
+    type Data = MouseEventData;
+
+    MouseEventType;
 
     toEventString(): string {
-        switch (this) {
-        case Click: "click"
-        }
+        this.toLowerCase()
     }
 }
 
-interface EventType {
+interface Event {
     toEventString(event: this): string;
 }
 
 class HTMLElement {
     innerText: string;
 
-    addEventListener<E>(eventType: E, listener: (event: E::EventData) => unit)
+    addEventListener<E>(eventType: E, listener: (event: E::Data) => unit)
     where
-        E instanceof EventType
+        E instanceof Event
     {
         // TODO
     }
