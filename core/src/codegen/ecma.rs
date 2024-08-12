@@ -146,17 +146,36 @@ impl Ecma {
         )
     }
 
-    fn paren_call(loc: Loc, f: Expr, e: Expr) -> Expr {
+    fn paren(loc: Loc, e: Expr) -> Expr {
+        Expr::Paren(ParenExpr {
+            span: loc.into(),
+            expr: Box::new(e),
+        })
+    }
+
+    fn call(loc: Loc, f: Expr, args: Vec<ExprOrSpread>) -> Expr {
         Expr::Call(CallExpr {
             span: loc.into(),
             ctxt: Default::default(),
-            callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
-                span: loc.into(),
-                expr: Box::new(f),
-            }))),
-            args: vec![Self::non_spread(e)],
+            callee: Callee::Expr(Box::new(f)),
+            args,
             type_args: None,
         })
+    }
+
+    fn paren_call(loc: Loc, f: Expr, args: Vec<ExprOrSpread>) -> Expr {
+        Self::call(loc, Self::paren(loc, f), args)
+    }
+
+    fn paren_call1(loc: Loc, f: Expr, e: Expr) -> Expr {
+        Self::call(
+            loc,
+            Expr::Paren(ParenExpr {
+                span: loc.into(),
+                expr: Box::new(f),
+            }),
+            vec![Self::non_spread(e)],
+        )
     }
 
     fn variant(loc: Loc, tag: &str, v: Expr) -> Expr {
@@ -248,7 +267,7 @@ impl Ecma {
         let item = Self::access(loc, Expr::Ident(Self::str_ident(loc, "x")), "value");
         let k = Self::index(loc, item.clone(), 0.0);
         let v = Self::index(loc, item, 1.0);
-        Self::paren_call(
+        Self::paren_call1(
             loc,
             Self::short_arrow(
                 loc,
@@ -280,13 +299,11 @@ impl Ecma {
     }
 
     fn prototype<const N: usize>(loc: Loc, a: Expr, m: &str, args: [Expr; N]) -> Expr {
-        Expr::Call(CallExpr {
-            span: loc.into(),
-            ctxt: Default::default(),
-            callee: Callee::Expr(Box::new(Self::access(loc, a, m))),
-            args: args.into_iter().map(Self::non_spread).collect(),
-            type_args: None,
-        })
+        Self::call(
+            loc,
+            Self::access(loc, a, m),
+            args.into_iter().map(Self::non_spread).collect(),
+        )
     }
 
     fn well_known_symbol(
@@ -320,20 +337,18 @@ impl Ecma {
         v: &Term,
         sym: &str,
     ) -> Result<Expr, Error> {
-        Ok(Expr::Call(CallExpr {
-            span: loc.into(),
-            ctxt: Default::default(),
-            callee: Callee::Expr(Box::new(self.well_known_symbol(sigma, loc, v, sym)?)),
-            args: Default::default(),
-            type_args: None,
-        }))
+        Ok(Self::call(
+            loc,
+            self.well_known_symbol(sigma, loc, v, sym)?,
+            Default::default(),
+        ))
     }
 
     /// ```ts
     /// ((x) => x.done ? None : Ok(x.value))(e)
     /// ```
     fn optionify_iteration_result(loc: Loc, e: Expr) -> Expr {
-        Self::paren_call(
+        Self::paren_call1(
             loc,
             Self::short_arrow(
                 loc,
@@ -360,7 +375,7 @@ impl Ecma {
     /// ((x) => x === undefined ? None : Ok(x))(e)
     /// ```
     fn optionify(loc: Loc, e: Expr) -> Expr {
-        Self::paren_call(
+        Self::paren_call1(
             loc,
             Self::short_arrow(
                 loc,
@@ -452,7 +467,7 @@ impl Ecma {
                     Some(Self::non_spread(Self::short_arrow(
                         loc,
                         vec![Self::str_ident_pat(loc, "resolve")],
-                        Self::paren_call(
+                        Self::paren_call1(
                             loc,
                             Expr::Ident(Self::str_ident(loc, "resolve")),
                             *e.expr,
@@ -466,7 +481,7 @@ impl Ecma {
     fn await_executors(loc: Loc, awaiter: &str, executors: Vec<ExprOrSpread>) -> Expr {
         Expr::Await(AwaitExpr {
             span: loc.into(),
-            arg: Box::new(Self::paren_call(
+            arg: Box::new(Self::paren_call1(
                 loc,
                 Expr::Ident(Self::special_ident(awaiter)),
                 Self::executors_to_promises(loc, executors),
@@ -533,16 +548,7 @@ impl Ecma {
             });
         }
 
-        Ok(Expr::Call(CallExpr {
-            span: loc.into(),
-            ctxt: Default::default(),
-            callee: Callee::Expr(Box::new(Expr::Paren(ParenExpr {
-                span: loc.into(),
-                expr: Box::new(self.expr(sigma, loc, f)?),
-            }))),
-            args,
-            type_args: None,
-        }))
+        Ok(Self::paren_call(loc, self.expr(sigma, loc, f)?, args))
     }
 
     fn bin_expr(
@@ -714,7 +720,7 @@ impl Ecma {
         a: &Term,
         b: &Term,
     ) -> Result<Expr, Error> {
-        Ok(Self::paren_call(
+        Ok(Self::paren_call1(
             loc,
             Self::block_arrow(
                 loc,
@@ -768,7 +774,7 @@ impl Ecma {
         }
         Ok(Stmt::Return(ReturnStmt {
             span: loc.into(),
-            arg: Some(Box::new(Self::paren_call(
+            arg: Some(Box::new(Self::paren_call1(
                 loc,
                 Self::block_arrow(
                     loc,
@@ -809,19 +815,11 @@ impl Ecma {
     }
 
     fn iife(loc: Loc, b: BlockStmt, is_async: bool) -> Expr {
-        Expr::Paren(ParenExpr {
-            span: loc.into(),
-            expr: Box::new(Expr::Call(CallExpr {
-                span: loc.into(),
-                ctxt: Default::default(),
-                callee: Callee::Expr(Box::from(Expr::Paren(ParenExpr {
-                    span: loc.into(),
-                    expr: Box::new(Self::block_arrow(loc, Default::default(), b, is_async)),
-                }))),
-                args: Default::default(),
-                type_args: None,
-            })),
-        })
+        Self::paren_call(
+            loc,
+            Self::paren(loc, Self::block_arrow(loc, Default::default(), b, is_async)),
+            Default::default(),
+        )
     }
 
     fn while_stmt(&mut self, sigma: &Sigma, loc: Loc, p: &Term, b: &Term) -> Result<Stmt, Error> {
@@ -1078,7 +1076,7 @@ impl Ecma {
             // Transform into `((a, b, c, d) => stripped_body)(a)`.
             TupleBind(p, q, a, b) => {
                 let (elems, body) = Self::tuple_binds_to_pats(loc, p, q, b);
-                Self::paren_call(
+                Self::paren_call1(
                     loc,
                     Self::block_arrow(
                         loc,
@@ -1343,7 +1341,7 @@ impl Ecma {
                     })),
                 });
 
-                Self::paren_call(
+                Self::paren_call1(
                     loc,
                     Self::short_arrow(
                         loc,
@@ -1393,7 +1391,7 @@ impl Ecma {
                     stmts.push(self.enum_case_consequent(sigma, loc, None, v, tm)?)
                 }
 
-                Self::paren_call(
+                Self::paren_call1(
                     loc,
                     Self::block_arrow(
                         loc,
@@ -1426,7 +1424,7 @@ impl Ecma {
                     ctxt: Default::default(),
                     stmts: vec![Stmt::Throw(ThrowStmt {
                         span: loc.into(),
-                        arg: Box::new(Self::paren_call(
+                        arg: Box::new(Self::paren_call1(
                             loc,
                             Expr::Ident(Self::special_ident("Error")),
                             self.expr(sigma, loc, a)?,
@@ -1435,46 +1433,45 @@ impl Ecma {
                 },
                 false,
             ),
-            ConsoleLog(m) => Expr::Call(CallExpr {
-                span: loc.into(),
-                ctxt: Default::default(),
-                callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
+            ConsoleLog(m) => Self::call(
+                loc,
+                Expr::Member(MemberExpr {
                     span: loc.into(),
                     obj: Box::new(Expr::Ident(Self::special_ident("console"))),
                     prop: MemberProp::Ident(IdentName::from(Self::special_ident("log"))),
-                }))),
-                args: match m.as_ref() {
+                }),
+                match m.as_ref() {
                     Tuple(..) => self.untuple_args(sigma, loc, m)?,
                     TT => Default::default(),
                     m => vec![Self::non_spread(self.expr(sigma, loc, m)?)],
                 },
-                type_args: None,
-            }),
+            ),
             SetTimeout(f, d, x) => {
                 let mut args = vec![
                     Self::non_spread(self.expr(sigma, loc, f)?),
                     Self::non_spread(self.expr(sigma, loc, d)?),
                 ];
                 args.extend(self.untuple_args(sigma, loc, x)?);
-                Expr::Call(CallExpr {
-                    span: loc.into(),
-                    ctxt: Default::default(),
-                    callee: Callee::Expr(Box::new(Expr::Ident(Self::special_ident("setTimeout")))),
-                    args,
-                    type_args: None,
-                })
+                Self::call(loc, Expr::Ident(Self::special_ident("setTimeout")), args)
             }
-            JSONStringify(a) => Expr::Call(CallExpr {
-                span: loc.into(),
-                ctxt: Default::default(),
-                callee: Callee::Expr(Box::new(Expr::Member(MemberExpr {
+            JSONStringify(a) => Self::call(
+                loc,
+                Expr::Member(MemberExpr {
                     span: loc.into(),
                     obj: Box::new(Expr::Ident(Self::special_ident("JSON"))),
                     prop: MemberProp::Ident(IdentName::from(Self::special_ident("stringify"))),
-                }))),
-                args: vec![Self::non_spread(self.expr(sigma, loc, a)?)],
-                type_args: None,
-            }),
+                }),
+                vec![Self::non_spread(self.expr(sigma, loc, a)?)],
+            ),
+            DocumentGetElementById(a) => Self::call(
+                loc,
+                Expr::Member(MemberExpr {
+                    span: loc.into(),
+                    obj: Box::new(Expr::Ident(Self::special_ident("document"))),
+                    prop: MemberProp::Ident(IdentName::from(Self::special_ident("getElementById"))),
+                }),
+                vec![Self::non_spread(self.expr(sigma, loc, a)?)],
+            ),
             EmitAsync(a) => self.expr(sigma, loc, a)?,
 
             tm if matches!(tm, Fori(..) | While(..) | Guard(..)) => {

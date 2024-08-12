@@ -2,11 +2,11 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{
     AnonVarargs, App, ArrAt, ArrForeach, ArrInsert, ArrIter, ArrIterNext, ArrLength, ArrPush,
     Array, ArrayIterator, Bigint, BigintToStr, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean,
-    ConsoleLog, Discriminants, EmitAsync, Enum, Fields, Find, JSONStringify, Map, MapClear,
-    MapDelete, MapGet, MapHas, MapIter, MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq,
-    NumGe, NumGt, NumLe, NumLt, NumMod, NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object,
-    Panic, Pi, Pure, Ref, RkToStr, Row, Rowkey, SetTimeout, StrAdd, StrEq, StrNeq, StrToLowerCase,
-    String, TupleBind, Undef, Unit, Univ,
+    ConsoleLog, Discriminants, DocumentGetElementById, EmitAsync, Enum, Fields, Find,
+    JSONStringify, Map, MapClear, MapDelete, MapGet, MapHas, MapIter, MapIterNext, MapIterator,
+    MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt, NumMod, NumMul, NumNeg, NumNeq,
+    NumSub, NumToStr, Number, Object, Panic, Pi, Pure, Ref, RkToStr, Row, Rowkey, SetTimeout,
+    StrAdd, StrEq, StrNeq, StrToLowerCase, String, TupleBind, Undef, Unit, Univ,
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
@@ -222,6 +222,7 @@ impl Builtins {
             .await_all()
             .await_any()
             .json_stringify()
+            .document_get_element_by_id()
     }
 
     fn func(self, name: &str, tele: Tele<Term>, ret: Term, f: Term) -> Self {
@@ -918,6 +919,23 @@ impl Builtins {
             tele,
             String,
             explicit_tuple_bind1(a.clone(), Ref(t), tupled, JSONStringify(Box::new(Ref(a)))),
+        )
+    }
+
+    fn document_get_element_by_id(self) -> Self {
+        let a = Var::new("a");
+        let e = Var::new("HTMLElement");
+        let (tupled, tele) = parameters([e.clone()], [(a.clone(), String)]);
+        self.func(
+            "document#getElementById",
+            tele,
+            Ref(e),
+            explicit_tuple_bind1(
+                a.clone(),
+                String,
+                tupled,
+                DocumentGetElementById(Box::new(Ref(a))),
+            ),
         )
     }
 }

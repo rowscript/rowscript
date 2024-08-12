@@ -86,7 +86,8 @@ pub fn noinline(tm: &Term) -> bool {
         | Variant(a)
         | Up(a, ..)
         | Spread(a)
-        | JSONStringify(a) => noinline(a),
+        | JSONStringify(a)
+        | DocumentGetElementById(a) => noinline(a),
 
         Extern(..) | Let(..) | Update(..) | Return(..) | Continue | Break | ArrIterNext(..)
         | ArrLength(..) | ArrPush(..) | ArrForeach(..) | ArrAt(..) | ArrInsert(..)

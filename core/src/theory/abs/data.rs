@@ -186,14 +186,15 @@ pub enum Term {
         object: Box<Self>,
     },
 
+    Pure,
+    Effect(FieldSet),
+    EmitAsync(Box<Self>),
+
     Panic(Box<Self>),
     ConsoleLog(Box<Self>),
     SetTimeout(Box<Self>, Box<Self>, Box<Self>),
     JSONStringify(Box<Self>),
-
-    Pure,
-    Effect(FieldSet),
-    EmitAsync(Box<Self>),
+    DocumentGetElementById(Box<Self>),
 }
 
 pub struct PartialClass {
@@ -558,6 +559,7 @@ impl Display for Term {
                 ConsoleLog(m) => format!("console.log({m})"),
                 SetTimeout(f, d, x) => format!("setTimeout({f}, {d}, {x})"),
                 JSONStringify(a) => format!("JSON.stringify({a})"),
+                DocumentGetElementById(a) => format!("document.getElementById({a})"),
                 Pure => "pure".to_string(),
                 Effect(a) => a
                     .iter()

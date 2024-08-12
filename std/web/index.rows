@@ -37,7 +37,6 @@ class HTMLElement {
 
 namespace document {
     getElementById(id: string): Option<HTMLElement> {
-        // TODO
-        None
+        document#getElementById(id)
     }
 }
