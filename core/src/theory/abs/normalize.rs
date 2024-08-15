@@ -687,6 +687,9 @@ impl<'a> Normalizer<'a> {
                 SetTimeout(self.term_box(f)?, self.term_box(d)?, self.term_box(x)?)
             }
             JSONStringify(a) => JSONStringify(self.term_box(a)?),
+            HtmlElementAddEventListener(n, e, l) => {
+                HtmlElementAddEventListener(self.term_box(n)?, self.term_box(e)?, self.term_box(l)?)
+            }
             DocumentGetElementById(a) => DocumentGetElementById(self.term_box(a)?),
             EmitAsync(a) => EmitAsync(self.term_box(a)?),
             tm => tm,

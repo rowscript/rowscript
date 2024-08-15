@@ -43,7 +43,9 @@ pub fn noinline(tm: &Term) -> bool {
             fold
         }
 
-        While(a, b, c) | If(a, b, c) => noinline(a) || noinline(b) || noinline(c),
+        While(a, b, c) | If(a, b, c) | HtmlElementAddEventListener(a, b, c) => {
+            noinline(a) || noinline(b) || noinline(c)
+        }
 
         Const(_, a, b)
         | Fori(a, b)

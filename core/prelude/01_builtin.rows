@@ -6,6 +6,12 @@ declare setTimeout<Args, T>(f: (...: Args) => T, milli: number, ...: Args);
 
 declare json#stringify<T>(a: T): string;
 
+declare htmlElement#addEventListener<HTMLElement, Listener>(
+    node: HTMLElement,
+    event: string,
+    listener: Listener
+);
+
 declare document#getElementById<HTMLElement>(id: string): HTMLElement;
 
 declare string#toLowerCase(s: string): string;

@@ -215,6 +215,7 @@ builtin =
   | "await#all"
   | "await#any"
   | "json#stringify"
+  | "htmlElement#addEventListener"
   | "document#getElementById"
   }
 

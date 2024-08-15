@@ -3,10 +3,11 @@ use crate::theory::abs::data::Term::{
     AnonVarargs, App, ArrAt, ArrForeach, ArrInsert, ArrIter, ArrIterNext, ArrLength, ArrPush,
     Array, ArrayIterator, Bigint, BigintToStr, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean,
     ConsoleLog, Discriminants, DocumentGetElementById, EmitAsync, Enum, Fields, Find,
-    JSONStringify, Map, MapClear, MapDelete, MapGet, MapHas, MapIter, MapIterNext, MapIterator,
-    MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt, NumMod, NumMul, NumNeg, NumNeq,
-    NumSub, NumToStr, Number, Object, Panic, Pi, Pure, Ref, RkToStr, Row, Rowkey, SetTimeout,
-    StrAdd, StrEq, StrNeq, StrToLowerCase, String, TupleBind, Undef, Unit, Univ,
+    HtmlElementAddEventListener, JSONStringify, Map, MapClear, MapDelete, MapGet, MapHas, MapIter,
+    MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt, NumMod,
+    NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object, Panic, Pi, Pure, Ref, RkToStr, Row,
+    Rowkey, SetTimeout, StrAdd, StrEq, StrNeq, StrToLowerCase, String, TupleBind, Undef, Unit,
+    Univ,
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
@@ -50,16 +51,14 @@ fn unbound_explicit_pi(a: Term, b: Term) -> Term {
     explicit_pi((Var::unbound(), a), b)
 }
 
-fn explicit_sigma(p: (Var, Term), b: Term) -> Term {
-    Term::Sigma(explicit(p.0, p.1), Box::new(b))
+fn explicit_sigma_rfold<const N: usize>(ts: [Term; N], init: Term) -> Term {
+    ts.into_iter().rfold(init, |acc, t| {
+        Term::Sigma(explicit(Var::unbound(), t), Box::new(acc))
+    })
 }
 
-fn unbound_explicit_sigma(a: Term, b: Term) -> Term {
-    explicit_sigma((Var::unbound(), a), b)
-}
-
-fn explicit_sigma1(p: Var, ty: Term) -> Term {
-    explicit_sigma((p, ty), Unit)
+fn explicit_sigma<const N: usize>(ts: [Term; N]) -> Term {
+    explicit_sigma_rfold(ts, Unit)
 }
 
 fn explicit_tuple_bind(p: (Var, Term), q: (Var, Term), a: Term, b: Term) -> Term {
@@ -141,7 +140,7 @@ macro_rules! bin_op {
                 $ret,
                 explicit_tuple_bind(
                     (a.clone(), $typ),
-                    (a_rhs.clone(), explicit_sigma1(b.clone(), $typ)),
+                    (a_rhs.clone(), explicit_sigma([$typ])),
                     tupled,
                     explicit_tuple_bind1(
                         b.clone(),
@@ -222,6 +221,7 @@ impl Builtins {
             .await_all()
             .await_any()
             .json_stringify()
+            .html_element_add_event_listener()
             .document_get_element_by_id()
     }
 
@@ -306,12 +306,15 @@ impl Builtins {
                 type_param(t.clone()),
                 explicit(
                     tupled.clone(),
-                    unbound_explicit_sigma(
-                        unbound_explicit_pi(
-                            AnonVarargs(Box::new(Ref(varargs.clone()))),
-                            Ref(t.clone()),
-                        ),
-                        unbound_explicit_sigma(Number, Ref(varargs.clone())),
+                    explicit_sigma_rfold(
+                        [
+                            unbound_explicit_pi(
+                                AnonVarargs(Box::new(Ref(varargs.clone()))),
+                                Ref(t.clone()),
+                            ),
+                            Number,
+                        ],
+                        Ref(varargs.clone()),
                     ),
                 ),
             ],
@@ -323,7 +326,7 @@ impl Builtins {
                 ),
                 (
                     f_rhs.clone(),
-                    unbound_explicit_sigma(Number, Ref(varargs.clone())),
+                    explicit_sigma([Number, Ref(varargs.clone())]),
                 ),
                 Ref(tupled),
                 explicit_tuple_bind(
@@ -490,7 +493,7 @@ impl Builtins {
             Number,
             explicit_tuple_bind(
                 (a.clone(), a_ty),
-                (a_rhs.clone(), explicit_sigma1(v.clone(), v_ty.clone())),
+                (a_rhs.clone(), explicit_sigma([v_ty.clone()])),
                 Ref(tupled),
                 explicit_tuple_bind1(
                     v.clone(),
@@ -526,7 +529,7 @@ impl Builtins {
             Unit,
             explicit_tuple_bind(
                 (a.clone(), a_ty),
-                (a_rhs.clone(), explicit_sigma1(f.clone(), f_ty.clone())),
+                (a_rhs.clone(), explicit_sigma([f_ty.clone()])),
                 Ref(tupled),
                 explicit_tuple_bind1(
                     f.clone(),
@@ -555,7 +558,7 @@ impl Builtins {
             option_type(Ref(t)),
             explicit_tuple_bind(
                 (a.clone(), a_ty),
-                (a_rhs.clone(), explicit_sigma1(i.clone(), i_ty.clone())),
+                (a_rhs.clone(), explicit_sigma([i_ty.clone()])),
                 tupled,
                 explicit_tuple_bind1(
                     i.clone(),
@@ -591,17 +594,11 @@ impl Builtins {
             Unit,
             explicit_tuple_bind(
                 (a.clone(), a_ty),
-                (
-                    a_rhs.clone(),
-                    explicit_sigma(
-                        (i.clone(), i_ty.clone()),
-                        explicit_sigma1(v.clone(), v_ty.clone()),
-                    ),
-                ),
+                (a_rhs.clone(), explicit_sigma([i_ty.clone(), v_ty.clone()])),
                 tupled,
                 explicit_tuple_bind(
                     (i.clone(), i_ty),
-                    (i_rhs.clone(), explicit_sigma1(v.clone(), v_ty.clone())),
+                    (i_rhs.clone(), explicit_sigma([v_ty.clone()])),
                     Ref(a_rhs),
                     explicit_tuple_bind1(
                         v.clone(),
@@ -686,7 +683,7 @@ impl Builtins {
             Boolean,
             explicit_tuple_bind(
                 (m.clone(), m_ty),
-                (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
+                (m_rhs.clone(), explicit_sigma([key_ty.clone()])),
                 Ref(tupled),
                 explicit_tuple_bind1(
                     key.clone(),
@@ -716,7 +713,7 @@ impl Builtins {
             Ref(v),
             explicit_tuple_bind(
                 (m.clone(), m_ty),
-                (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
+                (m_rhs.clone(), explicit_sigma([key_ty.clone()])),
                 tupled,
                 explicit_tuple_bind1(
                     key.clone(),
@@ -755,18 +752,12 @@ impl Builtins {
                 (m.clone(), m_ty),
                 (
                     m_rhs.clone(),
-                    explicit_sigma(
-                        (key.clone(), key_ty.clone()),
-                        explicit_sigma1(val.clone(), val_ty.clone()),
-                    ),
+                    explicit_sigma([key_ty.clone(), val_ty.clone()]),
                 ),
                 tupled,
                 explicit_tuple_bind(
                     (key.clone(), key_ty),
-                    (
-                        key_rhs.clone(),
-                        explicit_sigma1(val.clone(), val_ty.clone()),
-                    ),
+                    (key_rhs.clone(), explicit_sigma([val_ty.clone()])),
                     Ref(m_rhs),
                     explicit_tuple_bind1(
                         val.clone(),
@@ -797,7 +788,7 @@ impl Builtins {
             Boolean,
             explicit_tuple_bind(
                 (m.clone(), m_ty),
-                (m_rhs.clone(), explicit_sigma1(key.clone(), key_ty.clone())),
+                (m_rhs.clone(), explicit_sigma([key_ty.clone()])),
                 tupled,
                 explicit_tuple_bind1(
                     key.clone(),
@@ -919,6 +910,52 @@ impl Builtins {
             tele,
             String,
             explicit_tuple_bind1(a.clone(), Ref(t), tupled, JSONStringify(Box::new(Ref(a)))),
+        )
+    }
+
+    fn html_element_add_event_listener(self) -> Self {
+        let n = Var::new("n");
+        let n_rhs = n.untupled_rhs();
+        let n_ty = Var::new("HTMLElement");
+        let e = Var::new("e");
+        let e_rhs = e.untupled_rhs();
+        let l = Var::new("l");
+        let l_ty = Var::new("Listener");
+        let (tupled, tele) = parameters(
+            [n_ty.clone(), l_ty.clone()],
+            [
+                (n.clone(), Ref(n_ty.clone())),
+                (e.clone(), String),
+                (l.clone(), Ref(l_ty.clone())),
+            ],
+        );
+        self.func(
+            "htmlElement#addEventListener",
+            tele,
+            Unit,
+            explicit_tuple_bind(
+                (n.clone(), Ref(n_ty.clone())),
+                (
+                    n_rhs.clone(),
+                    explicit_sigma([Ref(n_ty.clone()), Ref(l_ty.clone())]),
+                ),
+                tupled,
+                explicit_tuple_bind(
+                    (e.clone(), String),
+                    (e_rhs.clone(), explicit_sigma([Ref(l_ty.clone())])),
+                    Ref(n_rhs),
+                    explicit_tuple_bind1(
+                        l.clone(),
+                        Ref(l_ty),
+                        Ref(e_rhs),
+                        HtmlElementAddEventListener(
+                            Box::new(Ref(n)),
+                            Box::new(Ref(e)),
+                            Box::new(Ref(l)),
+                        ),
+                    ),
+                ),
+            ),
         )
     }
 

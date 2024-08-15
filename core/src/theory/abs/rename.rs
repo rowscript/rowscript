@@ -171,6 +171,9 @@ impl Renamer {
             ConsoleLog(m) => ConsoleLog(self.term(m)),
             SetTimeout(f, d, x) => SetTimeout(self.term(f), self.term(d), self.term(x)),
             JSONStringify(a) => JSONStringify(self.term(a)),
+            HtmlElementAddEventListener(n, e, l) => {
+                HtmlElementAddEventListener(self.term(n), self.term(e), self.term(l))
+            }
             DocumentGetElementById(a) => DocumentGetElementById(self.term(a)),
             EmitAsync(a) => EmitAsync(self.term(a)),
             tm => tm,

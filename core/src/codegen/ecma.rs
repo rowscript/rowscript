@@ -1451,6 +1451,12 @@ impl Ecma {
                 }),
                 vec![Self::non_spread(self.expr(sigma, loc, a)?)],
             ),
+            HtmlElementAddEventListener(n, e, l) => Self::prototype(
+                loc,
+                Self::paren(loc, self.expr(sigma, loc, n)?),
+                "addEventListener",
+                [self.expr(sigma, loc, e)?, self.expr(sigma, loc, l)?],
+            ),
             DocumentGetElementById(a) => Self::optionify(
                 loc,
                 Self::call(

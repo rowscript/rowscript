@@ -16,6 +16,7 @@ class MouseEvent {
     MouseEventType;
 
     toEventString(): string {
+        // FIXME: This still doesn't work.
         this.toLowerCase()
     }
 }
@@ -31,7 +32,7 @@ class HTMLElement {
     where
         E instanceof Event
     {
-        // TODO
+        htmlElement#addEventListener(this, eventType.toEventString(), listener);
     }
 }
 

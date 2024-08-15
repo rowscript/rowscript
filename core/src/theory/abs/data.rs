@@ -194,6 +194,7 @@ pub enum Term {
     ConsoleLog(Box<Self>),
     SetTimeout(Box<Self>, Box<Self>, Box<Self>),
     JSONStringify(Box<Self>),
+    HtmlElementAddEventListener(Box<Self>, Box<Self>, Box<Self>),
     DocumentGetElementById(Box<Self>),
 }
 
@@ -559,6 +560,7 @@ impl Display for Term {
                 ConsoleLog(m) => format!("console.log({m})"),
                 SetTimeout(f, d, x) => format!("setTimeout({f}, {d}, {x})"),
                 JSONStringify(a) => format!("JSON.stringify({a})"),
+                HtmlElementAddEventListener(n, e, l) => format!("{n}.addEventListener({e}, {l})"),
                 DocumentGetElementById(a) => format!("document.getElementById({a})"),
                 Pure => "pure".to_string(),
                 Effect(a) => a
