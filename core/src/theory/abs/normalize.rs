@@ -859,7 +859,10 @@ impl<'a> Normalizer<'a> {
                 applied_types,
                 methods,
                 ..
-            }) => (applied_types, methods.get(f.as_str()).unwrap().clone()),
+            }) => match methods.get(f.as_str()) {
+                Some(m) => (applied_types, m.clone()),
+                None => return Err(UnresolvedInstance(ty, self.loc)),
+            },
             None => return Err(UnresolvedInstance(ty, self.loc)),
         };
         let mut meth = self.sigma.get(&meth_ref).unwrap().to_term(meth_ref);

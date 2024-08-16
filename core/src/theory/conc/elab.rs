@@ -804,6 +804,24 @@ impl Elaborator {
                 let (tm, ty) = self.insert_meta(loc, InsertedMeta);
                 InferResult::pure(tm, ty)
             }
+            Const(_, var, maybe_typ, a, b) => {
+                let a_loc = a.loc();
+                let eff = self.insert_meta(a_loc, InsertedMeta).0;
+                let InferResult {
+                    tm: a_tm, ty: a_ty, ..
+                } = self.check_anno(*a, &eff, maybe_typ)?;
+                let param = Param {
+                    var,
+                    info: Explicit,
+                    typ: Box::new(a_ty),
+                };
+                let InferResult { tm, eff, ty } = self.guarded_infer([&param], *b)?;
+                InferResult {
+                    tm: Term::Const(param, Box::new(a_tm), Box::new(tm)),
+                    eff,
+                    ty,
+                }
+            }
             Return(_, a) => {
                 let a = self.check(
                     *a,

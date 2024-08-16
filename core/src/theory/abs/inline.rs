@@ -43,9 +43,7 @@ pub fn noinline(tm: &Term) -> bool {
             fold
         }
 
-        While(a, b, c) | If(a, b, c) | HtmlElementAddEventListener(a, b, c) => {
-            noinline(a) || noinline(b) || noinline(c)
-        }
+        While(a, b, c) | If(a, b, c) => noinline(a) || noinline(b) || noinline(c),
 
         Const(_, a, b)
         | Fori(a, b)
@@ -75,8 +73,7 @@ pub fn noinline(tm: &Term) -> bool {
         | Combine(.., a, b)
         | Cat(a, b) => noinline(a) || noinline(b),
 
-        Lam(.., a)
-        | BoolNot(a)
+        BoolNot(a)
         | StrToLowerCase(a)
         | NumNeg(a)
         | NumToStr(a)
@@ -88,14 +85,36 @@ pub fn noinline(tm: &Term) -> bool {
         | Variant(a)
         | Up(a, ..)
         | Spread(a)
-        | JSONStringify(a)
-        | DocumentGetElementById(a) => noinline(a),
+        | JSONStringify(a) => noinline(a),
 
-        Extern(..) | Let(..) | Update(..) | Return(..) | Continue | Break | ArrIterNext(..)
-        | ArrLength(..) | ArrPush(..) | ArrForeach(..) | ArrAt(..) | ArrInsert(..)
-        | ArrIter(..) | MapIterNext(..) | Kv(..) | MapHas(..) | MapGet(..) | MapSet(..)
-        | MapDelete(..) | MapClear(..) | MapIter(..) | Unionify(..) | Panic(..)
-        | ConsoleLog(..) | SetTimeout(..) | EmitAsync(..) => true,
+        Extern(..)
+        | Let(..)
+        | Update(..)
+        | Return(..)
+        | Continue
+        | Break
+        | ArrIterNext(..)
+        | ArrLength(..)
+        | ArrPush(..)
+        | ArrForeach(..)
+        | ArrAt(..)
+        | ArrInsert(..)
+        | ArrIter(..)
+        | MapIterNext(..)
+        | Kv(..)
+        | MapHas(..)
+        | MapGet(..)
+        | MapSet(..)
+        | MapDelete(..)
+        | MapClear(..)
+        | MapIter(..)
+        | Unionify(..)
+        | Panic(..)
+        | ConsoleLog(..)
+        | SetTimeout(..)
+        | EmitAsync(..)
+        | HtmlElementAddEventListener(..)
+        | DocumentGetElementById(..) => true,
 
         Ref(..)
         | MetaRef(..)
@@ -104,6 +123,7 @@ pub fn noinline(tm: &Term) -> bool {
         | Mu(..)
         | Univ
         | Pi { .. }
+        | Lam(..)
         | Sigma(..)
         | Unit
         | TT
