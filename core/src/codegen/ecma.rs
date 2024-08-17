@@ -1857,14 +1857,18 @@ impl Target for Ecma {
         sigma: &Sigma,
         includes: &[Box<Path>],
         file: File<Term>,
+        is_first_file: bool,
     ) -> Result<(), Error> {
-        let mut body = vec![ModuleItem::Stmt(Stmt::Expr(ExprStmt {
-            span: DUMMY_SP,
-            expr: Box::new(Expr::Lit(Lit::Str(Self::js_str(
-                Default::default(),
-                "use strict",
-            )))),
-        }))];
+        let mut body = Vec::default();
+        if is_first_file {
+            body.push(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+                span: DUMMY_SP,
+                expr: Box::new(Expr::Lit(Lit::Str(Self::js_str(
+                    Default::default(),
+                    "use strict",
+                )))),
+            })));
+        }
         body.extend(self.imports(file.imports)?);
         body.extend(self.includes(includes)?);
         body.extend(self.defs(sigma, file.defs)?);

@@ -19,6 +19,7 @@ pub trait Target {
         sigma: &Sigma,
         includes: &[Box<Path>],
         file: File<Term>,
+        is_first_file: bool,
     ) -> Result<(), Error>;
 }
 
@@ -49,14 +50,16 @@ impl Codegen {
         }
 
         let mut buf = Vec::default();
-
-        for f in files {
-            let file = f.path.clone();
-            self.target
-                .module(&mut buf, sigma, &includes, f)
-                .map_err(|e| print_err(e, &file))?;
-        }
-
+        files
+            .into_vec()
+            .into_iter()
+            .enumerate()
+            .try_fold((), |_, (i, f)| {
+                let file = f.path.clone();
+                self.target
+                    .module(&mut buf, sigma, &includes, f, i == 0)
+                    .map_err(|e| print_err(e, &file))
+            })?;
         if buf.is_empty() {
             return Ok(());
         }

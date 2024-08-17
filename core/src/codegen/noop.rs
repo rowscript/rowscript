@@ -28,6 +28,7 @@ impl Target for Noop {
         _: &Sigma,
         _: &[Box<Path>],
         _: File<Term>,
+        _: bool,
     ) -> Result<(), Error> {
         Ok(())
     }
