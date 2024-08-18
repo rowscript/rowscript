@@ -2032,11 +2032,23 @@ impl Trans {
         use Expr::*;
         let loc = Loc::from(v.as_span());
         let mut pairs = v.into_inner();
-        let n = pairs.next().unwrap().as_str().to_string();
+        let mut to = None;
+        let n = {
+            let mut p = pairs.next().unwrap();
+            if p.as_rule() == Rule::tyref {
+                to = Some(self.maybe_qualified(p));
+                p = pairs.next().unwrap();
+            }
+            p.as_str().to_string()
+        };
         let a = pairs
             .next()
             .map_or(TT(loc), |p| self.expr(p.into_inner().next().unwrap()));
-        Variant(loc, n, Box::new(a))
+        let mut v = Variant(loc, n, Box::new(a));
+        if let Some(to) = to {
+            v = UpcastTo(loc, Box::new(v), Box::new(to))
+        }
+        v
     }
 
     fn tupled_args(&mut self, a: Pair<Rule>) -> Expr {

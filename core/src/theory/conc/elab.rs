@@ -1353,6 +1353,7 @@ impl Elaborator {
                     ty => return Err(ExpectedEnum(ty, loc)),
                 }
             }
+            UpcastTo(..) => todo!(),
             Switch(loc, a, cs, d) => {
                 let a_loc = a.loc();
                 let InferResult {

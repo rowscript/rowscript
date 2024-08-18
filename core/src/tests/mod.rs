@@ -60,6 +60,7 @@ mod ok_enum;
 mod ok_enum_default;
 mod ok_enum_rowpoly;
 mod ok_enum_unionify;
+mod ok_enum_upto;
 mod ok_fn;
 mod ok_fn_mutual;
 mod ok_fn_recur;

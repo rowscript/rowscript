@@ -85,6 +85,7 @@ pub enum Expr {
     Enum(Loc, Box<Self>),
     Variant(Loc, String, Box<Self>),
     Upcast(Loc, Box<Self>),
+    UpcastTo(Loc, Box<Self>, Box<Self>),
     Switch(
         Loc,
         Box<Self>,
@@ -184,6 +185,7 @@ impl Expr {
             | Enum(loc, ..)
             | Variant(loc, ..)
             | Upcast(loc, ..)
+            | UpcastTo(loc, ..)
             | Switch(loc, ..)
             | Unionify(loc, ..)
             | Union(loc, ..)
@@ -388,6 +390,7 @@ impl Display for Expr {
                 Enum(_, r) => format!("[{r}]"),
                 Variant(_, n, a) => format!("{n}({a})"),
                 Upcast(_, a) => format!("[...{a}]"),
+                UpcastTo(_, a, t) => format!("{t}::{a}"),
                 Switch(_, a, cs, d) => {
                     write!(f, "switch ({a}) {{")?;
                     for (n, v, e) in cs {

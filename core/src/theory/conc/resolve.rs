@@ -421,6 +421,7 @@ impl<'a> Resolver<'a> {
             Enum(loc, a) => Enum(loc, self.expr(a)?),
             Variant(loc, n, a) => Variant(loc, n, self.expr(a)?),
             Upcast(loc, a) => Upcast(loc, self.expr(a)?),
+            UpcastTo(loc, a, to) => UpcastTo(loc, self.expr(a)?, self.expr(to)?),
             Switch(loc, a, cs, d) => {
                 let mut names = RawNameSet::default();
                 let mut new = Vec::default();

@@ -1,0 +1,8 @@
+type Data = [
+    A
+    | B
+    | C
+];
+
+// TODO
+//const a = Data::A;
