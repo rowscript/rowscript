@@ -4,28 +4,28 @@ version = "1.0.0-alpha.5"
 edition = "2021"
 
 [dependencies.thiserror]
-version = "1.0.63"
+version = "1.0.64"
 
 [dependencies.ariadne]
 version = "0.4.1"
 
 [dependencies.stacker]
-version = "0.1.15"
+version = "0.1.17"
 
 [dependencies.log]
 version = "0.4.22"
 
 [dependencies.pest]
-version = "2.7.11"
+version = "2.7.14"
 
 [dependencies.pest_derive]
-version = "2.7.11"
+version = "2.7.14"
 
 [dependencies]
-swc_ecma_parser = { version = "0.148.1" }
-swc_ecma_ast = { version = "0.117.2" }
-swc_ecma_codegen = { version = "0.154.2" }
-swc_atoms = { version = "0.6.7" }
-swc_common = { version = "0.36.1", features = ["tty-emitter"] }
-swc_allocator = { version = "0.1.8", default-features = false }
+swc_ecma_parser = { version = "1.0.0" }
+swc_ecma_ast = { version = "1.0.0" }
+swc_ecma_codegen = { version = "1.0.0" }
+swc_atoms = { version = "2.0.0" }
+swc_common = { version = "1.0.0", features = ["tty-emitter"] }
+swc_allocator = { version = "1.0.0", default-features = false }
 num-bigint = { version = "0.4.6" }
