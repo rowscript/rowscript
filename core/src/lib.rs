@@ -174,15 +174,19 @@ fn print_err(e: Error, file: &Path) -> Error {
         CodegenTest => (Default::default(), CODEGEN_FAILED, None),
     };
     let file_str = file.to_string_lossy();
-    let mut b = Report::build(ReportKind::Error, &file_str, range.start).with_message(title);
-    if let Some(m) = msg {
-        b = b.with_label(
-            Label::new((&file_str, range))
+    let labels = msg
+        .map(|m| {
+            vec![Label::new((&file_str, range.clone()))
                 .with_message(m)
-                .with_color(Color::Red),
-        );
-    }
-    b.finish().print((&file_str, Source::from(source))).unwrap();
+                .with_color(Color::Red)]
+        })
+        .unwrap_or_default();
+    Report::build(ReportKind::Error, (&file_str, range))
+        .with_message(title)
+        .with_labels(labels)
+        .finish()
+        .eprint((&file_str, Source::from(source)))
+        .unwrap();
     e
 }
 
