@@ -1,10 +1,9 @@
+use pest::iterators::Pair;
+use pest::Span;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
-use std::rc::Rc;
-
-use pest::iterators::Pair;
-use pest::Span;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::{Error, Rule};
@@ -38,8 +37,6 @@ impl<'a> From<Span<'a>> for Loc {
     }
 }
 
-type Name = Rc<String>;
-
 #[derive(Default, Debug)]
 pub struct RawNameSet(HashSet<String>);
 
@@ -56,9 +53,32 @@ impl RawNameSet {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ID(u64);
+
+impl ID {
+    pub fn fresh() -> Var {
+        Var::new(Self::default().0.to_string())
+    }
+}
+
+impl Default for ID {
+    fn default() -> Self {
+        static NEXT_ID: AtomicU64 = AtomicU64::new(0);
+        Self(NEXT_ID.fetch_add(1, Ordering::Relaxed))
+    }
+}
+
+impl Display for ID {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&self.0, f)
+    }
+}
+
 #[derive(Debug, Clone, Eq)]
 pub struct Var {
-    name: Name,
+    raw: String,
+    id: ID,
 }
 
 pub const UNBOUND: &str = "_";
@@ -91,7 +111,8 @@ pub const TYPEOF: &str = "Typeof";
 impl Var {
     fn new<S: Into<String>>(name: S) -> Self {
         Self {
-            name: Rc::new(name.into()),
+            raw: name.into(),
+            id: Default::default(),
         }
     }
 
@@ -148,11 +169,11 @@ impl Var {
     }
 
     pub fn catch(&self) -> Self {
-        Self::new(format!("catch__{}", self.id()))
+        Self::new(format!("catch__{}", self.id))
     }
 
     pub fn catch_fn(&self) -> Self {
-        Self::new(format!("catch__{}__{self}", self.id()))
+        Self::new(format!("catch__{}__{self}", self.id))
     }
 
     pub fn iterator() -> Self {
@@ -195,12 +216,8 @@ impl Var {
         Self::new(TYPEOF)
     }
 
-    pub fn id(&self) -> usize {
-        Rc::as_ptr(&self.name) as _
-    }
-
     pub fn as_str(&self) -> &str {
-        self.name.as_str()
+        self.raw.as_str()
     }
 }
 
@@ -212,29 +229,19 @@ impl From<Pair<'_, Rule>> for Var {
 
 impl Display for Var {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.name.as_str())
+        f.write_str(self.raw.as_str())
     }
 }
 
 impl PartialEq<Self> for Var {
     fn eq(&self, other: &Self) -> bool {
-        self.id() == other.id()
+        self.id == other.id
     }
 }
 
 impl Hash for Var {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id().hash(state)
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct VarGen(u64);
-
-impl VarGen {
-    pub fn fresh(&mut self) -> Var {
-        self.0 += 1;
-        Var::new(self.0.to_string())
+        self.id.0.hash(state)
     }
 }
 
