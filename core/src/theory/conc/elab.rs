@@ -1353,7 +1353,20 @@ impl Elaborator {
                     ty => return Err(ExpectedEnum(ty, loc)),
                 }
             }
-            UpcastTo(..) => todo!(),
+            UpcastTo(loc, a, to) => {
+                let a_loc = a.loc();
+                let to_loc = to.loc();
+                let InferResult { tm, eff, ty: a_ty } = self.infer(*a)?;
+                let to = self.check(*to, &Term::Pure, &Term::Univ)?;
+                match (&a_ty, &to) {
+                    (Term::Upcast(..), Term::Enum(..)) => {
+                        self.unifier(loc).unify(&a_ty, &to)?;
+                        InferResult { tm, eff, ty: to }
+                    }
+                    (Term::Upcast(..), _) => return Err(ExpectedEnum(to, to_loc)),
+                    _ => return Err(ExpectedEnum(a_ty, a_loc)),
+                }
+            }
             Switch(loc, a, cs, d) => {
                 let a_loc = a.loc();
                 let InferResult {
