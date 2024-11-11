@@ -13,7 +13,7 @@ use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, Unnamed
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{
-    Loc, NameMap, Param, Tele, Var, ARRAY, ASYNC, ID, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX,
+    Loc, NameMap, Param, Tele, Var, VarGen, ARRAY, ASYNC, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX,
 };
 use crate::Error::{
     CatchAsyncEffect, DuplicateEffect, ExpectedCapability, ExpectedEnum, ExpectedInstanceof,
@@ -29,6 +29,8 @@ pub struct Elaborator {
     pub ubiquitous: NameMap,
     pub sigma: Sigma,
     gamma: Gamma,
+
+    vg: VarGen,
 
     checking_eff: Option<Term>,
     checking_ret: Option<Term>,
@@ -1619,7 +1621,7 @@ impl Elaborator {
                         self.sigma.insert(inst_fn.name.clone(), inst_fn);
                     }
 
-                    let inst_name = ID::fresh().catch();
+                    let inst_name = self.vg.fresh().catch();
                     let checked_instance_body = self.check_instance_body(
                         &inst_name,
                         InstanceBody {
@@ -1707,7 +1709,7 @@ impl Elaborator {
     fn insert_meta(&mut self, loc: Loc, k: MetaKind) -> (Term, Term) {
         use Body::*;
 
-        let ty_meta_var = ID::fresh();
+        let ty_meta_var = self.vg.fresh();
         self.sigma.insert(
             ty_meta_var.clone(),
             Def {
@@ -1721,7 +1723,7 @@ impl Elaborator {
         );
         let ty = Term::MetaRef(k.clone(), ty_meta_var, Default::default());
 
-        let tm_meta_var = ID::fresh();
+        let tm_meta_var = self.vg.fresh();
         let tele = gamma_to_tele(&self.gamma);
         let spine = Term::tele_to_spine(&tele);
         self.sigma.insert(
@@ -1756,7 +1758,7 @@ impl Elaborator {
                         if p.info != Implicit {
                             return Err(UnresolvedImplicitParam(name, loc));
                         }
-                        if p.var.raw == name {
+                        if *p.var.name == name {
                             return Ok(ret);
                         }
                         ty = b;
@@ -1862,6 +1864,7 @@ impl Default for Elaborator {
             ubiquitous,
             sigma,
             gamma: Default::default(),
+            vg: Default::default(),
             checking_eff: Default::default(),
             checking_ret: Default::default(),
             checking_class_type_args: Default::default(),
