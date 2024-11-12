@@ -100,34 +100,26 @@ reserved =
   //| "default"
   }
 
-camelback_id = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
-pub_camelback_id = @{ (reserved ~ (ASCII_ALPHA | ASCII_DIGIT)+) | (!reserved ~ camelback_id) }
-priv_camelback_id = @{ "_" ~ pub_camelback_id }
+camelback_part = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
+camelback_id = @{ (reserved ~ (ASCII_ALPHA | ASCII_DIGIT)+) | (!reserved ~ camelback_part) }
 
-pub_camel_id = @{ ASCII_ALPHA_UPPER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
-priv_camel_id = @{ "_" ~ pub_camel_id }
+camel_id = @{ ASCII_ALPHA_UPPER ~ (ASCII_ALPHA | ASCII_DIGIT)* }
 
 lower_id = @{ reserved? ~ ASCII_ALPHA_LOWER+ }
 
-ffi_id = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | ASCII_DIGIT | "_" | "$")* }
-pub_ffi_id = @{ (reserved ~ (ASCII_ALPHA | ASCII_DIGIT | "_" | "$")+) | (!reserved ~ ffi_id) }
-priv_ffi_id = @{ "_" ~ pub_ffi_id }
+ffi_part = @{ ASCII_ALPHA_LOWER ~ (ASCII_ALPHA | ASCII_DIGIT | "_" | "$")* }
+ffi_id = @{ (reserved ~ (ASCII_ALPHA | ASCII_DIGIT | "_" | "$")+) | (!reserved ~ ffi_part) }
 
-fn_id = { pub_fn_id | priv_fn_id }
-pub_fn_id = _{ pub_camelback_id }
-priv_fn_id = _{ priv_camelback_id }
-postulate_id = { pub_ffi_id | priv_ffi_id }
-row_id = @{ "'" ~ pub_camelback_id }
-implicit_id = { pub_camel_id }
-type_id = { pub_type_id | priv_type_id }
-pub_type_id = _{ pub_camel_id }
-priv_type_id = _{ priv_camel_id }
-prop_id = { pub_camelback_id | priv_camelback_id }
-variant_id = { pub_camel_id | priv_camel_id }
+fn_id = { camelback_id }
+postulate_id = { ffi_id }
+row_id = @{ "'" ~ camelback_id }
+implicit_id = { camel_id }
+type_id = { camel_id }
+prop_id = { camelback_id }
+variant_id = { camel_id }
 field_id = _{ prop_id | variant_id }
-pub_field_id = _{ pub_camelback_id | pub_camel_id }
-param_id = { pub_camelback_id }
-bind_id = { pub_camelback_id }
+param_id = { camelback_id }
+bind_id = { camelback_id }
 this_id = { "this" }
 std_pkg_id = { lower_id }
 vendor_org_id = @{ "@" ~ lower_id }
@@ -225,7 +217,7 @@ tyref =
   | type_id
   | this_id
   }
-importable = { pub_fn_id | pub_type_id }
+importable = { fn_id | type_id }
 
 boolean_false = { "false" }
 boolean_true = { "true" }
@@ -292,7 +284,6 @@ params =
   }
 
 field = { field_id ~ ":" ~ type_expr }
-pub_field = { pub_field_id ~ ":" ~ type_expr }
 property = { prop_id ~ ":" ~ type_expr }
 properties = { property ~ ("," ~ property)* }
 label = { prop_id ~ ":" ~ expr }
@@ -592,7 +583,7 @@ row_primary_expr =
   | row_literal
   | paren_row_expr
   }
-row_literal = { "(" ~ pub_field ~ ("," ~ pub_field)* ~ ")" }
+row_literal = { "(" ~ field ~ ("," ~ field)* ~ ")" }
 row_concat = { row_primary_expr ~ "+" ~ row_expr }
 paren_row_expr = { "(" ~ row_expr ~ ")" }
 instanceof = { type_expr ~ implicit_args? ~ "instanceof" ~ tyref }
