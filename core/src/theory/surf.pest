@@ -751,7 +751,7 @@ fn_verify =
   }
 
 def =
- _{ fn_def
+  { fn_def
   | fn_postulate
   | type_postulate
   | type_alias

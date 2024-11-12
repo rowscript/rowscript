@@ -62,22 +62,29 @@ impl Trans {
                 Rule::import_std | Rule::import_vendor | Rule::import_local => {
                     imports.push(self.import(d))
                 }
-                Rule::fn_def => defs.push(self.fn_def(d, None)),
-                Rule::fn_postulate => defs.push(self.fn_postulate(d)),
-                Rule::type_postulate => defs.push(self.type_postulate(d)),
-                Rule::type_alias => defs.push(self.type_alias(d)),
-                Rule::interface_def => defs.extend(self.interface_def(d)),
-                Rule::instance_def => defs.extend(self.instance_def(d)),
-                Rule::const_def => defs.push(self.const_def(d)),
-                Rule::class_def => defs.extend(self.class_def(d)),
-                Rule::namespace_def => defs.extend(self.namespace_def(d)),
-                Rule::type_verify => defs.push(self.type_verify(d)),
-                Rule::fn_verify => defs.push(self.fn_verify(d)),
+                Rule::def => self.def(d.into_inner().next().unwrap(), &mut defs),
                 Rule::EOI => break,
                 _ => unreachable!(),
             }
         }
         (imports.into(), defs.into())
+    }
+
+    fn def(&mut self, d: Pair<Rule>, defs: &mut Vec<Def<Expr>>) {
+        match d.as_rule() {
+            Rule::fn_def => defs.push(self.fn_def(d, None)),
+            Rule::fn_postulate => defs.push(self.fn_postulate(d)),
+            Rule::type_postulate => defs.push(self.type_postulate(d)),
+            Rule::type_alias => defs.push(self.type_alias(d)),
+            Rule::interface_def => defs.extend(self.interface_def(d)),
+            Rule::instance_def => defs.extend(self.instance_def(d)),
+            Rule::const_def => defs.push(self.const_def(d)),
+            Rule::class_def => defs.extend(self.class_def(d)),
+            Rule::namespace_def => defs.extend(self.namespace_def(d)),
+            Rule::type_verify => defs.push(self.type_verify(d)),
+            Rule::fn_verify => defs.push(self.fn_verify(d)),
+            _ => unreachable!(),
+        }
     }
 
     fn import(&mut self, d: Pair<Rule>) -> Import {
