@@ -1,1 +1,1 @@
-type Element = {tag: string};
+export type Element = {tag: string};

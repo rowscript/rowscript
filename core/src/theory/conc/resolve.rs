@@ -54,7 +54,8 @@ impl<'a> Resolver<'a> {
     }
 
     fn file(&mut self, mut file: File<Expr>) -> Result<File<Expr>, Error> {
-        self.imports(&file.imports)?;
+        self.imports(&file.imports)
+            .map_err(|e| print_err(e, &file.path))?;
         file.defs = file
             .defs
             .into_vec()

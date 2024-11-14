@@ -1,1 +1,1 @@
-type Route = {path: string};
+export type Route = {path: string};

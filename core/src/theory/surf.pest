@@ -750,7 +750,17 @@ fn_verify =
   ~ ";"
   }
 
-def =
+exportable_def =
+  { fn_def
+  | fn_postulate
+  | type_postulate
+  | type_alias
+  | const_def
+  | class_def
+  | namespace_def
+  }
+public_def = { "export" ~ exportable_def }
+private_def =
   { fn_def
   | fn_postulate
   | type_postulate
@@ -762,6 +772,11 @@ def =
   | namespace_def
   | type_verify
   | fn_verify
+  }
+
+def =
+ _{ public_def
+  | private_def
   }
 
 import_std =

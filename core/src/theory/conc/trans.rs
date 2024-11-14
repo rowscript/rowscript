@@ -62,7 +62,8 @@ impl Trans {
                 Rule::import_std | Rule::import_vendor | Rule::import_local => {
                     imports.push(self.import(d))
                 }
-                Rule::def => self.private_def(d.into_inner().next().unwrap(), &mut defs),
+                Rule::public_def => self.def(d.into_inner().next().unwrap(), true, &mut defs),
+                Rule::private_def => self.def(d, false, &mut defs),
                 Rule::EOI => break,
                 _ => unreachable!(),
             }
@@ -70,19 +71,20 @@ impl Trans {
         (imports.into(), defs.into())
     }
 
-    fn private_def(&mut self, d: Pair<Rule>, defs: &mut Vec<Def<Expr>>) {
-        match d.as_rule() {
-            Rule::fn_def => defs.push(self.fn_def(d, None)),
-            Rule::fn_postulate => defs.push(self.fn_postulate(d)),
-            Rule::type_postulate => defs.push(self.type_postulate(d)),
-            Rule::type_alias => defs.push(self.type_alias(d)),
-            Rule::interface_def => defs.extend(self.interface_def(d)),
-            Rule::instance_def => defs.extend(self.instance_def(d)),
-            Rule::const_def => defs.push(self.const_def(d)),
-            Rule::class_def => defs.extend(self.class_def(d)),
-            Rule::namespace_def => defs.extend(self.namespace_def(d)),
-            Rule::type_verify => defs.push(self.type_verify(d)),
-            Rule::fn_verify => defs.push(self.fn_verify(d)),
+    fn def(&mut self, d: Pair<Rule>, is_public: bool, defs: &mut Vec<Def<Expr>>) {
+        let p = d.into_inner().next().unwrap();
+        match p.as_rule() {
+            Rule::fn_def => defs.push(self.fn_def(p, is_public, None)),
+            Rule::fn_postulate => defs.push(self.fn_postulate(p, is_public)),
+            Rule::type_postulate => defs.push(self.type_postulate(p, is_public)),
+            Rule::type_alias => defs.push(self.type_alias(p, is_public)),
+            Rule::interface_def => defs.extend(self.interface_def(p)),
+            Rule::instance_def => defs.extend(self.instance_def(p)),
+            Rule::const_def => defs.push(self.const_def(p, is_public)),
+            Rule::class_def => defs.extend(self.class_def(p, is_public)),
+            Rule::namespace_def => defs.extend(self.namespace_def(p, is_public)),
+            Rule::type_verify => defs.push(self.type_verify(p)),
+            Rule::fn_verify => defs.push(self.fn_verify(p)),
             _ => unreachable!(),
         }
     }
@@ -147,7 +149,12 @@ impl Trans {
         )
     }
 
-    fn fn_def(&mut self, f: Pair<Rule>, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
+    fn fn_def(
+        &mut self,
+        f: Pair<Rule>,
+        is_public: bool,
+        this: Option<(Expr, Tele<Expr>)>,
+    ) -> Def<Expr> {
         use Body::*;
         use Expr::*;
 
@@ -214,7 +221,7 @@ impl Trans {
         tele.extend(preds);
 
         Def {
-            is_public: false,
+            is_public,
             loc,
             name,
             tele,
@@ -297,13 +304,13 @@ impl Trans {
         (tele, Self::concat_effects(async_eff, capabilities), ret)
     }
 
-    fn fn_postulate(&mut self, f: Pair<Rule>) -> Def<Expr> {
+    fn fn_postulate(&mut self, f: Pair<Rule>, is_public: bool) -> Def<Expr> {
         let loc = Loc::from(f.as_span());
         let mut pairs = f.into_inner();
         let (name, eff) = self.name_maybe_async(&mut pairs);
         let (tele, eff, ret) = self.fn_signature(pairs, loc, *eff);
         Def {
-            is_public: false,
+            is_public,
             loc,
             name,
             tele,
@@ -313,7 +320,7 @@ impl Trans {
         }
     }
 
-    fn type_postulate(&mut self, t: Pair<Rule>) -> Def<Expr> {
+    fn type_postulate(&mut self, t: Pair<Rule>, is_public: bool) -> Def<Expr> {
         use Body::*;
         use Expr::*;
         let loc = Loc::from(t.as_span());
@@ -328,7 +335,7 @@ impl Trans {
             }
         }
         Def {
-            is_public: false,
+            is_public,
             loc,
             name,
             tele,
@@ -338,7 +345,7 @@ impl Trans {
         }
     }
 
-    fn type_alias(&mut self, t: Pair<Rule>) -> Def<Expr> {
+    fn type_alias(&mut self, t: Pair<Rule>, is_public: bool) -> Def<Expr> {
         use Body::*;
         use Expr::*;
 
@@ -360,7 +367,7 @@ impl Trans {
         }
 
         Def {
-            is_public: false,
+            is_public,
             loc,
             name,
             tele,
@@ -430,9 +437,9 @@ impl Trans {
                         _ => unreachable!(),
                     };
                     let mut d = if is_implements_fn {
-                        self.fn_def(p, None)
+                        self.fn_def(p, false, None)
                     } else {
-                        self.fn_postulate(p)
+                        self.fn_postulate(p, false)
                     };
                     let mut tele = vec![Param {
                         var: Var::this(),
@@ -514,7 +521,7 @@ impl Trans {
 
         let mut fns = HashMap::default();
         for p in pairs {
-            let mut def = self.fn_def(p, None);
+            let mut def = self.fn_def(p, false, None);
             let fn_name = def.name.instance_fn(&i, &inst);
             fns.insert(def.name.clone(), fn_name.clone());
             def.name = fn_name;
@@ -537,7 +544,7 @@ impl Trans {
         defs
     }
 
-    fn const_def(&mut self, c: Pair<Rule>) -> Def<Expr> {
+    fn const_def(&mut self, c: Pair<Rule>, is_public: bool) -> Def<Expr> {
         use Body::*;
         use Expr::*;
         let loc = Loc::from(c.as_span());
@@ -553,7 +560,7 @@ impl Trans {
                 }
                 Rule::expr => {
                     return Def {
-                        is_public: false,
+                        is_public,
                         loc,
                         name,
                         tele: Default::default(),
@@ -568,7 +575,7 @@ impl Trans {
         unreachable!()
     }
 
-    fn class_def(&mut self, c: Pair<Rule>) -> Vec<Def<Expr>> {
+    fn class_def(&mut self, c: Pair<Rule>, is_public: bool) -> Vec<Def<Expr>> {
         use Body::*;
         use Expr::*;
 
@@ -608,7 +615,7 @@ impl Trans {
 
                     associated.insert(typ_name, mangled_typ_var.clone());
                     associated_defs.push(Def {
-                        is_public: false,
+                        is_public,
                         loc: typ_name_loc,
                         name: mangled_typ_var,
                         tele: tele.clone(),
@@ -653,8 +660,11 @@ impl Trans {
                     )
                 }
                 Rule::class_method => {
-                    let mut m =
-                        self.fn_def(p, Some((Unresolved(loc, None, name.clone()), tele.clone())));
+                    let mut m = self.fn_def(
+                        p,
+                        is_public,
+                        Some((Unresolved(loc, None, name.clone()), tele.clone())),
+                    );
                     let method_name = m.name.to_string();
                     let method_var = name.method(m.name);
                     m.name = method_var.clone();
@@ -713,7 +723,7 @@ impl Trans {
 
         let mut defs = associated_defs;
         defs.push(Def {
-            is_public: false,
+            is_public,
             loc,
             name: name.clone(),
             tele: tele.clone(),
@@ -730,7 +740,7 @@ impl Trans {
             },
         });
         let ctor_def = Def {
-            is_public: false,
+            is_public,
             loc,
             name: ctor_name,
             tele: ctor_tele,
@@ -748,7 +758,7 @@ impl Trans {
         defs
     }
 
-    fn namespace_def(&mut self, n: Pair<Rule>) -> Vec<Def<Expr>> {
+    fn namespace_def(&mut self, n: Pair<Rule>, is_public: bool) -> Vec<Def<Expr>> {
         use Body::*;
         use Expr::*;
 
@@ -780,6 +790,7 @@ impl Trans {
                 Rule::class_method => {
                     let mut m = self.fn_def(
                         p,
+                        is_public,
                         Some((
                             Unresolved(loc, None, class_name.clone()),
                             Default::default(),
@@ -822,7 +833,7 @@ impl Trans {
 
         let mut defs = vec![
             Def {
-                is_public: false,
+                is_public,
                 loc,
                 name: class_name.clone(),
                 tele: tele.clone(),
@@ -836,7 +847,7 @@ impl Trans {
                 },
             },
             Def {
-                is_public: false,
+                is_public,
                 loc,
                 name: ctor_name.clone(),
                 tele: ctor_tele,
@@ -845,7 +856,7 @@ impl Trans {
                 body: ctor_body,
             },
             Def {
-                is_public: false,
+                is_public,
                 loc,
                 name,
                 tele: Default::default(),
@@ -2100,7 +2111,7 @@ impl Trans {
         let inst_ty = self.type_expr(pairs.next().unwrap());
         let mut inst_fns = Vec::default();
         for p in pairs {
-            let mut def = self.fn_def(p, None);
+            let mut def = self.fn_def(p, false, None);
             let name = def.name.to_string();
             def.name = def.name.catch_fn();
             def.body = match def.body {
