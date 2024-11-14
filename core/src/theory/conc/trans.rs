@@ -62,7 +62,7 @@ impl Trans {
                 Rule::import_std | Rule::import_vendor | Rule::import_local => {
                     imports.push(self.import(d))
                 }
-                Rule::def => self.def(d.into_inner().next().unwrap(), &mut defs),
+                Rule::def => self.private_def(d.into_inner().next().unwrap(), &mut defs),
                 Rule::EOI => break,
                 _ => unreachable!(),
             }
@@ -70,7 +70,7 @@ impl Trans {
         (imports.into(), defs.into())
     }
 
-    fn def(&mut self, d: Pair<Rule>, defs: &mut Vec<Def<Expr>>) {
+    fn private_def(&mut self, d: Pair<Rule>, defs: &mut Vec<Def<Expr>>) {
         match d.as_rule() {
             Rule::fn_def => defs.push(self.fn_def(d, None)),
             Rule::fn_postulate => defs.push(self.fn_postulate(d)),
@@ -214,6 +214,7 @@ impl Trans {
         tele.extend(preds);
 
         Def {
+            is_public: false,
             loc,
             name,
             tele,
@@ -302,6 +303,7 @@ impl Trans {
         let (name, eff) = self.name_maybe_async(&mut pairs);
         let (tele, eff, ret) = self.fn_signature(pairs, loc, *eff);
         Def {
+            is_public: false,
             loc,
             name,
             tele,
@@ -326,6 +328,7 @@ impl Trans {
             }
         }
         Def {
+            is_public: false,
             loc,
             name,
             tele,
@@ -357,6 +360,7 @@ impl Trans {
         }
 
         Def {
+            is_public: false,
             loc,
             name,
             tele,
@@ -467,6 +471,7 @@ impl Trans {
         }
 
         let mut defs = vec![Def {
+            is_public: false,
             loc,
             name: name.clone(),
             tele: vec![Param {
@@ -521,6 +526,7 @@ impl Trans {
         }
 
         defs.push(Def {
+            is_public: false,
             loc,
             name: i.instance(&inst),
             tele: Default::default(),
@@ -547,6 +553,7 @@ impl Trans {
                 }
                 Rule::expr => {
                     return Def {
+                        is_public: false,
                         loc,
                         name,
                         tele: Default::default(),
@@ -601,6 +608,7 @@ impl Trans {
 
                     associated.insert(typ_name, mangled_typ_var.clone());
                     associated_defs.push(Def {
+                        is_public: false,
                         loc: typ_name_loc,
                         name: mangled_typ_var,
                         tele: tele.clone(),
@@ -705,6 +713,7 @@ impl Trans {
 
         let mut defs = associated_defs;
         defs.push(Def {
+            is_public: false,
             loc,
             name: name.clone(),
             tele: tele.clone(),
@@ -721,6 +730,7 @@ impl Trans {
             },
         });
         let ctor_def = Def {
+            is_public: false,
             loc,
             name: ctor_name,
             tele: ctor_tele,
@@ -812,6 +822,7 @@ impl Trans {
 
         let mut defs = vec![
             Def {
+                is_public: false,
                 loc,
                 name: class_name.clone(),
                 tele: tele.clone(),
@@ -825,6 +836,7 @@ impl Trans {
                 },
             },
             Def {
+                is_public: false,
                 loc,
                 name: ctor_name.clone(),
                 tele: ctor_tele,
@@ -833,6 +845,7 @@ impl Trans {
                 body: ctor_body,
             },
             Def {
+                is_public: false,
                 loc,
                 name,
                 tele: Default::default(),
@@ -862,6 +875,7 @@ impl Trans {
             }
         }
         Def {
+            is_public: false,
             loc,
             name: Var::unbound(),
             tele,
@@ -877,6 +891,7 @@ impl Trans {
         let (target, eff) = self.idref_maybe_async(&mut pairs);
         let (tele, eff, ret) = self.fn_signature(pairs, loc, *eff);
         Def {
+            is_public: false,
             loc,
             name: Var::unbound(),
             tele,

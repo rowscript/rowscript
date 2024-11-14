@@ -1614,7 +1614,7 @@ impl Ecma {
     }
 
     fn try_export_decl(def: &Def<Term>, decl: Decl) -> ModuleItem {
-        if def.is_private() {
+        if !def.is_public {
             ModuleItem::Stmt(Stmt::Decl(decl))
         } else {
             ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl {
@@ -1643,7 +1643,7 @@ impl Ecma {
     }
 
     fn postulate_decl(&self, items: &mut Vec<ModuleItem>, def: &Def<Term>) -> Result<(), Error> {
-        if def.is_private() {
+        if !def.is_public {
             return Ok(());
         }
         if matches!(def.ret.as_ref(), Term::Univ) {

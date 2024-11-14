@@ -26,18 +26,13 @@ pub fn tele_to_refs(tele: &Tele<Term>) -> Box<[Term]> {
 
 #[derive(Clone, Debug)]
 pub struct Def<T: Syntax> {
+    pub is_public: bool,
     pub loc: Loc,
     pub name: Var,
     pub tele: Tele<T>,
     pub eff: Box<T>,
     pub ret: Box<T>,
     pub body: Body<T>,
-}
-
-impl<T: Syntax> Def<T> {
-    pub fn is_private(&self) -> bool {
-        matches!(self.name.as_str().chars().next(), Some(b) if b == '_')
-    }
 }
 
 impl Def<Expr> {

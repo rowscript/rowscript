@@ -231,6 +231,7 @@ impl Builtins {
 
     fn impure_func(self, name: &str, tele: Tele<Term>, eff: Term, ret: Term, f: Term) -> Self {
         self.define(Def {
+            is_public: false,
             loc: Default::default(),
             name: Var::new(name),
             tele,

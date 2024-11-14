@@ -337,7 +337,7 @@ impl Compiler {
                     );
                 }
                 if let Some(m) = module {
-                    if !d.is_private() {
+                    if d.is_public {
                         self.loaded
                             .insert(m, d)
                             .map_err(|e| print_err(e, &f.path))?

@@ -88,6 +88,7 @@ impl Elaborator {
         info!(target: "elab", "checking definition: {}", d.name);
 
         let Def {
+            is_public,
             loc,
             name,
             tele,
@@ -121,6 +122,7 @@ impl Elaborator {
             self.sigma.insert(
                 name.clone(),
                 Def {
+                    is_public,
                     loc,
                     name: name.clone(),
                     tele: tele.clone(),
@@ -242,6 +244,7 @@ impl Elaborator {
             ret = r;
         }
         let def = Def {
+            is_public,
             loc,
             name,
             tele,
@@ -322,6 +325,7 @@ impl Elaborator {
         }
 
         Ok(Def {
+            is_public: false,
             loc: d.loc,
             name: d.name.clone(),
             tele,
@@ -396,6 +400,7 @@ impl Elaborator {
         }
 
         let inst_def = Def {
+            is_public: false,
             loc,
             name: i.instance(&inst),
             tele: Default::default(),
@@ -1636,6 +1641,7 @@ impl Elaborator {
                     self.sigma.insert(
                         inst_name.clone(),
                         Def {
+                            is_public: false,
                             loc: i_loc,
                             name: inst_name,
                             tele: Default::default(),
@@ -1713,6 +1719,7 @@ impl Elaborator {
         self.sigma.insert(
             ty_meta_var.clone(),
             Def {
+                is_public: false,
                 loc,
                 name: ty_meta_var.clone(),
                 tele: Default::default(),
@@ -1729,6 +1736,7 @@ impl Elaborator {
         self.sigma.insert(
             tm_meta_var.clone(),
             Def {
+                is_public: false,
                 loc,
                 name: tm_meta_var.clone(),
                 tele,
