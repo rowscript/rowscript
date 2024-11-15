@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use pest::iterators::Pair;
 use pest::Span;
@@ -228,14 +229,9 @@ impl Hash for Var {
     }
 }
 
-#[derive(Debug, Default)]
-pub struct VarGen(u64);
-
-impl VarGen {
-    pub fn fresh(&mut self) -> Var {
-        self.0 += 1;
-        Var::new(self.0.to_string())
-    }
+pub fn fresh() -> Var {
+    static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+    Var::new(NEXT_ID.fetch_add(1, Ordering::Relaxed).to_string())
 }
 
 pub trait Syntax: Display {}
