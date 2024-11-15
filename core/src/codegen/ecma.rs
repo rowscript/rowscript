@@ -29,7 +29,7 @@ use crate::theory::conc::data::ArgInfo::{UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::ParamInfo::Explicit;
 use crate::theory::{
-    Loc, Param, Tele, Var, AWAIT, AWAIT_ALL, AWAIT_ANY, AWAIT_MUL, THIS, TUPLED, UNBOUND,
+    Loc, Param, Tele, Var, VarName, AWAIT, AWAIT_ALL, AWAIT_ANY, AWAIT_MUL, THIS, TUPLED,
     UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX,
 };
 use crate::Error::{NonErasable, UnsolvedMeta};
@@ -85,7 +85,14 @@ impl Ecma {
     }
 
     fn ident(loc: Loc, v: &Var) -> Ident {
-        Self::str_ident(loc, v.as_str())
+        Self::str_ident(
+            loc,
+            match &v.name {
+                VarName::Bound(n) => n.as_str(),
+                VarName::Unbound(..) => "_",
+                _ => unreachable!(),
+            },
+        )
     }
 
     fn asis_ident(loc: Loc, v: &Var) -> Ident {
@@ -1684,8 +1691,8 @@ impl Ecma {
         } else {
             self.expr(sigma, def.loc, f)?
         });
-        items.push(match def.name.as_str() {
-            UNBOUND => ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+        items.push(match def.name.name {
+            VarName::Unbound(..) => ModuleItem::Stmt(Stmt::Expr(ExprStmt {
                 span: def.loc.into(),
                 expr,
             })),

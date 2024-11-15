@@ -56,21 +56,22 @@ impl RawNameSet {
     }
 
     pub fn raw(&mut self, loc: Loc, f: String) -> Result<(), Error> {
-        if f.as_str() != UNBOUND && !self.0.insert(f) {
-            return Err(Error::DuplicateName(loc));
-        }
-        Ok(())
+        self.0
+            .insert(f)
+            .then_some(())
+            .ok_or(Error::DuplicateName(loc))
     }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Var {
-    name: VarName,
+    pub name: VarName,
 }
 
 #[derive(Debug, Clone, Eq)]
 pub enum VarName {
     Bound(Name),
+    Unbound(ID),
     Meta(ID),
 }
 
@@ -78,6 +79,7 @@ impl Display for VarName {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Bound(n) => Display::fmt(n, f),
+            Self::Unbound(..) => f.write_str("_"),
             Self::Meta(id) => Display::fmt(id, f),
         }
     }
@@ -87,7 +89,7 @@ impl PartialEq<Self> for VarName {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Bound(l), Self::Bound(r)) => id(l) == id(r),
-            (Self::Meta(l), Self::Meta(r)) => l == r,
+            (Self::Unbound(l), Self::Unbound(r)) | (Self::Meta(l), Self::Meta(r)) => l == r,
             _ => false,
         }
     }
@@ -98,12 +100,10 @@ impl Hash for VarName {
         discriminant(self).hash(state);
         match self {
             Self::Bound(n) => id(n).hash(state),
-            Self::Meta(id) => id.hash(state),
+            Self::Unbound(id) | Self::Meta(id) => id.hash(state),
         }
     }
 }
-
-pub const UNBOUND: &str = "_";
 
 pub const TUPLED: &str = "__tupled";
 pub const UNTUPLED_RHS_PREFIX: &str = "__untupled_";
@@ -137,15 +137,21 @@ impl Var {
         }
     }
 
-    pub fn meta() -> Self {
+    fn fresh() -> ID {
         static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+        NEXT_ID.fetch_add(1, Ordering::Relaxed)
+    }
+
+    pub fn meta() -> Self {
         Self {
-            name: VarName::Meta(NEXT_ID.fetch_add(1, Ordering::Relaxed)),
+            name: VarName::Meta(Self::fresh()),
         }
     }
 
     pub fn unbound() -> Self {
-        Self::new(UNBOUND)
+        Self {
+            name: VarName::Unbound(Self::fresh()),
+        }
     }
 
     pub fn tupled() -> Self {
