@@ -13,7 +13,7 @@ use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, Unnamed
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{
-    fresh, Loc, NameMap, Param, Tele, Var, ARRAY, ASYNC, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX,
+    Loc, NameMap, Param, Tele, Var, ARRAY, ASYNC, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX,
 };
 use crate::Error::{
     CatchAsyncEffect, DuplicateEffect, ExpectedCapability, ExpectedEnum, ExpectedInstanceof,
@@ -1624,7 +1624,7 @@ impl Elaborator {
                         self.sigma.insert(inst_fn.name.clone(), inst_fn);
                     }
 
-                    let inst_name = fresh().catch();
+                    let inst_name = Var::meta().catch();
                     let checked_instance_body = self.check_instance_body(
                         &inst_name,
                         InstanceBody {
@@ -1713,7 +1713,7 @@ impl Elaborator {
     fn insert_meta(&mut self, loc: Loc, k: MetaKind) -> (Term, Term) {
         use Body::*;
 
-        let ty_meta_var = fresh();
+        let ty_meta_var = Var::meta();
         self.sigma.insert(
             ty_meta_var.clone(),
             Def {
@@ -1728,7 +1728,7 @@ impl Elaborator {
         );
         let ty = Term::MetaRef(k.clone(), ty_meta_var, Default::default());
 
-        let tm_meta_var = fresh();
+        let tm_meta_var = Var::meta();
         let tele = gamma_to_tele(&self.gamma);
         let spine = Term::tele_to_spine(&tele);
         self.sigma.insert(
@@ -1764,7 +1764,7 @@ impl Elaborator {
                         if p.info != Implicit {
                             return Err(UnresolvedImplicitParam(name, loc));
                         }
-                        if *p.var.name == name {
+                        if p.var.as_str() == name {
                             return Ok(ret);
                         }
                         ty = b;

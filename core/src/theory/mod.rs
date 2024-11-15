@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
+use std::mem::discriminant;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -40,6 +41,11 @@ impl<'a> From<Span<'a>> for Loc {
 }
 
 type Name = Rc<String>;
+type ID = usize;
+
+fn id(n: &Name) -> ID {
+    Rc::as_ptr(n) as _
+}
 
 #[derive(Default, Debug)]
 pub struct RawNameSet(HashSet<String>);
@@ -57,9 +63,44 @@ impl RawNameSet {
     }
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Var {
-    name: Name,
+    name: VarName,
+}
+
+#[derive(Debug, Clone, Eq)]
+pub enum VarName {
+    Bound(Name),
+    Meta(ID),
+}
+
+impl Display for VarName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Bound(n) => Display::fmt(n, f),
+            Self::Meta(id) => Display::fmt(id, f),
+        }
+    }
+}
+
+impl PartialEq<Self> for VarName {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Bound(l), Self::Bound(r)) => id(l) == id(r),
+            (Self::Meta(l), Self::Meta(r)) => l == r,
+            _ => false,
+        }
+    }
+}
+
+impl Hash for VarName {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        discriminant(self).hash(state);
+        match self {
+            Self::Bound(n) => id(n).hash(state),
+            Self::Meta(id) => id.hash(state),
+        }
+    }
 }
 
 pub const UNBOUND: &str = "_";
@@ -92,7 +133,14 @@ pub const TYPEOF: &str = "Typeof";
 impl Var {
     fn new<S: Into<String>>(name: S) -> Self {
         Self {
-            name: Rc::new(name.into()),
+            name: VarName::Bound(Rc::new(name.into())),
+        }
+    }
+
+    pub fn meta() -> Self {
+        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
+        Self {
+            name: VarName::Meta(NEXT_ID.fetch_add(1, Ordering::Relaxed)),
         }
     }
 
@@ -149,11 +197,17 @@ impl Var {
     }
 
     pub fn catch(&self) -> Self {
-        Self::new(format!("catch__{}", self.id()))
+        match &self.name {
+            VarName::Meta(id) => Self::new(format!("catch__{id}")),
+            _ => unreachable!(),
+        }
     }
 
     pub fn catch_fn(&self) -> Self {
-        Self::new(format!("catch__{}__{self}", self.id()))
+        match &self.name {
+            VarName::Bound(name) => Self::new(format!("catch__{name}")),
+            _ => unreachable!(),
+        }
     }
 
     pub fn iterator() -> Self {
@@ -196,12 +250,11 @@ impl Var {
         Self::new(TYPEOF)
     }
 
-    pub fn id(&self) -> usize {
-        Rc::as_ptr(&self.name) as _
-    }
-
     pub fn as_str(&self) -> &str {
-        self.name.as_str()
+        match &self.name {
+            VarName::Bound(n) => n.as_str(),
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -213,25 +266,8 @@ impl From<Pair<'_, Rule>> for Var {
 
 impl Display for Var {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.name.as_str())
+        Display::fmt(&self.name, f)
     }
-}
-
-impl PartialEq<Self> for Var {
-    fn eq(&self, other: &Self) -> bool {
-        self.id() == other.id()
-    }
-}
-
-impl Hash for Var {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id().hash(state)
-    }
-}
-
-pub fn fresh() -> Var {
-    static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
-    Var::new(NEXT_ID.fetch_add(1, Ordering::Relaxed).to_string())
 }
 
 pub trait Syntax: Display {}
