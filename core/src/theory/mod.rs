@@ -71,7 +71,7 @@ pub struct Var {
 #[derive(Debug, Clone, Eq)]
 enum VarName {
     Bound(Name),
-    Unbound(ID),
+    Unbound,
     Meta(ID),
 }
 
@@ -79,7 +79,7 @@ impl Display for VarName {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Bound(n) => Display::fmt(n, f),
-            Self::Unbound(..) => f.write_str("_"),
+            Self::Unbound => f.write_str("_"),
             Self::Meta(id) => Display::fmt(id, f),
         }
     }
@@ -89,7 +89,7 @@ impl PartialEq<Self> for VarName {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Bound(l), Self::Bound(r)) => id(l) == id(r),
-            (Self::Unbound(l), Self::Unbound(r)) | (Self::Meta(l), Self::Meta(r)) => l == r,
+            (Self::Meta(l), Self::Meta(r)) => l == r,
             _ => false,
         }
     }
@@ -100,7 +100,8 @@ impl Hash for VarName {
         discriminant(self).hash(state);
         match self {
             Self::Bound(n) => id(n).hash(state),
-            Self::Unbound(id) | Self::Meta(id) => id.hash(state),
+            Self::Unbound => unreachable!(),
+            Self::Meta(id) => id.hash(state),
         }
     }
 }
@@ -150,12 +151,12 @@ impl Var {
 
     pub fn unbound() -> Self {
         Self {
-            raw: VarName::Unbound(Self::fresh()),
+            raw: VarName::Unbound,
         }
     }
 
     pub fn is_unbound(&self) -> bool {
-        matches!(self.raw, VarName::Unbound(..))
+        matches!(self.raw, VarName::Unbound)
     }
 
     pub fn tupled() -> Self {

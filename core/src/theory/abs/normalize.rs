@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::ops::Not;
 
 use log::{debug, trace};
 
@@ -136,7 +137,7 @@ impl<'a> Normalizer<'a> {
                 if noinline(a.as_ref()) {
                     Const(p, a, Box::new(self.without_expand_undef(*b)?))
                 } else {
-                    self.rho.insert(p.var, a);
+                    self.insert_rho(p.var, a);
                     self.term(*b)?
                 }
             }
@@ -170,7 +171,7 @@ impl<'a> Normalizer<'a> {
             App(f, ai, x) => match self.term(*f)? {
                 Lam(p, b) => {
                     let x = self.term_box(x)?;
-                    self.rho.insert(p.var, x);
+                    self.insert_rho(p.var, x);
                     self.term(*b)?
                 }
                 f => App(Box::new(f), ai, self.term_box(x)?),
@@ -186,8 +187,8 @@ impl<'a> Normalizer<'a> {
                 } else {
                     match *a {
                         Tuple(x, y) => {
-                            self.rho.insert(p.var, x);
-                            self.rho.insert(q.var, y);
+                            self.insert_rho(p.var, x);
+                            self.insert_rho(q.var, y);
                             *self.term_box(b)?
                         }
                         _ => TupleBind(p, q, a, Box::new(self.without_expand_undef(*b)?)),
@@ -589,11 +590,11 @@ impl<'a> Normalizer<'a> {
                             let (n, x) = f.iter().next().unwrap();
                             match (cs.get(n), d) {
                                 (Some((v, tm)), _) => {
-                                    self.rho.insert(v.clone(), Box::new(x.clone()));
+                                    self.insert_rho(v.clone(), Box::new(x.clone()));
                                     self.term(tm.clone())?
                                 }
                                 (None, Some((v, tm))) => {
-                                    self.rho.insert(v, a);
+                                    self.insert_rho(v, a);
                                     self.term(*tm)?
                                 }
                                 _ => return Err(NonExhaustive(*a, self.loc)),
@@ -696,13 +697,17 @@ impl<'a> Normalizer<'a> {
         })
     }
 
+    fn insert_rho(&mut self, v: Var, tm: Box<Term>) {
+        v.is_unbound().not().then(|| self.rho.insert(v.clone(), tm));
+    }
+
     pub fn with<const N: usize>(
         &mut self,
         rho: [(&Var, &Term); N],
         tm: Term,
     ) -> Result<Term, Error> {
         for (x, v) in rho {
-            self.rho.insert(x.clone(), Box::new(v.clone()));
+            self.insert_rho(x.clone(), Box::new(v.clone()));
         }
         self.term(tm)
     }

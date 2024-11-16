@@ -191,13 +191,13 @@ impl Renamer {
     }
 
     fn param_var(&mut self, old: Var) -> Var {
-        let new = if old.is_unbound() {
-            Var::unbound()
+        if old.is_unbound() {
+            old
         } else {
-            Var::new(old.as_str())
-        };
-        self.0.insert(old, new.clone());
-        new
+            let new = Var::new(old.as_str());
+            self.0.insert(old, new.clone());
+            new
+        }
     }
 }
 

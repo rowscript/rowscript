@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ops::Not;
 
 use log::{debug, info, trace};
 
@@ -62,9 +63,12 @@ impl Elaborator {
             .into_iter()
             .map(|d| {
                 let def = self.def(d)?;
-                if let Some((.., v, body)) = self.delayed.remove(&def.name) {
-                    self.fn_body(v, body)?;
-                }
+                def.name
+                    .is_unbound()
+                    .not()
+                    .then(|| self.delayed.remove(&def.name))
+                    .flatten()
+                    .map(|(.., v, body)| self.fn_body(v, body));
                 Ok::<_, Error>(def)
             })
             .collect::<Result<_, _>>()?;
@@ -251,7 +255,9 @@ impl Elaborator {
             body,
         };
 
-        self.sigma.insert(def.name.clone(), def.clone());
+        if !def.name.is_unbound() {
+            self.sigma.insert(def.name.clone(), def.clone());
+        }
 
         self.gamma.clear();
         self.checking_eff = None;
@@ -267,7 +273,7 @@ impl Elaborator {
         let Def { tele, eff, ret, .. } = self.sigma.get(&v).unwrap().clone();
 
         tele.into_iter().for_each(|p| {
-            self.gamma.insert(p.var, p.typ);
+            self.insert_gamma(p.var, p.typ);
         });
 
         self.checking_eff = Some(*eff.clone());
@@ -319,7 +325,7 @@ impl Elaborator {
         };
 
         for v in checked {
-            self.gamma.remove(&v);
+            self.remove_gamma(&v);
         }
 
         Ok(Def {
@@ -333,11 +339,21 @@ impl Elaborator {
         })
     }
 
+    fn insert_gamma(&mut self, v: Var, typ: Box<Term>) {
+        v.is_unbound()
+            .not()
+            .then(|| self.gamma.insert(v.clone(), typ));
+    }
+
+    fn remove_gamma(&mut self, v: &Var) {
+        v.is_unbound().not().then(|| self.gamma.remove(v));
+    }
+
     fn params(&mut self, tele: Tele<Expr>) -> Result<Tele<Term>, Error> {
         tele.into_iter()
             .map(|Param { var, info, typ }| {
                 let typ = Box::new(self.check(*typ, &Term::Pure, &Term::Univ)?);
-                self.gamma.insert(var.clone(), typ.clone());
+                self.insert_gamma(var.clone(), typ.clone());
                 Ok(Param { var, info, typ })
             })
             .collect()
@@ -1686,11 +1702,11 @@ impl Elaborator {
         ty: &Term,
     ) -> Result<Term, Error> {
         for p in ps {
-            self.gamma.insert(p.var.clone(), p.typ.clone());
+            self.insert_gamma(p.var.clone(), p.typ.clone());
         }
         let ret = self.check(e, eff, ty)?;
         for p in ps {
-            self.gamma.remove(&p.var);
+            self.remove_gamma(&p.var);
         }
         Ok(ret)
     }
@@ -1701,11 +1717,11 @@ impl Elaborator {
         e: Expr,
     ) -> Result<InferResult, Error> {
         for p in ps {
-            self.gamma.insert(p.var.clone(), p.typ.clone());
+            self.insert_gamma(p.var.clone(), p.typ.clone());
         }
         let ret = self.infer(e)?;
         for p in ps {
-            self.gamma.remove(&p.var);
+            self.remove_gamma(&p.var);
         }
         Ok(ret)
     }
