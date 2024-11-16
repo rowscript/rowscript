@@ -224,10 +224,11 @@ impl<'a> Resolver<'a> {
     }
 
     fn insert_global(&mut self, loc: Loc, v: Var) -> Result<(), Error> {
-        match self.globals.insert(v.to_string(), ResolvedVar(Inside, v)) {
-            Some(old) if !old.1.is_unbound() => Err(DuplicateName(loc)),
-            _ => Ok(()),
-        }
+        v.is_unbound()
+            .not()
+            .then(|| self.globals.insert(v.to_string(), ResolvedVar(Inside, v)))
+            .flatten()
+            .map_or(Ok(()), |_| Err(DuplicateName(loc)))
     }
 
     fn remove_local(&mut self, v: &Var) {

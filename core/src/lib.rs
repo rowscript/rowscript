@@ -330,7 +330,7 @@ impl Compiler {
         let files = self.elab.files(files)?;
         for f in &files {
             for d in &f.defs {
-                if is_ubiquitous {
+                if is_ubiquitous && !d.name.is_unbound() {
                     self.elab.ubiquitous.insert(
                         d.name.to_string(),
                         ResolvedVar(VarKind::Inside, d.name.clone()),

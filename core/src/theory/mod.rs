@@ -79,7 +79,7 @@ impl Display for VarName {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Bound(n) => Display::fmt(n, f),
-            Self::Unbound => f.write_str("_"),
+            Self::Unbound => unreachable!(),
             Self::Meta(id) => Display::fmt(id, f),
         }
     }

@@ -68,7 +68,8 @@ impl Elaborator {
                     .not()
                     .then(|| self.delayed.remove(&def.name))
                     .flatten()
-                    .map(|(.., v, body)| self.fn_body(v, body));
+                    .map(|(.., v, body)| self.fn_body(v, body))
+                    .transpose()?;
                 Ok::<_, Error>(def)
             })
             .collect::<Result<_, _>>()?;
