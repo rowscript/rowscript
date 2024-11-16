@@ -65,11 +65,11 @@ impl RawNameSet {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Var {
-    pub name: VarName,
+    raw: VarName,
 }
 
 #[derive(Debug, Clone, Eq)]
-pub enum VarName {
+enum VarName {
     Bound(Name),
     Unbound(ID),
     Meta(ID),
@@ -133,7 +133,7 @@ pub const TYPEOF: &str = "Typeof";
 impl Var {
     fn new<S: Into<String>>(name: S) -> Self {
         Self {
-            name: VarName::Bound(Rc::new(name.into())),
+            raw: VarName::Bound(Rc::new(name.into())),
         }
     }
 
@@ -144,14 +144,18 @@ impl Var {
 
     pub fn meta() -> Self {
         Self {
-            name: VarName::Meta(Self::fresh()),
+            raw: VarName::Meta(Self::fresh()),
         }
     }
 
     pub fn unbound() -> Self {
         Self {
-            name: VarName::Unbound(Self::fresh()),
+            raw: VarName::Unbound(Self::fresh()),
         }
+    }
+
+    pub fn is_unbound(&self) -> bool {
+        matches!(self.raw, VarName::Unbound(..))
     }
 
     pub fn tupled() -> Self {
@@ -203,14 +207,14 @@ impl Var {
     }
 
     pub fn catch(&self) -> Self {
-        match &self.name {
+        match &self.raw {
             VarName::Meta(id) => Self::new(format!("catch__{id}")),
             _ => unreachable!(),
         }
     }
 
     pub fn catch_fn(&self) -> Self {
-        match &self.name {
+        match &self.raw {
             VarName::Bound(name) => Self::new(format!("catch__{name}")),
             _ => unreachable!(),
         }
@@ -257,7 +261,7 @@ impl Var {
     }
 
     pub fn as_str(&self) -> &str {
-        match &self.name {
+        match &self.raw {
             VarName::Bound(n) => n.as_str(),
             _ => unreachable!(),
         }
@@ -272,7 +276,7 @@ impl From<Pair<'_, Rule>> for Var {
 
 impl Display for Var {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(&self.name, f)
+        Display::fmt(&self.raw, f)
     }
 }
 

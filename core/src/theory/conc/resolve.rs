@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ops::Not;
 
 use crate::theory::abs::def::{Body, InstanceBody};
 use crate::theory::abs::def::{ClassMembers, Def};
@@ -7,7 +8,7 @@ use crate::theory::conc::data::{Catch, Expr};
 use crate::theory::conc::load::{Import, ImportedDefs, Loaded};
 use crate::theory::VarKind::{Inside, Outside, Reserved};
 use crate::theory::{
-    Loc, NameMap, Param, RawNameSet, ResolvedVar, Tele, Var, VarName, TUPLED, UNTUPLED_ENDS,
+    Loc, NameMap, Param, RawNameSet, ResolvedVar, Tele, Var, TUPLED, UNTUPLED_ENDS,
 };
 use crate::Error::{DuplicateName, NonAnonVariadicDef, UnresolvedVar};
 use crate::{maybe_grow, print_err, Error, File};
@@ -36,8 +37,8 @@ impl<'a> Resolver<'a> {
     pub fn files(&mut self, mut files: Vec<File<Expr>>) -> Result<Box<[File<Expr>]>, Error> {
         for f in &mut files {
             for d in &mut f.defs {
-                if let VarName::Bound(n) = &d.name.name {
-                    if let Some(rv) = self.ubiquitous.get(n.as_str()) {
+                if !d.name.is_unbound() {
+                    if let Some(rv) = self.ubiquitous.get(d.name.as_str()) {
                         if !matches!(rv.0, Reserved) {
                             return Err(print_err(DuplicateName(d.loc), &f.path));
                         }
@@ -212,10 +213,10 @@ impl<'a> Resolver<'a> {
     }
 
     fn insert_local(&mut self, v: Var) -> Option<ResolvedVar> {
-        match &v.name {
-            VarName::Bound(n) => self.locals.insert(n.to_string(), ResolvedVar(Inside, v)),
-            _ => None,
-        }
+        v.is_unbound()
+            .not()
+            .then(|| self.locals.insert(v.to_string(), ResolvedVar(Inside, v)))
+            .flatten()
     }
 
     fn insert_imported(&mut self, v: Var) {
@@ -224,15 +225,13 @@ impl<'a> Resolver<'a> {
 
     fn insert_global(&mut self, loc: Loc, v: Var) -> Result<(), Error> {
         match self.globals.insert(v.to_string(), ResolvedVar(Inside, v)) {
-            Some(old) if matches!(old.1.name, VarName::Bound(..)) => Err(DuplicateName(loc)),
+            Some(old) if !old.1.is_unbound() => Err(DuplicateName(loc)),
             _ => Ok(()),
         }
     }
 
     fn remove_local(&mut self, v: &Var) {
-        if let VarName::Bound(n) = &v.name {
-            self.locals.remove(n.as_str());
-        }
+        v.is_unbound().not().then(|| self.locals.remove(v.as_str()));
     }
 
     fn clear_locals(&mut self) {
@@ -314,7 +313,7 @@ impl<'a> Resolver<'a> {
                 )
             }
             Let(loc, mut x, typ, a, b) => {
-                if matches!(x.name, VarName::Bound(..)) {
+                if !x.is_unbound() {
                     x = x.bind_let();
                     if self.locals.contains_key(x.as_str()) {
                         return Err(DuplicateName(loc));

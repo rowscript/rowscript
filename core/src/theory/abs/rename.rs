@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::theory::abs::data::{CaseMap, FieldMap, Term};
-use crate::theory::{Param, Var, VarName};
+use crate::theory::{Param, Var};
 
 #[derive(Default)]
 struct Renamer(HashMap<Var, Var>);
@@ -191,10 +191,10 @@ impl Renamer {
     }
 
     fn param_var(&mut self, old: Var) -> Var {
-        let new = match &old.name {
-            VarName::Bound(n) => Var::new(n.as_str()),
-            VarName::Unbound(..) => Var::unbound(),
-            _ => unreachable!(),
+        let new = if old.is_unbound() {
+            Var::unbound()
+        } else {
+            Var::new(old.as_str())
         };
         self.0.insert(old, new.clone());
         new
