@@ -63,19 +63,14 @@ impl RawNameSet {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct Var {
-    raw: VarName,
-}
-
 #[derive(Debug, Clone, Eq)]
-enum VarName {
+pub enum Var {
     Bound(Name),
     Unbound,
     Meta(ID),
 }
 
-impl Display for VarName {
+impl Display for Var {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Bound(n) => Display::fmt(n, f),
@@ -85,7 +80,7 @@ impl Display for VarName {
     }
 }
 
-impl PartialEq<Self> for VarName {
+impl PartialEq<Self> for Var {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Bound(l), Self::Bound(r)) => id(l) == id(r),
@@ -95,7 +90,7 @@ impl PartialEq<Self> for VarName {
     }
 }
 
-impl Hash for VarName {
+impl Hash for Var {
     fn hash<H: Hasher>(&self, state: &mut H) {
         discriminant(self).hash(state);
         match self {
@@ -133,9 +128,7 @@ pub const TYPEOF: &str = "Typeof";
 
 impl Var {
     fn new<S: Into<String>>(name: S) -> Self {
-        Self {
-            raw: VarName::Bound(Rc::new(name.into())),
-        }
+        Self::Bound(Rc::new(name.into()))
     }
 
     fn fresh() -> ID {
@@ -144,19 +137,15 @@ impl Var {
     }
 
     pub fn meta() -> Self {
-        Self {
-            raw: VarName::Meta(Self::fresh()),
-        }
+        Self::Meta(Self::fresh())
     }
 
     pub fn unbound() -> Self {
-        Self {
-            raw: VarName::Unbound,
-        }
+        Self::Unbound
     }
 
     pub fn is_unbound(&self) -> bool {
-        matches!(self.raw, VarName::Unbound)
+        matches!(self, Self::Unbound)
     }
 
     pub fn tupled() -> Self {
@@ -208,15 +197,15 @@ impl Var {
     }
 
     pub fn catch(&self) -> Self {
-        match &self.raw {
-            VarName::Meta(id) => Self::new(format!("catch__{id}")),
+        match self {
+            Self::Meta(id) => Self::new(format!("catch__{id}")),
             _ => unreachable!(),
         }
     }
 
     pub fn catch_fn(&self) -> Self {
-        match &self.raw {
-            VarName::Bound(name) => Self::new(format!("catch__{name}")),
+        match self {
+            Self::Bound(name) => Self::new(format!("catch__{name}")),
             _ => unreachable!(),
         }
     }
@@ -262,8 +251,8 @@ impl Var {
     }
 
     pub fn as_str(&self) -> &str {
-        match &self.raw {
-            VarName::Bound(n) => n.as_str(),
+        match self {
+            Self::Bound(n) => n.as_str(),
             _ => unreachable!(),
         }
     }
@@ -272,12 +261,6 @@ impl Var {
 impl From<Pair<'_, Rule>> for Var {
     fn from(p: Pair<'_, Rule>) -> Self {
         Self::new(p.as_str())
-    }
-}
-
-impl Display for Var {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(&self.raw, f)
     }
 }
 
