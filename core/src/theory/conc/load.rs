@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::{Loc, Var};
-use crate::{Error, OUT_DIR};
+use crate::{Error, Src, OUT_DIR};
 
 #[cfg(not(test))]
 const MODULES_DIR: &str = "node_modules";
@@ -41,8 +41,8 @@ pub fn prelude_path() -> Box<Path> {
 pub enum ImportedPkg {
     #[default]
     Root,
-    Std(String),
-    Vendor(String, String),
+    Std(Src),
+    Vendor(Src, Src),
 }
 
 #[derive(Default, Debug, Hash, Eq, PartialEq, Clone)]
@@ -95,7 +95,7 @@ impl Display for ModuleID {
 
 #[derive(Debug)]
 pub enum ImportedDefs {
-    Unqualified(Vec<(Loc, String)>),
+    Unqualified(Vec<(Loc, Src)>),
     Qualified,
     Loaded,
 }
@@ -114,28 +114,28 @@ impl Import {
 }
 
 #[derive(Default)]
-pub struct Loaded(HashMap<ModuleID, HashMap<String, Var>>);
+pub struct Loaded(HashMap<ModuleID, HashMap<Src, Var>>);
 
 impl Loaded {
     pub fn contains(&self, module: &ModuleID) -> bool {
         self.0.contains_key(module)
     }
 
-    pub fn get(&self, module: &ModuleID, n: &String) -> Option<&Var> {
+    pub fn get(&self, module: &ModuleID, n: Src) -> Option<&Var> {
         self.0.get(module).and_then(|m| m.get(n))
     }
 
     pub fn insert(&mut self, module: &ModuleID, def: &Def<Term>) -> Result<(), Error> {
         match self.0.get_mut(module) {
             Some(m) => {
-                if m.insert(def.name.to_string(), def.name.clone()).is_some() {
+                if m.insert(def.name.as_str(), def.name.clone()).is_some() {
                     return Err(Error::DuplicateName(def.loc));
                 }
             }
             None => {
                 self.0.insert(
                     module.clone(),
-                    HashMap::from([(def.name.to_string(), def.name.clone())]),
+                    HashMap::from([(def.name.as_str(), def.name.clone())]),
                 );
             }
         }

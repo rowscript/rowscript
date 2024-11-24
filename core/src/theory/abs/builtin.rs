@@ -14,6 +14,7 @@ use crate::theory::conc::data::ArgInfo;
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{NameMap, Param, ResolvedVar, Var, ASYNC, AWAIT_ANY};
 use crate::theory::{Tele, VarKind};
+use crate::Src;
 
 fn implicit(var: Var, typ: Term) -> Param<Term> {
     Param {
@@ -88,17 +89,13 @@ fn tuple_param<const N: usize>(var: Var, tele: [(Var, Term); N]) -> Param<Term> 
 
 fn option_type(t: Term) -> Term {
     Enum(Box::new(Fields(
-        [("Ok".to_string(), t), ("None".to_string(), Unit)]
-            .into_iter()
-            .collect(),
+        [("Ok", t), ("None", Unit)].into_iter().collect(),
     )))
 }
 
 fn entry_type(k: Term, v: Term) -> Term {
     Object(Box::new(Fields(
-        [("key".to_string(), k), ("value".to_string(), v)]
-            .into_iter()
-            .collect(),
+        [("key", k), ("value", v)].into_iter().collect(),
     )))
 }
 
@@ -225,11 +222,11 @@ impl Builtins {
             .document_get_element_by_id()
     }
 
-    fn func(self, name: &str, tele: Tele<Term>, ret: Term, f: Term) -> Self {
+    fn func(self, name: Src, tele: Tele<Term>, ret: Term, f: Term) -> Self {
         self.impure_func(name, tele, Pure, ret, f)
     }
 
-    fn impure_func(self, name: &str, tele: Tele<Term>, eff: Term, ret: Term, f: Term) -> Self {
+    fn impure_func(self, name: Src, tele: Tele<Term>, eff: Term, ret: Term, f: Term) -> Self {
         self.define(Def {
             is_public: false,
             loc: Default::default(),
@@ -243,7 +240,7 @@ impl Builtins {
 
     fn define(mut self, def: Def<Term>) -> Self {
         self.ubiquitous.insert(
-            def.name.to_string(),
+            def.name.as_str(),
             ResolvedVar(VarKind::Inside, def.name.clone()),
         );
         self.sigma.insert(def.name.clone(), def);
@@ -257,7 +254,7 @@ impl Builtins {
     fn reserved<const N: usize>(mut self, vars: [Var; N]) -> Self {
         for v in vars {
             self.ubiquitous
-                .insert(v.to_string(), ResolvedVar(VarKind::Reserved, v));
+                .insert(v.as_str(), ResolvedVar(VarKind::Reserved, v));
         }
         self
     }

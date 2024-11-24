@@ -92,8 +92,7 @@ impl<'a> Resolver<'a> {
         match &d.body {
             Method { associated, .. } | Class { associated, .. } => {
                 for (raw, v) in associated.iter() {
-                    self.locals
-                        .insert(raw.clone(), ResolvedVar(Inside, v.clone()));
+                    self.locals.insert(*raw, ResolvedVar(Inside, v.clone()));
                 }
             }
             _ => {}
@@ -170,7 +169,7 @@ impl<'a> Resolver<'a> {
                         let mut names = RawNameSet::default();
                         let mut resolved_members = Vec::default();
                         for (loc, id, typ) in m {
-                            names.raw(loc, id.clone())?;
+                            names.raw(loc, id)?;
                             resolved_members.push((loc, id, *self.expr(Box::new(typ))?));
                         }
                         ClassMembers::Members(resolved_members)
@@ -215,18 +214,18 @@ impl<'a> Resolver<'a> {
     fn insert_local(&mut self, v: Var) -> Option<ResolvedVar> {
         v.is_unbound()
             .not()
-            .then(|| self.locals.insert(v.to_string(), ResolvedVar(Inside, v)))
+            .then(|| self.locals.insert(v.as_str(), ResolvedVar(Inside, v)))
             .flatten()
     }
 
     fn insert_imported(&mut self, v: Var) {
-        self.imported.insert(v.to_string(), ResolvedVar(Outside, v));
+        self.imported.insert(v.as_str(), ResolvedVar(Outside, v));
     }
 
     fn insert_global(&mut self, loc: Loc, v: Var) -> Result<(), Error> {
         v.is_unbound()
             .not()
-            .then(|| self.globals.insert(v.to_string(), ResolvedVar(Inside, v)))
+            .then(|| self.globals.insert(v.as_str(), ResolvedVar(Inside, v)))
             .flatten()
             .map_or(Ok(()), |_| Err(DuplicateName(loc)))
     }
@@ -251,7 +250,7 @@ impl<'a> Resolver<'a> {
         for (old, var) in olds.into_iter().zip(vars.into_iter()) {
             match old {
                 Some(v) => {
-                    self.locals.insert(v.1.to_string(), v);
+                    self.locals.insert(v.1.as_str(), v);
                 }
                 None => self.remove_local(var),
             }
@@ -279,7 +278,7 @@ impl<'a> Resolver<'a> {
         use Expr::*;
         Ok(Box::new(match *e {
             Unresolved(loc, m, r) => match m {
-                Some(m) => match self.loaded.get(&m, &r.to_string()) {
+                Some(m) => match self.loaded.get(&m, r.as_str()) {
                     Some(r) => Qualified(loc, m, r.clone()),
                     None => return Err(UnresolvedVar(loc)),
                 },
@@ -409,7 +408,7 @@ impl<'a> Resolver<'a> {
                 let mut names = RawNameSet::default();
                 let mut resolved = Vec::default();
                 for (f, typ) in fields {
-                    names.raw(loc, f.clone())?;
+                    names.raw(loc, f)?;
                     resolved.push((f, *self.expr(Box::new(typ))?));
                 }
                 Fields(loc, resolved)
@@ -430,7 +429,7 @@ impl<'a> Resolver<'a> {
                 let mut names = RawNameSet::default();
                 let mut new = Vec::default();
                 for (n, v, e) in cs {
-                    names.raw(loc, n.clone())?;
+                    names.raw(loc, n)?;
                     let e = self.bodied([&v], Box::new(e))?;
                     new.push((n, v, *e));
                 }

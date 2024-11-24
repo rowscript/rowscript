@@ -33,7 +33,7 @@ use crate::theory::{
     UNTUPLED_RHS_PREFIX,
 };
 use crate::Error::{NonErasable, UnsolvedMeta};
-use crate::{Error, File};
+use crate::{Error, File, Src};
 
 impl From<Loc> for Span {
     fn from(loc: Loc) -> Self {
@@ -1093,10 +1093,7 @@ impl Ecma {
             }),
             Qualified(m, r) => Expr::Member(MemberExpr {
                 span: loc.into(),
-                obj: Box::new(Expr::Ident(Self::str_ident(
-                    loc,
-                    self.to_qualifier(m).as_str(),
-                ))),
+                obj: Box::new(Expr::Ident(Self::str_ident(loc, self.to_qualifier(m)))),
                 prop: MemberProp::Ident(IdentName::from(Self::ident(loc, r))),
             }),
             Lam(p, b) => match p.info {
@@ -1258,10 +1255,7 @@ impl Ecma {
                     let mut props = Vec::default();
                     for (name, tm) in fields {
                         props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                            key: PropName::Ident(IdentName::from(Self::str_ident(
-                                loc,
-                                name.as_str(),
-                            ))),
+                            key: PropName::Ident(IdentName::from(Self::str_ident(loc, name))),
                             value: Box::new(self.expr(sigma, loc, &tm.clone())?),
                         }))));
                     }
@@ -1495,7 +1489,7 @@ impl Ecma {
                     for (loc, d) in defs {
                         specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
                             span: loc.into(),
-                            local: Self::str_ident(loc, d.as_str()),
+                            local: Self::str_ident(loc, d),
                             imported: None,
                             is_type_only: false,
                         }))
@@ -1504,7 +1498,7 @@ impl Ecma {
                 Qualified => {
                     specifiers.push(ImportSpecifier::Namespace(ImportStarAsSpecifier {
                         span: i.loc.into(),
-                        local: Self::str_ident(i.loc, self.to_qualifier(&i.module).as_str()),
+                        local: Self::str_ident(i.loc, self.to_qualifier(&i.module)),
                     }));
                 }
                 Loaded => {}
@@ -1715,7 +1709,7 @@ impl Ecma {
         sigma: &Sigma,
         name: &Var,
         ctor: &Var,
-        methods: &HashMap<String, Var>,
+        methods: &HashMap<Src, Var>,
     ) -> Result<(), Error> {
         let ctor_def = sigma.get(ctor).unwrap();
         let mut ctor_func = match &ctor_def.body {
@@ -1831,17 +1825,17 @@ impl Target for Ecma {
         OUT_FILE
     }
 
-    fn to_qualifier(&self, module: &ModuleID) -> String {
+    fn to_qualifier(&self, module: &ModuleID) -> Src {
         use ImportedPkg::*;
         let mut ret = match &module.pkg {
-            Std(p) => vec![p.clone()],
-            Vendor(o, p) => vec![o.strip_prefix('@').unwrap().to_string(), p.clone()],
-            Root => vec![QUALIFIER_SEP.to_string()],
+            Std(p) => vec![*p],
+            Vendor(o, p) => vec![o.strip_prefix('@').unwrap(), p],
+            Root => vec![QUALIFIER_SEP],
         };
         for m in &module.modules {
-            ret.push(m.to_str().unwrap().to_string());
+            ret.push(m.to_str().unwrap());
         }
-        ret.join(QUALIFIER_SEP)
+        ret.join(QUALIFIER_SEP).leak()
     }
 
     fn should_include(&self, path: &Path) -> bool {

@@ -1,8 +1,8 @@
-use std::fmt::{Display, Formatter};
-
 use crate::theory::abs::def::Def;
 use crate::theory::conc::load::ModuleID;
 use crate::theory::{Loc, Param, Syntax, Tele, Var};
+use crate::Src;
+use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ArgInfo {
@@ -53,13 +53,13 @@ pub enum Expr {
     If(Loc, Box<Self>, Box<Self>, Box<Self>),
 
     String(Loc),
-    Str(Loc, String),
+    Str(Loc, Src),
 
     Number(Loc),
-    Num(Loc, String),
+    Num(Loc, Src),
 
     BigInt(Loc),
-    Big(Loc, String),
+    Big(Loc, Src),
 
     Arr(Loc, Vec<Self>),
 
@@ -68,8 +68,8 @@ pub enum Expr {
     Row(Loc),
     Rowkey(Loc),
     At(Loc, Box<Self>, Box<Self>),
-    Associate(Loc, Box<Self>, String),
-    Fields(Loc, Vec<(String, Self)>),
+    Associate(Loc, Box<Self>, Src),
+    Fields(Loc, Vec<(Src, Self)>),
     Combine(Loc, Box<Self>, Box<Self>),
 
     RowOrd(Loc, Box<Self>, Box<Self>),
@@ -79,17 +79,17 @@ pub enum Expr {
     Obj(Loc, Box<Self>),
     Concat(Loc, Box<Self>, Box<Self>),
     Cat(Loc, Box<Self>, Box<Self>),
-    Access(Loc, String),
+    Access(Loc, Src),
     Downcast(Loc, Box<Self>),
 
     Enum(Loc, Box<Self>),
-    Variant(Loc, String, Box<Self>),
+    Variant(Loc, Src, Box<Self>),
     Upcast(Loc, Box<Self>),
     UpcastTo(Loc, Box<Self>, Box<Self>),
     Switch(
         Loc,
         Box<Self>,
-        Vec<(String, Var, Self)>,
+        Vec<(Src, Var, Self)>,
         Option<(Var, Box<Self>)>,
     ),
 
@@ -348,11 +348,11 @@ impl Display for Expr {
                 True(_) => "true".to_string(),
                 If(_, p, t, e) => format!("{p} ? {t} : {e}"),
                 String(_) => "string".to_string(),
-                Str(_, v) => v.clone(),
+                Str(_, v) => v.to_string(),
                 Number(_) => "number".to_string(),
-                Num(_, v) => v.clone(),
+                Num(_, v) => v.to_string(),
                 BigInt(_) => "bigint".to_string(),
-                Big(_, v) => v.clone(),
+                Big(_, v) => v.to_string(),
                 Arr(_, xs) => format!(
                     "[{}]",
                     xs.iter()
@@ -435,5 +435,5 @@ impl Display for Expr {
 pub struct Catch {
     pub i: Expr,
     pub inst_ty: Expr,
-    pub inst_fns: Vec<(String, Def<Expr>)>,
+    pub inst_fns: Vec<(Src, Def<Expr>)>,
 }

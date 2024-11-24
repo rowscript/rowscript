@@ -6,7 +6,7 @@ use crate::theory::abs::rename::rename;
 use crate::theory::conc::data::Expr;
 use crate::theory::ParamInfo::Explicit;
 use crate::theory::{Loc, Param, Syntax, Tele, Var};
-use crate::Error;
+use crate::{Error, Src};
 
 pub type Sigma = HashMap<Var, Def<Term>>;
 pub type Gamma = HashMap<Var, Box<Term>>;
@@ -84,7 +84,7 @@ impl Def<Term> {
                 type_args: self.tele.iter().map(|p| Term::Ref(p.var.clone())).collect(),
                 associated: associated
                     .iter()
-                    .map(|(n, v)| (n.clone(), Term::Ref(v.clone())))
+                    .map(|(n, v)| (*n, Term::Ref(v.clone())))
                     .collect(),
                 object: match members {
                     ClassMembers::Wrapper(ty) => ty.clone(),
@@ -92,7 +92,7 @@ impl Def<Term> {
                         Box::new(Term::Object(Box::new(Term::Fields(
                             members
                                 .iter()
-                                .map(|(_, id, typ)| (id.clone(), typ.clone()))
+                                .map(|(_, id, typ)| (*id, typ.clone()))
                                 .collect(),
                         ))))
                     }
@@ -291,15 +291,15 @@ pub enum Body<T: Syntax> {
 
     Class {
         ctor: Var,
-        associated: HashMap<String, Var>,
+        associated: HashMap<Src, Var>,
         members: ClassMembers<T>,
-        methods: HashMap<String, Var>,
+        methods: HashMap<Src, Var>,
     },
     Associated(Box<T>),
     Method {
         class: Var,
         /// Only usable during name resolving.
-        associated: HashMap<String, Var>,
+        associated: HashMap<Src, Var>,
         f: Box<T>,
     },
 
@@ -352,7 +352,7 @@ impl<T: Syntax> Display for InstanceBody<T> {
 #[derive(Clone, Debug)]
 pub enum ClassMembers<T: Syntax> {
     Wrapper(Box<T>),
-    Members(Vec<(Loc, String, T)>),
+    Members(Vec<(Loc, Src, T)>),
 }
 
 impl<T: Syntax> Display for ClassMembers<T> {

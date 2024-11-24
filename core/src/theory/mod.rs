@@ -5,11 +5,11 @@ use std::mem::discriminant;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use pest::iterators::Pair;
+use pest::iterators::{Pair as ParserPair, Pairs as ParserPairs};
 use pest::Span;
 
 use crate::theory::conc::data::{ArgInfo, Expr};
-use crate::{Error, Rule};
+use crate::{Error, Rule, Src};
 
 pub mod abs;
 pub mod conc;
@@ -40,7 +40,7 @@ impl<'a> From<Span<'a>> for Loc {
     }
 }
 
-type Name = Rc<String>;
+type Name = Rc<Src>;
 type ID = usize;
 
 fn id(n: &Name) -> ID {
@@ -48,14 +48,14 @@ fn id(n: &Name) -> ID {
 }
 
 #[derive(Default, Debug)]
-pub struct RawNameSet(HashSet<String>);
+pub struct RawNameSet(HashSet<Src>);
 
 impl RawNameSet {
     pub fn var(&mut self, loc: Loc, v: &Var) -> Result<(), Error> {
-        self.raw(loc, v.to_string())
+        self.raw(loc, v.as_str())
     }
 
-    pub fn raw(&mut self, loc: Loc, f: String) -> Result<(), Error> {
+    pub fn raw(&mut self, loc: Loc, f: Src) -> Result<(), Error> {
         self.0
             .insert(f)
             .then_some(())
@@ -127,8 +127,12 @@ pub const LIST: &str = "List";
 pub const TYPEOF: &str = "Typeof";
 
 impl Var {
-    fn new<S: Into<String>>(name: S) -> Self {
-        Self::Bound(Rc::new(name.into()))
+    fn new(name: Src) -> Self {
+        Self::Bound(Rc::new(name))
+    }
+
+    fn compound(name: String) -> Self {
+        Self::new(name.leak())
     }
 
     fn fresh() -> ID {
@@ -153,19 +157,19 @@ impl Var {
     }
 
     pub fn method(&self, m: Self) -> Self {
-        Self::new(format!("{self}${m}"))
+        Self::compound(format!("{self}${m}"))
     }
 
     pub fn associated(&self, m: Self) -> Self {
-        Self::new(format!("{self}${m}"))
+        Self::compound(format!("{self}${m}"))
     }
 
     pub fn ctor(&self) -> Self {
-        Self::new(format!("{self}$new"))
+        Self::compound(format!("{self}$new"))
     }
 
     pub fn default(&self) -> Self {
-        Self::new(format!("{self}$default"))
+        Self::compound(format!("{self}$default"))
     }
 
     pub fn this() -> Self {
@@ -173,7 +177,7 @@ impl Var {
     }
 
     pub fn untupled_rhs(&self) -> Self {
-        Self::new(format!("{UNTUPLED_RHS_PREFIX}{self}"))
+        Self::compound(format!("{UNTUPLED_RHS_PREFIX}{self}"))
     }
 
     pub fn untupled_ends() -> Self {
@@ -181,31 +185,31 @@ impl Var {
     }
 
     pub fn bind_let(&self) -> Self {
-        Self::new(format!("{LETS}{self}"))
+        Self::compound(format!("{LETS}{self}"))
     }
 
     pub fn instance(&self, inst: &Expr) -> Self {
-        Self::new(format!("{self}__for__{inst}"))
+        Self::compound(format!("{self}__for__{inst}"))
     }
 
     pub fn instance_fn(&self, i: &Self, inst: &Expr) -> Self {
-        Self::new(format!("{i}__for__{inst}__{self}"))
+        Self::compound(format!("{i}__for__{inst}__{self}"))
     }
 
     pub fn implements_fn(&self, i: &Self) -> Self {
-        Self::new(format!("{i}__implements__{self}"))
+        Self::compound(format!("{i}__implements__{self}"))
     }
 
     pub fn catch(&self) -> Self {
         match self {
-            Self::Meta(id) => Self::new(format!("catch__{id}")),
+            Self::Meta(id) => Self::compound(format!("catch__{id}")),
             _ => unreachable!(),
         }
     }
 
     pub fn catch_fn(&self) -> Self {
         match self {
-            Self::Bound(name) => Self::new(format!("catch__{name}")),
+            Self::Bound(name) => Self::compound(format!("catch__{name}")),
             _ => unreachable!(),
         }
     }
@@ -239,7 +243,7 @@ impl Var {
     }
 
     pub fn namespace_class(&self) -> Self {
-        Self::new(format!("{NAMESPACE_PREFIX}{self}"))
+        Self::compound(format!("{NAMESPACE_PREFIX}{self}"))
     }
 
     pub fn list() -> Self {
@@ -250,16 +254,19 @@ impl Var {
         Self::new(TYPEOF)
     }
 
-    pub fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> Src {
         match self {
-            Self::Bound(n) => n.as_str(),
+            Self::Bound(n) => n,
             _ => unreachable!(),
         }
     }
 }
 
-impl From<Pair<'_, Rule>> for Var {
-    fn from(p: Pair<'_, Rule>) -> Self {
+type Pair = ParserPair<'static, Rule>;
+type Pairs = ParserPairs<'static, Rule>;
+
+impl From<Pair> for Var {
+    fn from(p: Pair) -> Self {
         Self::new(p.as_str())
     }
 }
@@ -331,4 +338,4 @@ pub enum VarKind {
 #[derive(Debug, Clone)]
 pub struct ResolvedVar(pub VarKind, pub Var);
 
-pub type NameMap = HashMap<String, ResolvedVar>;
+pub type NameMap = HashMap<Src, ResolvedVar>;

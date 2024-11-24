@@ -27,6 +27,8 @@ pub mod codegen;
 mod tests;
 pub mod theory;
 
+type Src = &'static str;
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("IO error on file \"{0}\": \"{1}\"")]
@@ -40,7 +42,7 @@ pub enum Error {
     DuplicateName(Loc),
 
     #[error("unresolved implicit parameter \"{0}\"")]
-    UnresolvedImplicitParam(String, Loc),
+    UnresolvedImplicitParam(Src, Loc),
     #[error("expected function type, got \"{0}\"")]
     ExpectedPi(Term, Loc),
     #[error("expected tuple type, got \"{0}\"")]
@@ -58,7 +60,7 @@ pub enum Error {
     #[error("not exhaustive, got \"{0}\"")]
     NonExhaustive(Term, Loc),
     #[error("unresolved field \"{0}\" in \"{1}\"")]
-    UnresolvedField(String, Term, Loc),
+    UnresolvedField(Src, Term, Loc),
     #[error("field(s) unknown yet, got \"{0}\"")]
     FieldsUnknown(Term, Loc),
     #[error("expected interface type, got \"{0}\"")]
@@ -306,8 +308,10 @@ impl Compiler {
     }
 
     fn parse_and_import(&mut self, path: &Path) -> Result<File<Expr>, Error> {
-        let src = read_to_string(path).map_err(|e| Error::IO(path.into(), e))?;
-        let (imports, defs) = RowsParser::parse(Rule::file, src.as_ref())
+        let src: Src = read_to_string(path)
+            .map_err(|e| Error::IO(path.into(), e))?
+            .leak();
+        let (imports, defs) = RowsParser::parse(Rule::file, src)
             .map_err(Box::new)
             .map_err(Error::from)
             .map(|p| self.trans.file(p))?;
@@ -332,7 +336,7 @@ impl Compiler {
             for d in &f.defs {
                 if is_ubiquitous && !d.name.is_unbound() {
                     self.elab.ubiquitous.insert(
-                        d.name.to_string(),
+                        d.name.as_str(),
                         ResolvedVar(VarKind::Inside, d.name.clone()),
                     );
                 }

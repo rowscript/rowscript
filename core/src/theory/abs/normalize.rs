@@ -15,7 +15,7 @@ use crate::Error::{
     ClassMethodNotImplemented, ExpectedReflectable, FieldsNonExtendable, NonExhaustive,
     UnresolvedField, UnresolvedInstance, UnsatisfiedConstraint,
 };
-use crate::{maybe_grow, Error};
+use crate::{maybe_grow, Error, Src};
 
 pub struct Normalizer<'a> {
     ubiquitous: &'a NameMap,
@@ -245,11 +245,10 @@ impl<'a> Normalizer<'a> {
                 (a, b) => BoolNeq(Box::new(a), Box::new(b)),
             },
             StrAdd(a, b) => match (*self.term_box(a)?, *self.term_box(b)?) {
-                (Str(mut a), Str(mut b)) => {
-                    a.pop();
-                    b.remove(0);
-                    a.push_str(b.as_str());
-                    Str(a)
+                (Str(a), Str(b)) => {
+                    let mut a = a[..a.len() - 1].to_string();
+                    a.push_str(&b[1..]);
+                    Str(a.leak())
                 }
                 (a, b) => StrAdd(Box::new(a), Box::new(b)),
             },
@@ -262,7 +261,7 @@ impl<'a> Normalizer<'a> {
                 (a, b) => StrNeq(Box::new(a), Box::new(b)),
             },
             StrToLowerCase(a) => match *self.term_box(a)? {
-                Str(a) => Str(a.to_lowercase()),
+                Str(a) => Str(a.to_string().to_lowercase().leak()),
                 a => StrToLowerCase(Box::new(a)),
             },
             NumAdd(a, b) => {
@@ -358,16 +357,11 @@ impl<'a> Normalizer<'a> {
                 a => NumNeg(Box::new(a)),
             },
             NumToStr(a) => match *self.term_box(a)? {
-                Num(a) => Str(format!("\"{a}\"")),
+                Num(a) => Str(format!("\"{a}\"").leak()),
                 a => NumToStr(Box::new(a)),
             },
             BigintToStr(a) => match *self.term_box(a)? {
-                Big(mut a) => {
-                    if a.ends_with('n') {
-                        a.pop();
-                    }
-                    Str(format!("\"{a}\""))
-                }
+                Big(a) => Str(format!("\"{}\"", a.strip_suffix('n').unwrap_or(a)).leak()),
                 a => BigintToStr(Box::new(a)),
             },
             ArrayIterator(t) => ArrayIterator(self.term_box(t)?),
@@ -405,7 +399,7 @@ impl<'a> Normalizer<'a> {
             MapClear(m) => MapClear(self.term_box(m)?),
             MapIter(a) => MapIter(self.term_box(a)?),
             RkToStr(a) => match *self.term_box(a)? {
-                Rk(k) => Str(format!("\"{k}\"")),
+                Rk(k) => Str(format!("\"{k}\"").leak()),
                 a => RkToStr(Box::new(a)),
             },
             AtResult { ty, key } => {
@@ -476,7 +470,7 @@ impl<'a> Normalizer<'a> {
                     (Fields(x), Fields(y)) => {
                         let l = x.len();
                         // TODO: eliminate clone
-                        x.extend(y.iter().map(|(n, tm)| (n.clone(), tm.clone())));
+                        x.extend(y.iter().map(|(n, tm)| (*n, tm.clone())));
                         if inplace_only && x.len() > l {
                             return Err(FieldsNonExtendable(*b, self.loc));
                         }
@@ -519,7 +513,7 @@ impl<'a> Normalizer<'a> {
                     (Obj(x), Obj(y)) => match (x.as_mut(), y.as_ref()) {
                         (Fields(x), Fields(y)) => {
                             // TODO: eliminate clone
-                            x.extend(y.iter().map(|(n, tm)| (n.clone(), tm.clone())));
+                            x.extend(y.iter().map(|(n, tm)| (*n, tm.clone())));
                             *a
                         }
                         _ => Cat(a, b),
@@ -546,7 +540,7 @@ impl<'a> Normalizer<'a> {
                                 .keys()
                                 .map(|n| {
                                     let tm = x.get(n).unwrap().clone();
-                                    (n.clone(), tm)
+                                    (*n, tm)
                                 })
                                 .collect();
                             Obj(m)
@@ -664,8 +658,7 @@ impl<'a> Normalizer<'a> {
                             Object(..) => "TypeofObject",
                             Enum(..) => "TypeofEnum",
                             _ => return Err(ExpectedReflectable(ty, self.loc)),
-                        }
-                        .to_string(),
+                        },
                         TT,
                     )]))))
                 }
@@ -889,7 +882,7 @@ impl<'a> Normalizer<'a> {
         Ok(a)
     }
 
-    fn at(&self, mut fields: FieldMap, k: String) -> Result<Term, Error> {
+    fn at(&self, mut fields: FieldMap, k: Src) -> Result<Term, Error> {
         match fields.remove(&k) {
             Some(tm) => Ok(tm),
             None => Err(UnresolvedField(k, Term::Fields(fields), self.loc)),

@@ -22,7 +22,7 @@ use crate::Error::{
     NonExhaustive, NonVariadicType, NotCheckedYet, UnresolvedEffect, UnresolvedField,
     UnresolvedImplicitParam, UnresolvedVar,
 };
-use crate::{maybe_grow, File};
+use crate::{maybe_grow, File, Src};
 use crate::{print_err, Error};
 
 #[derive(Debug)]
@@ -1211,7 +1211,7 @@ impl Elaborator {
                         } else {
                             self.unifier(loc).unify_eff(o_eff.as_ref().unwrap(), &eff)?;
                         }
-                        tm_fields.insert(n.clone(), tm);
+                        tm_fields.insert(n, tm);
                         ty_fields.insert(n, ty);
                     }
                     InferResult {
@@ -1311,10 +1311,7 @@ impl Elaborator {
                         var: Var::unbound(),
                         info: Implicit,
                         typ: Box::new(Term::RowOrd(
-                            Box::new(Term::Fields(FieldMap::from([(
-                                n.clone(),
-                                Term::Ref(t.clone()),
-                            )]))),
+                            Box::new(Term::Fields(FieldMap::from([(n, Term::Ref(t.clone()))]))),
                             Box::new(Term::Ref(a)),
                         )),
                     },
@@ -1349,7 +1346,7 @@ impl Elaborator {
                     eff,
                     ty: a_ty,
                 } = self.infer(*a)?;
-                let tm = Term::Fields(FieldMap::from([(n.clone(), a)]));
+                let tm = Term::Fields(FieldMap::from([(n, a)]));
                 let ty = Term::Fields(FieldMap::from([(n, a_ty)]));
                 InferResult {
                     tm: Term::Variant(Box::new(tm)),
@@ -1419,7 +1416,7 @@ impl Elaborator {
                     let ty = match fields {
                         Some(f) => f
                             .get(&n)
-                            .ok_or(UnresolvedField(n.clone(), Term::Fields(f.clone()), loc))?
+                            .ok_or(UnresolvedField(n, Term::Fields(f.clone()), loc))?
                             .clone(),
                         None => self.insert_meta(e.loc(), InsertedMeta).0,
                     };
@@ -1624,14 +1621,14 @@ impl Elaborator {
                     let interface_fns = match &self.sigma.get(&eff).unwrap().body {
                         Body::Interface { fns, .. } => fns
                             .iter()
-                            .map(|f| (f.to_string(), f.clone()))
+                            .map(|f| (f.as_str(), f.clone()))
                             .collect::<HashMap<_, _>>(),
                         _ => unreachable!(),
                     };
                     let mut fns = HashMap::default();
                     let mut instance_fns = Vec::default();
                     for (name, def) in catch.inst_fns {
-                        if let Some(v) = interface_fns.get(&name) {
+                        if let Some(v) = interface_fns.get(name) {
                             fns.insert(v.clone(), def.name.clone());
                         }
                         instance_fns.push(def);
@@ -1771,7 +1768,7 @@ impl Elaborator {
     }
 
     fn app_insert_holes(f_e: Expr, i: ArgInfo, f_ty: &Term) -> Result<Option<Expr>, Error> {
-        fn holes_to_insert(loc: Loc, name: String, mut ty: &Term) -> Result<usize, Error> {
+        fn holes_to_insert(loc: Loc, name: Src, mut ty: &Term) -> Result<usize, Error> {
             let mut ret = Default::default();
             loop {
                 match ty {
@@ -1795,7 +1792,7 @@ impl Elaborator {
         Ok(match f_ty {
             Term::Pi { param, .. } if param.info == Implicit => match i {
                 UnnamedExplicit => Some(Expr::holed_app(f_e)),
-                NamedImplicit(name) => match holes_to_insert(f_e.loc(), name.to_string(), f_ty)? {
+                NamedImplicit(name) => match holes_to_insert(f_e.loc(), name.as_str(), f_ty)? {
                     0 => None,
                     n => Some((0..n).fold(f_e, |e, _| Expr::holed_app(e))),
                 },

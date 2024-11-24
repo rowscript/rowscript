@@ -1,17 +1,17 @@
-use std::collections::{HashMap, HashSet};
-use std::fmt::{Display, Formatter};
-
 use crate::theory::abs::def::{Body, Sigma};
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::load::ModuleID;
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Param, ParamInfo, Syntax, Tele, Var};
+use crate::Src;
+use std::collections::{HashMap, HashSet};
+use std::fmt::{Display, Formatter};
 
 pub type Spine = Vec<(ParamInfo, Term)>;
 
-pub type FieldMap = HashMap<String, Term>;
+pub type FieldMap = HashMap<Src, Term>;
 pub type FieldSet = HashSet<Var>;
-pub type CaseMap = HashMap<String, (Var, Term)>;
+pub type CaseMap = HashMap<Src, (Var, Term)>;
 pub type CaseDefault = Option<(Var, Box<Term>)>;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -78,7 +78,7 @@ pub enum Term {
     BoolNeq(Box<Self>, Box<Self>),
 
     String,
-    Str(String),
+    Str(Src),
     StrAdd(Box<Self>, Box<Self>),
     StrEq(Box<Self>, Box<Self>),
     StrNeq(Box<Self>, Box<Self>),
@@ -101,7 +101,7 @@ pub enum Term {
     NumToStr(Box<Self>),
 
     Bigint,
-    Big(String),
+    Big(Src),
     BigintToStr(Box<Self>),
 
     ArrayIterator(Box<Self>),
@@ -128,7 +128,7 @@ pub enum Term {
 
     Row,
     Rowkey,
-    Rk(String),
+    Rk(Src),
     RkToStr(Box<Self>),
     AtResult {
         ty: Box<Self>,
@@ -136,7 +136,7 @@ pub enum Term {
     },
     At(Box<Self>, Box<Self>),
     Fields(FieldMap),
-    Associate(Box<Self>, String),
+    Associate(Box<Self>, Src),
     Combine(bool, Box<Self>, Box<Self>),
 
     RowOrd(Box<Self>, Box<Self>),
@@ -149,7 +149,7 @@ pub enum Term {
     Obj(Box<Self>),
     Concat(Box<Self>, Box<Self>),
     Cat(Box<Self>, Box<Self>),
-    Access(Box<Self>, String),
+    Access(Box<Self>, Src),
     Downcast(Box<Self>, Box<Self>),
     Down(Box<Self>, Box<Self>),
 
@@ -182,7 +182,7 @@ pub enum Term {
     Cls {
         class: Var,
         type_args: Vec<Self>,
-        associated: HashMap<String, Self>,
+        associated: HashMap<Src, Self>,
         object: Box<Self>,
     },
 
@@ -201,8 +201,8 @@ pub enum Term {
 pub struct PartialClass {
     pub applied_types: Box<[Term]>,
     pub type_params: Box<[Term]>,
-    pub associated: HashMap<String, Var>,
-    pub methods: HashMap<String, Var>,
+    pub associated: HashMap<Src, Var>,
+    pub methods: HashMap<Src, Var>,
 }
 
 impl Term {
@@ -355,19 +355,16 @@ impl Term {
 
     fn list_empty() -> Self {
         use Term::*;
-        Variant(Box::new(Fields(FieldMap::from([(
-            "Empty".to_string(),
-            TT,
-        )]))))
+        Variant(Box::new(Fields(FieldMap::from([("Empty", TT)]))))
     }
 
     fn list_append(value: Self, list: Self) -> Self {
         use Term::*;
         Variant(Box::new(Fields(FieldMap::from([(
-            "Append".to_string(),
+            "Append",
             Obj(Box::new(Fields(FieldMap::from([
-                ("value".to_string(), value),
-                ("list".to_string(), list),
+                ("value", value),
+                ("list", list),
             ])))),
         )]))))
     }
@@ -435,7 +432,7 @@ impl Display for Term {
                 BoolEq(a, b) => format!("{a} == {b}"),
                 BoolNeq(a, b) => format!("{a} != {b}"),
                 String => "string".to_string(),
-                Str(v) => v.clone(),
+                Str(v) => v.to_string(),
                 StrAdd(a, b) => format!("{a} + {b}"),
                 StrEq(a, b) => format!("{a} == {b}"),
                 StrNeq(a, b) => format!("{a} != {b}"),
@@ -456,7 +453,7 @@ impl Display for Term {
                 NumNeg(a) => format!("-{a}"),
                 NumToStr(a) | BigintToStr(a) | RkToStr(a) => format!("{a}.toString()"),
                 Bigint => "bigint".to_string(),
-                Big(v) => v.clone(),
+                Big(v) => v.to_string(),
                 ArrayIterator(t) => format!("NativeArrayIterator<{t}>"),
                 ArrIterNext(it) => format!("{it}.next()"),
                 Array(t) => format!("NativeArray<{t}>"),
@@ -491,7 +488,7 @@ impl Display for Term {
                 MapIter(m) => format!("{m}.iter()"),
                 Row => "row".to_string(),
                 Rowkey => "rowkey".to_string(),
-                Rk(k) => k.clone(),
+                Rk(k) => k.to_string(),
                 AtResult { key, .. } => format!("?.{key}"),
                 At(a, k) => format!("{a}[{k}]"),
                 Fields(fields) => format!(

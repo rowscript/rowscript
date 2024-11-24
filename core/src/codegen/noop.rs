@@ -4,7 +4,7 @@ use crate::codegen::Target;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Sigma;
 use crate::theory::conc::load::ModuleID;
-use crate::{Error, File};
+use crate::{Error, File, Src};
 
 #[derive(Default)]
 pub struct Noop;
@@ -14,7 +14,7 @@ impl Target for Noop {
         ""
     }
 
-    fn to_qualifier(&self, _: &ModuleID) -> String {
+    fn to_qualifier(&self, _: &ModuleID) -> Src {
         unreachable!()
     }
 
