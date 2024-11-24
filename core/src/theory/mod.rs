@@ -3,7 +3,6 @@ use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::mem::discriminant;
 use std::rc::Rc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 use pest::iterators::{Pair as ParserPair, Pairs as ParserPairs};
 use pest::Span;
@@ -41,9 +40,8 @@ impl<'a> From<Span<'a>> for Loc {
 }
 
 type Name = Rc<Src>;
-type ID = usize;
 
-fn id(n: &Name) -> ID {
+fn id(n: &Name) -> usize {
     Rc::as_ptr(n) as _
 }
 
@@ -67,15 +65,14 @@ impl RawNameSet {
 pub enum Var {
     Bound(Name),
     Unbound,
-    Meta(ID),
+    Meta(Name),
 }
 
 impl Display for Var {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Bound(n) => Display::fmt(n, f),
+            Self::Bound(n) | Self::Meta(n) => Display::fmt(n, f),
             Self::Unbound => unreachable!(),
-            Self::Meta(id) => Display::fmt(id, f),
         }
     }
 }
@@ -83,8 +80,7 @@ impl Display for Var {
 impl PartialEq<Self> for Var {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::Bound(l), Self::Bound(r)) => id(l) == id(r),
-            (Self::Meta(l), Self::Meta(r)) => l == r,
+            (Self::Bound(l), Self::Bound(r)) | (Self::Meta(l), Self::Meta(r)) => id(l) == id(r),
             _ => false,
         }
     }
@@ -94,12 +90,13 @@ impl Hash for Var {
     fn hash<H: Hasher>(&self, state: &mut H) {
         discriminant(self).hash(state);
         match self {
-            Self::Bound(n) => id(n).hash(state),
+            Self::Bound(n) | Self::Meta(n) => id(n).hash(state),
             Self::Unbound => unreachable!(),
-            Self::Meta(id) => id.hash(state),
         }
     }
 }
+
+const META: Src = "_";
 
 pub const TUPLED: &str = "__tupled";
 pub const UNTUPLED_RHS_PREFIX: &str = "__untupled_";
@@ -135,13 +132,8 @@ impl Var {
         Self::new(name.leak())
     }
 
-    fn fresh() -> ID {
-        static NEXT_ID: AtomicUsize = AtomicUsize::new(0);
-        NEXT_ID.fetch_add(1, Ordering::Relaxed)
-    }
-
     pub fn meta() -> Self {
-        Self::Meta(Self::fresh())
+        Self::Meta(Rc::new(META))
     }
 
     pub fn unbound() -> Self {
