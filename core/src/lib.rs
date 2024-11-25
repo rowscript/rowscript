@@ -133,7 +133,13 @@ fn print_err(e: Error, file: &Path) -> Error {
         IO(..) => (Range::default(), PARSER_FAILED, None),
         Parsing(e) => {
             let range = match e.location {
-                InputLocation::Pos(start) => start..source.len(),
+                InputLocation::Pos(start) => {
+                    start
+                        ..source.as_str()[start..]
+                            .find('\n')
+                            .map(|l| start + l)
+                            .unwrap_or_else(|| source.len())
+                }
                 InputLocation::Span((start, end)) => start..end,
             };
             (range, PARSER_FAILED, Some(e.variant.message().to_string()))
