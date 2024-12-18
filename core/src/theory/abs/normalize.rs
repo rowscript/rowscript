@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::ops::Not;
 
 use log::{debug, trace};
+use serde_json::Value;
 
 use crate::theory::abs::data::{CaseDefault, CaseMap, FieldMap, PartialClass, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
@@ -680,7 +681,10 @@ impl<'a> Normalizer<'a> {
             SetTimeout(f, d, x) => {
                 SetTimeout(self.term_box(f)?, self.term_box(d)?, self.term_box(x)?)
             }
-            JSONStringify(a) => JSONStringify(self.term_box(a)?),
+            JSONStringify(a) => match *self.term_box(a)? {
+                Str(s) => Str(Value::String(s.to_string()).to_string().leak()),
+                a => JSONStringify(Box::new(a)),
+            },
             HtmlElementAddEventListener(n, e, l) => {
                 HtmlElementAddEventListener(self.term_box(n)?, self.term_box(e)?, self.term_box(l)?)
             }
