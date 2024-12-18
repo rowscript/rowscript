@@ -4,7 +4,7 @@ version = "1.0.0-alpha.5"
 edition = "2021"
 
 [dependencies.thiserror]
-version = "2.0.0"
+version = "2.0.8"
 
 [dependencies.ariadne]
 version = "0.5.0"
@@ -16,17 +16,16 @@ version = "0.1.17"
 version = "0.4.22"
 
 [dependencies.pest]
-version = "2.7.14"
+version = "2.7.15"
 
 [dependencies.pest_derive]
-version = "2.7.14"
+version = "2.7.15"
 
 [dependencies]
-swc_ecma_parser = { version = "5.0.0" }
-swc_ecma_ast = { version = "4.0.1" }
-swc_ecma_codegen = { version = "4.0.1" }
-swc_atoms = { version = "2.0.0" }
-swc_common = { version = "4.0.0", features = ["tty-emitter"] }
-swc_allocator = { version = "1.0.0", default-features = false }
+swc_ecma_parser = { version = "6.0.1" }
+swc_ecma_ast = { version = "5.0.0" }
+swc_ecma_codegen = { version = "5.0.0" }
+swc_atoms = { version = "3.0.0" }
+swc_common = { version = "5.0.0", features = ["tty-emitter"] }
 num-bigint = { version = "0.4.6" }
 serde_json = { version = "1.0.133" }
