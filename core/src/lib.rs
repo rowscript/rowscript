@@ -6,23 +6,23 @@ use std::path::Path;
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use pest::error::Error as PestError;
 use pest::error::InputLocation;
-use pest::Parser;
-use pest_derive::Parser;
 use thiserror::Error;
 
 use crate::codegen::ecma::Ecma;
 use crate::codegen::{Codegen, Target};
+use crate::prelude::FILES;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::elab::Elaborator;
-use crate::theory::conc::load::{prelude_path, Import, Loaded, ModuleID};
+use crate::theory::conc::load::{Import, Loaded, ModuleID};
 use crate::theory::conc::resolve::Resolver;
-use crate::theory::conc::trans::Trans;
+use crate::theory::surf::{Parsed, Parser, Rule};
 use crate::theory::{Loc, Syntax, Var};
 use crate::theory::{ResolvedVar, VarKind};
 
 pub mod codegen;
+mod prelude;
 #[cfg(test)]
 mod tests;
 pub mod theory;
@@ -198,10 +198,6 @@ fn print_err(e: Error, file: &Path) -> Error {
     e
 }
 
-#[derive(Parser)]
-#[grammar = "theory/surf.pest"]
-pub struct RowsParser;
-
 pub const OUT_DIR: &str = "dist";
 pub const FILE_EXT: &str = "rows";
 
@@ -219,15 +215,10 @@ pub struct Module<T: Syntax> {
 
 pub struct Compiler {
     path: Box<Path>,
-    trans: Trans,
+    parser: Parser,
     loaded: Loaded,
     elab: Elaborator,
     codegen: Codegen,
-}
-
-enum Loadable {
-    ViaID(ModuleID),
-    ViaPath(Box<Path>),
 }
 
 impl Compiler {
@@ -239,7 +230,7 @@ impl Compiler {
         let codegen = Codegen::new(target, path.join(OUT_DIR).into_boxed_path());
         Self {
             path: path.into(),
-            trans: Default::default(),
+            parser: Default::default(),
             loaded: Default::default(),
             elab: Default::default(),
             codegen,
@@ -247,27 +238,39 @@ impl Compiler {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
-        self.load(Loadable::ViaPath(prelude_path()), true)?;
+        self.load_prelude()?;
         self.load_module(ModuleID::default())
     }
 
-    fn load_module(&mut self, module: ModuleID) -> Result<(), Error> {
-        match self.loaded.contains(&module) {
-            true => Ok(()),
-            false => self.load(Loadable::ViaID(module), false),
-        }
+    fn load_prelude(&mut self) -> Result<(), Error> {
+        let parsed = FILES
+            .into_iter()
+            .map(|(p, src)| {
+                let path = Path::new(p);
+                let Parsed { imports, defs } = self.parser.parse(path, src)?;
+                if !imports.is_empty() {
+                    unreachable!("unexpected imports in prelude file {p}")
+                }
+                Ok::<_, Error>(File {
+                    path: path.into(),
+                    imports,
+                    defs,
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let resolved = Resolver::new(&self.elab.ubiquitous, &self.loaded).files(parsed)?;
+        self.check(None, true, resolved)?;
+        Ok(())
     }
 
-    fn load(&mut self, loadable: Loadable, is_ubiquitous: bool) -> Result<(), Error> {
-        use Loadable::*;
-
-        let (module_path, module) = match loadable {
-            ViaID(m) => (m.to_source_path(self.path.as_ref()), Some(m)),
-            ViaPath(p) => (p, None),
-        };
+    fn load_module(&mut self, module: ModuleID) -> Result<(), Error> {
+        if self.loaded.contains(&module) {
+            return Ok(());
+        }
 
         let mut includes = Vec::default();
         let mut paths = Vec::default();
+        let module_path = module.to_source_path(self.path.as_ref());
         for r in module_path
             .read_dir()
             .map_err(|e| Error::IO(module_path, e))?
@@ -294,22 +297,15 @@ impl Compiler {
             .into_iter()
             .map(|p| self.parse_and_import(&p).map_err(|e| print_err(e, &p)))
             .collect::<Result<_, _>>()?;
-
         let resolved = Resolver::new(&self.elab.ubiquitous, &self.loaded).files(parsed)?;
-
-        let files = self.check(&module, is_ubiquitous, resolved)?;
-
-        if let Some(module) = module {
-            self.codegen.module(
-                &self.elab.sigma,
-                Module {
-                    module,
-                    files,
-                    includes: includes.into(),
-                },
-            )?;
-        }
-
+        let files = self.check(Some(&module), false, resolved)?;
+        let includes = includes.into_boxed_slice();
+        let checked = Module {
+            module,
+            files,
+            includes,
+        };
+        self.codegen.module(&self.elab.sigma, checked)?;
         Ok(())
     }
 
@@ -317,10 +313,7 @@ impl Compiler {
         let src: Src = read_to_string(path)
             .map_err(|e| Error::IO(path.into(), e))?
             .leak();
-        let (imports, defs) = RowsParser::parse(Rule::file, src)
-            .map_err(Box::new)
-            .map_err(Error::from)
-            .map(|p| self.trans.file(p))?;
+        let Parsed { imports, defs } = self.parser.parse(path, src)?;
         imports
             .iter()
             .try_fold((), |_, i| self.load_module(i.module.clone()))?;
@@ -333,7 +326,7 @@ impl Compiler {
 
     fn check(
         &mut self,
-        module: &Option<ModuleID>,
+        module: Option<&ModuleID>,
         is_ubiquitous: bool,
         files: Box<[File<Expr>]>,
     ) -> Result<Box<[File<Term>]>, Error> {

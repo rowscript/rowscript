@@ -10,8 +10,7 @@
   "files": [
     "api/",
     "cli/npm/index.js",
-    "std/",
-    "core/prelude/"
+    "std/"
   ],
   "bin": {
     "rowscript": "cli/npm/index.js"

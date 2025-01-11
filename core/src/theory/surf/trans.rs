@@ -10,9 +10,10 @@ use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, Unnamed
 use crate::theory::conc::data::{ArgInfo, Catch, Expr};
 use crate::theory::conc::load::ImportedPkg::Vendor;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
+use crate::theory::surf::{Pair, Pairs, Parsed, Rule};
 use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{Loc, Pair, Pairs, Param, Tele, Var};
-use crate::{Rule, Src};
+use crate::theory::{Loc, Param, Tele, Var};
+use crate::Src;
 
 fn type_pratt() -> &'static PrattParser<Rule> {
     static ONCE: OnceLock<PrattParser<Rule>> = OnceLock::new();
@@ -53,7 +54,7 @@ pub struct Trans {
 }
 
 impl Trans {
-    pub fn file(&mut self, mut f: Pairs) -> (Box<[Import]>, Box<[Def<Expr>]>) {
+    pub fn file(&mut self, mut f: Pairs) -> Parsed {
         let mut imports = Vec::default();
         let mut defs = Vec::default();
         for d in f.next().unwrap().into_inner() {
@@ -67,7 +68,10 @@ impl Trans {
                 _ => unreachable!(),
             }
         }
-        (imports.into(), defs.into())
+        Parsed {
+            imports: imports.into(),
+            defs: defs.into(),
+        }
     }
 
     fn def(&mut self, d: Pair, is_public: bool, defs: &mut Vec<Def<Expr>>) {

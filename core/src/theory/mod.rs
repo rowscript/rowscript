@@ -4,14 +4,15 @@ use std::hash::{Hash, Hasher};
 use std::mem::discriminant;
 use std::rc::Rc;
 
-use pest::iterators::{Pair as ParserPair, Pairs as ParserPairs};
 use pest::Span;
 
 use crate::theory::conc::data::{ArgInfo, Expr};
-use crate::{Error, Rule, Src};
+use crate::theory::surf::Pair;
+use crate::{Error, Src};
 
 pub mod abs;
 pub mod conc;
+pub mod surf;
 
 #[derive(Default, Debug, Copy, Clone, Hash, Eq, PartialEq)]
 pub struct Loc {
@@ -253,9 +254,6 @@ impl Var {
         }
     }
 }
-
-type Pair = ParserPair<'static, Rule>;
-type Pairs = ParserPairs<'static, Rule>;
 
 impl From<Pair> for Var {
     fn from(p: Pair) -> Self {

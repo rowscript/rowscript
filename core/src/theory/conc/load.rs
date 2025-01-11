@@ -15,28 +15,6 @@ const MODULES_DIR: &str = "test_modules";
 const PKG_DIR: &str = "rowscript";
 const STD_PKG_DIR: &str = "std";
 
-const PRELUDE_DIR: &str = "prelude";
-
-#[cfg(not(test))]
-pub fn prelude_path() -> Box<Path> {
-    use std::env::var;
-    match var("ROWS_PRELUDE_DIR") {
-        Ok(p) => PathBuf::from(p),
-        Err(_) => Path::new(MODULES_DIR)
-            .join(PKG_DIR)
-            .join("core")
-            .join(PRELUDE_DIR),
-    }
-    .into()
-}
-
-#[cfg(test)]
-pub fn prelude_path() -> Box<Path> {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join(PRELUDE_DIR)
-        .into()
-}
-
 #[derive(Default, Debug, Hash, Eq, PartialEq, Clone)]
 pub enum ImportedPkg {
     #[default]
