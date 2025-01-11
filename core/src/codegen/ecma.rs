@@ -48,7 +48,7 @@ const JS_LIB: &str = "__lib";
 const JS_LIB_PREFIX: &str = "__lib$";
 const JS_ESCAPED_THIS: &str = "__this";
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Ecma {
     not_escaping_this: bool,
 }

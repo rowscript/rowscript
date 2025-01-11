@@ -28,5 +28,5 @@ fn test_stdlib() {
         .unwrap();
     w.flush().unwrap();
 
-    Compiler::new(&pkg).run().unwrap();
+    Compiler::new_cached(&pkg).run_cached().unwrap();
 }

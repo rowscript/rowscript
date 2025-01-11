@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::mem::discriminant;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use pest::Span;
 
@@ -40,10 +40,10 @@ impl<'a> From<Span<'a>> for Loc {
     }
 }
 
-type Name = Rc<Src>;
+type Name = Arc<Src>;
 
 fn id(n: &Name) -> usize {
-    Rc::as_ptr(n) as _
+    Arc::as_ptr(n) as _
 }
 
 #[derive(Default, Debug)]
@@ -126,7 +126,7 @@ pub const TYPEOF: &str = "Typeof";
 
 impl Var {
     fn new(name: Src) -> Self {
-        Self::Bound(Rc::new(name))
+        Self::Bound(Arc::new(name))
     }
 
     fn compound(name: String) -> Self {
@@ -134,7 +134,7 @@ impl Var {
     }
 
     pub fn meta() -> Self {
-        Self::Meta(Rc::new(META))
+        Self::Meta(Arc::new(META))
     }
 
     pub fn unbound() -> Self {

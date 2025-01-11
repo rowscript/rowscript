@@ -8,7 +8,6 @@ use pest::error::Error as PestError;
 use pest::error::InputLocation;
 use thiserror::Error;
 
-use crate::codegen::ecma::Ecma;
 use crate::codegen::{Codegen, Target};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
@@ -208,21 +207,18 @@ pub struct Module<T: Syntax> {
     includes: Box<[Box<Path>]>,
 }
 
-pub struct Compiler {
+#[derive(Clone)]
+pub struct Compiler<T: Target> {
     path: Box<Path>,
     parser: Parser,
     loaded: Loaded,
     elab: Elaborator,
-    codegen: Codegen,
+    codegen: Codegen<T>,
 }
 
-impl Compiler {
-    pub fn new(path: &Path) -> Self {
-        Self::with_target(path, Box::new(Ecma::default()))
-    }
-
-    pub fn with_target(path: &Path, target: Box<dyn Target>) -> Self {
-        let codegen = Codegen::new(target, path.join(OUT_DIR).into_boxed_path());
+impl<T: Target> Compiler<T> {
+    fn new(path: &Path) -> Self {
+        let codegen = Codegen::new(path);
         Self {
             path: path.into(),
             parser: Default::default(),
@@ -232,9 +228,10 @@ impl Compiler {
         }
     }
 
-    pub fn run(&mut self) -> Result<(), Error> {
-        self.load_prelude()?;
-        self.load_module(ModuleID::default())
+    pub fn run(path: &Path) -> Result<(), Error> {
+        let mut c = Self::new(path);
+        c.load_prelude()?;
+        c.load_module(ModuleID::default())
     }
 
     fn load_prelude(&mut self) -> Result<(), Error> {
@@ -348,6 +345,28 @@ impl Compiler {
             }
         }
         Ok(files)
+    }
+}
+
+#[cfg(test)]
+impl Compiler<codegen::ecma::Ecma> {
+    pub fn new_cached(path: &Path) -> Self {
+        use std::sync::OnceLock;
+        static ONCE: OnceLock<Compiler<codegen::ecma::Ecma>> = OnceLock::new();
+        let mut c = ONCE
+            .get_or_init(|| {
+                let mut c = Self::new(Path::new("."));
+                c.load_prelude().unwrap();
+                c
+            })
+            .clone();
+        c.codegen = Codegen::new(path); // FIXME: bad hack here :(
+        c.path = path.into();
+        c
+    }
+
+    pub fn run_cached(&mut self) -> Result<(), Error> {
+        self.load_module(ModuleID::default())
     }
 }
 

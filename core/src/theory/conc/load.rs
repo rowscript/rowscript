@@ -91,7 +91,7 @@ impl Import {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Loaded(HashMap<ModuleID, HashMap<Src, Var>>);
 
 impl Loaded {

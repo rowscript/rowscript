@@ -5,7 +5,8 @@ use clap::{Parser, ValueEnum};
 use log::error;
 use log::LevelFilter::{Debug, Info, Trace};
 
-use rowscript_core::codegen::{ecma, noop, Target};
+use rowscript_core::codegen::ecma::Ecma;
+use rowscript_core::codegen::noop::Noop;
 use rowscript_core::Compiler;
 
 #[derive(Parser)]
@@ -25,15 +26,6 @@ enum TargetID {
     Ecma,
 }
 
-impl From<TargetID> for Box<dyn Target> {
-    fn from(val: TargetID) -> Self {
-        match val {
-            TargetID::Noop => Box::<noop::Noop>::default(),
-            TargetID::Ecma => Box::<ecma::Ecma>::default(),
-        }
-    }
-}
-
 fn main() -> ExitCode {
     let Args {
         path,
@@ -51,8 +43,10 @@ fn main() -> ExitCode {
         env_logger::builder().filter_level(l).init()
     });
 
-    Compiler::with_target(&path, target.into())
-        .run()
-        .map_err(|e| error!("compilation failed: {e}"))
-        .map_or(ExitCode::FAILURE, |_| ExitCode::SUCCESS)
+    match target {
+        TargetID::Noop => Compiler::<Noop>::run(&path),
+        TargetID::Ecma => Compiler::<Ecma>::run(&path),
+    }
+    .map_err(|e| error!("compilation failed: {e}"))
+    .map_or(ExitCode::FAILURE, |_| ExitCode::SUCCESS)
 }

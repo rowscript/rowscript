@@ -25,7 +25,7 @@ use crate::Error::{
 use crate::{maybe_grow, File, Src};
 use crate::{print_err, Error};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Elaborator {
     pub ubiquitous: NameMap,
     pub sigma: Sigma,

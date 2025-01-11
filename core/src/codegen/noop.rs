@@ -6,7 +6,7 @@ use crate::theory::abs::def::Sigma;
 use crate::theory::conc::load::ModuleID;
 use crate::{Error, File, Src};
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Noop;
 
 impl Target for Noop {

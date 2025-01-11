@@ -4,12 +4,12 @@ use std::path::Path;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Sigma;
 use crate::theory::conc::load::ModuleID;
-use crate::{print_err, Error, File, Module, Src};
+use crate::{print_err, Error, File, Module, Src, OUT_DIR};
 
 pub mod ecma;
 pub mod noop;
 
-pub trait Target {
+pub trait Target: Default {
     fn filename(&self) -> &'static str;
     fn to_qualifier(&self, module: &ModuleID) -> Src;
     fn should_include(&self, path: &Path) -> bool;
@@ -23,13 +23,16 @@ pub trait Target {
     ) -> Result<(), Error>;
 }
 
-pub struct Codegen {
-    target: Box<dyn Target>,
+#[derive(Clone)]
+pub struct Codegen<T: Target> {
+    target: T,
     pub out_dir: Box<Path>,
 }
 
-impl Codegen {
-    pub fn new(target: Box<dyn Target>, out_dir: Box<Path>) -> Self {
+impl<T: Target> Codegen<T> {
+    pub fn new(src_dir: &Path) -> Self {
+        let target = T::default();
+        let out_dir = src_dir.join(OUT_DIR).into_boxed_path();
         Self { target, out_dir }
     }
 

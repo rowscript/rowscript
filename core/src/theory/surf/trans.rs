@@ -48,7 +48,7 @@ fn expr_pratt() -> &'static PrattParser<Rule> {
     })
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Trans {
     predicates: Vec<Param<Expr>>,
 }

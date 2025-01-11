@@ -19,7 +19,7 @@ pub type Pairs = ParserPairs<'static, Rule>;
 #[grammar = "theory/surf/grammar.pest"]
 struct RowsParser;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Parser {
     trans: Trans,
 }

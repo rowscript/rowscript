@@ -107,8 +107,8 @@ fn run_helper(mod_path: &str) -> Result<(), Error> {
         .join("src")
         .join("tests")
         .join(mod_path.to_string().split("::").last().unwrap());
-    let mut compiler = Compiler::new(pkg.as_path());
-    compiler.run()?;
+    let mut compiler = Compiler::new_cached(pkg.as_path());
+    compiler.run_cached()?;
     parse_outfiles(&compiler.codegen.out_dir)
 }
 
