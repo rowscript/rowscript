@@ -32,7 +32,7 @@ pub struct Parsed {
 impl Parser {
     pub fn parse(&mut self, path: &Path, src: Src) -> Result<Parsed, Error> {
         RowsParser::parse(Rule::file, src)
-            .map_err(|e| print_err(Box::new(e).into(), path))
+            .map_err(|e| print_err(Box::new(e).into(), path, src))
             .map(|p| self.trans.file(p))
     }
 }

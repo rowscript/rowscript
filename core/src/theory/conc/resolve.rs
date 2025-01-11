@@ -40,14 +40,14 @@ impl<'a> Resolver<'a> {
                 if !d.name.is_unbound() {
                     if let Some(rv) = self.ubiquitous.get(d.name.as_str()) {
                         if !matches!(rv.0, Reserved) {
-                            return Err(print_err(DuplicateName(d.loc), &f.path));
+                            return Err(print_err(DuplicateName(d.loc), &f.path, f.src));
                         }
                         // Use the reserved definition name.
                         d.name = rv.1.clone();
                     }
                 }
                 self.insert_global(d.loc, d.name.clone())
-                    .map_err(|e| print_err(e, &f.path))?;
+                    .map_err(|e| print_err(e, &f.path, f.src))?;
             }
         }
         files.into_iter().map(|d| self.file(d)).collect()
@@ -55,14 +55,14 @@ impl<'a> Resolver<'a> {
 
     fn file(&mut self, mut file: File<Expr>) -> Result<File<Expr>, Error> {
         self.imports(&file.imports)
-            .map_err(|e| print_err(e, &file.path))?;
+            .map_err(|e| print_err(e, &file.path, file.src))?;
         file.defs = file
             .defs
             .into_vec()
             .into_iter()
             .map(|d| self.def(d))
             .collect::<Result<_, _>>()
-            .map_err(|e| print_err(e, &file.path))?;
+            .map_err(|e| print_err(e, &file.path, file.src))?;
         Ok(file)
     }
 

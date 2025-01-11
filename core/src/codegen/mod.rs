@@ -56,9 +56,10 @@ impl Codegen {
             .enumerate()
             .try_fold((), |_, (i, f)| {
                 let file = f.path.clone();
+                let src = f.src;
                 self.target
                     .module(&mut buf, sigma, &includes, f, i == 0)
-                    .map_err(|e| print_err(e, &file))
+                    .map_err(|e| print_err(e, &file, src))
             })?;
         if buf.is_empty() {
             return Ok(());

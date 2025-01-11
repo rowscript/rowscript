@@ -46,7 +46,8 @@ impl Elaborator {
             .into_iter()
             .map(|f| {
                 let p = f.path.clone();
-                self.file(f).map_err(|e| print_err(e, &p))
+                let src = f.src;
+                self.file(f).map_err(|e| print_err(e, &p, src))
             })
             .collect()
     }
@@ -54,6 +55,7 @@ impl Elaborator {
     fn file(&mut self, file: File<Expr>) -> Result<File<Term>, Error> {
         let File {
             path,
+            src,
             imports,
             defs,
         } = file;
@@ -80,6 +82,7 @@ impl Elaborator {
 
         Ok(File {
             path,
+            src,
             imports,
             defs,
         })

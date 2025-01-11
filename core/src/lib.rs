@@ -10,7 +10,6 @@ use thiserror::Error;
 
 use crate::codegen::ecma::Ecma;
 use crate::codegen::{Codegen, Target};
-use crate::prelude::FILES;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
@@ -113,7 +112,7 @@ const CHECKER_FAILED: &str = "failed while typechecking";
 const UNIFIER_FAILED: &str = "failed while unifying";
 const CODEGEN_FAILED: &str = "failed while generating code";
 
-fn print_err(e: Error, file: &Path) -> Error {
+fn print_err(e: Error, path: &Path, src: Src) -> Error {
     fn simple_message<'a>(
         e: &Error,
         loc: &Loc,
@@ -124,21 +123,16 @@ fn print_err(e: Error, file: &Path) -> Error {
 
     use Error::*;
 
-    let source = match read_to_string(file) {
-        Ok(s) => s,
-        _ => unreachable!(),
-    };
-
     let (range, title, msg) = match &e {
         IO(..) => (Range::default(), PARSER_FAILED, None),
         Parsing(e) => {
             let range = match e.location {
                 InputLocation::Pos(start) => {
                     start
-                        ..source.as_str()[start..]
+                        ..src[start..]
                             .find('\n')
                             .map(|l| start + l)
-                            .unwrap_or_else(|| source.len())
+                            .unwrap_or_else(|| src.len())
                 }
                 InputLocation::Span((start, end)) => start..end,
             };
@@ -181,19 +175,19 @@ fn print_err(e: Error, file: &Path) -> Error {
         #[cfg(test)]
         CodegenTest => (Default::default(), CODEGEN_FAILED, None),
     };
-    let file_str = file.to_string_lossy();
+    let path_str = path.to_string_lossy();
     let labels = msg
         .map(|m| {
-            vec![Label::new((&file_str, range.clone()))
+            vec![Label::new((&path_str, range.clone()))
                 .with_message(m)
                 .with_color(Color::Red)]
         })
         .unwrap_or_default();
-    Report::build(ReportKind::Error, (&file_str, range))
+    Report::build(ReportKind::Error, (&path_str, range))
         .with_message(title)
         .with_labels(labels)
         .finish()
-        .eprint((&file_str, Source::from(source)))
+        .eprint((&path_str, Source::from(src)))
         .unwrap();
     e
 }
@@ -203,6 +197,7 @@ pub const FILE_EXT: &str = "rows";
 
 pub struct File<T: Syntax> {
     path: Box<Path>,
+    src: Src,
     imports: Box<[Import]>,
     defs: Box<[Def<T>]>,
 }
@@ -243,7 +238,7 @@ impl Compiler {
     }
 
     fn load_prelude(&mut self) -> Result<(), Error> {
-        let parsed = FILES
+        let parsed = prelude::FILES
             .into_iter()
             .map(|(p, src)| {
                 let path = Path::new(p);
@@ -253,6 +248,7 @@ impl Compiler {
                 }
                 Ok::<_, Error>(File {
                     path: path.into(),
+                    src,
                     imports,
                     defs,
                 })
@@ -269,7 +265,7 @@ impl Compiler {
         }
 
         let mut includes = Vec::default();
-        let mut paths = Vec::default();
+        let mut sources = Vec::default();
         let module_path = module.to_source_path(self.path.as_ref());
         for r in module_path
             .read_dir()
@@ -279,23 +275,28 @@ impl Compiler {
             if entry.file_type().unwrap().is_dir() {
                 continue;
             }
-            let file = entry.path().into_boxed_path();
-            if let Some(e) = file.extension() {
-                if self.codegen.should_include(&file) {
-                    includes.push(file);
-                    continue;
-                }
-                if e == FILE_EXT {
-                    paths.push(file);
-                }
+            let path = entry.path().into_boxed_path();
+            if self.codegen.should_include(&path) {
+                includes.push(path);
+                continue;
             }
+            if path.extension() != Some(FILE_EXT.as_ref()) {
+                continue;
+            }
+            let src: Src = read_to_string(&path)
+                .map_err(|e| Error::IO(path.clone(), e))?
+                .leak();
+            sources.push((path, src))
         }
         // Files are forcibly loaded in alphabetical order.
-        paths.sort();
+        sources.sort_by(|a, b| a.0.cmp(&b.0));
 
-        let parsed = paths
+        let parsed = sources
             .into_iter()
-            .map(|p| self.parse_and_import(&p).map_err(|e| print_err(e, &p)))
+            .map(|(p, src)| {
+                self.parse_and_import(&p, src)
+                    .map_err(|e| print_err(e, &p, src))
+            })
             .collect::<Result<_, _>>()?;
         let resolved = Resolver::new(&self.elab.ubiquitous, &self.loaded).files(parsed)?;
         let files = self.check(Some(&module), false, resolved)?;
@@ -309,16 +310,14 @@ impl Compiler {
         Ok(())
     }
 
-    fn parse_and_import(&mut self, path: &Path) -> Result<File<Expr>, Error> {
-        let src: Src = read_to_string(path)
-            .map_err(|e| Error::IO(path.into(), e))?
-            .leak();
+    fn parse_and_import(&mut self, path: &Path, src: Src) -> Result<File<Expr>, Error> {
         let Parsed { imports, defs } = self.parser.parse(path, src)?;
         imports
             .iter()
             .try_fold((), |_, i| self.load_module(i.module.clone()))?;
         Ok(File {
             path: path.into(),
+            src,
             imports,
             defs,
         })
@@ -343,7 +342,7 @@ impl Compiler {
                     if d.is_public {
                         self.loaded
                             .insert(m, d)
-                            .map_err(|e| print_err(e, &f.path))?
+                            .map_err(|e| print_err(e, &f.path, f.src))?
                     }
                 }
             }

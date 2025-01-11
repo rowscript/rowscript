@@ -1,6 +1,6 @@
 macro_rules! entry {
     ($filename:literal) => {
-        ($filename, include_str!($filename))
+        (concat!("(prelude) ", $filename), include_str!($filename))
     };
 }
 
