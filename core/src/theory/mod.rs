@@ -28,7 +28,7 @@ impl Display for Loc {
     }
 }
 
-impl<'a> From<Span<'a>> for Loc {
+impl From<Span<'_>> for Loc {
     fn from(span: Span) -> Self {
         let line_col = span.start_pos().line_col();
         Loc {
