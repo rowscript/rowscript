@@ -3,6 +3,9 @@ name = "rowscript-core"
 version = "1.0.0-alpha.5"
 edition = "2021"
 
+[lib]
+crate-type = ["rlib", "cdylib"]
+
 [dependencies.thiserror]
 version = "2.0.8"
 
@@ -29,3 +32,6 @@ swc_atoms = { version = "3.0.0" }
 swc_common = { version = "5.0.0", features = ["tty-emitter"] }
 num-bigint = { version = "0.4.6" }
 serde_json = { version = "1.0.133" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.99"

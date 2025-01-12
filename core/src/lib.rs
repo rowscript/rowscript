@@ -240,9 +240,7 @@ impl<T: Target> Compiler<T> {
             .map(|(p, src)| {
                 let path = Path::new(p);
                 let Parsed { imports, defs } = self.parser.parse(path, src)?;
-                if !imports.is_empty() {
-                    unreachable!("unexpected imports in prelude file {p}")
-                }
+                debug_assert!(imports.is_empty());
                 Ok::<_, Error>(File {
                     path: path.into(),
                     src,
@@ -368,6 +366,21 @@ impl Compiler<codegen::ecma::Ecma> {
     pub fn run_cached(&mut self) -> Result<(), Error> {
         self.load_module(ModuleID::default())
     }
+}
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+use wasm_bindgen::prelude::wasm_bindgen;
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[wasm_bindgen]
+extern "C" {
+    fn alert(s: &str);
+}
+
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+#[wasm_bindgen]
+pub fn greet(name: &str) {
+    alert(&format!("Hello, {}!", name));
 }
 
 const DEFAULT_RED_ZONE: usize = 512 * 1024;
