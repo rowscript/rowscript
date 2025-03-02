@@ -4,6 +4,8 @@ use std::sync::OnceLock;
 
 use pest::pratt_parser::{Assoc, Op, PrattParser};
 
+use crate::Src;
+use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::abs::def::{Body, InstanceBody};
 use crate::theory::abs::def::{ClassMembers, Def};
 use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
@@ -11,9 +13,7 @@ use crate::theory::conc::data::{ArgInfo, Catch, Expr};
 use crate::theory::conc::load::ImportedPkg::Vendor;
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
 use crate::theory::surf::{Pair, Pairs, Parsed, Rule};
-use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Loc, Param, Tele, Var};
-use crate::Src;
 
 fn type_pratt() -> &'static PrattParser<Rule> {
     static ONCE: OnceLock<PrattParser<Rule>> = OnceLock::new();

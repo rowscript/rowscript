@@ -3,27 +3,27 @@ use std::ops::Not;
 
 use log::{debug, info, trace};
 
-use crate::theory::abs::builtin::Builtins;
-use crate::theory::abs::data::{CaseMap, FieldMap, FieldSet, MetaKind, PartialClass, Term};
-use crate::theory::abs::def::{gamma_to_tele, tele_to_refs, Body, ClassMembers, InstanceBody};
-use crate::theory::abs::def::{Def, Gamma, Sigma};
-use crate::theory::abs::normalize::Normalizer;
-use crate::theory::abs::rename::rename;
-use crate::theory::abs::unify::Unifier;
-use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
-use crate::theory::conc::data::{ArgInfo, Expr};
-use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{
-    Loc, NameMap, Param, Tele, Var, ARRAY, ASYNC, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX,
-};
 use crate::Error::{
     CatchAsyncEffect, DuplicateEffect, ExpectedCapability, ExpectedEnum, ExpectedInstanceof,
     ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedSigma, FieldsUnknown, NonCatchableExpr,
     NonExhaustive, NonVariadicType, NotCheckedYet, UnresolvedEffect, UnresolvedField,
     UnresolvedImplicitParam, UnresolvedVar,
 };
-use crate::{maybe_grow, File, Src};
-use crate::{print_err, Error};
+use crate::theory::ParamInfo::{Explicit, Implicit};
+use crate::theory::abs::builtin::Builtins;
+use crate::theory::abs::data::{CaseMap, FieldMap, FieldSet, MetaKind, PartialClass, Term};
+use crate::theory::abs::def::{Body, ClassMembers, InstanceBody, gamma_to_tele, tele_to_refs};
+use crate::theory::abs::def::{Def, Gamma, Sigma};
+use crate::theory::abs::normalize::Normalizer;
+use crate::theory::abs::rename::rename;
+use crate::theory::abs::unify::Unifier;
+use crate::theory::conc::data::ArgInfo::{NamedImplicit, UnnamedExplicit, UnnamedImplicit};
+use crate::theory::conc::data::{ArgInfo, Expr};
+use crate::theory::{
+    ARRAY, ASYNC, Loc, NameMap, Param, Tele, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX, Var,
+};
+use crate::{Error, print_err};
+use crate::{File, Src, maybe_grow};
 
 #[derive(Debug, Clone)]
 pub struct Elaborator {
@@ -921,7 +921,7 @@ impl Elaborator {
                     },
                 }
             }
-            App(_, f, ai, x) => {
+            App(loc, f, ai, x) => {
                 let f_loc = f.loc();
                 let f_e = f.clone();
                 let InferResult {
@@ -929,7 +929,7 @@ impl Elaborator {
                 } = self.infer(*f)?;
 
                 if let Some(f_e) = Self::app_insert_holes(*f_e, ai.clone(), &f_ty)? {
-                    return self.infer(App(f_loc, Box::new(f_e), ai, x));
+                    return self.infer(App(loc, Box::new(f_e), ai, x));
                 }
 
                 match self.nf(f_loc).term(f_ty)? {

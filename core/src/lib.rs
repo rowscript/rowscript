@@ -177,9 +177,11 @@ fn print_err(e: Error, path: &Path, src: Src) -> Error {
     let path_str = path.to_string_lossy();
     let labels = msg
         .map(|m| {
-            vec![Label::new((&path_str, range.clone()))
-                .with_message(m)
-                .with_color(Color::Red)]
+            vec![
+                Label::new((&path_str, range.clone()))
+                    .with_message(m)
+                    .with_color(Color::Red),
+            ]
         })
         .unwrap_or_default();
     Report::build(ReportKind::Error, (&path_str, range))

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Def;
 use crate::theory::{Loc, Var};
-use crate::{Error, Src, OUT_DIR};
+use crate::{Error, OUT_DIR, Src};
 
 #[cfg(not(test))]
 const MODULES_DIR: &str = "node_modules";

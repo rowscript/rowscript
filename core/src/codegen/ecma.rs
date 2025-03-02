@@ -5,8 +5,8 @@ use std::str::FromStr;
 
 use log::debug;
 use num_bigint::BigInt as BigIntValue;
-use swc_atoms::js_word;
-use swc_common::{BytePos, SourceMap, Span, DUMMY_SP};
+use swc_atoms::atom;
+use swc_common::{BytePos, DUMMY_SP, SourceMap, Span};
 use swc_ecma_ast::{
     ArrayLit, ArrayPat, ArrowExpr, AssignExpr, AssignOp, AssignTarget, AwaitExpr,
     BigInt as JsBigInt, BinExpr, BinaryOp, BindingIdent, BlockStmt, BlockStmtOrExpr, Bool,
@@ -18,21 +18,21 @@ use swc_ecma_ast::{
     SimpleAssignTarget, SpreadElement, Stmt, Str, ThrowStmt, UnaryExpr, UnaryOp, VarDecl,
     VarDeclKind, VarDeclOrExpr, VarDeclarator, WhileStmt,
 };
-use swc_ecma_codegen::text_writer::JsWriter;
 use swc_ecma_codegen::Emitter;
+use swc_ecma_codegen::text_writer::JsWriter;
 
+use crate::Error::{NonErasable, UnsolvedMeta};
 use crate::codegen::Target;
+use crate::theory::ParamInfo::Explicit;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::{UnnamedExplicit, UnnamedImplicit};
 use crate::theory::conc::load::{Import, ImportedDefs, ImportedPkg, ModuleID};
-use crate::theory::ParamInfo::Explicit;
 use crate::theory::{
-    Loc, Param, Tele, Var, AWAIT, AWAIT_ALL, AWAIT_ANY, AWAIT_MUL, THIS, TUPLED, UNTUPLED_ENDS,
-    UNTUPLED_RHS_PREFIX,
+    AWAIT, AWAIT_ALL, AWAIT_ANY, AWAIT_MUL, Loc, Param, THIS, TUPLED, Tele, UNTUPLED_ENDS,
+    UNTUPLED_RHS_PREFIX, Var,
 };
-use crate::Error::{NonErasable, UnsolvedMeta};
 use crate::{Error, File, Src};
 
 impl From<Loc> for Span {
@@ -126,7 +126,7 @@ impl Ecma {
     fn js_raw_str(loc: Loc, s: &str) -> Str {
         Str {
             span: loc.into(),
-            value: js_word!(""),
+            value: atom!(""),
             raw: Some(s.into()),
         }
     }
@@ -1472,7 +1472,7 @@ impl Ecma {
             }
 
             Rk(..) | RkToStr(..) | At(..) | Typeof(..) | Keyof(..) | Discriminants(..) => {
-                return Err(NonErasable(tm.clone(), loc))
+                return Err(NonErasable(tm.clone(), loc));
             }
 
             _ => unreachable!(),

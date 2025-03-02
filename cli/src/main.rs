@@ -2,12 +2,12 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{Parser, ValueEnum};
-use log::error;
 use log::LevelFilter::{Debug, Info, Trace};
+use log::error;
 
+use rowscript_core::Compiler;
 use rowscript_core::codegen::ecma::Ecma;
 use rowscript_core::codegen::noop::Noop;
-use rowscript_core::Compiler;
 
 #[derive(Parser)]
 #[command(version)]

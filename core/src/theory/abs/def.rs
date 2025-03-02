@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 
+use crate::theory::ParamInfo::Explicit;
 use crate::theory::abs::data::{MetaKind, Term};
 use crate::theory::abs::rename::rename;
 use crate::theory::conc::data::Expr;
-use crate::theory::ParamInfo::Explicit;
 use crate::theory::{Loc, Param, Syntax, Tele, Var};
 use crate::{Error, Src};
 

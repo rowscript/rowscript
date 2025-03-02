@@ -1,3 +1,5 @@
+use crate::Src;
+use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{
     AnonVarargs, App, ArrAt, ArrForeach, ArrInsert, ArrIter, ArrIterNext, ArrLength, ArrPush,
@@ -11,10 +13,8 @@ use crate::theory::abs::data::Term::{
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
-use crate::theory::ParamInfo::{Explicit, Implicit};
-use crate::theory::{NameMap, Param, ResolvedVar, Var, ASYNC, AWAIT_ANY};
+use crate::theory::{ASYNC, AWAIT_ANY, NameMap, Param, ResolvedVar, Var};
 use crate::theory::{Tele, VarKind};
-use crate::Src;
 
 fn implicit(var: Var, typ: Term) -> Param<Term> {
     Param {

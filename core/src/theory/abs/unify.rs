@@ -1,11 +1,11 @@
+use crate::Error::{EffectNonUnifiable, ExpectedObject, NonRowSat, NonUnifiable};
+use crate::theory::NameMap;
 use crate::theory::abs::data::{FieldMap, Term};
 use crate::theory::abs::def::Body;
 use crate::theory::abs::def::Sigma;
 use crate::theory::abs::normalize::Normalizer;
-use crate::theory::NameMap;
 use crate::theory::{Loc, Var};
-use crate::Error::{EffectNonUnifiable, ExpectedObject, NonRowSat, NonUnifiable};
-use crate::{maybe_grow, Error};
+use crate::{Error, maybe_grow};
 
 pub struct Unifier<'a> {
     ubiquitous: &'a NameMap,

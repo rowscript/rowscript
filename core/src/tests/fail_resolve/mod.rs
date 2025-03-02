@@ -1,6 +1,6 @@
+use crate::Error;
 use crate::tests::run_err;
 use crate::theory::Loc;
-use crate::Error;
 
 #[test]
 fn test_resolve() {

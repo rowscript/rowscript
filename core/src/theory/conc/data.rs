@@ -1,7 +1,7 @@
+use crate::Src;
 use crate::theory::abs::def::Def;
 use crate::theory::conc::load::ModuleID;
 use crate::theory::{Loc, Param, Syntax, Tele, Var};
-use crate::Src;
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, Eq, PartialEq)]

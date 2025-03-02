@@ -1,5 +1,5 @@
-use crate::tests::run_err;
 use crate::Error;
+use crate::tests::run_err;
 use pest::error::LineColLocation;
 
 #[test]

@@ -1,9 +1,9 @@
+use crate::Src;
+use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::abs::def::{Body, Sigma};
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::load::ModuleID;
-use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::{Param, ParamInfo, Syntax, Tele, Var};
-use crate::Src;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 
@@ -230,11 +230,7 @@ impl Term {
     }
 
     pub fn bool(v: bool) -> Self {
-        if v {
-            Self::True
-        } else {
-            Self::False
-        }
+        if v { Self::True } else { Self::False }
     }
 
     pub fn class_methods(&self, sigma: &Sigma) -> Option<PartialClass> {

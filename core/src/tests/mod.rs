@@ -2,9 +2,9 @@ use std::env;
 use std::path::Path;
 use std::rc::Rc;
 
+use swc_common::SourceMap;
 use swc_common::errors::{ColorConfig, Handler};
 use swc_common::input::StringInput;
-use swc_common::SourceMap;
 use swc_ecma_parser::lexer::Lexer;
 use swc_ecma_parser::{Parser, Syntax};
 

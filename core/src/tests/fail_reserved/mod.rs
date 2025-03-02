@@ -1,7 +1,7 @@
 use pest::error::LineColLocation;
 
-use crate::tests::run_err;
 use crate::Error;
+use crate::tests::run_err;
 
 #[test]
 fn test_reserved() {

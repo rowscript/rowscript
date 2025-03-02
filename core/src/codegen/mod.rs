@@ -4,7 +4,7 @@ use std::path::Path;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Sigma;
 use crate::theory::conc::load::ModuleID;
-use crate::{print_err, Error, File, Module, Src, OUT_DIR};
+use crate::{Error, File, Module, OUT_DIR, Src, print_err};
 
 pub mod ecma;
 pub mod noop;

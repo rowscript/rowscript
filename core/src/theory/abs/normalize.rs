@@ -4,19 +4,19 @@ use std::ops::Not;
 use log::{debug, trace};
 use serde_json::Value;
 
+use crate::Error::{
+    ClassMethodNotImplemented, ExpectedReflectable, FieldsNonExtendable, NonExhaustive,
+    UnresolvedField, UnresolvedInstance, UnsatisfiedConstraint,
+};
 use crate::theory::abs::data::{CaseDefault, CaseMap, FieldMap, PartialClass, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::inline::noinline;
 use crate::theory::abs::unify::Unifier;
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedImplicit;
+use crate::theory::{ASYNC, NameMap};
 use crate::theory::{Loc, Param, Var};
-use crate::theory::{NameMap, ASYNC};
-use crate::Error::{
-    ClassMethodNotImplemented, ExpectedReflectable, FieldsNonExtendable, NonExhaustive,
-    UnresolvedField, UnresolvedInstance, UnsatisfiedConstraint,
-};
-use crate::{maybe_grow, Error, Src};
+use crate::{Error, Src, maybe_grow};
 
 pub struct Normalizer<'a> {
     ubiquitous: &'a NameMap,
@@ -80,11 +80,7 @@ impl<'a> Normalizer<'a> {
             }
             Undef(v) if self.expand_undef => {
                 let ret = self.sigma.get(&v).unwrap().to_term(v.clone());
-                if noinline(&ret) {
-                    Undef(v)
-                } else {
-                    ret
-                }
+                if noinline(&ret) { Undef(v) } else { ret }
             }
             Mu(v) if self.expand_mu && !self.expanded.contains(&v) => {
                 self.expanded.insert(v.clone());

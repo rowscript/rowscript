@@ -1,17 +1,17 @@
 use std::collections::HashMap;
 use std::ops::Not;
 
+use crate::Error::{DuplicateName, NonAnonVariadicDef, UnresolvedVar};
+use crate::theory::VarKind::{Inside, Outside, Reserved};
 use crate::theory::abs::def::{Body, InstanceBody};
 use crate::theory::abs::def::{ClassMembers, Def};
 use crate::theory::conc::data::Expr::Unresolved;
 use crate::theory::conc::data::{Catch, Expr};
 use crate::theory::conc::load::{Import, ImportedDefs, Loaded};
-use crate::theory::VarKind::{Inside, Outside, Reserved};
 use crate::theory::{
-    Loc, NameMap, Param, RawNameSet, ResolvedVar, Tele, Var, TUPLED, UNTUPLED_ENDS,
+    Loc, NameMap, Param, RawNameSet, ResolvedVar, TUPLED, Tele, UNTUPLED_ENDS, Var,
 };
-use crate::Error::{DuplicateName, NonAnonVariadicDef, UnresolvedVar};
-use crate::{maybe_grow, print_err, Error, File};
+use crate::{Error, File, maybe_grow, print_err};
 
 pub struct Resolver<'a> {
     ubiquitous: &'a NameMap,

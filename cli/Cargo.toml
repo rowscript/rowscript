@@ -1,15 +1,15 @@
 [package]
 name = "rowscript"
 version = "1.0.0-alpha.5"
-edition = "2021"
+edition = "2024"
 
 [dependencies.rowscript-core]
 path = "../core"
 
 [dependencies.clap]
-version = "4.5.23"
+version = "4.5.31"
 features = ["derive"]
 
 [dependencies]
-log = "0.4.22"
-env_logger = "0.11.5"
+log = "0.4.26"
+env_logger = "0.11.6"
