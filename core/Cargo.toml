@@ -7,16 +7,16 @@ edition = "2024"
 crate-type = ["rlib", "cdylib"]
 
 [dependencies.thiserror]
-version = "2.0.11"
+version = "2.0.12"
 
 [dependencies.ariadne]
-version = "0.5.0"
+version = "0.5.1"
 
 [dependencies.stacker]
-version = "0.1.19"
+version = "0.1.20"
 
 [dependencies.log]
-version = "0.4.26"
+version = "0.4.27"
 
 [dependencies.pest]
 version = "2.7.15"
@@ -25,13 +25,13 @@ version = "2.7.15"
 version = "2.7.15"
 
 [dependencies]
-swc_ecma_parser = { version = "10.0.0" }
-swc_ecma_ast = { version = "8.0.0" }
-swc_ecma_codegen = { version = "8.0.2" }
+swc_ecma_parser = { version = "11.0.0" }
+swc_ecma_ast = { version = "8.1.0" }
+swc_ecma_codegen = { version = "8.1.0" }
 swc_atoms = { version = "5.0.0" }
-swc_common = { version = "8.0.0", features = ["tty-emitter"] }
+swc_common = { version = "8.0.1", features = ["tty-emitter"] }
 num-bigint = { version = "0.4.6" }
-serde_json = { version = "1.0.139" }
+serde_json = { version = "1.0.140" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2.99"
