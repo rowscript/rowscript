@@ -8,9 +8,7 @@ interface Async {
     async __await_any__<T>(executors: NativeArray<Executor<T>>): T;
 }
 
-class Awaits {
-    empty: unit;
-
+namespace awaits {
     async all<T>(executors: Array<Executor<T>>): Array<T> {
         new Array(await#all(executors))
     }
@@ -19,5 +17,3 @@ class Awaits {
         await#any(executors)
     }
 }
-
-const awaits = new Awaits(());
