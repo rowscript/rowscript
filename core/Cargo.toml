@@ -27,7 +27,7 @@ version = "2.7.15"
 [dependencies]
 swc_ecma_parser = { version = "11.0.0" }
 swc_ecma_ast = { version = "8.1.0" }
-swc_ecma_codegen = { version = "8.1.0" }
+swc_ecma_codegen = { version = "10.0.0" }
 swc_atoms = { version = "5.0.0" }
 swc_common = { version = "8.0.1", features = ["tty-emitter"] }
 num-bigint = { version = "0.4.6" }
