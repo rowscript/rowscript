@@ -1,14 +1,14 @@
-use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::mem::discriminant;
 use std::sync::Arc;
 
 use pest::Span;
+use ustr::{Ustr, UstrMap, UstrSet};
 
+use crate::Error;
 use crate::theory::conc::data::{ArgInfo, Expr};
 use crate::theory::surf::Pair;
-use crate::{Error, Src};
 
 pub mod abs;
 pub mod conc;
@@ -40,21 +40,21 @@ impl From<Span<'_>> for Loc {
     }
 }
 
-type Name = Arc<Src>;
+type Name = Arc<Ustr>;
 
 fn id(n: &Name) -> usize {
     Arc::as_ptr(n) as _
 }
 
 #[derive(Default, Debug)]
-pub struct RawNameSet(HashSet<Src>);
+pub struct RawNameSet(UstrSet);
 
 impl RawNameSet {
     pub fn var(&mut self, loc: Loc, v: &Var) -> Result<(), Error> {
-        self.raw(loc, v.as_str())
+        self.raw(loc, *v.as_str())
     }
 
-    pub fn raw(&mut self, loc: Loc, f: Src) -> Result<(), Error> {
+    pub fn raw(&mut self, loc: Loc, f: Ustr) -> Result<(), Error> {
         self.0
             .insert(f)
             .then_some(())
@@ -97,7 +97,7 @@ impl Hash for Var {
     }
 }
 
-const META: Src = "_";
+const META: &str = "_";
 
 pub const TUPLED: &str = "__tupled";
 pub const UNTUPLED_RHS_PREFIX: &str = "__untupled_";
@@ -125,16 +125,16 @@ pub const LIST: &str = "List";
 pub const TYPEOF: &str = "Typeof";
 
 impl Var {
-    fn new(name: Src) -> Self {
-        Self::Bound(Arc::new(name))
+    fn new(name: &str) -> Self {
+        Self::Bound(Arc::new(name.into()))
     }
 
-    fn compound(name: String) -> Self {
-        Self::new(name.leak())
+    fn compound(name: &str) -> Self {
+        Self::new(name)
     }
 
     pub fn meta() -> Self {
-        Self::Meta(Arc::new(META))
+        Self::Meta(Arc::new(META.into()))
     }
 
     pub fn unbound() -> Self {
@@ -150,19 +150,19 @@ impl Var {
     }
 
     pub fn method(&self, m: Self) -> Self {
-        Self::compound(format!("{self}${m}"))
+        Self::compound(format!("{self}${m}").as_str())
     }
 
     pub fn associated(&self, m: Self) -> Self {
-        Self::compound(format!("{self}${m}"))
+        Self::compound(format!("{self}${m}").as_str())
     }
 
     pub fn ctor(&self) -> Self {
-        Self::compound(format!("{self}$new"))
+        Self::compound(format!("{self}$new").as_str())
     }
 
     pub fn default(&self) -> Self {
-        Self::compound(format!("{self}$default"))
+        Self::compound(format!("{self}$default").as_str())
     }
 
     pub fn this() -> Self {
@@ -170,7 +170,7 @@ impl Var {
     }
 
     pub fn untupled_rhs(&self) -> Self {
-        Self::compound(format!("{UNTUPLED_RHS_PREFIX}{self}"))
+        Self::compound(format!("{UNTUPLED_RHS_PREFIX}{self}").as_str())
     }
 
     pub fn untupled_ends() -> Self {
@@ -178,31 +178,31 @@ impl Var {
     }
 
     pub fn bind_let(&self) -> Self {
-        Self::compound(format!("{LETS}{self}"))
+        Self::compound(format!("{LETS}{self}").as_str())
     }
 
     pub fn instance(&self, inst: &Expr) -> Self {
-        Self::compound(format!("{self}__for__{inst}"))
+        Self::compound(format!("{self}__for__{inst}").as_str())
     }
 
     pub fn instance_fn(&self, i: &Self, inst: &Expr) -> Self {
-        Self::compound(format!("{i}__for__{inst}__{self}"))
+        Self::compound(format!("{i}__for__{inst}__{self}").as_str())
     }
 
     pub fn implements_fn(&self, i: &Self) -> Self {
-        Self::compound(format!("{i}__implements__{self}"))
+        Self::compound(format!("{i}__implements__{self}").as_str())
     }
 
     pub fn catch(&self) -> Self {
         match self {
-            Self::Meta(id) => Self::compound(format!("catch__{id}")),
+            Self::Meta(id) => Self::compound(format!("catch__{id}").as_str()),
             _ => unreachable!(),
         }
     }
 
     pub fn catch_fn(&self) -> Self {
         match self {
-            Self::Bound(name) => Self::compound(format!("catch__{name}")),
+            Self::Bound(name) => Self::compound(format!("catch__{name}").as_str()),
             _ => unreachable!(),
         }
     }
@@ -236,7 +236,7 @@ impl Var {
     }
 
     pub fn namespace_class(&self) -> Self {
-        Self::compound(format!("{NAMESPACE_PREFIX}{self}"))
+        Self::compound(format!("{NAMESPACE_PREFIX}{self}").as_str())
     }
 
     pub fn list() -> Self {
@@ -247,9 +247,9 @@ impl Var {
         Self::new(TYPEOF)
     }
 
-    pub fn as_str(&self) -> Src {
+    pub fn as_str(&self) -> &Ustr {
         match self {
-            Self::Bound(n) => n,
+            Self::Bound(n) => n.as_ref(),
             _ => unreachable!(),
         }
     }
@@ -328,4 +328,4 @@ pub enum VarKind {
 #[derive(Debug, Clone)]
 pub struct ResolvedVar(pub VarKind, pub Var);
 
-pub type NameMap = HashMap<Src, ResolvedVar>;
+pub type NameMap = UstrMap<ResolvedVar>;

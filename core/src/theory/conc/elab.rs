@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::ops::Not;
 
 use log::{debug, info, trace};
+use ustr::Ustr;
 
 use crate::Error::{
     CatchAsyncEffect, DuplicateEffect, ExpectedCapability, ExpectedEnum, ExpectedInstanceof,
@@ -23,7 +24,7 @@ use crate::theory::{
     ARRAY, ASYNC, Loc, NameMap, Param, Tele, UNTUPLED_ENDS, UNTUPLED_RHS_PREFIX, Var,
 };
 use crate::{Error, print_err};
-use crate::{File, Src, maybe_grow};
+use crate::{File, maybe_grow};
 
 #[derive(Debug, Clone)]
 pub struct Elaborator {
@@ -1314,7 +1315,9 @@ impl Elaborator {
                         var: Var::unbound(),
                         info: Implicit,
                         typ: Box::new(Term::RowOrd(
-                            Box::new(Term::Fields(FieldMap::from([(n, Term::Ref(t.clone()))]))),
+                            Box::new(Term::Fields(
+                                [(n, Term::Ref(t.clone()))].into_iter().collect(),
+                            )),
                             Box::new(Term::Ref(a)),
                         )),
                     },
@@ -1349,8 +1352,8 @@ impl Elaborator {
                     eff,
                     ty: a_ty,
                 } = self.infer(*a)?;
-                let tm = Term::Fields(FieldMap::from([(n, a)]));
-                let ty = Term::Fields(FieldMap::from([(n, a_ty)]));
+                let tm = Term::Fields([(n, a)].into_iter().collect());
+                let ty = Term::Fields([(n, a_ty)].into_iter().collect());
                 InferResult {
                     tm: Term::Variant(Box::new(tm)),
                     eff,
@@ -1549,13 +1552,18 @@ impl Elaborator {
             }
             Typeof(_, a) => {
                 let InferResult { ty, .. } = self.infer(*a)?;
-                let type_of = self.ubiquitous.get("Typeof").unwrap().1.clone();
+                let type_of = self
+                    .ubiquitous
+                    .get(&Ustr::from("Typeof"))
+                    .unwrap()
+                    .1
+                    .clone();
                 let type_of = self.sigma.get(&type_of).unwrap().to_term(type_of);
                 InferResult::pure(Term::Typeof(Box::new(ty)), type_of)
             }
             Keyof(loc, a) => {
                 let InferResult { tm, .. } = self.infer(*a)?;
-                let list_ty = self.ubiquitous.get("List").unwrap().1.clone();
+                let list_ty = self.ubiquitous.get(&Ustr::from("List")).unwrap().1.clone();
                 let list_ty = self.sigma.get(&list_ty).unwrap().to_term(list_ty);
                 let label_list_ty = self.nf(loc).term(Term::App(
                     Box::new(list_ty),
@@ -1595,7 +1603,9 @@ impl Elaborator {
                 let InferResult { tm, ty, .. } = self.infer(*a)?;
                 InferResult {
                     tm: Term::EmitAsync(Box::new(tm)),
-                    eff: Term::async_effect(self.ubiquitous.get(ASYNC).unwrap().1.clone()),
+                    eff: Term::async_effect(
+                        self.ubiquitous.get(&Ustr::from(ASYNC)).unwrap().1.clone(),
+                    ),
                     ty,
                 }
             }
@@ -1606,7 +1616,7 @@ impl Elaborator {
                     Term::Effect(effs) => effs,
                     _ => return Err(NonCatchableExpr(tm, body_loc)),
                 };
-                if effs.contains(&self.ubiquitous.get(ASYNC).unwrap().1) {
+                if effs.contains(&self.ubiquitous.get(&Ustr::from(ASYNC)).unwrap().1) {
                     return Err(CatchAsyncEffect(tm, body_loc));
                 }
 
@@ -1631,7 +1641,7 @@ impl Elaborator {
                     let mut fns = HashMap::default();
                     let mut instance_fns = Vec::default();
                     for (name, def) in catch.inst_fns {
-                        if let Some(v) = interface_fns.get(name) {
+                        if let Some(v) = interface_fns.get(&name) {
                             fns.insert(v.clone(), def.name.clone());
                         }
                         instance_fns.push(def);
@@ -1771,7 +1781,7 @@ impl Elaborator {
     }
 
     fn app_insert_holes(f_e: Expr, i: ArgInfo, f_ty: &Term) -> Result<Option<Expr>, Error> {
-        fn holes_to_insert(loc: Loc, name: Src, mut ty: &Term) -> Result<usize, Error> {
+        fn holes_to_insert(loc: Loc, name: Ustr, mut ty: &Term) -> Result<usize, Error> {
             let mut ret = Default::default();
             loop {
                 match ty {
@@ -1781,7 +1791,7 @@ impl Elaborator {
                         if p.info != Implicit {
                             return Err(UnresolvedImplicitParam(name, loc));
                         }
-                        if p.var.as_str() == name {
+                        if p.var.as_str() == &name {
                             return Ok(ret);
                         }
                         ty = b;
@@ -1795,7 +1805,7 @@ impl Elaborator {
         Ok(match f_ty {
             Term::Pi { param, .. } if param.info == Implicit => match i {
                 UnnamedExplicit => Some(Expr::holed_app(f_e)),
-                NamedImplicit(name) => match holes_to_insert(f_e.loc(), name.as_str(), f_ty)? {
+                NamedImplicit(name) => match holes_to_insert(f_e.loc(), *name.as_str(), f_ty)? {
                     0 => None,
                     n => Some((0..n).fold(f_e, |e, _| Expr::holed_app(e))),
                 },
@@ -1852,7 +1862,7 @@ impl Elaborator {
             _ => return false,
         };
         self.ubiquitous
-            .get(ARRAY)
+            .get(&Ustr::from(ARRAY))
             .map_or(Default::default(), |a| name == &a.1)
     }
 

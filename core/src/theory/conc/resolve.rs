@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::ops::Not;
+use ustr::Ustr;
 
 use crate::Error::{DuplicateName, NonAnonVariadicDef, UnresolvedVar};
 use crate::theory::VarKind::{Inside, Outside, Reserved};
@@ -202,7 +203,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn get(&self, v: &Var) -> Option<&ResolvedVar> {
-        let k = v.as_str();
+        let k = &v.as_str();
         self.locals
             .get(k)
             .or_else(|| self.locals.get(v.bind_let().as_str()))
@@ -214,18 +215,18 @@ impl<'a> Resolver<'a> {
     fn insert_local(&mut self, v: Var) -> Option<ResolvedVar> {
         v.is_unbound()
             .not()
-            .then(|| self.locals.insert(v.as_str(), ResolvedVar(Inside, v)))
+            .then(|| self.locals.insert(*v.as_str(), ResolvedVar(Inside, v)))
             .flatten()
     }
 
     fn insert_imported(&mut self, v: Var) {
-        self.imported.insert(v.as_str(), ResolvedVar(Outside, v));
+        self.imported.insert(*v.as_str(), ResolvedVar(Outside, v));
     }
 
     fn insert_global(&mut self, loc: Loc, v: Var) -> Result<(), Error> {
         v.is_unbound()
             .not()
-            .then(|| self.globals.insert(v.as_str(), ResolvedVar(Inside, v)))
+            .then(|| self.globals.insert(*v.as_str(), ResolvedVar(Inside, v)))
             .flatten()
             .map_or(Ok(()), |_| Err(DuplicateName(loc)))
     }
@@ -250,7 +251,7 @@ impl<'a> Resolver<'a> {
         for (old, var) in olds.into_iter().zip(vars.into_iter()) {
             match old {
                 Some(v) => {
-                    self.locals.insert(v.1.as_str(), v);
+                    self.locals.insert(*v.1.as_str(), v);
                 }
                 None => self.remove_local(var),
             }
@@ -450,9 +451,11 @@ impl<'a> Resolver<'a> {
             Spread(loc, a) => Spread(loc, self.expr(a)?),
             AnonSpread(loc) => Resolved(
                 loc,
-                match self.locals.get(UNTUPLED_ENDS) {
+                match self.locals.get(&Ustr::from(UNTUPLED_ENDS)) {
                     Some(v) => v,
-                    None if self.is_def_anon_variadic => self.locals.get(TUPLED).unwrap(),
+                    None if self.is_def_anon_variadic => {
+                        self.locals.get(&Ustr::from(TUPLED)).unwrap()
+                    }
                     _ => return Err(NonAnonVariadicDef(loc)),
                 }
                 .1

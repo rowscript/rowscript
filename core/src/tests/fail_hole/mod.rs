@@ -8,6 +8,6 @@ fn test_hole() {
         Error::UnsolvedMeta(_, Loc { end, .. }) => {
             assert_eq!(end, 18);
         }
-        _ => assert!(false),
+        _ => unreachable!(),
     }
 }

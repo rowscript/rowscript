@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 
+use ustr::{Ustr, UstrMap};
+
+use crate::Error;
 use crate::theory::ParamInfo::Explicit;
 use crate::theory::abs::data::{MetaKind, Term};
 use crate::theory::abs::rename::rename;
 use crate::theory::conc::data::Expr;
 use crate::theory::{Loc, Param, Syntax, Tele, Var};
-use crate::{Error, Src};
 
 pub type Sigma = HashMap<Var, Def<Term>>;
 pub type Gamma = HashMap<Var, Box<Term>>;
@@ -291,15 +293,15 @@ pub enum Body<T: Syntax> {
 
     Class {
         ctor: Var,
-        associated: HashMap<Src, Var>,
+        associated: UstrMap<Var>,
         members: ClassMembers<T>,
-        methods: HashMap<Src, Var>,
+        methods: UstrMap<Var>,
     },
     Associated(Box<T>),
     Method {
         class: Var,
         /// Only usable during name resolving.
-        associated: HashMap<Src, Var>,
+        associated: UstrMap<Var>,
         f: Box<T>,
     },
 
@@ -352,7 +354,7 @@ impl<T: Syntax> Display for InstanceBody<T> {
 #[derive(Clone, Debug)]
 pub enum ClassMembers<T: Syntax> {
     Wrapper(Box<T>),
-    Members(Vec<(Loc, Src, T)>),
+    Members(Vec<(Loc, Ustr, T)>),
 }
 
 impl<T: Syntax> Display for ClassMembers<T> {

@@ -3,11 +3,13 @@ use std::ops::Not;
 
 use log::{debug, trace};
 use serde_json::Value;
+use ustr::{Ustr, UstrMap};
 
 use crate::Error::{
     ClassMethodNotImplemented, ExpectedReflectable, FieldsNonExtendable, NonExhaustive,
     UnresolvedField, UnresolvedInstance, UnsatisfiedConstraint,
 };
+
 use crate::theory::abs::data::{CaseDefault, CaseMap, FieldMap, PartialClass, Term};
 use crate::theory::abs::def::{Body, Rho, Sigma};
 use crate::theory::abs::inline::noinline;
@@ -16,7 +18,7 @@ use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::data::ArgInfo::UnnamedImplicit;
 use crate::theory::{ASYNC, NameMap};
 use crate::theory::{Loc, Param, Var};
-use crate::{Error, Src, maybe_grow};
+use crate::{Error, maybe_grow};
 
 pub struct Normalizer<'a> {
     ubiquitous: &'a NameMap,
@@ -245,7 +247,7 @@ impl<'a> Normalizer<'a> {
                 (Str(a), Str(b)) => {
                     let mut a = a[..a.len() - 1].to_string();
                     a.push_str(&b[1..]);
-                    Str(a.leak())
+                    Str(a.into())
                 }
                 (a, b) => StrAdd(Box::new(a), Box::new(b)),
             },
@@ -258,7 +260,7 @@ impl<'a> Normalizer<'a> {
                 (a, b) => StrNeq(Box::new(a), Box::new(b)),
             },
             StrToLowerCase(a) => match *self.term_box(a)? {
-                Str(a) => Str(a.to_string().to_lowercase().leak()),
+                Str(a) => Str(a.to_string().to_lowercase().into()),
                 a => StrToLowerCase(Box::new(a)),
             },
             NumAdd(a, b) => {
@@ -354,11 +356,11 @@ impl<'a> Normalizer<'a> {
                 a => NumNeg(Box::new(a)),
             },
             NumToStr(a) => match *self.term_box(a)? {
-                Num(a) => Str(format!("\"{a}\"").leak()),
+                Num(a) => Str(format!("\"{a}\"").into()),
                 a => NumToStr(Box::new(a)),
             },
             BigintToStr(a) => match *self.term_box(a)? {
-                Big(a) => Str(format!("\"{}\"", a.strip_suffix('n').unwrap_or(a)).leak()),
+                Big(a) => Str(format!("\"{}\"", a.strip_suffix('n').unwrap_or(a.as_ref())).into()),
                 a => BigintToStr(Box::new(a)),
             },
             ArrayIterator(t) => ArrayIterator(self.term_box(t)?),
@@ -396,7 +398,7 @@ impl<'a> Normalizer<'a> {
             MapClear(m) => MapClear(self.term_box(m)?),
             MapIter(a) => MapIter(self.term_box(a)?),
             RkToStr(a) => match *self.term_box(a)? {
-                Rk(k) => Str(format!("\"{k}\"").leak()),
+                Rk(k) => Str(format!("\"{k}\"").into()),
                 a => RkToStr(Box::new(a)),
             },
             AtResult { ty, key } => {
@@ -645,7 +647,8 @@ impl<'a> Normalizer<'a> {
                 if ty.is_unsolved() {
                     Typeof(Box::new(ty))
                 } else {
-                    Variant(Box::new(Fields(FieldMap::from([(
+                    let mut m = UstrMap::default();
+                    m.insert(
                         match ty {
                             Number => "TypeofNumber",
                             String => "TypeofString",
@@ -655,9 +658,11 @@ impl<'a> Normalizer<'a> {
                             Object(..) => "TypeofObject",
                             Enum(..) => "TypeofEnum",
                             _ => return Err(ExpectedReflectable(ty, self.loc)),
-                        },
+                        }
+                        .into(),
                         TT,
-                    )]))))
+                    );
+                    Variant(Box::new(Fields(m)))
                 }
             }
             Keyof(o) => match self.term(*o)? {
@@ -678,7 +683,7 @@ impl<'a> Normalizer<'a> {
                 SetTimeout(self.term_box(f)?, self.term_box(d)?, self.term_box(x)?)
             }
             JSONStringify(a) => match *self.term_box(a)? {
-                Str(s) => Str(Value::String(s.to_string()).to_string().leak()),
+                Str(s) => Str(Value::String(s.to_string()).to_string().into()),
                 a => JSONStringify(Box::new(a)),
             },
             HtmlElementAddEventListener(n, e, l) => {
@@ -882,7 +887,7 @@ impl<'a> Normalizer<'a> {
         Ok(a)
     }
 
-    fn at(&self, mut fields: FieldMap, k: Src) -> Result<Term, Error> {
+    fn at(&self, mut fields: FieldMap, k: Ustr) -> Result<Term, Error> {
         match fields.remove(&k) {
             Some(tm) => Ok(tm),
             None => Err(UnresolvedField(k, Term::Fields(fields), self.loc)),

@@ -1,10 +1,12 @@
 use std::path::Path;
 
+use ustr::Ustr;
+
 use crate::codegen::Target;
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Sigma;
 use crate::theory::conc::load::ModuleID;
-use crate::{Error, File, Src};
+use crate::{Error, File};
 
 #[derive(Default, Clone)]
 pub struct Noop;
@@ -14,7 +16,7 @@ impl Target for Noop {
         ""
     }
 
-    fn to_qualifier(&self, _: &ModuleID) -> Src {
+    fn to_qualifier(&self, _: &ModuleID) -> Ustr {
         unreachable!()
     }
 

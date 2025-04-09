@@ -7,6 +7,7 @@ use ariadne::{Color, Label, Report, ReportKind, Source};
 use pest::error::Error as PestError;
 use pest::error::InputLocation;
 use thiserror::Error;
+use ustr::Ustr;
 
 use crate::codegen::{Codegen, Target};
 use crate::theory::abs::data::Term;
@@ -25,8 +26,6 @@ mod prelude;
 mod tests;
 pub mod theory;
 
-type Src = &'static str;
-
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("IO error on file \"{0}\": \"{1}\"")]
@@ -40,7 +39,7 @@ pub enum Error {
     DuplicateName(Loc),
 
     #[error("unresolved implicit parameter \"{0}\"")]
-    UnresolvedImplicitParam(Src, Loc),
+    UnresolvedImplicitParam(Ustr, Loc),
     #[error("expected function type, got \"{0}\"")]
     ExpectedPi(Term, Loc),
     #[error("expected tuple type, got \"{0}\"")]
@@ -58,7 +57,7 @@ pub enum Error {
     #[error("not exhaustive, got \"{0}\"")]
     NonExhaustive(Term, Loc),
     #[error("unresolved field \"{0}\" in \"{1}\"")]
-    UnresolvedField(Src, Term, Loc),
+    UnresolvedField(Ustr, Term, Loc),
     #[error("field(s) unknown yet, got \"{0}\"")]
     FieldsUnknown(Term, Loc),
     #[error("expected interface type, got \"{0}\"")]
@@ -111,7 +110,7 @@ const CHECKER_FAILED: &str = "failed while typechecking";
 const UNIFIER_FAILED: &str = "failed while unifying";
 const CODEGEN_FAILED: &str = "failed while generating code";
 
-fn print_err(e: Error, path: &Path, src: Src) -> Error {
+fn print_err(e: Error, path: &Path, src: &str) -> Error {
     fn simple_message<'a>(
         e: &Error,
         loc: &Loc,
@@ -198,7 +197,7 @@ pub const FILE_EXT: &str = "rows";
 
 pub struct File<T: Syntax> {
     path: Box<Path>,
-    src: Src,
+    src: &'static str,
     imports: Box<[Import]>,
     defs: Box<[Def<T>]>,
 }
@@ -280,7 +279,7 @@ impl<T: Target> Compiler<T> {
             if path.extension() != Some(FILE_EXT.as_ref()) {
                 continue;
             }
-            let src: Src = read_to_string(&path)
+            let src = read_to_string(&path)
                 .map_err(|e| Error::IO(path.clone(), e))?
                 .leak();
             sources.push((path, src))
@@ -307,7 +306,7 @@ impl<T: Target> Compiler<T> {
         Ok(())
     }
 
-    fn parse_and_import(&mut self, path: &Path, src: Src) -> Result<File<Expr>, Error> {
+    fn parse_and_import(&mut self, path: &Path, src: &'static str) -> Result<File<Expr>, Error> {
         let Parsed { imports, defs } = self.parser.parse(path, src)?;
         imports
             .iter()
@@ -331,7 +330,7 @@ impl<T: Target> Compiler<T> {
             for d in &f.defs {
                 if is_ubiquitous && !d.name.is_unbound() {
                     self.elab.ubiquitous.insert(
-                        d.name.as_str(),
+                        *d.name.as_str(),
                         ResolvedVar(VarKind::Inside, d.name.clone()),
                     );
                 }

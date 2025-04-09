@@ -1,17 +1,19 @@
 use std::fs::{copy, create_dir_all, write};
 use std::path::Path;
 
+use ustr::Ustr;
+
 use crate::theory::abs::data::Term;
 use crate::theory::abs::def::Sigma;
 use crate::theory::conc::load::ModuleID;
-use crate::{Error, File, Module, OUT_DIR, Src, print_err};
+use crate::{Error, File, Module, OUT_DIR, print_err};
 
 pub mod ecma;
 pub mod noop;
 
 pub trait Target: Default {
     fn filename(&self) -> &'static str;
-    fn to_qualifier(&self, module: &ModuleID) -> Src;
+    fn to_qualifier(&self, module: &ModuleID) -> Ustr;
     fn should_include(&self, path: &Path) -> bool;
     fn module(
         &mut self,

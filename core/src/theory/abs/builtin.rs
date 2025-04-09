@@ -1,4 +1,5 @@
-use crate::Src;
+use ustr::Ustr;
+
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{
@@ -89,13 +90,17 @@ fn tuple_param<const N: usize>(var: Var, tele: [(Var, Term); N]) -> Param<Term> 
 
 fn option_type(t: Term) -> Term {
     Enum(Box::new(Fields(
-        [("Ok", t), ("None", Unit)].into_iter().collect(),
+        [("Ok".into(), t), ("None".into(), Unit)]
+            .into_iter()
+            .collect(),
     )))
 }
 
 fn entry_type(k: Term, v: Term) -> Term {
     Object(Box::new(Fields(
-        [("key", k), ("value", v)].into_iter().collect(),
+        [("key".into(), k), ("value".into(), v)]
+            .into_iter()
+            .collect(),
     )))
 }
 
@@ -222,11 +227,11 @@ impl Builtins {
             .document_get_element_by_id()
     }
 
-    fn func(self, name: Src, tele: Tele<Term>, ret: Term, f: Term) -> Self {
+    fn func(self, name: &str, tele: Tele<Term>, ret: Term, f: Term) -> Self {
         self.impure_func(name, tele, Pure, ret, f)
     }
 
-    fn impure_func(self, name: Src, tele: Tele<Term>, eff: Term, ret: Term, f: Term) -> Self {
+    fn impure_func(self, name: &str, tele: Tele<Term>, eff: Term, ret: Term, f: Term) -> Self {
         self.define(Def {
             is_public: false,
             loc: Default::default(),
@@ -240,7 +245,7 @@ impl Builtins {
 
     fn define(mut self, def: Def<Term>) -> Self {
         self.ubiquitous.insert(
-            def.name.as_str(),
+            *def.name.as_str(),
             ResolvedVar(VarKind::Inside, def.name.clone()),
         );
         self.sigma.insert(def.name.clone(), def);
@@ -248,13 +253,13 @@ impl Builtins {
     }
 
     fn defined(&self, name: &str) -> Term {
-        Undef(self.ubiquitous.get(name).unwrap().1.clone())
+        Undef(self.ubiquitous.get(&Ustr::from(name)).unwrap().1.clone())
     }
 
     fn reserved<const N: usize>(mut self, vars: [Var; N]) -> Self {
         for v in vars {
             self.ubiquitous
-                .insert(v.as_str(), ResolvedVar(VarKind::Reserved, v));
+                .insert(*v.as_str(), ResolvedVar(VarKind::Reserved, v));
         }
         self
     }
@@ -866,8 +871,13 @@ impl Builtins {
         let array_ty = self.defined("NativeArray");
         let e = Var::new("executors");
         let (tupled, tele) = parameters([t.clone()], [(e.clone(), executors_ty.clone())]);
-        let async_var = self.ubiquitous.get(ASYNC).unwrap().1.clone();
-        let await_all_var = self.ubiquitous.get(AWAIT_ANY).unwrap().1.clone();
+        let async_var = self.ubiquitous.get(&Ustr::from(ASYNC)).unwrap().1.clone();
+        let await_all_var = self
+            .ubiquitous
+            .get(&Ustr::from(AWAIT_ANY))
+            .unwrap()
+            .1
+            .clone();
         let eff = Term::async_effect(async_var.clone());
         self.impure_func(
             "await#all",
@@ -887,8 +897,13 @@ impl Builtins {
         let executors_ty = self.executors_type(Ref(t.clone()));
         let e = Var::new("executors");
         let (tupled, tele) = parameters([t.clone()], [(e.clone(), executors_ty.clone())]);
-        let async_var = self.ubiquitous.get(ASYNC).unwrap().1.clone();
-        let await_any_var = self.ubiquitous.get(AWAIT_ANY).unwrap().1.clone();
+        let async_var = self.ubiquitous.get(&Ustr::from(ASYNC)).unwrap().1.clone();
+        let await_any_var = self
+            .ubiquitous
+            .get(&Ustr::from(AWAIT_ANY))
+            .unwrap()
+            .1
+            .clone();
         let eff = Term::async_effect(async_var.clone());
         self.impure_func(
             "await#any",

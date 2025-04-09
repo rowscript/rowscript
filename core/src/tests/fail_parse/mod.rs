@@ -11,8 +11,8 @@ fn test_parse() {
                 assert_eq!(l, 2);
                 assert_eq!(c, 1);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         },
-        _ => assert!(false),
+        _ => unreachable!(),
     }
 }

@@ -106,7 +106,7 @@ fn run_helper(mod_path: &str) -> Result<(), Error> {
     let pkg = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("src")
         .join("tests")
-        .join(mod_path.to_string().split("::").last().unwrap());
+        .join(mod_path.split("::").last().unwrap());
     let mut compiler = Compiler::new_cached(pkg.as_path());
     compiler.run_cached()?;
     parse_outfiles(&compiler.codegen.out_dir)
@@ -126,13 +126,13 @@ fn parse_outfiles(d: &Path) -> Result<(), Error> {
             .map_err(|e| Error::IO(path.into(), e))?
             .is_dir()
         {
-            parse_outfiles(&path)?;
+            parse_outfiles(path)?;
             continue;
         }
         if entry.file_name() != OUT_FILE {
             continue;
         }
-        parse_outfile(&path)?
+        parse_outfile(path)?
     }
     Ok(())
 }

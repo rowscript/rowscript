@@ -1,17 +1,19 @@
-use crate::Src;
+use std::collections::HashSet;
+use std::fmt::{Display, Formatter};
+
+use ustr::{Ustr, UstrMap};
+
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::abs::def::{Body, Sigma};
 use crate::theory::conc::data::ArgInfo;
 use crate::theory::conc::load::ModuleID;
 use crate::theory::{Param, ParamInfo, Syntax, Tele, Var};
-use std::collections::{HashMap, HashSet};
-use std::fmt::{Display, Formatter};
 
 pub type Spine = Vec<(ParamInfo, Term)>;
 
-pub type FieldMap = HashMap<Src, Term>;
+pub type FieldMap = UstrMap<Term>;
 pub type FieldSet = HashSet<Var>;
-pub type CaseMap = HashMap<Src, (Var, Term)>;
+pub type CaseMap = UstrMap<(Var, Term)>;
 pub type CaseDefault = Option<(Var, Box<Term>)>;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -78,7 +80,7 @@ pub enum Term {
     BoolNeq(Box<Self>, Box<Self>),
 
     String,
-    Str(Src),
+    Str(Ustr),
     StrAdd(Box<Self>, Box<Self>),
     StrEq(Box<Self>, Box<Self>),
     StrNeq(Box<Self>, Box<Self>),
@@ -101,7 +103,7 @@ pub enum Term {
     NumToStr(Box<Self>),
 
     Bigint,
-    Big(Src),
+    Big(Ustr),
     BigintToStr(Box<Self>),
 
     ArrayIterator(Box<Self>),
@@ -128,7 +130,7 @@ pub enum Term {
 
     Row,
     Rowkey,
-    Rk(Src),
+    Rk(Ustr),
     RkToStr(Box<Self>),
     AtResult {
         ty: Box<Self>,
@@ -136,7 +138,7 @@ pub enum Term {
     },
     At(Box<Self>, Box<Self>),
     Fields(FieldMap),
-    Associate(Box<Self>, Src),
+    Associate(Box<Self>, Ustr),
     Combine(bool, Box<Self>, Box<Self>),
 
     RowOrd(Box<Self>, Box<Self>),
@@ -149,7 +151,7 @@ pub enum Term {
     Obj(Box<Self>),
     Concat(Box<Self>, Box<Self>),
     Cat(Box<Self>, Box<Self>),
-    Access(Box<Self>, Src),
+    Access(Box<Self>, Ustr),
     Downcast(Box<Self>, Box<Self>),
     Down(Box<Self>, Box<Self>),
 
@@ -182,7 +184,7 @@ pub enum Term {
     Cls {
         class: Var,
         type_args: Vec<Self>,
-        associated: HashMap<Src, Self>,
+        associated: UstrMap<Self>,
         object: Box<Self>,
     },
 
@@ -201,8 +203,8 @@ pub enum Term {
 pub struct PartialClass {
     pub applied_types: Box<[Term]>,
     pub type_params: Box<[Term]>,
-    pub associated: HashMap<Src, Var>,
-    pub methods: HashMap<Src, Var>,
+    pub associated: UstrMap<Var>,
+    pub methods: UstrMap<Var>,
 }
 
 impl Term {
@@ -351,18 +353,25 @@ impl Term {
 
     fn list_empty() -> Self {
         use Term::*;
-        Variant(Box::new(Fields(FieldMap::from([("Empty", TT)]))))
+        Variant(Box::new(Fields(
+            [("Empty".into(), TT)].into_iter().collect(),
+        )))
     }
 
     fn list_append(value: Self, list: Self) -> Self {
         use Term::*;
-        Variant(Box::new(Fields(FieldMap::from([(
-            "Append",
-            Obj(Box::new(Fields(FieldMap::from([
-                ("value", value),
-                ("list", list),
-            ])))),
-        )]))))
+        Variant(Box::new(Fields(
+            [(
+                "Append".into(),
+                Obj(Box::new(Fields(
+                    [("value".into(), value), ("list".into(), list)]
+                        .into_iter()
+                        .collect(),
+                ))),
+            )]
+            .into_iter()
+            .collect(),
+        )))
     }
 
     pub fn rowkey_list(m: FieldMap) -> Self {

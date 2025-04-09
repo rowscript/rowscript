@@ -1,8 +1,10 @@
-use crate::Src;
+use std::fmt::{Display, Formatter};
+
+use ustr::Ustr;
+
 use crate::theory::abs::def::Def;
 use crate::theory::conc::load::ModuleID;
 use crate::theory::{Loc, Param, Syntax, Tele, Var};
-use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ArgInfo {
@@ -53,13 +55,13 @@ pub enum Expr {
     If(Loc, Box<Self>, Box<Self>, Box<Self>),
 
     String(Loc),
-    Str(Loc, Src),
+    Str(Loc, Ustr),
 
     Number(Loc),
-    Num(Loc, Src),
+    Num(Loc, Ustr),
 
     BigInt(Loc),
-    Big(Loc, Src),
+    Big(Loc, Ustr),
 
     Arr(Loc, Vec<Self>),
 
@@ -68,8 +70,8 @@ pub enum Expr {
     Row(Loc),
     Rowkey(Loc),
     At(Loc, Box<Self>, Box<Self>),
-    Associate(Loc, Box<Self>, Src),
-    Fields(Loc, Vec<(Src, Self)>),
+    Associate(Loc, Box<Self>, Ustr),
+    Fields(Loc, Vec<(Ustr, Self)>),
     Combine(Loc, Box<Self>, Box<Self>),
 
     RowOrd(Loc, Box<Self>, Box<Self>),
@@ -79,17 +81,17 @@ pub enum Expr {
     Obj(Loc, Box<Self>),
     Concat(Loc, Box<Self>, Box<Self>),
     Cat(Loc, Box<Self>, Box<Self>),
-    Access(Loc, Src),
+    Access(Loc, Ustr),
     Downcast(Loc, Box<Self>),
 
     Enum(Loc, Box<Self>),
-    Variant(Loc, Src, Box<Self>),
+    Variant(Loc, Ustr, Box<Self>),
     Upcast(Loc, Box<Self>),
     UpcastTo(Loc, Box<Self>, Box<Self>),
     Switch(
         Loc,
         Box<Self>,
-        Vec<(Src, Var, Self)>,
+        Vec<(Ustr, Var, Self)>,
         Option<(Var, Box<Self>)>,
     ),
 
@@ -435,5 +437,5 @@ impl Display for Expr {
 pub struct Catch {
     pub i: Expr,
     pub inst_ty: Expr,
-    pub inst_fns: Vec<(Src, Def<Expr>)>,
+    pub inst_fns: Vec<(Ustr, Def<Expr>)>,
 }

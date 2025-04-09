@@ -8,7 +8,7 @@ use crate::theory::abs::def::Def;
 use crate::theory::conc::data::Expr;
 use crate::theory::conc::load::Import;
 use crate::theory::surf::trans::Trans;
-use crate::{Error, Src, print_err};
+use crate::{Error, print_err};
 
 mod trans;
 
@@ -30,7 +30,7 @@ pub struct Parsed {
 }
 
 impl Parser {
-    pub fn parse(&mut self, path: &Path, src: Src) -> Result<Parsed, Error> {
+    pub fn parse(&mut self, path: &Path, src: &'static str) -> Result<Parsed, Error> {
         RowsParser::parse(Rule::file, src)
             .map_err(|e| print_err(Box::new(e).into(), path, src))
             .map(|p| self.trans.file(p))

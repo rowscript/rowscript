@@ -11,8 +11,8 @@ fn test_reserved() {
                 assert_eq!(l, 1);
                 assert_eq!(c, 10);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         },
-        _ => assert!(false),
+        _ => unreachable!(),
     }
 }

@@ -8,6 +8,6 @@ fn test_issue114() {
             assert_eq!(loc.line, 1);
             assert_eq!(loc.col, 6);
         }
-        _ => assert!(false),
+        _ => unreachable!(),
     }
 }

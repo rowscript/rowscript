@@ -9,6 +9,6 @@ fn test_resolve() {
             assert_eq!(line, 3);
             assert_eq!(col, 5);
         }
-        _ => assert!(false),
+        _ => unreachable!(),
     }
 }

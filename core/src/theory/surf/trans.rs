@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use std::sync::OnceLock;
 
 use pest::pratt_parser::{Assoc, Op, PrattParser};
+use ustr::{Ustr, UstrMap};
 
-use crate::Src;
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::abs::def::{Body, InstanceBody};
 use crate::theory::abs::def::{ClassMembers, Def};
@@ -104,7 +104,7 @@ impl Trans {
         let mut modules = PathBuf::default();
         let mut ms = m.into_inner();
         let p = ms.next().unwrap();
-        let item = p.as_str();
+        let item = p.as_str().into();
         let pkg = match p.as_rule() {
             Rule::std_pkg_id => Std(item),
             Rule::vendor_pkg_id => self.vendor_pkg(p),
@@ -125,7 +125,7 @@ impl Trans {
         for p in i {
             let loc = Loc::from(p.as_span());
             match p.as_rule() {
-                Rule::importable => importables.push((loc, p.as_str())),
+                Rule::importable => importables.push((loc, p.as_str().into())),
                 Rule::importable_loaded => {
                     return Import::new(loc, ModuleID { pkg, modules }, Loaded);
                 }
@@ -146,7 +146,10 @@ impl Trans {
 
     fn vendor_pkg(&mut self, v: Pair) -> ImportedPkg {
         let mut p = v.into_inner();
-        Vendor(p.next().unwrap().as_str(), p.next().unwrap().as_str())
+        Vendor(
+            p.next().unwrap().as_str().into(),
+            p.next().unwrap().as_str().into(),
+        )
     }
 
     fn fn_def(&mut self, f: Pair, is_public: bool, this: Option<(Expr, Tele<Expr>)>) -> Def<Expr> {
@@ -579,12 +582,12 @@ impl Trans {
 
         let mut tele = Tele::default();
 
-        let mut associated = HashMap::default();
+        let mut associated = UstrMap::default();
         let mut associated_defs = Vec::default();
 
         let mut members = Vec::default();
         let mut method_defs = Vec::default();
-        let mut methods = HashMap::default();
+        let mut methods = UstrMap::default();
         let mut ctor_body_obj = Vec::default();
 
         let mut wrapper = None;
@@ -604,7 +607,7 @@ impl Trans {
 
                     let typ = self.type_expr(t.next().unwrap());
 
-                    associated.insert(typ_name.as_str(), mangled_typ_var.clone());
+                    associated.insert(typ_name.as_str().into(), mangled_typ_var.clone());
                     associated_defs.push(Def {
                         is_public,
                         loc: typ_name_loc,
@@ -620,7 +623,7 @@ impl Trans {
                     let mut f = p.into_inner();
                     let m = Var::from(f.next().unwrap());
                     let typ = self.type_expr(f.next().unwrap());
-                    members.push((loc, m.as_str(), typ.clone()));
+                    members.push((loc, *m.as_str(), typ.clone()));
                     let v = match f.next() {
                         None => {
                             ctor_params.push(
@@ -635,7 +638,7 @@ impl Trans {
                         }
                         Some(e) => self.expr(e),
                     };
-                    ctor_body_obj.push((m.as_str(), v));
+                    ctor_body_obj.push((*m.as_str(), v));
                 }
                 Rule::class_wrapper => {
                     let ty = self.type_expr(p.into_inner().next().unwrap());
@@ -656,7 +659,7 @@ impl Trans {
                         is_public,
                         Some((Unresolved(loc, None, name.clone()), tele.clone())),
                     );
-                    let method_name = m.name.as_str();
+                    let method_name = *m.name.as_str();
                     let method_var = name.method(m.name);
                     m.name = method_var.clone();
                     m.body = match m.body {
@@ -679,7 +682,7 @@ impl Trans {
         let could_be_default = ctor_params.1.is_empty();
         let default_meth_name = name.default();
         if could_be_default {
-            methods.insert("default", default_meth_name.clone());
+            methods.insert("default".into(), default_meth_name.clone());
         }
         let ctor_tupled_params = ctor_params.param(None);
         let ctor_name = name.ctor();
@@ -774,7 +777,7 @@ impl Trans {
         );
 
         let mut method_defs = Vec::default();
-        let mut methods = HashMap::default();
+        let mut methods = UstrMap::default();
 
         for p in pairs {
             match p.as_rule() {
@@ -787,7 +790,7 @@ impl Trans {
                             Default::default(),
                         )),
                     );
-                    let method_name = m.name.as_str();
+                    let method_name = *m.name.as_str();
                     let method_var = class_name.method(m.name);
                     m.name = method_var.clone();
                     m.body = match m.body {
@@ -1023,7 +1026,7 @@ impl Trans {
                 Rule::row_arg => self.row_arg(arg),
                 Rule::type_arg => self.type_arg(arg),
                 Rule::type_id => {
-                    f = Associate(loc, Box::new(f), arg.as_str());
+                    f = Associate(loc, Box::new(f), arg.as_str().into());
                     continue;
                 }
                 _ => unreachable!(),
@@ -1301,12 +1304,12 @@ impl Trans {
             .parse(e.into_inner())
     }
 
-    fn infix_app(loc: Loc, r: &'static str, lhs: Expr, rhs: Expr) -> Expr {
+    fn infix_app(loc: Loc, r: &str, lhs: Expr, rhs: Expr) -> Expr {
         use Expr::*;
         Self::call2(Unresolved(loc, None, Var::new(r)), lhs, rhs)
     }
 
-    fn prefix_app(loc: Loc, r: &'static str, x: Expr) -> Expr {
+    fn prefix_app(loc: Loc, r: &str, x: Expr) -> Expr {
         use Expr::*;
         Self::call1(Unresolved(loc, None, Var::new(r)), x)
     }
@@ -1348,7 +1351,7 @@ impl Trans {
                     let mut c = p.into_inner();
                     match rule {
                         Rule::enum_case => {
-                            let n = c.next().unwrap().as_str();
+                            let n = c.next().unwrap().as_str().into();
                             let param_or_expr = c.next().unwrap();
                             let (v, body) = if let Some(body) = c.next() {
                                 (Var::from(param_or_expr), self.expr(body))
@@ -1411,9 +1414,9 @@ impl Trans {
             }
             Rule::new_expr => self.new_expr(p),
             Rule::paren_expr => self.expr(p.into_inner().next().unwrap()),
-            Rule::string | Rule::multiline_string => Str(loc, p.as_str()),
-            Rule::number => Num(loc, p.into_inner().next().unwrap().as_str()),
-            Rule::bigint => Big(loc, p.as_str()),
+            Rule::string | Rule::multiline_string => Str(loc, p.as_str().into()),
+            Rule::number => Num(loc, p.into_inner().next().unwrap().as_str().into()),
+            Rule::bigint => Big(loc, p.as_str().into()),
             Rule::boolean_false => False(loc),
             Rule::boolean_true => True(loc),
             Rule::object_literal => self.object_literal(p),
@@ -1505,7 +1508,7 @@ impl Trans {
                 }
             }
             Rule::access => {
-                let n = p.into_inner().next().unwrap().as_str();
+                let n = p.into_inner().next().unwrap().as_str().into();
                 f = App(loc, Box::new(Access(loc, n)), UnnamedExplicit, Box::new(f));
             }
             _ => unreachable!(),
@@ -1726,7 +1729,7 @@ impl Trans {
         let a_var = Var::from(a);
         let n = pairs.next().unwrap();
         let n_loc = Loc::from(n.as_span());
-        let fields = vec![(n.as_str(), self.expr(pairs.next().unwrap()))];
+        let fields = vec![(n.as_str().into(), self.expr(pairs.next().unwrap()))];
         let expr = Cat(
             a_loc,
             Box::new(Unresolved(a_loc, None, a_var.clone())),
@@ -1926,7 +1929,7 @@ impl Trans {
         let mut pairs = q.into_inner();
         let prefix = pairs.next().unwrap();
         let pkg = match prefix.as_rule() {
-            Rule::std_pkg_id => Std(prefix.as_str()),
+            Rule::std_pkg_id => Std(prefix.as_str().into()),
             Rule::vendor_pkg_id => self.vendor_pkg(prefix),
             Rule::root_prefix => Root,
             _ => unreachable!(),
@@ -2019,7 +2022,7 @@ impl Trans {
         let mut fields = Vec::default();
         for pair in p.into_inner() {
             let mut f = pair.into_inner();
-            let id = f.next().unwrap().as_str();
+            let id = f.next().unwrap().as_str().into();
             let typ = f.next().map_or(Unit(loc), |e| self.type_expr(e));
             fields.push((id, typ));
         }
@@ -2027,9 +2030,12 @@ impl Trans {
         Fields(loc, fields)
     }
 
-    fn label(&mut self, l: Pair) -> (Src, Expr) {
+    fn label(&mut self, l: Pair) -> (Ustr, Expr) {
         let mut p = l.into_inner();
-        (p.next().unwrap().as_str(), self.expr(p.next().unwrap()))
+        (
+            p.next().unwrap().as_str().into(),
+            self.expr(p.next().unwrap()),
+        )
     }
 
     fn object_literal(&mut self, l: Pair) -> Expr {
@@ -2052,7 +2058,7 @@ impl Trans {
                 to = Some(self.maybe_qualified(p));
                 p = pairs.next().unwrap();
             }
-            p.as_str()
+            p.as_str().into()
         };
         let a = pairs
             .next()
@@ -2092,7 +2098,7 @@ impl Trans {
         let mut inst_fns = Vec::default();
         for p in pairs {
             let mut def = self.fn_def(p, false, None);
-            let name = def.name.as_str();
+            let name = *def.name.as_str();
             def.name = def.name.catch_fn();
             def.body = match def.body {
                 Body::Fn(f) => Body::InstanceFn(f),

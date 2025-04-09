@@ -10,8 +10,8 @@ fn test_issue160() {
                 assert_eq!(l, 3);
                 assert_eq!(c, 9);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         },
-        _ => assert!(false),
+        _ => unreachable!(),
     }
 }

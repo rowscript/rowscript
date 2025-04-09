@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str::FromStr;
@@ -20,6 +19,7 @@ use swc_ecma_ast::{
 };
 use swc_ecma_codegen::Emitter;
 use swc_ecma_codegen::text_writer::JsWriter;
+use ustr::{Ustr, UstrMap};
 
 use crate::Error::{NonErasable, UnsolvedMeta};
 use crate::codegen::Target;
@@ -33,7 +33,7 @@ use crate::theory::{
     AWAIT, AWAIT_ALL, AWAIT_ANY, AWAIT_MUL, Loc, Param, THIS, TUPLED, Tele, UNTUPLED_ENDS,
     UNTUPLED_RHS_PREFIX, Var,
 };
-use crate::{Error, File, Src};
+use crate::{Error, File};
 
 impl From<Loc> for Span {
     fn from(loc: Loc) -> Self {
@@ -85,14 +85,21 @@ impl Ecma {
     }
 
     fn ident(loc: Loc, v: &Var) -> Ident {
-        Self::str_ident(loc, if v.is_unbound() { "_" } else { v.as_str() })
+        Self::str_ident(
+            loc,
+            if v.is_unbound() {
+                "_"
+            } else {
+                v.as_str().as_str()
+            },
+        )
     }
 
     fn asis_ident(loc: Loc, v: &Var) -> Ident {
         Ident {
             span: loc.into(),
             ctxt: Default::default(),
-            sym: v.as_str().into(),
+            sym: v.as_str().as_str().into(),
             optional: false,
         }
     }
@@ -528,7 +535,7 @@ impl Ecma {
 
         // Try transforming await expressions.
         if let Find { interface_fn, .. } = f {
-            return Ok(match interface_fn.as_str() {
+            return Ok(match interface_fn.as_str().as_str() {
                 AWAIT => Self::await_executor(loc, args),
                 AWAIT_MUL => {
                     Self::await_executors(loc, "Promise.all", Self::args_to_promises(loc, args))
@@ -1093,7 +1100,10 @@ impl Ecma {
             }),
             Qualified(m, r) => Expr::Member(MemberExpr {
                 span: loc.into(),
-                obj: Box::new(Expr::Ident(Self::str_ident(loc, self.to_qualifier(m)))),
+                obj: Box::new(Expr::Ident(Self::str_ident(
+                    loc,
+                    self.to_qualifier(m).as_str(),
+                ))),
                 prop: MemberProp::Ident(IdentName::from(Self::ident(loc, r))),
             }),
             Lam(p, b) => match p.info {
@@ -1489,7 +1499,7 @@ impl Ecma {
                     for (loc, d) in defs {
                         specifiers.push(ImportSpecifier::Named(ImportNamedSpecifier {
                             span: loc.into(),
-                            local: Self::str_ident(loc, d),
+                            local: Self::str_ident(loc, d.as_str()),
                             imported: None,
                             is_type_only: false,
                         }))
@@ -1498,7 +1508,7 @@ impl Ecma {
                 Qualified => {
                     specifiers.push(ImportSpecifier::Namespace(ImportStarAsSpecifier {
                         span: i.loc.into(),
-                        local: Self::str_ident(i.loc, self.to_qualifier(&i.module)),
+                        local: Self::str_ident(i.loc, self.to_qualifier(&i.module).as_str()),
                     }));
                 }
                 Loaded => {}
@@ -1709,7 +1719,7 @@ impl Ecma {
         sigma: &Sigma,
         name: &Var,
         ctor: &Var,
-        methods: &HashMap<Src, Var>,
+        methods: &UstrMap<Var>,
     ) -> Result<(), Error> {
         let ctor_def = sigma.get(ctor).unwrap();
         let mut ctor_func = match &ctor_def.body {
@@ -1825,17 +1835,17 @@ impl Target for Ecma {
         OUT_FILE
     }
 
-    fn to_qualifier(&self, module: &ModuleID) -> Src {
+    fn to_qualifier(&self, module: &ModuleID) -> Ustr {
         use ImportedPkg::*;
         let mut ret = match &module.pkg {
-            Std(p) => vec![*p],
-            Vendor(o, p) => vec![o.strip_prefix('@').unwrap(), p],
+            Std(p) => vec![p.as_str()],
+            Vendor(o, p) => vec![o.strip_prefix('@').unwrap(), p.as_str()],
             Root => vec![QUALIFIER_SEP],
         };
         for m in &module.modules {
             ret.push(m.to_str().unwrap());
         }
-        ret.join(QUALIFIER_SEP).leak()
+        ret.join(QUALIFIER_SEP).into()
     }
 
     fn should_include(&self, path: &Path) -> bool {

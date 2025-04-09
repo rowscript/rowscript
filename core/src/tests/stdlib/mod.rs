@@ -15,7 +15,6 @@ fn test_stdlib() {
     let mut libs = pkg
         .read_dir()
         .unwrap()
-        .into_iter()
         .map(Result::unwrap)
         .filter(|e| e.file_type().unwrap().is_dir() && e.file_name() != OUT_DIR)
         .map(|e| e.file_name().to_string_lossy().to_string())
