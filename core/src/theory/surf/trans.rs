@@ -454,7 +454,7 @@ impl Trans {
                             },
                             _ => unreachable!(),
                         };
-                        implements_fn.name = implements_fn.name.implements_fn(&name);
+                        implements_fn.name = Var::internal();
                         implements_fns.push(implements_fn.name.clone());
                         implements_fn_defs.push(implements_fn);
                     }
@@ -517,7 +517,7 @@ impl Trans {
         let mut fns = HashMap::default();
         for p in pairs {
             let mut def = self.fn_def(p, false, None);
-            let fn_name = def.name.instance_fn(&i, &inst);
+            let fn_name = Var::internal();
             fns.insert(def.name.clone(), fn_name.clone());
             def.name = fn_name;
             def.body = match def.body {
@@ -530,7 +530,7 @@ impl Trans {
         defs.push(Def {
             is_public: false,
             loc,
-            name: i.instance(&inst),
+            name: Var::internal(),
             tele: Default::default(),
             eff: Box::new(Pure(loc)),
             ret: Box::new(Univ(loc)),

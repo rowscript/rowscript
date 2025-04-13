@@ -38,7 +38,7 @@ impl<'a> Resolver<'a> {
     pub fn files(&mut self, mut files: Vec<File<Expr>>) -> Result<Box<[File<Expr>]>, Error> {
         for f in &mut files {
             for d in &mut f.defs {
-                if !d.name.is_unbound() {
+                if !d.name.is_unnamed() {
                     if let Some(rv) = self.ubiquitous.get(d.name.as_str()) {
                         if !matches!(rv.0, Reserved) {
                             return Err(print_err(DuplicateName(d.loc), &f.path, f.src));
@@ -213,7 +213,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn insert_local(&mut self, v: Var) -> Option<ResolvedVar> {
-        v.is_unbound()
+        v.is_unnamed()
             .not()
             .then(|| self.locals.insert(*v.as_str(), ResolvedVar(Inside, v)))
             .flatten()
@@ -224,7 +224,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn insert_global(&mut self, loc: Loc, v: Var) -> Result<(), Error> {
-        v.is_unbound()
+        v.is_unnamed()
             .not()
             .then(|| self.globals.insert(*v.as_str(), ResolvedVar(Inside, v)))
             .flatten()
@@ -232,7 +232,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn remove_local(&mut self, v: &Var) {
-        v.is_unbound().not().then(|| self.locals.remove(v.as_str()));
+        v.is_unnamed().not().then(|| self.locals.remove(v.as_str()));
     }
 
     fn clear_locals(&mut self) {
@@ -314,7 +314,7 @@ impl<'a> Resolver<'a> {
                 )
             }
             Let(loc, mut x, typ, a, b) => {
-                if !x.is_unbound() {
+                if !x.is_unnamed() {
                     x = x.bind_let();
                     if self.locals.contains_key(x.as_str()) {
                         return Err(DuplicateName(loc));

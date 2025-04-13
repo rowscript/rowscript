@@ -384,7 +384,6 @@ impl Elaborator {
             Resolved(loc, i) => (loc, i),
             _ => unreachable!(),
         };
-        let inst = Resolved(loc, name.clone());
         let inst_tm = Box::new(Term::Ref(name));
         let implements = match &self.sigma.get(&i).unwrap().body {
             Interface { implements, .. } => implements.clone(),
@@ -412,7 +411,7 @@ impl Elaborator {
                 _ => unreachable!(),
             };
             d.body = InstanceFn(Box::new(self.nf(d.loc).with([(&ty_var, &ty)], *f)?));
-            d.name = f_name.instance_fn(&i, &inst);
+            d.name = Var::internal();
 
             fns.insert(f_name, d.name.clone());
             self.sigma.insert(d.name.clone(), d);
@@ -421,7 +420,7 @@ impl Elaborator {
         let inst_def = Def {
             is_public: false,
             loc,
-            name: i.instance(&inst),
+            name: Var::internal(),
             tele: Default::default(),
             eff: Box::new(Term::Pure),
             ret: Box::new(Term::Univ),

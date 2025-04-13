@@ -2,12 +2,13 @@ use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::mem::discriminant;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use pest::Span;
 use ustr::{Ustr, UstrMap, UstrSet};
 
 use crate::Error;
-use crate::theory::conc::data::{ArgInfo, Expr};
+use crate::theory::conc::data::ArgInfo;
 use crate::theory::surf::Pair;
 
 pub mod abs;
@@ -65,6 +66,7 @@ impl RawNameSet {
 #[derive(Debug, Clone, Eq)]
 pub enum Var {
     Bound(Name),
+    Internal(usize),
     Unbound,
     Meta(Name),
 }
@@ -73,6 +75,7 @@ impl Display for Var {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Bound(n) | Self::Meta(n) => Display::fmt(n, f),
+            Self::Internal(id) => write!(f, "${id}"),
             Self::Unbound => unreachable!(),
         }
     }
@@ -82,6 +85,7 @@ impl PartialEq<Self> for Var {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Bound(l), Self::Bound(r)) | (Self::Meta(l), Self::Meta(r)) => id(l) == id(r),
+            (Self::Internal(l), Self::Internal(r)) => l == r,
             _ => false,
         }
     }
@@ -92,6 +96,7 @@ impl Hash for Var {
         discriminant(self).hash(state);
         match self {
             Self::Bound(n) | Self::Meta(n) => id(n).hash(state),
+            Self::Internal(id) => id.hash(state),
             Self::Unbound => unreachable!(),
         }
     }
@@ -133,16 +138,29 @@ impl Var {
         Self::new(name)
     }
 
-    pub fn meta() -> Self {
-        Self::Meta(Arc::new(META.into()))
+    pub fn internal() -> Self {
+        static NEXT_ID: AtomicUsize = AtomicUsize::new(1);
+        Self::Internal(NEXT_ID.fetch_add(1, Ordering::Relaxed))
     }
 
     pub fn unbound() -> Self {
         Self::Unbound
     }
 
+    pub fn meta() -> Self {
+        Self::Meta(Arc::new(META.into()))
+    }
+
     pub fn is_unbound(&self) -> bool {
         matches!(self, Self::Unbound)
+    }
+
+    pub fn is_unnamed(&self) -> bool {
+        match &self {
+            Self::Bound(..) => false,
+            Self::Internal(..) | Self::Unbound => true,
+            Self::Meta(..) => unreachable!(),
+        }
     }
 
     pub fn tupled() -> Self {
@@ -179,18 +197,6 @@ impl Var {
 
     pub fn bind_let(&self) -> Self {
         Self::compound(format!("{LETS}{self}").as_str())
-    }
-
-    pub fn instance(&self, inst: &Expr) -> Self {
-        Self::compound(format!("{self}__for__{inst}").as_str())
-    }
-
-    pub fn instance_fn(&self, i: &Self, inst: &Expr) -> Self {
-        Self::compound(format!("{i}__for__{inst}__{self}").as_str())
-    }
-
-    pub fn implements_fn(&self, i: &Self) -> Self {
-        Self::compound(format!("{i}__implements__{self}").as_str())
     }
 
     pub fn catch(&self) -> Self {
