@@ -184,23 +184,22 @@ impl Trans {
         }
 
         for p in pairs {
-            match p.as_rule() {
-                Rule::row_id => tele.push(Self::row_param(p)),
-                Rule::implicit_id => tele.push(Self::implicit_param(p)),
-                Rule::hkt_param => tele.push(Self::hkt_param(p)),
-                Rule::param => untupled.push(Loc::from(p.as_span()), self.param(p)),
-                Rule::variadic_param => match self.variadic_param(p) {
-                    VariadicParam::Named(loc, p) => untupled.push(loc, p),
-                    VariadicParam::Unnamed(t) => untupled_ends = Some(t),
-                },
-                Rule::type_expr => ret = Box::new(self.type_expr(p)),
-                Rule::fn_body => {
-                    body = Some(self.fn_body(p));
-                    break;
+            if let Some(p) = self.type_param(p, &mut tele) {
+                match p.as_rule() {
+                    Rule::param => untupled.push(Loc::from(p.as_span()), self.param(p)),
+                    Rule::variadic_param => match self.variadic_param(p) {
+                        VariadicParam::Named(loc, p) => untupled.push(loc, p),
+                        VariadicParam::Unnamed(t) => untupled_ends = Some(t),
+                    },
+                    Rule::type_expr => ret = Box::new(self.type_expr(p)),
+                    Rule::fn_body => {
+                        body = Some(self.fn_body(p));
+                        break;
+                    }
+                    Rule::pred => preds.push(self.pred(p)),
+                    Rule::capability => capabilities.push(Self::unresolved(p)),
+                    _ => unreachable!(),
                 }
-                Rule::pred => preds.push(self.pred(p)),
-                Rule::capability => capabilities.push(Self::unresolved(p)),
-                _ => unreachable!(),
             }
         }
 
@@ -278,19 +277,18 @@ impl Trans {
         let mut ret = Box::new(Expr::Unit(loc));
 
         for p in pairs {
-            match p.as_rule() {
-                Rule::row_id => tele.push(Self::row_param(p)),
-                Rule::implicit_id => tele.push(Self::implicit_param(p)),
-                Rule::hkt_param => tele.push(Self::hkt_param(p)),
-                Rule::param => untupled.push(Loc::from(p.as_span()), self.param(p)),
-                Rule::variadic_param => match self.variadic_param(p) {
-                    VariadicParam::Named(loc, p) => untupled.push(loc, p),
-                    VariadicParam::Unnamed(t) => untupled_ends = Some(t),
-                },
-                Rule::type_expr => ret = Box::new(self.type_expr(p)),
-                Rule::pred => preds.push(self.pred(p)),
-                Rule::capability => capabilities.push(Self::unresolved(p)),
-                _ => unreachable!(),
+            if let Some(p) = self.type_param(p, &mut tele) {
+                match p.as_rule() {
+                    Rule::param => untupled.push(Loc::from(p.as_span()), self.param(p)),
+                    Rule::variadic_param => match self.variadic_param(p) {
+                        VariadicParam::Named(loc, p) => untupled.push(loc, p),
+                        VariadicParam::Unnamed(t) => untupled_ends = Some(t),
+                    },
+                    Rule::type_expr => ret = Box::new(self.type_expr(p)),
+                    Rule::pred => preds.push(self.pred(p)),
+                    Rule::capability => capabilities.push(Self::unresolved(p)),
+                    _ => unreachable!(),
+                }
             }
         }
         tele.push(untupled.param(untupled_ends));
@@ -316,27 +314,21 @@ impl Trans {
     }
 
     fn type_postulate(&mut self, t: Pair, is_public: bool) -> Def<Expr> {
-        use Body::*;
-        use Expr::*;
         let loc = Loc::from(t.as_span());
         let mut pairs = t.into_inner();
         let name = Var::from(pairs.next().unwrap());
         let mut tele = Tele::default();
-        for p in pairs {
-            match p.as_rule() {
-                Rule::row_id => tele.push(Self::row_param(p)),
-                Rule::implicit_id => tele.push(Self::implicit_param(p)),
-                _ => unreachable!(),
-            }
-        }
+        pairs.for_each(|p| {
+            self.type_param(p, &mut tele);
+        });
         Def {
             is_public,
             loc,
             name,
             tele,
-            eff: Box::new(Pure(loc)),
-            ret: Box::new(Univ(loc)),
-            body: Postulate,
+            eff: Box::new(Expr::Pure(loc)),
+            ret: Box::new(Expr::Univ(loc)),
+            body: Body::Postulate,
         }
     }
 
@@ -352,12 +344,12 @@ impl Trans {
         let mut target = None;
         let mut implements = None;
         for p in pairs {
-            match p.as_rule() {
-                Rule::row_id => tele.push(Self::row_param(p)),
-                Rule::implicit_id => tele.push(Self::implicit_param(p)),
-                Rule::type_expr => target = Some(self.type_expr(p)),
-                Rule::implements => implements = Some(Box::new(self.maybe_qualified(p))),
-                _ => unreachable!(),
+            if let Some(p) = self.type_param(p, &mut tele) {
+                match p.as_rule() {
+                    Rule::type_expr => target = Some(self.type_expr(p)),
+                    Rule::implements => implements = Some(Box::new(self.maybe_qualified(p))),
+                    _ => unreachable!(),
+                }
             }
         }
 
@@ -422,53 +414,49 @@ impl Trans {
         let mut implements_fn_defs = Vec::default();
 
         for p in pairs {
-            match p.as_rule() {
-                Rule::row_id => inst_tele.push(Self::row_param(p)),
-                Rule::implicit_id => inst_tele.push(Self::implicit_param(p)),
-                _ => {
-                    let is_implements_fn = match p.as_rule() {
-                        Rule::interface_fn => false,
-                        Rule::instance_fn => true,
+            if let Some(p) = self.type_param(p, &mut inst_tele) {
+                let is_implements_fn = match p.as_rule() {
+                    Rule::interface_fn => false,
+                    Rule::instance_fn => true,
+                    _ => unreachable!(),
+                };
+                let mut d = if is_implements_fn {
+                    self.fn_def(p, false, None)
+                } else {
+                    self.fn_postulate(p, false)
+                };
+                let mut tele = vec![Param {
+                    var: Var::this(),
+                    info: Implicit,
+                    typ: Box::new(alias_type(name_loc, &inst_tele)),
+                }];
+                tele.extend(d.tele);
+                d.tele = tele;
+
+                if is_implements_fn {
+                    let mut implements_fn = d.clone();
+                    implements_fn.body = match implements_fn.body {
+                        Fn(f) => ImplementsFn {
+                            i: name.clone(),
+                            name: implements_fn.name.clone(),
+                            f,
+                        },
                         _ => unreachable!(),
                     };
-                    let mut d = if is_implements_fn {
-                        self.fn_def(p, false, None)
-                    } else {
-                        self.fn_postulate(p, false)
-                    };
-                    let mut tele = vec![Param {
-                        var: Var::this(),
-                        info: Implicit,
-                        typ: Box::new(alias_type(name_loc, &inst_tele)),
-                    }];
-                    tele.extend(d.tele);
-                    d.tele = tele;
-
-                    if is_implements_fn {
-                        let mut implements_fn = d.clone();
-                        implements_fn.body = match implements_fn.body {
-                            Fn(f) => ImplementsFn {
-                                i: name.clone(),
-                                name: implements_fn.name.clone(),
-                                f,
-                            },
-                            _ => unreachable!(),
-                        };
-                        implements_fn.name = Var::internal();
-                        implements_fns.push(implements_fn.name.clone());
-                        implements_fn_defs.push(implements_fn);
-                    }
-
-                    d.body = InterfaceFn(name.clone());
-                    if is_capability {
-                        d.eff = Self::concat_effects(
-                            *d.eff,
-                            vec![Unresolved(name_loc, None, name.clone())],
-                        );
-                    }
-                    fns.push(d.name.clone());
-                    fn_defs.push(d);
+                    implements_fn.name = Var::internal();
+                    implements_fns.push(implements_fn.name.clone());
+                    implements_fn_defs.push(implements_fn);
                 }
+
+                d.body = InterfaceFn(name.clone());
+                if is_capability {
+                    d.eff = Self::concat_effects(
+                        *d.eff,
+                        vec![Unresolved(name_loc, None, name.clone())],
+                    );
+                }
+                fns.push(d.name.clone());
+                fn_defs.push(d);
             }
         }
 
@@ -595,85 +583,86 @@ impl Trans {
         let mut ctor_params = UntupledParams::new(loc);
 
         for p in pairs {
-            match p.as_rule() {
-                Rule::implicit_id => tele.push(Self::implicit_param(p)),
-                Rule::associated_type => {
-                    let mut t = p.into_inner();
+            if let Some(p) = self.type_param(p, &mut tele) {
+                match p.as_rule() {
+                    Rule::associated_type => {
+                        let mut t = p.into_inner();
 
-                    let typ_name = t.next().unwrap();
-                    let typ_name_loc = Loc::from(typ_name.as_span());
-                    let typ_var = Var::new(typ_name.as_str());
-                    let mangled_typ_var = name.associated(typ_var);
+                        let typ_name = t.next().unwrap();
+                        let typ_name_loc = Loc::from(typ_name.as_span());
+                        let typ_var = Var::new(typ_name.as_str());
+                        let mangled_typ_var = name.associated(typ_var);
 
-                    let typ = self.type_expr(t.next().unwrap());
+                        let typ = self.type_expr(t.next().unwrap());
 
-                    associated.insert(typ_name.as_str().into(), mangled_typ_var.clone());
-                    associated_defs.push(Def {
-                        is_public,
-                        loc: typ_name_loc,
-                        name: mangled_typ_var,
-                        tele: tele.clone(),
-                        eff: Box::new(Pure(typ_name_loc)),
-                        ret: Box::new(Univ(typ_name_loc)),
-                        body: Associated(Box::new(typ)),
-                    });
+                        associated.insert(typ_name.as_str().into(), mangled_typ_var.clone());
+                        associated_defs.push(Def {
+                            is_public,
+                            loc: typ_name_loc,
+                            name: mangled_typ_var,
+                            tele: tele.clone(),
+                            eff: Box::new(Pure(typ_name_loc)),
+                            ret: Box::new(Univ(typ_name_loc)),
+                            body: Associated(Box::new(typ)),
+                        });
+                    }
+                    Rule::class_member => {
+                        let loc = Loc::from(p.as_span());
+                        let mut f = p.into_inner();
+                        let m = Var::from(f.next().unwrap());
+                        let typ = self.type_expr(f.next().unwrap());
+                        members.push((loc, *m.as_str(), typ.clone()));
+                        let v = match f.next() {
+                            None => {
+                                ctor_params.push(
+                                    loc,
+                                    Param {
+                                        var: m.clone(),
+                                        info: Explicit,
+                                        typ: Box::new(typ),
+                                    },
+                                );
+                                Unresolved(loc, None, m.clone())
+                            }
+                            Some(e) => self.expr(e),
+                        };
+                        ctor_body_obj.push((*m.as_str(), v));
+                    }
+                    Rule::class_wrapper => {
+                        let ty = self.type_expr(p.into_inner().next().unwrap());
+                        let var = Var::new("v");
+                        wrapper = Some((var.clone(), ty.clone()));
+                        ctor_params.push(
+                            ty.loc(),
+                            Param {
+                                var,
+                                info: Explicit,
+                                typ: Box::new(ty),
+                            },
+                        )
+                    }
+                    Rule::class_method => {
+                        let mut m = self.fn_def(
+                            p,
+                            is_public,
+                            Some((Unresolved(loc, None, name.clone()), tele.clone())),
+                        );
+                        let method_name = *m.name.as_str();
+                        let method_var = name.method(m.name);
+                        m.name = method_var.clone();
+                        m.body = match m.body {
+                            Fn(f) => Method {
+                                class: name.clone(),
+                                associated: associated.clone(),
+                                f,
+                            },
+                            _ => unreachable!(),
+                        };
+                        method_defs.push(m);
+                        methods.insert(method_name, method_var);
+                    }
+                    _ => unreachable!(),
                 }
-                Rule::class_member => {
-                    let loc = Loc::from(p.as_span());
-                    let mut f = p.into_inner();
-                    let m = Var::from(f.next().unwrap());
-                    let typ = self.type_expr(f.next().unwrap());
-                    members.push((loc, *m.as_str(), typ.clone()));
-                    let v = match f.next() {
-                        None => {
-                            ctor_params.push(
-                                loc,
-                                Param {
-                                    var: m.clone(),
-                                    info: Explicit,
-                                    typ: Box::new(typ),
-                                },
-                            );
-                            Unresolved(loc, None, m.clone())
-                        }
-                        Some(e) => self.expr(e),
-                    };
-                    ctor_body_obj.push((*m.as_str(), v));
-                }
-                Rule::class_wrapper => {
-                    let ty = self.type_expr(p.into_inner().next().unwrap());
-                    let var = Var::new("v");
-                    wrapper = Some((var.clone(), ty.clone()));
-                    ctor_params.push(
-                        ty.loc(),
-                        Param {
-                            var,
-                            info: Explicit,
-                            typ: Box::new(ty),
-                        },
-                    )
-                }
-                Rule::class_method => {
-                    let mut m = self.fn_def(
-                        p,
-                        is_public,
-                        Some((Unresolved(loc, None, name.clone()), tele.clone())),
-                    );
-                    let method_name = *m.name.as_str();
-                    let method_var = name.method(m.name);
-                    m.name = method_var.clone();
-                    m.body = match m.body {
-                        Fn(f) => Method {
-                            class: name.clone(),
-                            associated: associated.clone(),
-                            f,
-                        },
-                        _ => unreachable!(),
-                    };
-                    method_defs.push(m);
-                    methods.insert(method_name, method_var);
-                }
-                _ => unreachable!(),
             }
         }
 
@@ -871,14 +860,9 @@ impl Trans {
         let mut pairs = t.into_inner();
         let target = self.maybe_qualified(pairs.next().unwrap());
         let mut tele = Tele::default();
-        for p in pairs {
-            match p.as_rule() {
-                Rule::row_id => tele.push(Self::row_param(p)),
-                Rule::implicit_id => tele.push(Self::implicit_param(p)),
-                Rule::pred => tele.push(self.pred(p)),
-                _ => unreachable!(),
-            }
-        }
+        pairs.for_each(|p| {
+            self.type_param(p, &mut tele);
+        });
         Def {
             is_public: false,
             loc,
@@ -2012,6 +1996,16 @@ impl Trans {
             info: Explicit,
             typ: Box::new(self.type_expr(pairs.next().unwrap())),
         }
+    }
+
+    fn type_param(&mut self, p: Pair, tele: &mut Tele<Expr>) -> Option<Pair> {
+        match p.as_rule() {
+            Rule::row_id => tele.push(Self::row_param(p)),
+            Rule::implicit_id => tele.push(Self::implicit_param(p)),
+            Rule::hkt_param => tele.push(Self::hkt_param(p)),
+            _ => return Some(p),
+        }
+        None
     }
 
     fn fields(&mut self, p: Pair) -> Expr {
