@@ -199,20 +199,6 @@ impl Var {
         Self::compound(format!("{LETS}{self}").as_str())
     }
 
-    pub fn catch(&self) -> Self {
-        match self {
-            Self::Meta(id) => Self::compound(format!("catch__{id}").as_str()),
-            _ => unreachable!(),
-        }
-    }
-
-    pub fn catch_fn(&self) -> Self {
-        match self {
-            Self::Bound(name) => Self::compound(format!("catch__{name}").as_str()),
-            _ => unreachable!(),
-        }
-    }
-
     pub fn iterator() -> Self {
         Self::new(ITER)
     }

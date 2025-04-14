@@ -2093,7 +2093,7 @@ impl Trans {
         for p in pairs {
             let mut def = self.fn_def(p, false, None);
             let name = *def.name.as_str();
-            def.name = def.name.catch_fn();
+            def.name = Var::internal();
             def.body = match def.body {
                 Body::Fn(f) => Body::InstanceFn(f),
                 _ => unreachable!(),

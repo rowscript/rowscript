@@ -1650,7 +1650,7 @@ impl Elaborator {
                         self.sigma.insert(inst_fn.name.clone(), inst_fn);
                     }
 
-                    let inst_name = Var::meta().catch();
+                    let inst_name = Var::internal();
                     let checked_instance_body = self.check_instance_body(
                         &inst_name,
                         InstanceBody {
