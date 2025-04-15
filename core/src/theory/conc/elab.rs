@@ -794,7 +794,7 @@ impl Elaborator {
                 }
                 None => match self.sigma.get(&v) {
                     Some(d) => {
-                        let mut tm = d.to_term(v);
+                        let mut tm = d.to_term();
                         let eff = d.to_eff();
                         let mut ty = d.to_type();
                         if matches!(d.body, Body::Associated(..)) {
@@ -1557,13 +1557,13 @@ impl Elaborator {
                     .unwrap()
                     .1
                     .clone();
-                let type_of = self.sigma.get(&type_of).unwrap().to_term(type_of);
+                let type_of = self.sigma.get(&type_of).unwrap().to_term();
                 InferResult::pure(Term::Typeof(Box::new(ty)), type_of)
             }
             Keyof(loc, a) => {
                 let InferResult { tm, .. } = self.infer(*a)?;
                 let list_ty = self.ubiquitous.get(&Ustr::from("List")).unwrap().1.clone();
-                let list_ty = self.sigma.get(&list_ty).unwrap().to_term(list_ty);
+                let list_ty = self.sigma.get(&list_ty).unwrap().to_term();
                 let label_list_ty = self.nf(loc).term(Term::App(
                     Box::new(list_ty),
                     UnnamedImplicit,

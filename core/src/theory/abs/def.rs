@@ -44,25 +44,25 @@ impl Def<Expr> {
 }
 
 impl Def<Term> {
-    pub fn to_term(&self, v: Var) -> Term {
+    pub fn to_term(&self) -> Term {
         use Body::*;
         match &self.body {
             Fn(f) => self.to_lam_term(*f.clone()),
-            Postulate => Term::Extern(v),
+            Postulate => Term::Extern(self.name.clone()),
             Alias { ty, .. } => self.to_lam_term(*ty.clone()),
             Constant(_, f) => self.to_lam_term(*f.clone()),
             Verify(..) => unreachable!(),
 
             Interface { .. } => {
                 let r = Term::Ref(self.tele[0].var.clone());
-                self.to_lam_term(Term::Instanceof(Box::new(r), v))
+                self.to_lam_term(Term::Instanceof(Box::new(r), self.name.clone()))
             }
             InterfaceFn(i) => {
                 let r = Term::Ref(self.tele[0].var.clone());
                 let mut f = Term::Find {
                     instance_ty: Box::new(r),
                     interface: i.clone(),
-                    interface_fn: v,
+                    interface_fn: self.name.clone(),
                 };
                 for p in self.tele.iter().skip(1) {
                     f = Term::App(
@@ -104,8 +104,8 @@ impl Def<Term> {
             Method { f, .. } => self.to_lam_term(*f.clone()),
 
             Undefined => match self.ret.as_ref() {
-                Term::Univ => Term::Mu(v),
-                _ => Term::Undef(v),
+                Term::Univ => Term::Mu(self.name.clone()),
+                _ => Term::Undef(self.name.clone()),
             },
             Meta(_, s) => match s {
                 None => unreachable!(),
@@ -328,7 +328,7 @@ impl InstanceBody<Term> {
                 if !matches!(def.body, Alias { .. }) {
                     return Err(ExpectedAlias(Ref(inst), def.loc));
                 }
-                def.to_term(inst.clone())
+                def.to_term()
             }
             tm => tm.clone(),
         })

@@ -81,12 +81,12 @@ impl<'a> Normalizer<'a> {
                 }
             }
             Undef(v) if self.expand_undef => {
-                let ret = self.sigma.get(&v).unwrap().to_term(v.clone());
+                let ret = self.sigma.get(&v).unwrap().to_term();
                 if noinline(&ret) { Undef(v) } else { ret }
             }
             Mu(v) if self.expand_mu && !self.expanded.contains(&v) => {
                 self.expanded.insert(v.clone());
-                self.sigma.get(&v).unwrap().to_term(v)
+                self.sigma.get(&v).unwrap().to_term()
             }
             MetaRef(k, x, sp) => {
                 let mut def = self.sigma.get(&x).unwrap().clone();
@@ -459,7 +459,7 @@ impl<'a> Normalizer<'a> {
                     Some(v) => v,
                     None => return Err(UnresolvedField(n, a, self.loc)),
                 };
-                let f = self.sigma.get(typ).unwrap().to_term(typ.clone());
+                let f = self.sigma.get(typ).unwrap().to_term();
                 self.apply(f, UnnamedImplicit, params.as_ref())?
             }
             Combine(inplace_only, a, b) => {
@@ -854,7 +854,7 @@ impl<'a> Normalizer<'a> {
                 continue;
             }
 
-            return Ok(self.sigma.get(&inst_fn).unwrap().to_term(inst_fn));
+            return Ok(self.sigma.get(&inst_fn).unwrap().to_term());
         }
 
         let (args, meth_ref) = match ty.class_methods(self.sigma) {
@@ -868,7 +868,7 @@ impl<'a> Normalizer<'a> {
             },
             None => return Err(UnresolvedInstance(ty, self.loc)),
         };
-        let mut meth = self.sigma.get(&meth_ref).unwrap().to_term(meth_ref);
+        let mut meth = self.sigma.get(&meth_ref).unwrap().to_term();
         if !args.is_empty() {
             meth = self.apply(meth, UnnamedImplicit, args.as_ref())?;
         }
