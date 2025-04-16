@@ -166,11 +166,13 @@ pub enum Term {
     Union(Vec<Self>),
 
     Find {
-        instance_ty: Box<Self>,
-        interface: Var,
         interface_fn: Var,
+        instance_ty: Box<Self>,
     },
-    Instanceof(Box<Self>, Var),
+    Interface {
+        name: Var,
+        args: Box<[Self]>,
+    },
     InstanceofSat,
 
     Varargs(Box<Self>),
@@ -252,6 +254,10 @@ impl Term {
                     } => (type_args.clone(), associated.clone(), methods.clone()),
                     _ => unreachable!(),
                 },
+                Term::Interface { args, .. } if args.len() == 1 => {
+                    x = &args[0];
+                    continue;
+                }
                 Varargs(tm) | Pi { body: tm, .. } | Lam(.., tm) => {
                     x = tm.as_ref();
                     continue;
@@ -265,8 +271,8 @@ impl Term {
                 }
                 applied.push(arg.clone())
             }
-            let applied_types = applied.into_boxed_slice();
-            let type_params = params.into_boxed_slice();
+            let applied_types = applied.into();
+            let type_params = params.into();
             return Some(PartialClass {
                 applied_types,
                 type_params,
@@ -278,12 +284,12 @@ impl Term {
 
     pub fn auto_implicit(&self) -> Option<Self> {
         use Term::*;
-        match self {
-            RowEq(..) => Some(RowRefl),
-            RowOrd(..) => Some(RowSat),
-            Instanceof(..) => Some(InstanceofSat),
-            _ => None,
-        }
+        Some(match self {
+            RowEq(..) => RowRefl,
+            RowOrd(..) => RowSat,
+            Interface { .. } => InstanceofSat,
+            _ => return None,
+        })
     }
 
     pub fn is_unsolved(&self) -> bool {
@@ -299,7 +305,8 @@ impl Term {
         use Term::*;
         match self {
             RowEq(a, b) | RowOrd(a, b) => !a.is_unsolved() && !b.is_unsolved(),
-            Instanceof(a, ..) => !a.is_unsolved(),
+            // FIXME: Check if solvable here?
+            Interface { .. } => true,
             _ => false,
         }
     }
@@ -493,7 +500,7 @@ impl Display for Term {
                 MapIter(m) => format!("{m}.iter()"),
                 Row => "row".to_string(),
                 Rowkey => "rowkey".to_string(),
-                Rk(k) => k.to_string(),
+                Rk(k) => format!("rk\"{k}\""),
                 AtResult { key, .. } => format!("?.{key}"),
                 At(a, k) => format!("{a}[{k}]"),
                 Fields(fields) => format!(
@@ -545,11 +552,15 @@ impl Display for Term {
                     .join(" | "),
                 Find {
                     instance_ty,
-                    interface,
                     interface_fn,
-                    ..
-                } => format!("{interface}.{interface_fn}<{instance_ty}>"),
-                Instanceof(t, i) => format!("{t} instanceof {i}"),
+                } => format!("{instance_ty}.{interface_fn}"),
+                Interface { name, args } => format!(
+                    "{name}<{}>",
+                    args.iter()
+                        .map(ToString::to_string)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
                 InstanceofSat => "instanceofSat".to_string(),
                 Varargs(t) => format!("...Array<{t}>"),
                 AnonVarargs(t) => format!("...{t}"),

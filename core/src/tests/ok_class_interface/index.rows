@@ -6,12 +6,12 @@ class Foo {
     update() { log(this.n) }
 }
 
-interface Updater {
-    update(a: this);
+interface Updater<T> {
+    update(a: T);
 }
 
 function doSomething<U>(updater: U)
-where U instanceof Updater
+where Updater<U>
 {
     updater.update();
 }

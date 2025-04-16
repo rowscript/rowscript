@@ -54,25 +54,37 @@ impl Def<Term> {
             Verify(..) => unreachable!(),
 
             Interface { .. } => {
-                let r = Term::Ref(self.tele[0].var.clone());
-                self.to_lam_term(Term::Instanceof(Box::new(r), self.name.clone()))
+                let name = self.name.clone();
+                let args = self
+                    .tele
+                    .iter()
+                    .map(|p| Term::Ref(p.var.clone()))
+                    .collect::<Box<_>>();
+                self.to_lam_term(Term::Interface { name, args })
             }
-            InterfaceFn(i) => {
-                let r = Term::Ref(self.tele[0].var.clone());
-                let mut f = Term::Find {
-                    instance_ty: Box::new(r),
-                    interface: i.clone(),
-                    interface_fn: self.name.clone(),
-                };
-                for p in self.tele.iter().skip(1) {
-                    f = Term::App(
-                        Box::new(f),
-                        p.info.into(),
-                        Box::new(Term::Ref(p.var.clone())),
-                    );
-                }
-                self.to_lam_term(f)
-            }
+            InterfaceFn { i_tele_len, i } => self.to_lam_term(
+                self.tele.iter().skip(i_tele_len + 1).fold(
+                    Term::Find {
+                        interface_fn: self.name.clone(),
+                        instance_ty: Box::new(Term::Interface {
+                            name: i.clone(),
+                            args: self
+                                .tele
+                                .iter()
+                                .take(*i_tele_len)
+                                .map(|p| Term::Ref(p.var.clone()))
+                                .collect(),
+                        }),
+                    },
+                    |f, p| {
+                        Term::App(
+                            Box::new(f),
+                            p.info.into(),
+                            Box::new(Term::Ref(p.var.clone())),
+                        )
+                    },
+                ),
+            ),
             Instance { .. } => unreachable!(),
             InstanceFn(f) => self.to_lam_term(*f.clone()),
             ImplementsFn { .. } => unreachable!(),
@@ -192,7 +204,7 @@ impl<T: Syntax> Display for Def<T> {
                         .collect::<Vec<_>>()
                         .concat()
                 ),
-                InterfaceFn(i) => format!(
+                InterfaceFn { i, .. } => format!(
                     "interface function {i}.{} {}: {};",
                     self.name,
                     Param::tele_to_string(&self.tele),
@@ -282,7 +294,10 @@ pub enum Body<T: Syntax> {
         instances: Vec<Var>,
         implements: Vec<Var>,
     },
-    InterfaceFn(Var),
+    InterfaceFn {
+        i_tele_len: usize,
+        i: Var,
+    },
     Instance(Box<InstanceBody<T>>),
     InstanceFn(Box<T>),
     ImplementsFn {
@@ -311,7 +326,6 @@ pub enum Body<T: Syntax> {
 
 #[derive(Clone, Debug)]
 pub struct InstanceBody<T: Syntax> {
-    pub i: Var,
     pub inst: Box<T>,
     pub fns: HashMap<Var, Var>,
 }
@@ -339,8 +353,7 @@ impl<T: Syntax> Display for InstanceBody<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "instanceof {} for {} {{\n{}}}",
-            self.i,
+            "instanceof {} {{\n{}}}",
             self.inst,
             self.fns
                 .iter()

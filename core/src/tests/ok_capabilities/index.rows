@@ -1,6 +1,6 @@
-throw DB {
-    open(dsn: string): this;
-    close(db: this);
+throw DB<T> {
+    open(dsn: string): T;
+    close(db: T);
 }
 
 const dsn = "mysql://john:pass@localhost:3306/my_db";
@@ -28,18 +28,18 @@ function f1() {
 f1();
 
 // Cannot do this:
-//instanceof DB for MySQL {
+//instanceof DB<MySQL> {
 //    open(dsn: string): MySQL { {conn: dsn.connectMySQL()} }
 //    close(db: MySQL) { db.conn.closeMySQL() }
 //}
 
 type Data = {n: number};
 
-interface UseDB {
+interface UseDB<T> {
     useDB() throw DB;
 }
 
-instanceof UseDB for Data {
+instanceof UseDB<Data> {
     useDB() throw DB {
         f0();
     }

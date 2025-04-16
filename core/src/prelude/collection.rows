@@ -1,9 +1,9 @@
-interface Iterator {
-    next(it: this): Option<this::Item>;
+interface Iterator<T> {
+    next(it: T): Option<T::Item>;
 }
 
-interface Iterable {
-    iter<T>(a: this): T where T instanceof Iterator;
+interface Iterable<T> {
+    iter<I>(a: T): I where Iterator<I>;
 }
 
 class ArrayIterator<T> {

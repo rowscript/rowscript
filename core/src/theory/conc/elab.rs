@@ -5,10 +5,9 @@ use log::{debug, info, trace};
 use ustr::Ustr;
 
 use crate::Error::{
-    CatchAsyncEffect, DuplicateEffect, ExpectedCapability, ExpectedEnum, ExpectedInstanceof,
-    ExpectedInterface, ExpectedObject, ExpectedPi, ExpectedSigma, FieldsUnknown, NonCatchableExpr,
-    NonExhaustive, NonVariadicType, NotCheckedYet, UnresolvedEffect, UnresolvedField,
-    UnresolvedImplicitParam, UnresolvedVar,
+    CatchAsyncEffect, DuplicateEffect, ExpectedCapability, ExpectedEnum, ExpectedInterface,
+    ExpectedObject, ExpectedPi, ExpectedSigma, FieldsUnknown, NonCatchableExpr, NonExhaustive,
+    NonVariadicType, NotCheckedYet, UnresolvedField, UnresolvedImplicitParam, UnresolvedVar,
 };
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::abs::builtin::Builtins;
@@ -92,7 +91,7 @@ impl Elaborator {
     fn def(&mut self, d: Def<Expr>) -> Result<Def<Term>, Error> {
         use Body::*;
 
-        info!(target: "elab", "checking definition: {}", d.name);
+        info!(target: "elab", "checking definition: {d}");
 
         let Def {
             is_public,
@@ -161,7 +160,7 @@ impl Elaborator {
                 Alias {
                     ty: Box::new(ty.clone()),
                     implements: implements
-                        .map(|i| self.insert_implements(*i, name.clone(), ty))
+                        .map(|i| self.insert_implements(*i, ty))
                         .transpose()?,
                 }
             }
@@ -193,7 +192,7 @@ impl Elaborator {
                 instances,
                 implements,
             },
-            InterfaceFn(i) => InterfaceFn(i),
+            InterfaceFn { i_tele_len, i } => InterfaceFn { i_tele_len, i },
             Instance(body) => Instance(self.check_instance_body(&name, *body, false)?),
             InstanceFn(f) => InstanceFn(Box::new(self.check(*f, &eff, &ret)?)),
             ImplementsFn { i, name, f } => {
@@ -376,7 +375,7 @@ impl Elaborator {
         n
     }
 
-    fn insert_implements(&mut self, i: Expr, name: Var, ty: Term) -> Result<Box<Term>, Error> {
+    fn insert_implements(&mut self, i: Expr, ty: Term) -> Result<Box<Term>, Error> {
         use Body::*;
         use Expr::*;
 
@@ -384,8 +383,13 @@ impl Elaborator {
             Resolved(loc, i) => (loc, i),
             _ => unreachable!(),
         };
-        let inst_tm = Box::new(Term::Ref(name));
-        let implements = match &self.sigma.get(&i).unwrap().body {
+        let inst_tm = Box::new(Term::Interface {
+            name: i.clone(),
+            args: Box::new([ty.clone()]),
+        });
+        let i_def = self.sigma.get(&i).unwrap();
+        assert_eq!(i_def.tele.len(), 1); // FIXME: should check if an interface could be used for auto-deriving.
+        let implements = match &i_def.body {
             Interface { implements, .. } => implements.clone(),
             _ => unreachable!(),
         };
@@ -393,24 +397,26 @@ impl Elaborator {
         let mut fns = HashMap::default();
         for f in implements {
             let mut d = self.sigma.get(&f).unwrap().clone();
-            let ty_var = d.tele.remove(0).var;
+            let v = d.tele[0].var.clone();
+            let rho = Box::new([(&v, &ty)]);
             d.tele = d
                 .tele
                 .into_iter()
+                .skip(1) // FIXME: ditto.
                 .map(|p| {
                     Ok::<_, Error>(Param {
                         var: p.var,
                         info: p.info,
-                        typ: Box::new(self.nf(d.loc).with([(&ty_var, &ty)], *p.typ)?),
+                        typ: Box::new(self.nf(d.loc).with(rho.as_ref(), *p.typ)?),
                     })
                 })
                 .collect::<Result<Tele<_>, _>>()?;
-            d.ret = Box::new(self.nf(d.loc).with([(&ty_var, &ty)], *d.ret)?);
+            d.ret = Box::new(self.nf(d.loc).with(rho.as_ref(), *d.ret)?);
             let (f_name, f) = match d.body {
                 ImplementsFn { name, f, .. } => (name, f),
                 _ => unreachable!(),
             };
-            d.body = InstanceFn(Box::new(self.nf(d.loc).with([(&ty_var, &ty)], *f)?));
+            d.body = InstanceFn(Box::new(self.nf(d.loc).with(rho.as_ref(), *f)?));
             d.name = Var::internal();
 
             fns.insert(f_name, d.name.clone());
@@ -424,11 +430,7 @@ impl Elaborator {
             tele: Default::default(),
             eff: Box::new(Term::Pure),
             ret: Box::new(Term::Univ),
-            body: Instance(Box::new(InstanceBody {
-                i: i.clone(),
-                inst: inst_tm,
-                fns,
-            })),
+            body: Instance(Box::new(InstanceBody { inst: inst_tm, fns })),
         };
         match &mut self.sigma.get_mut(&i).unwrap().body {
             Interface { instances, .. } => instances.push(inst_def.name.clone()),
@@ -446,18 +448,19 @@ impl Elaborator {
         can_be_capability: bool,
     ) -> Result<Box<InstanceBody<Term>>, Error> {
         use Body::*;
-        use Expr::*;
 
-        let ret = Box::new(InstanceBody {
-            i: body.i,
-            inst: Box::new(self.infer(*body.inst)?.tm),
-            fns: body.fns,
-        });
-        let inst_tm = ret.instance_type(&self.sigma)?;
+        let inst_loc = body.inst.loc();
+        let tm = self.check(*body.inst, &Term::Pure, &Term::Univ)?;
+        let (name, args) = match tm {
+            Term::Interface { name, args } => (name, args),
+            _ => return Err(ExpectedInterface(tm, inst_loc)),
+        };
 
-        let i_def = self.sigma.get_mut(&ret.i).unwrap();
+        let i_def = self.sigma.get_mut(&name).unwrap();
         let i_def_loc = i_def.loc;
-        match &mut i_def.body {
+        let i_def_tele_len = i_def.tele.len();
+        let i_def_tele_vars = i_def.tele.iter().map(|p| p.var.clone()).collect::<Box<_>>();
+        let i_fns = match &mut i_def.body {
             Interface {
                 is_capability,
                 fns,
@@ -465,39 +468,46 @@ impl Elaborator {
                 ..
             } => {
                 if !can_be_capability && *is_capability {
-                    return Err(ExpectedInterface(Term::Ref(ret.i.clone()), i_def_loc));
+                    return Err(ExpectedInterface(Term::Ref(name), i_def_loc));
                 }
                 instances.push(d.clone());
-                for f in fns {
-                    if ret.fns.contains_key(f) {
-                        continue;
-                    }
-                    return Err(NonExhaustive(inst_tm, i_def_loc));
-                }
+                fns.clone()
             }
-            _ => return Err(ExpectedInterface(Term::Ref(ret.i.clone()), i_def_loc)),
+            _ => unreachable!(),
         };
 
-        for (i_fn, inst_fn) in &ret.fns {
-            let i_fn_def = self.sigma.get(i_fn).unwrap();
-
-            let i_loc = i_fn_def.loc;
-            let inst_loc = self.sigma.get(inst_fn).unwrap().loc;
-
-            let (i_fn_ty_p, i_fn_ty_b) = match i_fn_def.to_type() {
-                Term::Pi { param, body, .. } => (param, body),
-                _ => unreachable!(),
+        let mut inst_fns = body.fns.clone();
+        for f in i_fns {
+            let (inst_fn_loc, inst_fn_type) = match inst_fns.remove(&f) {
+                Some(v) => {
+                    let d = self.sigma.get(&v).unwrap();
+                    (d.loc, d.to_type())
+                }
+                None => return Err(NonExhaustive(Term::Interface { name, args }, i_def_loc)),
             };
-            let i_fn_ty_applied = self
-                .nf(i_loc)
-                .with([(&i_fn_ty_p.var, &inst_tm)], *i_fn_ty_b)?;
-            let inst_fn_ty = self.infer(Resolved(inst_loc, inst_fn.clone()))?.ty;
 
-            self.unifier(inst_loc)
-                .unify(&i_fn_ty_applied, &inst_fn_ty)?;
+            let i_fn = self.sigma.get(&f).unwrap();
+            let mut i_fn_type = Term::pi(
+                &i_fn
+                    .tele
+                    .iter()
+                    .skip(i_def_tele_len + 1)
+                    // .take(i_fn.tele.len() - i_def_tele_len - 1)
+                    .cloned()
+                    .collect::<Vec<_>>(),
+                *i_fn.eff.clone(),
+                *i_fn.ret.clone(),
+            );
+            let rho = i_def_tele_vars.iter().zip(args.iter()).collect::<Box<_>>();
+            i_fn_type = self.nf(inst_fn_loc).with(&rho, i_fn_type)?;
+
+            self.unifier(inst_fn_loc).unify(&i_fn_type, &inst_fn_type)?;
         }
 
-        Ok(ret)
+        Ok(Box::new(InstanceBody {
+            inst: Box::new(Term::Interface { name, args }),
+            fns: body.fns,
+        }))
     }
 
     fn check_anno(
@@ -609,7 +619,7 @@ impl Elaborator {
                     };
                     let b_ty = self
                         .nf(loc)
-                        .with([(&ty_param.var, &Term::Ref(var))], *ty_body.clone())?;
+                        .with(&[(&ty_param.var, &Term::Ref(var))], *ty_body.clone())?;
                     let b = self.guarded_check([&p], *body, eff, &b_ty)?;
                     Term::Lam(p, Box::new(b))
                 }
@@ -649,7 +659,7 @@ impl Elaborator {
                     }
                     _ => {
                         let a = self.check(*a, eff, &p.typ)?;
-                        let body = self.nf(loc).with([(&p.var, &a)], *body.clone())?;
+                        let body = self.nf(loc).with(&[(&p.var, &a)], *body.clone())?;
                         Term::Tuple(Box::new(a), Box::new(self.check(*b, eff, &body)?))
                     }
                 },
@@ -948,8 +958,8 @@ impl Elaborator {
                             &b_eff,
                             &p.typ,
                         )?;
-                        let applied_eff = self.nf(f_loc).with([(&p.var, &x)], *b_eff)?;
-                        let applied_ty = self.nf(f_loc).with([(&p.var, &x)], *b)?;
+                        let applied_eff = self.nf(f_loc).with(&[(&p.var, &x)], *b_eff)?;
+                        let applied_ty = self.nf(f_loc).with(&[(&p.var, &x)], *b)?;
                         let applied = self.nf(f_loc).apply(f, p.info.into(), &[x])?;
                         InferResult {
                             tm: applied,
@@ -1516,17 +1526,6 @@ impl Elaborator {
                 self.union_add(loc, b, &mut a);
                 InferResult::pure(Self::unwrap_singleton_union(a), Term::Univ)
             }
-            Instanceof(loc, a) => {
-                let InferResult { tm, eff, ty } = self.infer(*a)?;
-                match tm {
-                    Term::Instanceof(a, i) => InferResult {
-                        tm: Term::Instanceof(a, i),
-                        eff,
-                        ty,
-                    },
-                    tm => return Err(ExpectedInstanceof(tm, loc)),
-                }
-            }
             Varargs(loc, t) => {
                 let t = self.check(*t, &Term::Pure, &Term::Univ)?;
                 if !self.is_variadic(&t) {
@@ -1561,7 +1560,7 @@ impl Elaborator {
                 InferResult::pure(Term::Typeof(Box::new(ty)), type_of)
             }
             Keyof(loc, a) => {
-                let InferResult { tm, .. } = self.infer(*a)?;
+                let InferResult { mut tm, .. } = self.infer(*a)?;
                 let list_ty = self.ubiquitous.get(&Ustr::from("List")).unwrap().1.clone();
                 let list_ty = self.sigma.get(&list_ty).unwrap().to_term();
                 let label_list_ty = self.nf(loc).term(Term::App(
@@ -1569,7 +1568,8 @@ impl Elaborator {
                     UnnamedImplicit,
                     Box::new(Term::Rowkey),
                 ))?;
-                InferResult::pure(Term::Keyof(Box::new(tm)), label_list_ty)
+                tm = self.nf(loc).term(Term::Keyof(Box::new(tm)))?;
+                InferResult::pure(tm, label_list_ty)
             }
             Pure(_) => InferResult::pure(Term::Pure, Term::Row),
             Effect(loc, a) => {
@@ -1593,7 +1593,7 @@ impl Elaborator {
                         Body::Interface { is_capability, .. } if *is_capability => {
                             effs.insert(eff);
                         }
-                        _ => return Err(ExpectedCapability(eff, loc)),
+                        _ => return Err(ExpectedCapability(Term::Ref(eff), loc)),
                     }
                 }
                 InferResult::pure(Term::Effect(effs), Term::Row)
@@ -1623,11 +1623,11 @@ impl Elaborator {
                 let mut instances = HashMap::new();
 
                 for catch in catches {
-                    let i_loc = catch.i.loc();
-                    let eff = catch.i.resolved();
-                    if !effs.contains(&eff) {
-                        return Err(UnresolvedEffect(eff, Term::Effect(effs), i_loc));
-                    }
+                    let catch_loc = catch.inst_ty.loc();
+                    let eff = match self.check(catch.inst_ty.clone(), &Term::Pure, &Term::Univ)? {
+                        Term::Interface { name, .. } => name,
+                        ty => return Err(ExpectedCapability(ty, catch.inst_ty.loc())),
+                    };
                     remaining_effs.remove(&eff);
 
                     let interface_fns = match &self.sigma.get(&eff).unwrap().body {
@@ -1654,7 +1654,6 @@ impl Elaborator {
                     let checked_instance_body = self.check_instance_body(
                         &inst_name,
                         InstanceBody {
-                            i: eff.clone(),
                             inst: Box::new(catch.inst_ty),
                             fns,
                         },
@@ -1666,7 +1665,7 @@ impl Elaborator {
                         inst_name.clone(),
                         Def {
                             is_public: false,
-                            loc: i_loc,
+                            loc: catch_loc,
                             name: inst_name,
                             tele: Default::default(),
                             eff: Box::new(Term::Pure),

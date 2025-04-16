@@ -215,7 +215,6 @@ tyref =
   { qualifier ~ tyref
   | implicit_id
   | type_id
-  | this_id
   }
 importable = { fn_id | type_id }
 
@@ -422,7 +421,7 @@ enum_cast = { "[" ~ "..." ~ expr ~ "]" }
 enum_case = { "case" ~ variant_id ~ ("(" ~ param_id ~ ")")? ~ ":" ~ expr }
 enum_default_case = { "case" ~ bind_id ~ ":" ~ expr }
 try_catch = { "try" ~ lambda_body_block ~ catch+ }
-catch = { "catch" ~ "(" ~ tyref ~ "<" ~ type_expr ~ ">" ~ ")" ~ "{" ~ instance_fn+ ~ "}" }
+catch = { "catch" ~ "(" ~ type_expr ~ ")" ~ "{" ~ instance_fn+ ~ "}" }
 await_multi_expr = { "await" ~ "(" ~ expr ~ ("," ~ expr)+ ~ ")" }
 await_lambda_expr = { "await" ~ lambda_body_block }
 await_expr = { "await " ~ expr }
@@ -570,7 +569,7 @@ preds = _{ "where" ~ pred ~ ("," ~ pred)* }
 pred =
   { row_ord
   | row_eq
-  | instanceof
+  | type_expr
   }
 row_ord = { row_expr ~ "keyof" ~ row_expr }
 row_eq = { row_expr ~ "=" ~ row_expr }
@@ -586,7 +585,6 @@ row_primary_expr =
 row_literal = { "(" ~ field ~ ("," ~ field)* ~ ")" }
 row_concat = { row_primary_expr ~ "+" ~ row_expr }
 paren_row_expr = { "(" ~ row_expr ~ ")" }
-instanceof = { type_expr ~ implicit_args? ~ "instanceof" ~ tyref }
 
 capabilities = _{ "throw" ~ capability ~ ("," ~ capability)* }
 capability = { tyref }
@@ -679,9 +677,7 @@ interface_fn =
 
 instance_def =
   { "instanceof"
-  ~ type_id
-  ~ "for"
-  ~ (tyref | primitive_type)
+  ~ type_expr
   ~ "{"
   ~ instance_fn+
   ~ "}"

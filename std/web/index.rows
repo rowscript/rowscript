@@ -21,16 +21,15 @@ class MouseEvent {
     }
 }
 
-interface Event {
-    toEventString(event: this): string;
+interface Event<T> {
+    toEventString(event: T): string;
 }
 
 class HTMLElement {
     innerText: string;
 
     addEventListener<E>(eventType: E, listener: (event: E::Data) => unit)
-    where
-        E instanceof Event
+    where Event<E>
     {
         htmlElement#addEventListener(this, eventType.toEventString(), listener);
     }

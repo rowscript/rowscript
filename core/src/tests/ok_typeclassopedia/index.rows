@@ -1,10 +1,10 @@
-interface Functor<T> {
-    myMap<A, B>(f: (a: A) => B, x: this<A>): this<B>;
+interface Functor<F: type => type> {
+    myMap<A, B>(f: (a: A) => B, x: F<A>): F<B>;
 }
 
 type Foo<T> = {n: T};
 
-instanceof Functor for Foo {
+instanceof Functor<Foo> {
     myMap<A, B>(f: (a: A) => B, x: Foo<A>): Foo<B> {
         {n: f(x.n)}
     }
@@ -12,7 +12,7 @@ instanceof Functor for Foo {
 
 type Bar<T> = {m: T};
 
-instanceof Functor for Bar {
+instanceof Functor<Bar> {
     myMap<A, B>(f: (a: A) => B, x: Bar<A>): Bar<B> {
         {m: f(x.m)}
     }

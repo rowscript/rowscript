@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::mem::swap;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
@@ -382,10 +383,6 @@ impl Trans {
     }
 
     fn interface_def(&mut self, i: Pair) -> Vec<Def<Expr>> {
-        fn alias_type(loc: Loc, tele: &Tele<Expr>) -> Expr {
-            Expr::pi(tele, Univ(loc))
-        }
-
         use Body::*;
         use Expr::*;
 
@@ -425,13 +422,18 @@ impl Trans {
                 } else {
                     self.fn_postulate(p, false)
                 };
-                let mut tele = vec![Param {
-                    var: Var::this(),
+
+                let mut tele = inst_tele.clone();
+                swap(&mut tele, &mut d.tele);
+                d.tele.push(Param {
+                    var: Var::Unbound,
                     info: Implicit,
-                    typ: Box::new(alias_type(name_loc, &inst_tele)),
-                }];
-                tele.extend(d.tele);
-                d.tele = tele;
+                    typ: Box::new(Self::wrap_implicit_apps(
+                        &inst_tele,
+                        Unresolved(name_loc, None, name.clone()),
+                    )),
+                });
+                d.tele.extend(tele);
 
                 if is_implements_fn {
                     let mut implements_fn = d.clone();
@@ -448,7 +450,10 @@ impl Trans {
                     implements_fn_defs.push(implements_fn);
                 }
 
-                d.body = InterfaceFn(name.clone());
+                d.body = InterfaceFn {
+                    i_tele_len: inst_tele.len(),
+                    i: name.clone(),
+                };
                 if is_capability {
                     d.eff = Self::concat_effects(
                         *d.eff,
@@ -464,11 +469,7 @@ impl Trans {
             is_public: false,
             loc,
             name: name.clone(),
-            tele: vec![Param {
-                var: name,
-                info: Implicit,
-                typ: Box::new(alias_type(name_loc, &inst_tele)),
-            }],
+            tele: inst_tele,
             eff: Box::new(Pure(loc)),
             ret,
             body: Interface {
@@ -490,18 +491,9 @@ impl Trans {
         let loc = Loc::from(i.as_span());
         let mut pairs = i.into_inner();
 
+        let inst = Box::new(self.type_expr(pairs.next().unwrap()));
+
         let mut defs = Vec::default();
-
-        let i = Var::from(pairs.next().unwrap());
-        let inst = Box::new({
-            let p = pairs.next().unwrap();
-            match p.as_rule() {
-                Rule::tyref => Self::unresolved(p),
-                Rule::primitive_type => self.primitive_type(p),
-                _ => unreachable!(),
-            }
-        });
-
         let mut fns = HashMap::default();
         for p in pairs {
             let mut def = self.fn_def(p, false, None);
@@ -522,7 +514,7 @@ impl Trans {
             tele: Default::default(),
             eff: Box::new(Pure(loc)),
             ret: Box::new(Univ(loc)),
-            body: Instance(Box::new(InstanceBody { i, inst, fns })),
+            body: Instance(Box::new(InstanceBody { inst, fns })),
         });
         defs
     }
@@ -1039,29 +1031,9 @@ impl Trans {
                 let rhs = self.row_expr(p.next().unwrap());
                 RowEq(loc, Box::new(lhs), Box::new(rhs))
             }
-            Rule::instanceof => self.instanceof(loc, p),
+            Rule::type_expr => self.type_expr(p),
             _ => unreachable!(),
         })
-    }
-
-    fn instanceof(&mut self, loc: Loc, i: Pair) -> Expr {
-        let mut p = i.into_inner();
-        let mut xs = vec![(UnnamedImplicit, self.type_expr(p.next().unwrap()))];
-        for arg in p {
-            match arg.as_rule() {
-                Rule::row_arg => xs.push(self.row_arg(arg)),
-                Rule::type_arg => xs.push(self.type_arg(arg)),
-                Rule::tyref => {
-                    let mut f = self.maybe_qualified(arg);
-                    for (i, x) in xs {
-                        f = Expr::App(loc, Box::new(f), i, Box::new(x))
-                    }
-                    return Expr::Instanceof(loc, Box::new(f));
-                }
-                _ => unreachable!(),
-            };
-        }
-        unreachable!()
     }
 
     fn row_expr(&mut self, e: Pair) -> Expr {
@@ -2087,7 +2059,6 @@ impl Trans {
 
     fn catch(&mut self, c: Pair) -> Catch {
         let mut pairs = c.into_inner();
-        let i = self.maybe_qualified(pairs.next().unwrap());
         let inst_ty = self.type_expr(pairs.next().unwrap());
         let mut inst_fns = Vec::default();
         for p in pairs {
@@ -2100,11 +2071,7 @@ impl Trans {
             };
             inst_fns.push((name, def));
         }
-        Catch {
-            i,
-            inst_ty,
-            inst_fns,
-        }
+        Catch { inst_ty, inst_fns }
     }
 
     fn call1(f: Expr, x: Expr) -> Expr {

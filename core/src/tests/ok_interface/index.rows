@@ -3,12 +3,12 @@ function numMul(a: number, b: number): number;
 
 type Foo = {n: number};
 
-interface NatLike {
-    add(a: this, b: this): this;
-    mul(a: this, b: this): this;
+interface NatLike<T> {
+    add(a: T, b: T): T;
+    mul(a: T, b: T): T;
 }
 
-instanceof NatLike for Foo {
+instanceof NatLike<Foo> {
     add(a: Foo, b: Foo): Foo {
         {n: numAdd(a.n, b.n)}
     }
@@ -26,7 +26,7 @@ function f1(): number {
     f0()
 }
 
-interface Pure { pure(): this; }
-instanceof Pure for Foo { pure(): Foo { {n: 0} } }
+interface Pure<T> { pure(): T; }
+instanceof Pure<Foo> { pure(): Foo { {n: 0} } }
 function g0(): Foo { pure() }
 function g1(): Foo { g0() }

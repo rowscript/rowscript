@@ -157,7 +157,7 @@ pub fn noinline(tm: &Term) -> bool {
         | Disjoint(..)
         | Union(..)
         | Find { .. }
-        | Instanceof(..)
+        | Interface { .. }
         | InstanceofSat
         | Varargs(..)
         | AnonVarargs(..)

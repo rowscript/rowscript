@@ -1,5 +1,5 @@
-interface ToLowerCase {
-    toLowerCase(a: this): string {
+interface ToLowerCase<T> {
+    toLowerCase(a: T): string {
         switch (typeof a) {
             case TypeofEnum:
                 (keyof a).map((k) => k.toString().toLowerCase()).join("")
@@ -9,7 +9,7 @@ interface ToLowerCase {
     }
 }
 
-instanceof ToLowerCase for string {
+instanceof ToLowerCase<string> {
     toLowerCase(a: string): string {
         string#toLowerCase(a)
     }

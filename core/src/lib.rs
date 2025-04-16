@@ -63,7 +63,7 @@ pub enum Error {
     #[error("expected interface type, got \"{0}\"")]
     ExpectedInterface(Term, Loc),
     #[error("expected capability type, got \"{0}\"")]
-    ExpectedCapability(Var, Loc),
+    ExpectedCapability(Term, Loc),
     #[error("expected type alias, got \"{0}\"")]
     ExpectedAlias(Term, Loc),
     #[error("unsatisfied constraint \"{0}\", got \"{1}\"")]

@@ -1,5 +1,5 @@
 function f1<T>(it: T)
-where T instanceof Iterator
+where Iterator<T>
 {
     const a = it.next();
     console.log(a);

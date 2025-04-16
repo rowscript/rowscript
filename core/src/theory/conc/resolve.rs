@@ -135,12 +135,9 @@ impl<'a> Resolver<'a> {
                 instances,
                 implements,
             },
-            InterfaceFn(i) => InterfaceFn(i),
+            InterfaceFn { i_tele_len, i } => InterfaceFn { i_tele_len, i },
             Instance(body) => {
                 let loc = d.loc;
-                let i = self
-                    .expr(Box::new(Unresolved(loc, None, body.i)))?
-                    .resolved();
                 let inst = self.expr(body.inst)?;
                 let mut fns = HashMap::default();
                 for (i_fn, inst_fn) in body.fns {
@@ -149,7 +146,7 @@ impl<'a> Resolver<'a> {
                         inst_fn,
                     );
                 }
-                Instance(Box::new(InstanceBody { i, inst, fns }))
+                Instance(Box::new(InstanceBody { inst, fns }))
             }
             InstanceFn(f) => InstanceFn(self.expr(f)?),
             ImplementsFn { i, name, f } => ImplementsFn {
@@ -445,7 +442,6 @@ impl<'a> Resolver<'a> {
             }
             Unionify(loc, a) => Unionify(loc, self.expr(a)?),
             Union(loc, a, b) => Union(loc, self.expr(a)?, self.expr(b)?),
-            Instanceof(loc, a) => Instanceof(loc, self.expr(a)?),
             Varargs(loc, a) => Varargs(loc, self.expr(a)?),
             AnonVarargs(loc, a) => AnonVarargs(loc, self.expr(a)?),
             Spread(loc, a) => Spread(loc, self.expr(a)?),
@@ -475,17 +471,12 @@ impl<'a> Resolver<'a> {
                 let body = self.expr(b)?;
                 let mut resolved = Vec::default();
                 for catch in catches {
-                    let i = *self.expr(Box::new(catch.i))?;
                     let inst_ty = *self.expr(Box::new(catch.inst_ty))?;
                     let mut inst_fns = Vec::default();
                     for (name, d) in catch.inst_fns {
                         inst_fns.push((name, self.def(d)?));
                     }
-                    resolved.push(Catch {
-                        i,
-                        inst_ty,
-                        inst_fns,
-                    });
+                    resolved.push(Catch { inst_ty, inst_fns });
                 }
                 TryCatch(loc, body, resolved)
             }

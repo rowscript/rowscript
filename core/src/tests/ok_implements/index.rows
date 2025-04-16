@@ -1,20 +1,20 @@
-interface Foo {
+interface Foo<T> {
     ask() { console.log("foo") }
-    id(a: this): this { a }
+    id(a: T): T { a }
 }
 
 type Data = {n: number} implements Foo;
 
 function f0<T>(a: T)
-where T instanceof Foo
+where Foo<T>
 {
     ask<T>()
 }
 f0({n: 42});
 const a0 = id({n: 42});
 
-interface Query {
-    toQuery(a: this): string {
+interface Query<T> {
+    toQuery(a: T): string {
         "?" + switch (typeof a) {
             case TypeofObject:
                 (keyof a).map((k) => k.toString() + "=" + (a @ k).toString()).join("&")

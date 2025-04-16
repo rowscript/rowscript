@@ -3,12 +3,12 @@ class Foo<T> {
     update() { console.log(this.n) }
 }
 
-interface Updater<T> {
-    update<T>(a: this<T>);
+interface Updater<U: type => type> {
+    update<T>(a: U<T>);
 }
 
 function doSomething<U: type => type, T>(updater: U<T>)
-where U instanceof Updater
+where Updater<U>
 {
     updater.update();
 }

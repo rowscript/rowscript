@@ -138,15 +138,16 @@ impl Renamer {
             Unionify(a) => Unionify(self.term(a)),
             Union(ts) => Union(ts.into_iter().map(|t| *self.term(Box::new(t))).collect()),
             Find {
+                interface_fn,
                 instance_ty: ty,
-                interface,
-                interface_fn,
             } => Find {
-                instance_ty: self.term(ty),
-                interface,
                 interface_fn,
+                instance_ty: self.term(ty),
             },
-            Instanceof(a, i) => Instanceof(self.term(a), i),
+            Interface { name, args } => Interface {
+                name,
+                args: args.into_iter().map(|t| *self.term(Box::new(t))).collect(),
+            },
             Varargs(t) => Varargs(self.term(t)),
             AnonVarargs(t) => AnonVarargs(self.term(t)),
             Spread(a) => Spread(self.term(a)),

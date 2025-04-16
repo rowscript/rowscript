@@ -98,8 +98,6 @@ pub enum Expr {
     Unionify(Loc, Box<Self>),
     Union(Loc, Box<Self>, Box<Self>),
 
-    Instanceof(Loc, Box<Self>),
-
     Varargs(Loc, Box<Self>),
     AnonVarargs(Loc, Box<Self>),
     Spread(Loc, Box<Self>),
@@ -191,7 +189,6 @@ impl Expr {
             | Switch(loc, ..)
             | Unionify(loc, ..)
             | Union(loc, ..)
-            | Instanceof(loc, ..)
             | Varargs(loc, ..)
             | AnonVarargs(loc, ..)
             | Spread(loc, ..)
@@ -405,7 +402,6 @@ impl Display for Expr {
                 }
                 Unionify(_, a) => format!("{a}!"),
                 Union(_, a, b) => format!("{a} | {b}"),
-                Instanceof(_, a) => a.to_string(),
                 Varargs(_, t) => format!("...Array<{t}>"),
                 AnonVarargs(_, t) => format!("...{t}"),
                 Spread(_, a) => format!("...{a}"),
@@ -423,7 +419,7 @@ impl Display for Expr {
                     "try {{\n\t{body}\n}}\n{}",
                     catches
                         .iter()
-                        .map(|c| format!("catch ({})", c.i))
+                        .map(|c| format!("catch ({})", c.inst_ty))
                         .collect::<Vec<_>>()
                         .join("\n")
                 ),
@@ -435,7 +431,6 @@ impl Display for Expr {
 
 #[derive(Debug, Clone)]
 pub struct Catch {
-    pub i: Expr,
     pub inst_ty: Expr,
     pub inst_fns: Vec<(Ustr, Def<Expr>)>,
 }

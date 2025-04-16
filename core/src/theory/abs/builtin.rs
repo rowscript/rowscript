@@ -6,11 +6,11 @@ use crate::theory::abs::data::Term::{
     AnonVarargs, App, ArrAt, ArrForeach, ArrInsert, ArrIter, ArrIterNext, ArrLength, ArrPush,
     Array, ArrayIterator, Bigint, BigintToStr, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean,
     ConsoleLog, Discriminants, DocumentGetElementById, EmitAsync, Enum, Fields, Find,
-    HtmlElementAddEventListener, JSONStringify, Map, MapClear, MapDelete, MapGet, MapHas, MapIter,
-    MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe, NumLt, NumMod,
-    NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object, Panic, Pi, Pure, Ref, RkToStr, Row,
-    Rowkey, SetTimeout, StrAdd, StrEq, StrNeq, StrToLowerCase, String, TupleBind, Undef, Unit,
-    Univ,
+    HtmlElementAddEventListener, Interface, JSONStringify, Map, MapClear, MapDelete, MapGet,
+    MapHas, MapIter, MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe,
+    NumLt, NumMod, NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object, Panic, Pi, Pure, Ref,
+    RkToStr, Row, Rowkey, SetTimeout, StrAdd, StrEq, StrNeq, StrToLowerCase, String, TupleBind,
+    Undef, Unit, Univ,
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
@@ -856,9 +856,11 @@ impl Builtins {
     fn emit_async(tupled: Term, ty: Term, interface: Var, interface_fn: Var) -> Term {
         EmitAsync(Box::new(App(
             Box::new(Find {
-                instance_ty: Box::new(ty),
-                interface,
                 interface_fn,
+                instance_ty: Box::new(Interface {
+                    name: interface,
+                    args: Box::new([ty]),
+                }),
             }),
             ArgInfo::UnnamedExplicit,
             Box::new(tupled),

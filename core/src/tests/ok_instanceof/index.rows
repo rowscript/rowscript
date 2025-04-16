@@ -1,5 +1,5 @@
-interface Show {
-    show(a: this);
+interface Show<T> {
+    show(a: T);
 }
 
 type Person = {
@@ -7,7 +7,7 @@ type Person = {
     age: number
 };
 
-instanceof Show for Person {
+instanceof Show<Person> {
     show(a: Person) {
         console.log("Person:", a.name);
     }
@@ -18,7 +18,7 @@ type Animal = {
     species: string
 };
 
-instanceof Show for Animal {
+instanceof Show<Animal> {
     show(a: Animal) {
         console.log("Animal:", a.name);
     }
@@ -27,7 +27,7 @@ instanceof Show for Animal {
 function showName<'a>(a: {'a})
 where
     (name: string) keyof 'a,
-    {'a} instanceof Show
+    Show<{'a} >
 {
     a.show()
 }

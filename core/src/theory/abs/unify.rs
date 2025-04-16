@@ -93,9 +93,6 @@ impl<'a> Unifier<'a> {
                 None => self.unify_err(lhs, rhs),
             },
 
-            (Instanceof(a, _), b) => self.unify(a, b),
-            (a, Instanceof(b, _)) => self.unify(a, b),
-
             (
                 Cls {
                     class: m,
@@ -131,7 +128,7 @@ impl<'a> Unifier<'a> {
                 },
             ) => {
                 self.unify(&p.typ, &q.typ)?;
-                let rho = [(&q.var, &Ref(p.var.clone()))];
+                let rho = &[(&q.var, &Ref(p.var.clone()))];
                 let b = self.nf().with(rho, *b.clone())?;
                 self.unify(a, &b)
             }
@@ -147,7 +144,7 @@ impl<'a> Unifier<'a> {
             }
             (Sigma(p, a), Sigma(q, b)) => {
                 self.unify(&p.typ, &q.typ)?;
-                let rho = [(&q.var, &Ref(p.var.clone()))];
+                let rho = &[(&q.var, &Ref(p.var.clone()))];
                 let b = self.nf().with(rho, *b.clone())?;
                 self.unify(a, &b)
             }
@@ -156,7 +153,7 @@ impl<'a> Unifier<'a> {
                 self.unify(b, y)
             }
             (TupleBind(p, q, a, b), TupleBind(r, s, x, y)) => {
-                let rho = [(&r.var, &Ref(p.var.clone())), (&s.var, &Ref(q.var.clone()))];
+                let rho = &[(&r.var, &Ref(p.var.clone())), (&s.var, &Ref(q.var.clone()))];
                 let y = self.nf().with(rho, *y.clone())?;
                 self.unify(a, x)?;
                 self.unify(b, &y)
@@ -187,6 +184,14 @@ impl<'a> Unifier<'a> {
             (Variant(a), Variant(b)) => self.unify(a, b),
             (Upcast(a), Enum(b)) => self.upcast(a, b),
             (Enum(a), Upcast(b)) => self.upcast(b, a).map_err(Self::swap_err),
+
+            (Interface { name: x, args: xs }, Interface { name: y, args: ys })
+                if x == y && xs.len() == ys.len() =>
+            {
+                xs.iter()
+                    .zip(ys.iter())
+                    .try_for_each(|(a, b)| self.unify(a, b))
+            }
 
             (a, Object(..)) | (a, Downcast(..)) | (a, Enum(..)) | (a, Upcast(..)) if a.has_mu() => {
                 let a = self.nf().with_expand_mu(a.clone())?;

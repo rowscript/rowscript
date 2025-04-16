@@ -6,8 +6,7 @@ use serde_json::Value;
 use ustr::{Ustr, UstrMap};
 
 use crate::Error::{
-    ClassMethodNotImplemented, ExpectedReflectable, FieldsNonExtendable, NonExhaustive,
-    UnresolvedField, UnresolvedInstance, UnsatisfiedConstraint,
+    ExpectedReflectable, FieldsNonExtendable, NonExhaustive, UnresolvedField, UnresolvedInstance,
 };
 
 use crate::theory::abs::data::{CaseDefault, CaseMap, FieldMap, PartialClass, Term};
@@ -68,7 +67,6 @@ impl<'a> Normalizer<'a> {
     }
 
     fn term_impl(&mut self, tm: Term) -> Result<Term, Error> {
-        use Body::*;
         use Term::*;
 
         debug!(target: "normalize", "normalizing term: {tm}");
@@ -92,11 +90,11 @@ impl<'a> Normalizer<'a> {
                 let mut def = self.sigma.get(&x).unwrap().clone();
                 *def.ret = self.term(*def.ret)?;
                 let ret = match &def.body {
-                    Meta(_, s) => match s {
+                    Body::Meta(_, s) => match s {
                         Some(solved) => self.term(*solved.clone())?,
                         None => {
                             if let Some(tm) = def.ret.auto_implicit() {
-                                def.body = Meta(k, Some(Box::new(tm.clone())));
+                                def.body = Body::Meta(k, Some(Box::new(tm.clone())));
                                 tm
                             } else {
                                 trace!(target: "unify", "cannot solve meta: def={def}");
@@ -610,38 +608,40 @@ impl<'a> Normalizer<'a> {
                     .map(|t| self.term(t))
                     .collect::<Result<_, _>>()?,
             ),
-            Instanceof(a, i) => {
-                let a = self.term_box(a)?;
-                if !a.is_unsolved() {
-                    self.check_constraint(&a, &i)?;
-                }
-                Instanceof(a, i)
-            }
             Varargs(t) => Varargs(self.term_box(t)?),
             AnonVarargs(t) => AnonVarargs(self.term_box(t)?),
             Spread(a) => Spread(self.term_box(a)?),
             Find {
-                instance_ty: ty,
-                interface: i,
                 interface_fn: f,
+                instance_ty: ty,
             } => {
-                if let Some(ty) = self.instances.get(&i) {
-                    return self.find_instance(ty.clone(), i, f);
-                }
                 let ty = self.term_box(ty)?;
-                if ty.is_unsolved()
+                let (i, args) = match ty.as_ref() {
+                    Interface { name, args } => (name, args),
+                    _ => unreachable!(),
+                };
+                if let Some(ty) = self.instances.get(i) {
+                    return self.find_instance(ty.clone(), f);
+                }
+                if args.iter().any(|a| a.is_unsolved())
                     || i.as_str() == ASYNC
-                    || matches!(&self.implements_interface, Some(j) if &i == j)
+                    || matches!(&self.implements_interface, Some(j) if i == j)
                 {
                     Find {
-                        instance_ty: ty,
-                        interface: i,
                         interface_fn: f,
+                        instance_ty: ty,
                     }
                 } else {
-                    self.find_instance(*ty, i, f)?
+                    self.find_instance(*ty, f)?
                 }
             }
+            Interface { name, args } => Interface {
+                name,
+                args: args
+                    .into_iter()
+                    .map(|a| self.term(a))
+                    .collect::<Result<Box<_>, _>>()?,
+            },
             Typeof(ty) => {
                 let ty = self.term(*ty)?;
                 if ty.is_unsolved() {
@@ -699,12 +699,8 @@ impl<'a> Normalizer<'a> {
         v.is_unbound().not().then(|| self.rho.insert(v.clone(), tm));
     }
 
-    pub fn with<const N: usize>(
-        &mut self,
-        rho: [(&Var, &Term); N],
-        tm: Term,
-    ) -> Result<Term, Error> {
-        for (x, v) in rho {
+    pub fn with(&mut self, rho: &[(&Var, &Term)], tm: Term) -> Result<Term, Error> {
+        for &(x, v) in rho {
             self.insert_rho(x.clone(), Box::new(v.clone()));
         }
         self.term(tm)
@@ -739,7 +735,7 @@ impl<'a> Normalizer<'a> {
         for x in args {
             match ret {
                 Lam(p, b) => {
-                    ret = self.with([(&p.var, x)], *b)?;
+                    ret = self.with(&[(&p.var, x)], *b)?;
                 }
                 _ => ret = App(Box::new(ret), ai.clone(), Box::new(x.clone())),
             }
@@ -752,7 +748,7 @@ impl<'a> Normalizer<'a> {
         let mut ret = f;
         for x in args {
             match ret {
-                Pi { param, body, .. } => ret = self.with([(&param.var, x)], *body)?,
+                Pi { param, body, .. } => ret = self.with(&[(&param.var, x)], *body)?,
                 _ => unreachable!(),
             }
         }
@@ -782,71 +778,22 @@ impl<'a> Normalizer<'a> {
         })
     }
 
-    fn check_constraint(&mut self, x: &Term, i: &Var) -> Result<(), Error> {
+    fn find_instance(&mut self, ty: Term, f: Var) -> Result<Term, Error> {
         use Body::*;
-        use Term::*;
 
-        let (fns, instances) = match &self.sigma.get(i).unwrap().body {
-            Interface { fns, instances, .. } => (fns.clone(), instances.clone()),
+        let i = match &ty {
+            Term::Interface { name, .. } => name,
+            _ => unreachable!(),
+        };
+
+        let instances = match &self.sigma.get(i).unwrap().body {
+            Interface { instances, .. } => instances.iter().rev().cloned().collect::<Box<_>>(),
             _ => unreachable!(),
         };
 
         for inst in instances {
-            let y = match &self.sigma.get(&inst).unwrap().body {
-                Instance(body) => body.instance_type(self.sigma)?,
-                _ => unreachable!(),
-            };
-            match self.unifier().unify(&y, x) {
-                Ok(_) => return Ok(()),
-                Err(_) => continue,
-            }
-        }
-
-        let (args, meths) = match x.class_methods(self.sigma) {
-            Some(PartialClass {
-                applied_types,
-                methods,
-                ..
-            }) => (applied_types, methods),
-            None => return Err(UnsatisfiedConstraint(i.clone(), x.clone(), self.loc)),
-        };
-        for f in fns {
-            let mut m_ty = match meths.get(f.as_str()) {
-                Some(m) => self.sigma.get(m).unwrap().to_type(),
-                None => return Err(ClassMethodNotImplemented(f, i.clone(), x.clone(), self.loc)),
-            };
-            if !args.is_empty() {
-                m_ty = self.apply_type(m_ty, args.as_ref())?;
-            }
-
-            let f_ty = match self.sigma.get(&f).unwrap().to_type() {
-                Pi { param: p, body, .. } => self.with([(&p.var, x)], *body)?,
-                _ => unreachable!(),
-            };
-
-            if self.unifier().unify(&m_ty, &f_ty).is_ok() {
-                continue;
-            }
-            return Err(ClassMethodNotImplemented(f, i.clone(), x.clone(), self.loc));
-        }
-
-        Ok(())
-    }
-
-    fn find_instance(&mut self, ty: Term, i: Var, f: Var) -> Result<Term, Error> {
-        use Body::*;
-
-        let instances = match &self.sigma.get(&i).unwrap().body {
-            Interface { instances, .. } => instances.clone(),
-            _ => unreachable!(),
-        };
-
-        for inst in instances.into_iter().rev() {
             let (inst_ty, inst_fn) = match &self.sigma.get(&inst).unwrap().body {
-                Instance(body) => (
-                    body.instance_type(self.sigma)?,
-                    body.fns.get(&f).unwrap().clone(),
-                ),
+                Instance(body) => (body.inst.clone(), body.fns.get(&f).unwrap().clone()),
                 _ => unreachable!(),
             };
 
