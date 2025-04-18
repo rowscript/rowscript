@@ -76,7 +76,7 @@ impl Display for Var {
         match self {
             Self::Bound(n) | Self::Meta(n) => Display::fmt(n, f),
             Self::Internal(id) => write!(f, "${id}"),
-            Self::Unbound => unreachable!(),
+            Self::Unbound => write!(f, "_"),
         }
     }
 }
