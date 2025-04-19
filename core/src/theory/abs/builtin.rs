@@ -860,6 +860,7 @@ impl Builtins {
                 instance_ty: Box::new(Interface {
                     name: interface,
                     args: Box::new([ty]),
+                    should_check: false,
                 }),
             }),
             ArgInfo::UnnamedExplicit,

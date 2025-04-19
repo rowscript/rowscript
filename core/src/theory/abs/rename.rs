@@ -144,9 +144,14 @@ impl Renamer {
                 interface_fn,
                 instance_ty: self.term(ty),
             },
-            Interface { name, args } => Interface {
+            Interface {
+                name,
+                args,
+                should_check,
+            } => Interface {
                 name,
                 args: args.into_iter().map(|t| *self.term(Box::new(t))).collect(),
+                should_check,
             },
             Varargs(t) => Varargs(self.term(t)),
             AnonVarargs(t) => AnonVarargs(self.term(t)),

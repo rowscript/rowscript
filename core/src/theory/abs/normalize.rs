@@ -6,7 +6,8 @@ use serde_json::Value;
 use ustr::{Ustr, UstrMap};
 
 use crate::Error::{
-    ExpectedReflectable, FieldsNonExtendable, NonExhaustive, UnresolvedField, UnresolvedInstance,
+    ClassMethodNotImplemented, ExpectedInterface, ExpectedReflectable, FieldsNonExtendable,
+    NonExhaustive, UnresolvedField, UnresolvedInstance, UnsatisfiedConstraint,
 };
 
 use crate::theory::abs::data::{CaseDefault, CaseMap, FieldMap, PartialClass, Term};
@@ -617,7 +618,7 @@ impl<'a> Normalizer<'a> {
             } => {
                 let ty = self.term_box(ty)?;
                 let (i, args) = match ty.as_ref() {
-                    Interface { name, args } => (name, args),
+                    Interface { name, args, .. } => (name, args),
                     _ => unreachable!(),
                 };
                 if let Some(ty) = self.instances.get(i) {
@@ -635,13 +636,25 @@ impl<'a> Normalizer<'a> {
                     self.find_instance(*ty, f)?
                 }
             }
-            Interface { name, args } => Interface {
+            Interface {
                 name,
-                args: args
+                args,
+                should_check,
+            } => {
+                let args = args
                     .into_iter()
                     .map(|a| self.term(a))
-                    .collect::<Result<Box<_>, _>>()?,
-            },
+                    .collect::<Result<Box<_>, _>>()?;
+                if should_check && args.iter().all(|a| !a.is_unsolved()) {
+                    self.check_interface(name, args, should_check)?
+                } else {
+                    Interface {
+                        name,
+                        args,
+                        should_check,
+                    }
+                }
+            }
             Typeof(ty) => {
                 let ty = self.term(*ty)?;
                 if ty.is_unsolved() {
@@ -821,6 +834,86 @@ impl<'a> Normalizer<'a> {
         }
 
         Ok(meth)
+    }
+
+    fn check_interface(
+        &mut self,
+        name: Var,
+        args: Box<[Term]>,
+        should_check: bool,
+    ) -> Result<Term, Error> {
+        let i_def = self.sigma.get(&name).unwrap();
+        let i_def_tele_len = i_def.tele.len();
+
+        let (i_fns, instances) = match &self.sigma.get(&name).unwrap().body {
+            Body::Interface { fns, instances, .. } => (fns.clone(), instances.clone()),
+            _ => return Err(ExpectedInterface(Term::Ref(name), self.loc)),
+        };
+
+        let i_name = name.clone();
+        let i_ty = Term::Interface {
+            name,
+            args,
+            should_check,
+        };
+        for inst in instances.into_iter().rev() {
+            let inst_ty = match &self.sigma.get(&inst).unwrap().body {
+                Body::Instance(body) => body.inst.clone(),
+                _ => unreachable!(),
+            };
+
+            if self.unifier().unify(&i_ty, &inst_ty).is_ok() {
+                return Ok(i_ty);
+            }
+        }
+
+        let (cls_args, meths) = match i_ty.class_methods(self.sigma) {
+            Some(PartialClass {
+                applied_types,
+                methods,
+                ..
+            }) if i_def_tele_len == 1 => (applied_types, methods),
+            _ => return Err(UnsatisfiedConstraint(i_name, i_ty, self.loc)),
+        };
+        let (name, args, should_check) = match i_ty {
+            Term::Interface {
+                name,
+                args,
+                should_check,
+            } => (name, args, should_check),
+            _ => unreachable!(),
+        };
+        let cls = args[0].clone();
+        for i_fn in i_fns {
+            let mut m_ty = match meths.get(i_fn.as_str()) {
+                Some(m) => self.sigma.get(m).unwrap().to_type(),
+                None => {
+                    return Err(ClassMethodNotImplemented(
+                        i_fn,
+                        i_name,
+                        Term::Ref(name),
+                        self.loc,
+                    ));
+                }
+            };
+            if !cls_args.is_empty() {
+                m_ty = self.apply_type(m_ty, cls_args.as_ref())?;
+            }
+
+            let i_fn_def = self.sigma.get(&i_fn).unwrap();
+            let mut i_fn_type = i_fn_def.to_type_skip(i_def_tele_len + 1);
+            let i_v = i_fn_def.tele[0].var.clone();
+            let i_fn_rho = Box::new([(&i_v, &cls)]);
+            i_fn_type = self.with(i_fn_rho.as_ref(), i_fn_type)?;
+
+            self.unifier().unify(&i_fn_type, &m_ty)?
+        }
+
+        Ok(Term::Interface {
+            name,
+            args,
+            should_check,
+        })
     }
 
     fn fields_disjoint(&mut self, mut a: FieldMap, b: FieldMap) -> Result<FieldMap, Error> {

@@ -8,6 +8,7 @@ use crate::Error::{
     CatchAsyncEffect, DuplicateEffect, ExpectedCapability, ExpectedEnum, ExpectedInterface,
     ExpectedObject, ExpectedPi, ExpectedSigma, FieldsUnknown, NonCatchableExpr, NonExhaustive,
     NonVariadicType, NotCheckedYet, UnresolvedField, UnresolvedImplicitParam, UnresolvedVar,
+    UnsatisfiedConstraint,
 };
 use crate::theory::ParamInfo::{Explicit, Implicit};
 use crate::theory::abs::builtin::Builtins;
@@ -386,9 +387,12 @@ impl Elaborator {
         let inst_tm = Box::new(Term::Interface {
             name: i.clone(),
             args: Box::new([ty.clone()]),
+            should_check: false,
         });
         let i_def = self.sigma.get(&i).unwrap();
-        assert_eq!(i_def.tele.len(), 1); // FIXME: should check if an interface could be used for auto-deriving.
+        let i_def_tele_len = i_def.tele.len();
+        // FIXME: should check if an interface could be used for auto-deriving.
+        assert_eq!(i_def_tele_len, 1);
         let implements = match &i_def.body {
             Interface { implements, .. } => implements.clone(),
             _ => unreachable!(),
@@ -402,7 +406,7 @@ impl Elaborator {
             d.tele = d
                 .tele
                 .into_iter()
-                .skip(1) // FIXME: ditto.
+                .skip(2)
                 .map(|p| {
                     Ok::<_, Error>(Param {
                         var: p.var,
@@ -450,10 +454,19 @@ impl Elaborator {
         use Body::*;
 
         let inst_loc = body.inst.loc();
-        let tm = self.check(*body.inst, &Term::Pure, &Term::Univ)?;
-        let (name, args) = match tm {
-            Term::Interface { name, args } => (name, args),
-            _ => return Err(ExpectedInterface(tm, inst_loc)),
+        let (name, args, should_check) = match self
+            .check(*body.inst, &Term::Pure, &Term::Univ)
+            .unwrap_err()
+        {
+            UnsatisfiedConstraint(_, tm, _) => match tm {
+                Term::Interface {
+                    name,
+                    args,
+                    should_check,
+                } => (name, args, should_check),
+                _ => return Err(ExpectedInterface(tm, inst_loc)),
+            },
+            e => return Err(e),
         };
 
         let i_def = self.sigma.get_mut(&name).unwrap();
@@ -483,29 +496,32 @@ impl Elaborator {
                     let d = self.sigma.get(&v).unwrap();
                     (d.loc, d.to_type())
                 }
-                None => return Err(NonExhaustive(Term::Interface { name, args }, i_def_loc)),
+                None => {
+                    return Err(NonExhaustive(
+                        Term::Interface {
+                            name,
+                            args,
+                            should_check,
+                        },
+                        i_def_loc,
+                    ));
+                }
             };
 
             let i_fn = self.sigma.get(&f).unwrap();
-            let mut i_fn_type = Term::pi(
-                &i_fn
-                    .tele
-                    .iter()
-                    .skip(i_def_tele_len + 1)
-                    // .take(i_fn.tele.len() - i_def_tele_len - 1)
-                    .cloned()
-                    .collect::<Vec<_>>(),
-                *i_fn.eff.clone(),
-                *i_fn.ret.clone(),
-            );
+            let mut i_fn_type = i_fn.to_type_skip(i_def_tele_len + 1);
             let rho = i_def_tele_vars.iter().zip(args.iter()).collect::<Box<_>>();
-            i_fn_type = self.nf(inst_fn_loc).with(&rho, i_fn_type)?;
+            i_fn_type = self.nf(i_fn.loc).with(&rho, i_fn_type)?;
 
             self.unifier(inst_fn_loc).unify(&i_fn_type, &inst_fn_type)?;
         }
 
         Ok(Box::new(InstanceBody {
-            inst: Box::new(Term::Interface { name, args }),
+            inst: Box::new(Term::Interface {
+                name,
+                args,
+                should_check,
+            }),
             fns: body.fns,
         }))
     }
@@ -1624,9 +1640,15 @@ impl Elaborator {
 
                 for catch in catches {
                     let catch_loc = catch.inst_ty.loc();
-                    let eff = match self.check(catch.inst_ty.clone(), &Term::Pure, &Term::Univ)? {
-                        Term::Interface { name, .. } => name,
-                        ty => return Err(ExpectedCapability(ty, catch.inst_ty.loc())),
+                    let eff = match self
+                        .check(catch.inst_ty.clone(), &Term::Pure, &Term::Univ)
+                        .unwrap_err()
+                    {
+                        UnsatisfiedConstraint(_, c, _) => match c {
+                            Term::Interface { name, .. } => name,
+                            ty => return Err(ExpectedCapability(ty, catch.inst_ty.loc())),
+                        },
+                        e => return Err(e),
                     };
                     remaining_effs.remove(&eff);
 

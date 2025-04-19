@@ -185,13 +185,17 @@ impl<'a> Unifier<'a> {
             (Upcast(a), Enum(b)) => self.upcast(a, b),
             (Enum(a), Upcast(b)) => self.upcast(b, a).map_err(Self::swap_err),
 
-            (Interface { name: x, args: xs }, Interface { name: y, args: ys })
-                if x == y && xs.len() == ys.len() =>
-            {
-                xs.iter()
-                    .zip(ys.iter())
-                    .try_for_each(|(a, b)| self.unify(a, b))
-            }
+            (
+                Interface {
+                    name: x, args: xs, ..
+                },
+                Interface {
+                    name: y, args: ys, ..
+                },
+            ) if x == y && xs.len() == ys.len() => xs
+                .iter()
+                .zip(ys.iter())
+                .try_for_each(|(a, b)| self.unify(a, b)),
 
             (a, Object(..)) | (a, Downcast(..)) | (a, Enum(..)) | (a, Upcast(..)) if a.has_mu() => {
                 let a = self.nf().with_expand_mu(a.clone())?;

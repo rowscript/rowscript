@@ -53,15 +53,15 @@ impl Def<Term> {
             Constant(_, f) => self.to_lam_term(*f.clone()),
             Verify(..) => unreachable!(),
 
-            Interface { .. } => {
-                let name = self.name.clone();
-                let args = self
+            Interface { .. } => self.to_lam_term(Term::Interface {
+                name: self.name.clone(),
+                args: self
                     .tele
                     .iter()
                     .map(|p| Term::Ref(p.var.clone()))
-                    .collect::<Box<_>>();
-                self.to_lam_term(Term::Interface { name, args })
-            }
+                    .collect::<Box<_>>(),
+                should_check: true,
+            }),
             InterfaceFn { i_tele_len, i } => self.to_lam_term(
                 self.tele.iter().skip(i_tele_len + 1).fold(
                     Term::Find {
@@ -74,6 +74,7 @@ impl Def<Term> {
                                 .take(*i_tele_len)
                                 .map(|p| Term::Ref(p.var.clone()))
                                 .collect(),
+                            should_check: false,
                         }),
                     },
                     |f, p| {
@@ -133,6 +134,15 @@ impl Def<Term> {
     pub fn to_type(&self) -> Term {
         *rename(Box::new(Term::pi(
             &self.tele,
+            *self.eff.clone(),
+            *self.ret.clone(),
+        )))
+    }
+
+    pub fn to_type_skip(&self, skip: usize) -> Term {
+        let tele = self.tele.iter().skip(skip).cloned().collect();
+        *rename(Box::new(Term::pi(
+            &tele,
             *self.eff.clone(),
             *self.ret.clone(),
         )))

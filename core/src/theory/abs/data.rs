@@ -172,6 +172,7 @@ pub enum Term {
     Interface {
         name: Var,
         args: Box<[Self]>,
+        should_check: bool,
     },
     InstanceofSat,
 
@@ -554,7 +555,7 @@ impl Display for Term {
                     instance_ty,
                     interface_fn,
                 } => format!("{instance_ty}.{interface_fn}"),
-                Interface { name, args } => format!(
+                Interface { name, args, .. } => format!(
                     "{name}<{}>",
                     args.iter()
                         .map(ToString::to_string)
