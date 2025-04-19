@@ -773,15 +773,13 @@ impl<'a> Normalizer<'a> {
         Ok(p)
     }
 
-    fn case_map(&mut self, mut cs: CaseMap) -> Result<CaseMap, Error> {
-        for (_, tm) in cs.values_mut() {
-            // FIXME: not unwind-safe, refactor `Self::term` to accept a `&mut Term`
-            unsafe {
-                let tmp = std::ptr::read(tm);
-                std::ptr::write(tm, self.without_expand_undef(tmp)?);
-            }
-        }
-        Ok(cs)
+    fn case_map(&mut self, cs: CaseMap) -> Result<CaseMap, Error> {
+        cs.into_iter()
+            .map(|(k, (v, tm))| {
+                let tm = self.without_expand_undef(tm)?;
+                Ok::<_, Error>((k, (v, tm)))
+            })
+            .collect()
     }
 
     fn case_default(&mut self, d: CaseDefault) -> Result<CaseDefault, Error> {
