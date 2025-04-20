@@ -3,7 +3,7 @@ type Option<T> = [Ok(T) | None];
 type Result<T, E> = [Ok(T) | Err(E)];
 
 function isOk<'a, T>(e: ['a]): boolean
-where (Ok: T) keyof 'a
+with (Ok: T) keyof 'a
 {
     switch (e) {
     case Ok(v): true
@@ -12,7 +12,7 @@ where (Ok: T) keyof 'a
 }
 
 function unwrap<'a, T>(e: ['a]): T
-where (Ok: T) keyof 'a
+with (Ok: T) keyof 'a
 {
     switch (e) {
     case Ok(v): v

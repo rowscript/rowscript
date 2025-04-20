@@ -3,7 +3,7 @@ class Foo {
 }
 
 function createDefault<T>(): T
-where Default<T>
+with Default<T>
 {
     default()
 }

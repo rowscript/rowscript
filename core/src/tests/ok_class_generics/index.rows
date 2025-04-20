@@ -8,7 +8,7 @@ interface Updater<U: type => type> {
 }
 
 function doSomething<U: type => type, T>(updater: U<T>)
-where Updater<U>
+with Updater<U>
 {
     updater.update();
 }

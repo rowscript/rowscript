@@ -1,5 +1,5 @@
 function f<'a, 'b>(a: {'a}, b: {'b}): number
-where
+with
     (n: number) keyof 'a + 'b
 {
     (a...b).n

@@ -565,7 +565,7 @@ ctl_break = { "break" ~ ";"? }
 ctl_return =  { "return" ~ expr? ~ ";"? }
 ctl_expr =  { expr? ~ ";"? }
 
-preds = _{ "where" ~ pred ~ ("," ~ pred)* }
+preds = _{ "with" ~ pred ~ ("," ~ pred)* }
 pred =
   { row_ord
   | row_eq

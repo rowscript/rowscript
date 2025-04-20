@@ -1,5 +1,5 @@
 function f0<'a, 'b, 'c>(a: ['a], b: ['b]): ['c]
-where
+with
     'c = 'a + 'b
 {
     [...a]

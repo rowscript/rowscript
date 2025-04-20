@@ -29,7 +29,7 @@ class HTMLElement {
     innerText: string;
 
     addEventListener<E>(eventType: E, listener: (event: E::Data) => unit)
-    where Event<E>
+    with Event<E>
     {
         htmlElement#addEventListener(this, eventType.toEventString(), listener);
     }

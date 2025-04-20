@@ -8,7 +8,7 @@ RowScript
 
 ![Build](https://github.com/rowscript/rowscript/actions/workflows/build.yml/badge.svg)
 
-[RowScript] is a robustly-typed functional language that compiles to efficient and reliable JavaScript. It has a
+[RowScript] is a robustly typed functional language that compiles to efficient and reliable JavaScript. It has a
 user-friendly syntax like TypeScript, and many advanced features like typeclass, effect system, and static reflection.
 
 [RowScript]: https://rows.ro
@@ -39,7 +39,7 @@ interface Phonebook {
 }
 
 function dialPerson<P>(person: P)
-where P instanceof Phonebook
+with Phonebook<P>
 {
     person.dial();
 }
@@ -63,8 +63,8 @@ This project is at early stage and under active development, syntax and APIs are
 
 We separate our development into following phases:
 
-* [x] Proof-of-concept of research ideas and a most viable compiler
-* [x] Get ready for open sourcing, targeting the **library writer** user group
+* [x] Proof-of-concept research ideas and a most viable compiler
+* [x] Get ready for open-sourcing, targeting the **library writer** user group
 * [ ] Get ready for production, targeting the **application writer** (end users) user group
 
 ## License

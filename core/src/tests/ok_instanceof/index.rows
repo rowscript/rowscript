@@ -25,7 +25,7 @@ instanceof Show<Animal> {
 }
 
 function showName<'a>(a: {'a})
-where
+with
     (name: string) keyof 'a,
     Show<{'a} >
 {

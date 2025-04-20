@@ -3,7 +3,7 @@ interface Iterator<T> {
 }
 
 interface Iterable<T> {
-    iter<I>(a: T): I where Iterator<I>;
+    iter<I>(a: T): I with Iterator<I>;
 }
 
 class ArrayIterator<T> {

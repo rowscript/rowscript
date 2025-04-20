@@ -6,7 +6,7 @@ interface Foo<T> {
 type Data = {n: number} implements Foo;
 
 function f0<T>(a: T)
-where Foo<T>
+with Foo<T>
 {
     ask<T>()
 }

@@ -1,7 +1,7 @@
 type Optional<T> = [Some(T) | None];
 
 function isSome<'a, T>(o: ['a]): boolean
-where (Some: T) keyof 'a
+with (Some: T) keyof 'a
 {
     switch (o) {
     case Some(v): true

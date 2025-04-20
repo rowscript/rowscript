@@ -20,7 +20,7 @@
       "patterns": [
         {
           "name": "keyword.rowscript",
-          "match": "\\b(function|where|type|class|interface|instanceof|for|import|from)\\b"
+          "match": "\\b(function|with|type|class|interface|instanceof|for|import|from)\\b"
         },
         {
           "name": "keyword.control.rowscript",

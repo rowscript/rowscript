@@ -11,7 +11,7 @@ interface Updater<T> {
 }
 
 function doSomething<U>(updater: U)
-where Updater<U>
+with Updater<U>
 {
     updater.update();
 }
