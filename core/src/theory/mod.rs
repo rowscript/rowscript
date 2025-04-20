@@ -41,12 +41,6 @@ impl From<Span<'_>> for Loc {
     }
 }
 
-type Name = Arc<Ustr>;
-
-fn id(n: &Name) -> usize {
-    Arc::as_ptr(n) as _
-}
-
 #[derive(Default, Debug)]
 pub struct RawNameSet(UstrSet);
 
@@ -63,18 +57,21 @@ impl RawNameSet {
     }
 }
 
+fn id(n: &Arc<Ustr>) -> usize {
+    Arc::as_ptr(n) as _
+}
+
 #[derive(Debug, Clone, Eq)]
 pub enum Var {
-    Bound(Name),
+    Bound(Arc<Ustr>),
     Internal(usize),
     Unbound,
-    Meta(Name),
 }
 
 impl Display for Var {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Bound(n) | Self::Meta(n) => Display::fmt(n, f),
+            Self::Bound(n) => Display::fmt(n, f),
             Self::Internal(id) => write!(f, "${id}"),
             Self::Unbound => write!(f, "_"),
         }
@@ -84,7 +81,7 @@ impl Display for Var {
 impl PartialEq<Self> for Var {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::Bound(l), Self::Bound(r)) | (Self::Meta(l), Self::Meta(r)) => id(l) == id(r),
+            (Self::Bound(l), Self::Bound(r)) => id(l) == id(r),
             (Self::Internal(l), Self::Internal(r)) => l == r,
             _ => false,
         }
@@ -95,14 +92,12 @@ impl Hash for Var {
     fn hash<H: Hasher>(&self, state: &mut H) {
         discriminant(self).hash(state);
         match self {
-            Self::Bound(n) | Self::Meta(n) => id(n).hash(state),
+            Self::Bound(n) => id(n).hash(state),
             Self::Internal(id) => id.hash(state),
             Self::Unbound => unreachable!(),
         }
     }
 }
-
-const META: &str = "_";
 
 pub const TUPLED: &str = "__tupled";
 pub const UNTUPLED_RHS_PREFIX: &str = "__untupled_";
@@ -147,20 +142,12 @@ impl Var {
         Self::Unbound
     }
 
-    pub fn meta() -> Self {
-        Self::Meta(Arc::new(META.into()))
-    }
-
     pub fn is_unbound(&self) -> bool {
         matches!(self, Self::Unbound)
     }
 
     pub fn is_unnamed(&self) -> bool {
-        match &self {
-            Self::Bound(..) => false,
-            Self::Internal(..) | Self::Unbound => true,
-            Self::Meta(..) => unreachable!(),
-        }
+        !matches!(self, Self::Bound(..))
     }
 
     pub fn tupled() -> Self {

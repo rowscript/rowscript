@@ -1760,7 +1760,7 @@ impl Elaborator {
     fn insert_meta(&mut self, loc: Loc, k: MetaKind) -> (Term, Term) {
         use Body::*;
 
-        let ty_meta_var = Var::meta();
+        let ty_meta_var = Var::internal();
         self.sigma.insert(
             ty_meta_var.clone(),
             Def {
@@ -1775,7 +1775,7 @@ impl Elaborator {
         );
         let ty = Term::MetaRef(k.clone(), ty_meta_var, Default::default());
 
-        let tm_meta_var = Var::meta();
+        let tm_meta_var = Var::internal();
         let tele = gamma_to_tele(&self.gamma);
         let spine = Term::tele_to_spine(&tele);
         self.sigma.insert(
