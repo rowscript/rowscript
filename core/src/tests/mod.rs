@@ -14,9 +14,7 @@ use crate::{Compiler, Error};
 mod playground;
 mod stdlib;
 
-mod example_eertree;
 mod example_fact;
-mod example_minesweeper;
 mod example_nqueens;
 mod example_phi;
 
