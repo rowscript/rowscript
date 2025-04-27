@@ -738,10 +738,12 @@ impl Ecma {
     ) -> (Vec<Option<Pat>>, &'a Term) {
         let mut elems = vec![Some(Self::ident_pat(loc, &p.var))];
         loop {
-            if let Term::TupleBind(p_next, _, _, b) = body {
-                elems.push(Some(Self::ident_pat(loc, &p_next.var)));
+            if let Term::TupleBind(lhs, rhs, _, b) = body {
+                elems.push(Some(Self::ident_pat(loc, &lhs.var)));
                 body = b;
-                continue;
+                if !rhs.var.is_unbound() && rhs.var.as_str() != UNTUPLED_ENDS {
+                    continue;
+                }
             }
             break;
         }
