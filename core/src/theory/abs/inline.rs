@@ -3,37 +3,13 @@ use crate::theory::abs::data::Term;
 pub fn noinline(tm: &Term) -> bool {
     use Term::*;
     match tm {
-        Arr(xs) => {
-            for x in xs {
-                if noinline(x) {
-                    return true;
-                }
-            }
-            false
-        }
-        Fields(fields) => {
-            for tm in fields.values() {
-                if noinline(tm) {
-                    return true;
-                }
-            }
-            false
-        }
+        Arr(xs) => xs.iter().all(noinline),
+        Fields(fields) => fields.values().all(noinline),
         Switch(a, b, d) => {
-            if noinline(a) {
-                return true;
-            }
-            for (_, a) in b.values() {
-                if noinline(a) {
-                    return true;
-                }
-            }
-            if let Some((_, tm)) = d {
-                if noinline(tm) {
-                    return true;
-                }
-            }
-            false
+            let is_a = noinline(a);
+            let is_b = b.values().all(|(_, a)| noinline(a));
+            let is_d = d.iter().all(|(_, tm)| noinline(tm));
+            is_a && is_b && is_d
         }
         Guard(p, a, e, b) => {
             let mut fold = noinline(p) || noinline(a) || noinline(b);
