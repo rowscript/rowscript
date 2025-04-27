@@ -1597,9 +1597,10 @@ impl Ecma {
                 Postulate => self.postulate_decl(&mut items, &def),
                 Constant(_, f) => self.const_decl(&mut items, sigma, &def, f),
                 Class { ctor, methods, .. } => {
+                    let not_escaping_this = self.not_escaping_this;
                     self.not_escaping_this = true;
                     let ret = self.ctor_helper_decl(&mut items, sigma, &def.name, ctor, methods);
-                    self.not_escaping_this = false;
+                    self.not_escaping_this = not_escaping_this;
                     ret
                 }
                 Undefined => match sigma.get(&def.name).unwrap().clone().body {

@@ -100,6 +100,8 @@ mod ok_varargs_anon;
 mod ok_varargs_anon_ret;
 mod ok_verify;
 
+mod generated;
+
 fn run_helper(mod_path: &str) -> Result<(), Error> {
     let pkg = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("src")

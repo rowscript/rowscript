@@ -1,4 +1,4 @@
-class Foo {
+export class Foo {
     n: number;
 
     update(msg: string) {
