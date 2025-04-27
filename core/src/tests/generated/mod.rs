@@ -30,6 +30,6 @@ fn test_run_all_generated() {
             .unwrap();
         stdout().write_all(&out.stdout).unwrap();
         stderr().write_all(&out.stderr).unwrap();
-        // assert!(out.status.success())
+        assert!(out.status.success())
     }
 }
