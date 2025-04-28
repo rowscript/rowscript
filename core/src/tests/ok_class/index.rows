@@ -5,9 +5,10 @@ class N {
 }
 
 const n0 = new N(42);
+testing.assert(n0.n == 42);
 
-function foo() {
-    console.log("foo");
+function foo(): string {
+    "foo"
 }
 
 class Foo {
@@ -18,14 +19,14 @@ class Foo {
         this.n = this.n + 1;
     }
 
-    foo() {
+    foo(): string {
         this.update();
-        console.log("Foo::foo");
+        "Foo::foo"
     }
 }
 
-new Foo(42).foo();
+const s0 = new Foo(42).foo();
+testing.assert(s0 == "Foo::foo");
 
-function f() {
-    console.log(new ::outside::Outside("hello").outside());
-}
+const s1 = new ::outside::Outside("hello").outside();
+testing.assert(s1 == "outside");

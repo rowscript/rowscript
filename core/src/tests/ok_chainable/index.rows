@@ -5,11 +5,11 @@ const a0 = {
         }
     ]
 };
-console.log(a0["a"][0].b);
+testing.assert(a0["a"][0].b == "c");
 
 class A {
     n: Array<number>;
     getN(): Array<number> { this.n }
 }
 
-console.log(new A([42]).getN()[0]);
+testing.assert(new A([42]).getN()[0] == 42);
