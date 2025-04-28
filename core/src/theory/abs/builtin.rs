@@ -14,7 +14,7 @@ use crate::theory::abs::data::Term::{
 };
 use crate::theory::abs::def::{Body, Def, Sigma};
 use crate::theory::conc::data::ArgInfo;
-use crate::theory::{ASYNC, AWAIT_ANY, NameMap, Param, ResolvedVar, Var};
+use crate::theory::{ASYNC, AWAIT_ALL, AWAIT_ANY, NameMap, Param, ResolvedVar, Var};
 use crate::theory::{Tele, VarKind};
 
 fn implicit(var: Var, typ: Term) -> Param<Term> {
@@ -877,7 +877,7 @@ impl Builtins {
         let async_var = self.ubiquitous.get(&Ustr::from(ASYNC)).unwrap().1.clone();
         let await_all_var = self
             .ubiquitous
-            .get(&Ustr::from(AWAIT_ANY))
+            .get(&Ustr::from(AWAIT_ALL))
             .unwrap()
             .1
             .clone();
