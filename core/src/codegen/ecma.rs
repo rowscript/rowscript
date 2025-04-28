@@ -575,7 +575,7 @@ impl Ecma {
         Ok(Expr::Unary(UnaryExpr {
             span: loc.into(),
             op,
-            arg: Box::new(self.expr(sigma, loc, a)?),
+            arg: Box::new(Self::paren(loc, self.expr(sigma, loc, a)?)),
         }))
     }
 

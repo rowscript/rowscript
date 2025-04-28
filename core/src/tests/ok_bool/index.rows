@@ -6,3 +6,5 @@ function f(): number {
 function g<T>(): number {
     f()
 }
+
+testing.assert(g<string>() == 42);
