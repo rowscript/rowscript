@@ -87,7 +87,6 @@ pub fn noinline(tm: &Term) -> bool {
         | Unionify(..)
         | Panic(..)
         | ConsoleLog(..)
-        | ConsoleAssert(..)
         | SetTimeout(..)
         | EmitAsync(..)
         | HtmlElementAddEventListener(..)

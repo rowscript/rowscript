@@ -12,5 +12,5 @@ function f1(): Optional<number> {
 
 type Person<T>;
 
-console.assert(f0() == "123");
-console.assert(f1().unwrap() == 42);
+testing.assert(f0() == "123");
+testing.assert(f1().unwrap() == 42);

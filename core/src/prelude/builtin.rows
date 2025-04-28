@@ -1,7 +1,6 @@
 declare panic<T>(m: string): T;
 
 declare console#log<Args>(...: Args);
-declare console#assert(p: boolean);
 
 declare setTimeout<Args, T>(f: (...: Args) => T, milli: number, ...: Args);
 

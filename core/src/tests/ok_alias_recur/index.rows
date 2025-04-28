@@ -19,12 +19,12 @@ function isEmpty<T>(list: MyList<T>): boolean {
 function f1(): MyList<number> {
     Empty
 }
-console.assert(f1().isEmpty());
+testing.assert(f1().isEmpty());
 
 function f2(): MyList<number> {
     Append({value: 42, list: Append({value: 69, list: Empty})})
 }
-console.assert(!f2().isEmpty());
+testing.assert(!f2().isEmpty());
 
 function foldNat<T>(init: T, n: Nat, f: (a: T) => T): T {
     switch (n) {
@@ -33,7 +33,7 @@ function foldNat<T>(init: T, n: Nat, f: (a: T) => T): T {
     }
 }
 const a3 = foldNat(0, S(S(Z)), (n) => n + 1);
-console.assert(a3 == 2);
+testing.assert(a3 == 2);
 
 function myFold<T, ItemT>(init: T, list: MyList<ItemT>, f: (a: T, i: ItemT) => T): T {
     switch (list) {
@@ -42,4 +42,4 @@ function myFold<T, ItemT>(init: T, list: MyList<ItemT>, f: (a: T, i: ItemT) => T
     }
 }
 const a4 = myFold(0, f2(), (n, i) => n + i);
-console.assert(a4 == 111);
+testing.assert(a4 == 111);

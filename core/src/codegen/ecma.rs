@@ -1440,15 +1440,6 @@ impl Ecma {
                     m => vec![Self::non_spread(self.expr(sigma, loc, m)?)],
                 },
             ),
-            ConsoleAssert(p) => Self::call(
-                loc,
-                Expr::Member(MemberExpr {
-                    span: loc.into(),
-                    obj: Box::new(Expr::Ident(Self::special_ident("console"))),
-                    prop: MemberProp::Ident(IdentName::from(Self::special_ident("assert"))),
-                }),
-                vec![Self::non_spread(self.expr(sigma, loc, p)?)],
-            ),
             SetTimeout(f, d, x) => {
                 let mut args = vec![
                     Self::non_spread(self.expr(sigma, loc, f)?),

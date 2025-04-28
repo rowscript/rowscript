@@ -692,7 +692,6 @@ impl<'a> Normalizer<'a> {
             },
             Panic(a) => Panic(self.term_box(a)?),
             ConsoleLog(m) => ConsoleLog(self.term_box(m)?),
-            ConsoleAssert(p) => ConsoleAssert(self.term_box(p)?),
             SetTimeout(f, d, x) => {
                 SetTimeout(self.term_box(f)?, self.term_box(d)?, self.term_box(x)?)
             }
