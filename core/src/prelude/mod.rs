@@ -4,7 +4,7 @@ macro_rules! entry {
     };
 }
 
-pub const FILES: [(&str, &str); 10] = [
+pub const FILES: [(&str, &str); 11] = [
     // Order-sensitive files.
     entry!("type.rows"),
     entry!("builtin.rows"),
@@ -17,4 +17,5 @@ pub const FILES: [(&str, &str); 10] = [
     entry!("json.rows"),
     entry!("string.rows"),
     entry!("time.rows"),
+    entry!("testing.rows"),
 ];

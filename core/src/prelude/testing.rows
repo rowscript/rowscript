@@ -1,0 +1,7 @@
+namespace testing {
+    assert(p: boolean) {
+        if (!p) {
+            panic("Assertion failed");
+        }
+    }
+}

@@ -3,7 +3,6 @@ use crate::theory::abs::data::Term;
 pub fn noinline(tm: &Term) -> bool {
     use Term::*;
     match tm {
-        Arr(xs) => xs.iter().all(noinline),
         Fields(fields) => fields.values().all(noinline),
         Switch(a, b, d) => {
             let is_a = noinline(a);
@@ -70,6 +69,7 @@ pub fn noinline(tm: &Term) -> bool {
         | Continue
         | Break
         | ArrIterNext(..)
+        | Arr(..)
         | ArrLength(..)
         | ArrPush(..)
         | ArrForeach(..)

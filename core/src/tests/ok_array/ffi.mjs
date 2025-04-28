@@ -1,3 +1,3 @@
 export function f4() {
-    return ["A greeting from JavaScript!", "yup"]
+    return ["a", "b"]
 }

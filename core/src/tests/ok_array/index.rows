@@ -1,34 +1,30 @@
-function f0() {
+function f0(): number {
     const a = [];
     const m = a.push(42);
     const n = a.push(69);
     a.forEach((n) => console.log(n));
-    console.log(a.length());
+    a.length()
 }
-
-f0();
+console.assert(f0() == 2);
 
 function f1(): number {
     const a = [1];
     a[0]
 }
-
-const n1 = f1();
+console.assert(f1() == 1);
 
 function f2(): number {
     const a = [1];
     a[0] = 2;
     a[0]
 }
-
-const n2 = f2();
+console.assert(f2() == 2);
 
 function f3(): string {
     const a = [["1"]];
     a[0][0]
 }
-
-console.log(f3());
+console.assert(f3() == "1");
 
 function f4(): Array<string>;
-console.log(f4()[0]);
+console.assert(f4()[0] == "a");

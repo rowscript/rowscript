@@ -2,9 +2,9 @@ function f1<T>(it: T)
 with Iterator<T>
 {
     const a = it.next();
-    console.log(a);
+    testing.assert(a.isOk());
     const b = it.next();
-    console.log(b);
+    testing.assert(!b.isOk());
 }
 
 function f0() {
