@@ -29,4 +29,4 @@ function nqueens(n: number): number {
     [].dfs(n, 0)
 }
 
-console.log(8.nqueens());
+console.assert(8.nqueens() == 92);

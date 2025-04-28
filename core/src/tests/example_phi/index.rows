@@ -15,3 +15,8 @@ function phiTable(n: number): Array<number> {
 }
 
 console.log(phiTable(20));
+
+// TODO: Array equality.
+//const got= phiTable(20);
+//const want = [0, 1, 1, 2, 2, 4, 2, 6, 4, 6, 4, 10, 4, 12, 6, 8, 8, 16, 6, 18, 8];
+//console.assert(got == want);
