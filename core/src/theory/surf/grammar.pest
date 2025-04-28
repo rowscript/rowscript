@@ -165,6 +165,7 @@ idref =
   }
 builtin =
   { "console#log"
+  | "console#assert"
   | "boolean#__and__"
   | "boolean#__or__"
   | "boolean#__not__"

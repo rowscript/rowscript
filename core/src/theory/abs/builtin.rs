@@ -5,8 +5,8 @@ use crate::theory::abs::data::Term;
 use crate::theory::abs::data::Term::{
     AnonVarargs, App, ArrAt, ArrForeach, ArrInsert, ArrIter, ArrIterNext, ArrLength, ArrPush,
     Array, ArrayIterator, Bigint, BigintToStr, BoolAnd, BoolEq, BoolNeq, BoolNot, BoolOr, Boolean,
-    ConsoleLog, Discriminants, DocumentGetElementById, EmitAsync, Enum, Fields, Find,
-    HtmlElementAddEventListener, Interface, JSONStringify, Map, MapClear, MapDelete, MapGet,
+    ConsoleAssert, ConsoleLog, Discriminants, DocumentGetElementById, EmitAsync, Enum, Fields,
+    Find, HtmlElementAddEventListener, Interface, JSONStringify, Map, MapClear, MapDelete, MapGet,
     MapHas, MapIter, MapIterNext, MapIterator, MapSet, NumAdd, NumDiv, NumEq, NumGe, NumGt, NumLe,
     NumLt, NumMod, NumMul, NumNeg, NumNeq, NumSub, NumToStr, Number, Object, Panic, Pi, Pure, Ref,
     RkToStr, Row, Rowkey, SetTimeout, StrAdd, StrEq, StrNeq, StrToLowerCase, String, TupleBind,
@@ -176,6 +176,7 @@ impl Builtins {
             ])
             .panic()
             .console_log()
+            .console_assert()
             .set_timeout()
             .boolean_or()
             .boolean_and()
@@ -293,6 +294,14 @@ impl Builtins {
             ConsoleLog(Box::new(Ref(tupled))),
         )
     }
+
+    un_op!(
+        console_assert,
+        "console#assert",
+        Boolean,
+        Unit,
+        ConsoleAssert
+    );
 
     fn set_timeout(self) -> Self {
         let varargs = Var::new("Args");

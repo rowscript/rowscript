@@ -197,6 +197,7 @@ pub enum Term {
 
     Panic(Box<Self>),
     ConsoleLog(Box<Self>),
+    ConsoleAssert(Box<Self>),
     SetTimeout(Box<Self>, Box<Self>, Box<Self>),
     JSONStringify(Box<Self>),
     HtmlElementAddEventListener(Box<Self>, Box<Self>, Box<Self>),
@@ -572,6 +573,7 @@ impl Display for Term {
                 Cls { class, .. } => format!("class {class}"),
                 Panic(a) => format!("panic({a})"),
                 ConsoleLog(m) => format!("console.log({m})"),
+                ConsoleAssert(p) => format!("console.assert({p})"),
                 SetTimeout(f, d, x) => format!("setTimeout({f}, {d}, {x})"),
                 JSONStringify(a) => format!("JSON.stringify({a})"),
                 HtmlElementAddEventListener(n, e, l) => format!("{n}.addEventListener({e}, {l})"),

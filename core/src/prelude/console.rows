@@ -2,4 +2,8 @@ namespace console {
     log<Args>(...: Args) {
         console#log(...)
     }
+
+    assert(p: boolean) {
+        console#assert(p)
+    }
 }
