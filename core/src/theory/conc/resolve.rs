@@ -59,7 +59,6 @@ impl<'a> Resolver<'a> {
             .map_err(|e| print_err(e, &file.path, file.src))?;
         file.defs = file
             .defs
-            .into_vec()
             .into_iter()
             .map(|d| self.def(d))
             .collect::<Result<_, _>>()

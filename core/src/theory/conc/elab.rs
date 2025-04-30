@@ -43,7 +43,6 @@ pub struct Elaborator {
 impl Elaborator {
     pub fn files(&mut self, files: Box<[File<Expr>]>) -> Result<Box<[File<Term>]>, Error> {
         files
-            .into_vec()
             .into_iter()
             .map(|f| {
                 let p = f.path.clone();
@@ -62,7 +61,6 @@ impl Elaborator {
         } = file;
 
         let defs = defs
-            .into_vec()
             .into_iter()
             .map(|d| {
                 let def = self.def(d)?;
