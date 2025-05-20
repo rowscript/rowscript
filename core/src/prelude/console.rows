@@ -1,5 +1,0 @@
-namespace console {
-    log<Args>(...: Args) {
-        console#log(...)
-    }
-}

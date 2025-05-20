@@ -1,3 +1,0 @@
-export function doStuff() {}
-
-export type Foo = {n: number};

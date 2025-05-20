@@ -2,11 +2,4 @@
 .vscode/
 .idea/
 
-/cli/npm/*/rowscript*
-*.vsix
-
-**/dist/*
-!**/ok_modsys/dist/node_modules
-!**/ok_modsys/dist/node_modules/**
-
 target/

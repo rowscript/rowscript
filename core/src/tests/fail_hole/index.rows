@@ -1,3 +1,0 @@
-function f() { ? }
-function g(): ? { f() }
-function h() { g() }

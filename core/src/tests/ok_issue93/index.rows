@@ -1,7 +1,0 @@
-function f0(): {a: [A | B]} {
-    {a: [...A]}
-}
-
-function f1(): {a: [A | B]} {
-    {a: A} // it's even stronger!
-}

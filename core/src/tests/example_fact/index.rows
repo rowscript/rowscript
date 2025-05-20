@@ -1,5 +1,0 @@
-function factorial(n: number): number {
-    (n == 1) ? n : n * factorial(n - 1)
-}
-
-testing.assert(factorial(10) == 3628800);

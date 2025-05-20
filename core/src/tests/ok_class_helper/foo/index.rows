@@ -1,8 +1,0 @@
-export class Foo {
-    n: number;
-
-    update(msg: string) {
-        console.log(msg);
-        console.log(this.n)
-    }
-}

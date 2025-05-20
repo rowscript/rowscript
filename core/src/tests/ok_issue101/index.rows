@@ -1,7 +1,0 @@
-function newA(): number {
-    42
-}
-
-function f0(): number {
-    newA()
-}

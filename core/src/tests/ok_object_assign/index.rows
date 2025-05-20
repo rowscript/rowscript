@@ -1,7 +1,0 @@
-function f0(): number {
-    const a = {n: 42};
-    a.n = 69;
-    a.n
-}
-
-const a = f0();

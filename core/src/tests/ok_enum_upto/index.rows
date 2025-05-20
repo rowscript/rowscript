@@ -1,8 +1,0 @@
-type Data = [
-    A
-    | B
-    | C
-] implements ToJSON;
-
-console.log(A.toJSON());
-console.log(Data::B.toJSON());

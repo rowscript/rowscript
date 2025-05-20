@@ -1,8 +1,0 @@
-type MouseEvent = [
-    Click
-    | MouseUp
-    | MouseDown
-] implements ToLowerCase;
-
-const a: MouseEvent = MouseDown;
-console.log(a.toLowerCase());

@@ -1,9 +1,0 @@
-function f() {
-    const a: (n: number) => number = (n) => {
-        if (true) {
-            return
-        }
-        n
-    };
-    const b = a(42);
-}

@@ -1,5 +1,0 @@
-type Promise;
-
-function foo(n: Promise): Promise {
-    n
-}

@@ -1,8 +1,0 @@
-type Foo<T> = {v: T};
-
-function f<T>(v: Foo<T>): number {
-    42
-}
-
-declare Foo<T>;
-declare f<T>(v: Foo<T>): number;

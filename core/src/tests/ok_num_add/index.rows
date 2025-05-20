@@ -1,9 +1,0 @@
-function f(a: number): number {
-    a + 1 + 2
-}
-
-function g(): number {
-    f(0)
-}
-
-const n = g();

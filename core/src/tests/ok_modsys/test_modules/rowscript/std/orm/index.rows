@@ -1,1 +1,0 @@
-function connect(dsn: string) {}

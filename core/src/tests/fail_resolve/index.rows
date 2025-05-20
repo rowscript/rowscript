@@ -1,4 +1,0 @@
-function f(): number {
-    const a = 42;
-    b
-}
