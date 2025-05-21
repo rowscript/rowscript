@@ -1,0 +1,131 @@
+/* Triple slash starts a comment group as the docstring. */
+
+/// Empty function with an unspecified return type.
+function f0() {}
+
+/// A global constant.
+let c0: unit = f0()
+
+/// Function with parameters and a return type.
+function f1[T, U](a: u64, b: string): boolean {}
+
+/// A global mutable variable.
+let mut v1 = f1[i32, f64](42, "hello")
+
+/// This function shows all control flow constructs.
+function f2() {
+    // A local constant.
+    let c = true
+
+    // An if-guard expression.
+    if v1 {
+        return
+    }
+
+    // An indefinite loop.
+    loop {
+        // An if expression.
+        if true {
+            continue
+        } else if false {
+            break
+        } else {
+            return
+        }
+
+        // A local mutable variable.
+        let mut v = boolean
+    }
+
+    // A while loop.
+    while !v1 {
+        f0()
+    }
+
+    // A for-in loop that iterates on a range.
+    for n in 1:3 {
+        println(n)
+        // Output:
+        // 1
+        // 2
+    }
+}
+
+/// A closure value.
+let cl: (a: u32) => boolean = (a) => false
+
+/// Composite type.
+struct S[T] {
+    a: string
+    b: u32
+    c: T
+}
+
+/// A struct value.
+let s = S{a: "hello", b: 42, c: false}
+
+println(s.a)
+
+/// Enumeration type.
+enum E {
+    A {
+        a: string
+    }
+    B(i32)
+    C
+}
+
+/// An enum variant.
+let ev = E.A{a: "hello"}
+
+/// Pattern-match the enum variant.
+if let E.A{a} = ev {
+    println(a)
+}
+
+/// A value of the case type `E.A`.
+let ec = E#A{a: "hello"}
+
+/// Since it's not an enum variant, access it.
+println(ec.a)
+
+/// Empty trait.
+trait Trait
+
+/// Empty unnamed instance.
+instance Trait
+
+/// Empty named instance.
+instance inst: Trait
+
+/// A function with a trait bound.
+function f3[t: Trait]() {}
+
+/// Run it with automatic instance resolving.
+f3()
+
+/// Run it with a named instance.
+f3[inst]()
+
+/// A trait for numbers.
+trait Number[T]
+instance Number[i32]
+instance Number[u32]
+
+/// Trait with multiple parameters. A heterogeneous addition operator.
+trait HAdd[
+    // Input and output types.
+    T, U, R,
+    // They all need to be some numbers.
+    t: Number[T],
+    u: Number[U],
+    r: Number[R]
+] {
+    add(a: T, b: U): R
+}
+
+instance HAdd[i32, i32, i32] {
+    add(a: i32, b: i32): i32 { a + b }
+}
+
+let added = HAdd.add(1, 2)
