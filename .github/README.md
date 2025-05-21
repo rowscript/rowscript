@@ -6,7 +6,7 @@
 RowScript
 </h1>
 
-![Build](https://github.com/rowscript/rowscript/actions/workflows/build.yml/badge.svg)
+![Build](https://github.com/rowscript/rowscript/actions/workflows/test.yml/badge.svg)
 
 [RowScript] is a statically-typed JavaScript dialect that can compile to native code.
 
