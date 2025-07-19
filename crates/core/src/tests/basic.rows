@@ -1,34 +1,34 @@
 /* Triple slash starts a comment group as the docstring. */
 
 /// Empty function with an unspecified return type.
-f0() := {}
+f0() := do end
 
 /// A global variable.
 v0 := f0()
 
 /// Function with parameters and a return type.
-f1[T, U](a u64, b string) boolean := false
+f1(a u64, b string) boolean := false
 
-v1 := f1[i32, f64](42, "hello")
+v1 := f1(42, "hello")
 
 /// This function shows all control flow constructs.
-f2() := {
+f2() := do
     // A local variable.
-    c := 42;
+    c := 42
 
     // An if-guard statement.
-    if c == 0 {
+    if c == 0 then
         return false
-    }
+    end
 
     // An if statement.
-    if c == 1 {
+    if c == 1 then
         return false
-    } else if c == 2 {
+    else if c == 2 then
         return false
-    } else {
+    else
         return true
-    }
+    end
 
     false
-}
+end
