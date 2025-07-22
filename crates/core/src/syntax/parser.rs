@@ -9,7 +9,25 @@ use ustr::Ustr;
 type Span = SimpleSpan;
 type Spanned<T> = (T, Span);
 
-enum Token {
+pub(crate) fn line_col(span: &Span, text: &str) -> (usize, usize) {
+    let mut line = 1;
+    let mut col = 1;
+    for (i, c) in text.chars().enumerate() {
+        if i == span.start {
+            break;
+        }
+        if c == '\n' {
+            line += 1;
+            col = 1;
+        } else {
+            col += 1;
+        }
+    }
+    (line, col)
+}
+
+#[derive(Debug)]
+pub(crate) enum Token {
     // Contentful.
     Number(Ustr),
     String(Ustr),
@@ -21,6 +39,8 @@ enum Token {
     // Symbols.
     /// `:=`.
     Assign,
+    /// `==`.
+    Eq,
 
     // Types.
     Unit,
@@ -50,7 +70,8 @@ enum Token {
 ///
 /// Number and string literal parsing extracted from
 /// [the fast JSON example](https://github.com/zesterer/chumsky/blob/main/examples/json_fast.rs).
-fn scan<'s>() -> impl Parser<'s, &'s str, Vec<Spanned<Token>>, Error<Rich<'s, char, Span>>> {
+pub(crate) fn scan<'s>()
+-> impl Parser<'s, &'s str, Vec<Spanned<Token>>, Error<Rich<'s, char, Span>>> {
     let dec = digits(10).to_slice();
     let frac = just('.').then(dec);
     let exp = just('e')
@@ -121,22 +142,26 @@ fn scan<'s>() -> impl Parser<'s, &'s str, Vec<Spanned<Token>>, Error<Rich<'s, ch
         _ => Token::Ident(text.into()),
     });
 
-    let ctrl = one_of("()").map(Token::Ctrl);
+    let ctrl = one_of("(),").map(Token::Ctrl);
 
     let doc = just("///")
         .ignore_then(any().and_is(just('\n').not()).repeated())
         .to_slice()
         .map(|s: &str| Token::Doc(s.into()));
 
-    let assign = just(":=").map(|_| Token::Assign);
+    let ops = choice((
+        just(":=").map(|_| Token::Assign),
+        just("==").map(|_| Token::Eq),
+    ));
 
-    let token = number.or(string).or(ident).or(ctrl).or(doc).or(assign);
+    let token = number.or(string).or(ident).or(ctrl).or(doc).or(ops);
 
     let line_comment = just("//")
         .then(any().and_is(just('\n').not()).repeated())
         .padded();
     let block_comment = just("/*")
         .then(any().and_is(just("*/").not()).repeated())
+        .then_ignore(just("*/"))
         .padded();
     let comment = line_comment.or(block_comment);
 

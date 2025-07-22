@@ -1,7 +1,7 @@
 use ustr::Ustr;
 
 #[allow(dead_code)]
-mod syntax;
+pub(crate) mod syntax;
 
 #[cfg(test)]
 mod tests;

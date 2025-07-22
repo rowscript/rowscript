@@ -1,6 +1,6 @@
 use ustr::Ustr;
 
-mod parser;
+pub(crate) mod parser;
 
 enum Expr {
     Number(Ustr),
