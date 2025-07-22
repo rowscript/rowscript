@@ -1,13 +1,13 @@
 use chumsky::Parser;
 use chumsky::extra::Err as Error;
 use chumsky::prelude::{
-    IterParser, Rich, SimpleSpan, any, choice, end, just, none_of, one_of, skip_then_retry_until,
+    IterParser, Rich, any, choice, end, just, none_of, one_of, skip_then_retry_until,
 };
 use chumsky::text::{digits, ident, int};
 use ustr::Ustr;
 
-type Span = SimpleSpan;
-type Spanned<T> = (T, Span);
+use crate::semantics::BuiltinType;
+use crate::syntax::Span;
 
 pub(crate) fn line_col(span: &Span, text: &str) -> (usize, usize) {
     let mut line = 1;
@@ -43,21 +43,10 @@ pub(crate) enum Token {
     Eq,
 
     // Types.
-    Unit,
-    Bool,
-    I8,
-    I16,
-    I32,
-    I64,
-    U8,
-    U16,
-    U32,
-    U64,
-    F32,
-    F64,
-    Str,
+    BuiltinType(BuiltinType),
 
-    // Control.
+    // Misc.
+    Function,
     Do,
     End,
     If,
@@ -70,8 +59,8 @@ pub(crate) enum Token {
 ///
 /// Number and string literal parsing extracted from
 /// [the fast JSON example](https://github.com/zesterer/chumsky/blob/main/examples/json_fast.rs).
-pub(crate) fn scan<'s>()
--> impl Parser<'s, &'s str, Vec<Spanned<Token>>, Error<Rich<'s, char, Span>>> {
+pub(crate) fn scan<'s>() -> impl Parser<'s, &'s str, Vec<(Token, Span)>, Error<Rich<'s, char, Span>>>
+{
     let dec = digits(10).to_slice();
     let frac = just('.').then(dec);
     let exp = just('e')
@@ -118,20 +107,21 @@ pub(crate) fn scan<'s>()
         "true" => Token::Boolean(true),
         "false" => Token::Boolean(false),
 
-        "unit" => Token::Unit,
-        "bool" => Token::Bool,
-        "i8" => Token::I8,
-        "i16" => Token::I16,
-        "i32" => Token::I32,
-        "i64" => Token::I64,
-        "u8" => Token::U8,
-        "u16" => Token::U16,
-        "u32" => Token::U32,
-        "u64" => Token::U64,
-        "f32" => Token::F32,
-        "f64" => Token::F64,
-        "str" => Token::Str,
+        "unit" => Token::BuiltinType(BuiltinType::Unit),
+        "bool" => Token::BuiltinType(BuiltinType::Bool),
+        "i8" => Token::BuiltinType(BuiltinType::I8),
+        "i16" => Token::BuiltinType(BuiltinType::I16),
+        "i32" => Token::BuiltinType(BuiltinType::I32),
+        "i64" => Token::BuiltinType(BuiltinType::I64),
+        "u8" => Token::BuiltinType(BuiltinType::U8),
+        "u16" => Token::BuiltinType(BuiltinType::U16),
+        "u32" => Token::BuiltinType(BuiltinType::U32),
+        "u64" => Token::BuiltinType(BuiltinType::U64),
+        "f32" => Token::BuiltinType(BuiltinType::F32),
+        "f64" => Token::BuiltinType(BuiltinType::F64),
+        "str" => Token::BuiltinType(BuiltinType::Str),
 
+        "function" => Token::Function,
         "do" => Token::Do,
         "end" => Token::End,
         "if" => Token::If,

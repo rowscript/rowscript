@@ -1,18 +1,18 @@
 /* Triple slash starts a comment group as the docstring. */
 
 /// Empty function with an unspecified return type.
-f0() := do end
+function f0() end
 
 /// A global variable.
 v0 := f0()
 
 /// Function with parameters and a return type.
-f1(a u64, b string) boolean := false
+f1(a u64, b str) bool := false
 
 v1 := f1(42, "hello")
 
 /// This function shows all control flow constructs.
-f2() := do
+function f2()
     // A local variable.
     c := 42
 

@@ -1,6 +1,8 @@
 use ustr::Ustr;
 
 #[allow(dead_code)]
+mod semantics;
+#[allow(dead_code)]
 pub(crate) mod syntax;
 
 #[cfg(test)]
