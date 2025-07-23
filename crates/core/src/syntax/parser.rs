@@ -1,3 +1,4 @@
+use chumsky::container::Container;
 use chumsky::extra::Err as FullError;
 use chumsky::input::ValueInput;
 use chumsky::prelude::{
@@ -29,6 +30,8 @@ pub(crate) fn line_col(span: &Span, text: &str) -> (usize, usize) {
     (line, col)
 }
 
+const ASSIGN: &str = ":=";
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub(crate) enum Token {
     // Contentful.
@@ -53,11 +56,24 @@ pub(crate) enum Token {
     Return,
 }
 
+#[derive(Default)]
+pub(crate) struct TokenSet {
+    pub(crate) spans: Vec<Span>,
+    pub(crate) tokens: Vec<Token>,
+}
+
+impl Container<Spanned<Token>> for TokenSet {
+    fn push(&mut self, Spanned { span, item }: Spanned<Token>) {
+        self.spans.push(span);
+        self.tokens.push(item);
+    }
+}
+
 /// Lexical analysis.
 ///
 /// Number and string literal parsing extracted from
 /// [the fast JSON example](https://github.com/zesterer/chumsky/blob/main/examples/json_fast.rs).
-pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, Vec<Spanned<Token>>, Error<'s, char>> {
+pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, TokenSet, Error<'s, char>> {
     let dec = digits(10).to_slice();
     let frac = just('.').then(dec);
     let exp = just('e')
@@ -135,7 +151,7 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, Vec<Spanned<Token>>, Error<'
         .ignore_then(any().and_is(just('\n').not()).repeated().to_slice())
         .map(|s: &str| Token::Doc(s.into()));
 
-    let ops = choice((just(":="), just("=="))).map(|s| Token::Op(s.into()));
+    let ops = choice((just(ASSIGN), just("=="))).map(|s| Token::Op(s.into()));
 
     let token = number.or(string).or(ident).or(ctrl).or(doc).or(ops);
 
@@ -161,37 +177,35 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, Vec<Spanned<Token>>, Error<'
         .collect()
 }
 
-pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, Error<'t, Spanned<Token>>>
+pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, Error<'t, Token>>
 where
-    I: ValueInput<'t, Token = Spanned<Token>, Span = Span>,
+    I: ValueInput<'t, Token = Token, Span = Span>,
 {
     recursive(|expr| {
         let constant = select! {
-            Spanned { span, item: Token::Number(n) } => Spanned { span, item: Expr::Number(n) },
-            Spanned { span, item: Token::String(s) } => Spanned { span, item: Expr::String(s) },
-            Spanned { span, item: Token::Boolean(b) } => Spanned { span, item: Expr::Boolean(b) },
+            Token::Number(n) => Expr::Number(n),
+            Token::String(s) => Expr::String(s),
+            Token::Boolean(b) => Expr::Boolean(b),
         }
         .labelled("constant");
 
-        let name = select! {
-            Spanned { span, item: Token::Name(n) }  => Spanned { span, item: n }
-        }
-        .labelled("name");
+        let name = select! { Token::Name(n) => n }.labelled("name");
 
-        let assign_op = select! {
-            Spanned { span, item: Token::Op(op) } if op == ":=" => Spanned { span, item: op  }
-        }
-        .labelled(":=");
+        let assign_op = just(Token::Op(ASSIGN.into())).labelled(ASSIGN);
 
         let assign = name
             .then_ignore(assign_op)
-            .then(expr)
-            .map(|(lhs, rhs)| Spanned {
-                span: lhs.span,
-                item: Expr::Assign(lhs.item, None, Box::new(rhs)),
-            })
+            .then(expr.map_with(|item, e| Spanned {
+                span: e.span(),
+                item,
+            }))
+            .map(|(lhs, rhs)| Expr::Assign(lhs, None, Box::new(rhs)))
             .labelled("assignment");
 
         constant.or(assign)
+    })
+    .map_with(|item, e| Spanned {
+        span: e.span(),
+        item,
     })
 }

@@ -11,7 +11,7 @@ pub(crate) mod parser;
 
 type Span = SimpleSpan;
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub(crate) struct Spanned<T> {
     pub(crate) span: Span,
     pub(crate) item: T,
