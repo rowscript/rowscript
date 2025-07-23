@@ -2,14 +2,14 @@ use chumsky::container::Container;
 use chumsky::extra::Err as FullError;
 use chumsky::input::ValueInput;
 use chumsky::prelude::{
-    IterParser, Rich, any, choice, end, just, none_of, one_of, recursive, skip_then_retry_until,
+    IterParser, Rich, any, choice, end, just, none_of, one_of, skip_then_retry_until,
 };
 use chumsky::text::{digits, ident, int};
 use chumsky::{Parser, select};
 use ustr::Ustr;
 
 use crate::semantics::BuiltinType;
-use crate::syntax::{Expr, Name, Span, Spanned};
+use crate::syntax::{Expr, Name, Span, Spanned, Stmt};
 
 type Error<'a, T> = FullError<Rich<'a, T, Span>>;
 
@@ -185,31 +185,42 @@ pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, Error<'t, Token
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
-    recursive(|expr| {
-        let trivial = select! {
-            Token::Number(n) => Expr::Number(n),
-            Token::String(s) => Expr::String(s),
-            Token::Boolean(b) => Expr::Boolean(b),
-            Token::BuiltinType(t) => Expr::BuiltinType(t)
-        }
-        .labelled("constant");
+    let trivial = select! {
+        Token::Number(n) => Expr::Number(n),
+        Token::String(s) => Expr::String(s),
+        Token::Boolean(b) => Expr::Boolean(b),
+        Token::BuiltinType(t) => Expr::BuiltinType(t)
+    }
+    .labelled("constant");
 
-        let name = select! { Token::Name(n) => n }.labelled("name");
+    let name = select! { Token::Name(n) => Expr::Name(n) }.labelled("name");
 
-        let assign_op = just(Token::Op(ASSIGN.into())).labelled(ASSIGN);
+    trivial
+        .or(name)
+        .map_with(Spanned::from_map_extra)
+        .labelled("expression")
+}
 
-        let assign = name
-            .then_ignore(assign_op)
-            .then(expr.clone().map_with(Spanned::from_map_extra))
-            .map(|(lhs, rhs)| Expr::Assign(lhs, None, Box::new(rhs)))
-            .labelled("assignment");
+pub(crate) fn stmt<'t, I>() -> impl Parser<'t, I, Spanned<Stmt>, Error<'t, Token>>
+where
+    I: ValueInput<'t, Token = Token, Span = Span>,
+{
+    let name = select! { Token::Name(n) => n }.labelled("name");
 
-        let return_ = just(Token::Return)
-            .ignore_then(expr.map_with(Spanned::from_map_extra).or_not())
-            .map(|a| Expr::Return(a.map(Box::new)))
-            .labelled("return");
+    let assign_op = just(Token::Op(ASSIGN.into())).labelled(ASSIGN);
+    let assign = name
+        .then_ignore(assign_op)
+        .then(expr())
+        .map(|(lhs, rhs)| Stmt::Assign(lhs, None, rhs))
+        .labelled("assignment");
 
-        trivial.or(assign).or(return_)
-    })
-    .map_with(Spanned::from_map_extra)
+    let return_ = just(Token::Return)
+        .ignore_then(expr().or_not())
+        .map(Stmt::Return)
+        .labelled("return");
+
+    assign
+        .or(return_)
+        .map_with(Spanned::from_map_extra)
+        .labelled("statement")
 }

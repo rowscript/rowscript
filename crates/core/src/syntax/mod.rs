@@ -79,20 +79,8 @@ impl Hash for Name {
 
 #[derive(Debug)]
 pub(crate) enum Expr {
-    // Blocks.
-    Func {
-        doc: Option<String>,
-        name: Name,
-        params: Box<[Spanned<Param>]>,
-        ret: Option<Box<Spanned<Self>>>,
-        body: Box<[Spanned<Self>]>,
-    },
-
     // Naming.
     Name(Name),
-
-    // Binding.
-    Assign(Name, Option<Box<Spanned<Self>>>, Box<Spanned<Self>>),
 
     // Types.
     BuiltinType(BuiltinType),
@@ -105,16 +93,33 @@ pub(crate) enum Expr {
     // Values.
     Call(Box<Spanned<Self>>, Box<[Spanned<Self>]>),
     BinaryOp(Box<Spanned<Self>>, Spanned<Ustr>, Box<Spanned<Self>>),
-
-    // Control.
-    Return(Option<Box<Spanned<Self>>>),
-    If {
-        then: Box<Spanned<Branch>>,
-        elif: Option<Box<[Spanned<Branch>]>>,
-        els: Option<Box<Spanned<Branch>>>,
-    },
 }
 
+#[derive(Debug)]
+pub(crate) enum Stmt {
+    // Blocks.
+    Func {
+        doc: Option<String>,
+        name: Name,
+        params: Box<[Spanned<Param>]>,
+        ret: Option<Box<Spanned<Expr>>>,
+        body: Box<[Spanned<Self>]>,
+    },
+
+    // Expressions.
+    Expr(Expr),
+
+    // Binding.
+    Assign(Name, Option<Spanned<Expr>>, Spanned<Expr>),
+
+    // Control.
+    Return(Option<Spanned<Expr>>),
+    If {
+        then: Spanned<Branch>,
+        elif: Option<Box<[Spanned<Branch>]>>,
+        els: Option<Spanned<Branch>>,
+    },
+}
 #[derive(Debug)]
 pub(crate) struct Param {
     name: Name,
@@ -124,5 +129,5 @@ pub(crate) struct Param {
 #[derive(Debug)]
 pub(crate) struct Branch {
     cond: Expr,
-    body: Box<[Expr]>,
+    body: Box<[Stmt]>,
 }
