@@ -63,6 +63,13 @@ pub(crate) struct TokenSet {
 }
 
 impl Container<Spanned<Token>> for TokenSet {
+    fn with_capacity(n: usize) -> Self {
+        Self {
+            spans: Vec::with_capacity(n),
+            tokens: Vec::with_capacity(n),
+        }
+    }
+
     fn push(&mut self, Spanned { span, item }: Spanned<Token>) {
         self.spans.push(span);
         self.tokens.push(item);
@@ -166,10 +173,7 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, TokenSet, Error<'s, char>> {
     let comment = line_comment.or(block_comment);
 
     token
-        .map_with(|tok, e| Spanned {
-            span: e.span(),
-            item: tok,
-        })
+        .map_with(Spanned::from_map_extra)
         .padded_by(comment.repeated())
         .padded()
         .recover_with(skip_then_retry_until(any().ignored(), end()))
@@ -182,10 +186,11 @@ where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
     recursive(|expr| {
-        let constant = select! {
+        let trivial = select! {
             Token::Number(n) => Expr::Number(n),
             Token::String(s) => Expr::String(s),
             Token::Boolean(b) => Expr::Boolean(b),
+            Token::BuiltinType(t) => Expr::BuiltinType(t)
         }
         .labelled("constant");
 
@@ -195,17 +200,16 @@ where
 
         let assign = name
             .then_ignore(assign_op)
-            .then(expr.map_with(|item, e| Spanned {
-                span: e.span(),
-                item,
-            }))
+            .then(expr.clone().map_with(Spanned::from_map_extra))
             .map(|(lhs, rhs)| Expr::Assign(lhs, None, Box::new(rhs)))
             .labelled("assignment");
 
-        constant.or(assign)
+        let return_ = just(Token::Return)
+            .ignore_then(expr.map_with(Spanned::from_map_extra).or_not())
+            .map(|a| Expr::Return(a.map(Box::new)))
+            .labelled("return");
+
+        trivial.or(assign).or(return_)
     })
-    .map_with(|item, e| Spanned {
-        span: e.span(),
-        item,
-    })
+    .map_with(Spanned::from_map_extra)
 }

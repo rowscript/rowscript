@@ -2,6 +2,8 @@ use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
+use chumsky::extra::ParserExtra;
+use chumsky::input::{Input, MapExtra};
 use chumsky::prelude::SimpleSpan;
 use ustr::Ustr;
 
@@ -15,6 +17,19 @@ type Span = SimpleSpan;
 pub(crate) struct Spanned<T> {
     pub(crate) span: Span,
     pub(crate) item: T,
+}
+
+impl<T> Spanned<T> {
+    pub(crate) fn from_map_extra<'src, 'b, I, E>(item: T, e: &mut MapExtra<'src, 'b, I, E>) -> Self
+    where
+        I: Input<'src, Span = Span>,
+        E: ParserExtra<'src, I>,
+    {
+        Self {
+            span: e.span(),
+            item,
+        }
+    }
 }
 
 #[derive(Clone, Eq)]
