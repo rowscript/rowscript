@@ -1,13 +1,16 @@
-use chumsky::Parser;
-use chumsky::extra::Err as Error;
+use chumsky::extra::Err as FullError;
+use chumsky::input::ValueInput;
 use chumsky::prelude::{
-    IterParser, Rich, any, choice, end, just, none_of, one_of, skip_then_retry_until,
+    IterParser, Rich, any, choice, end, just, none_of, one_of, recursive, skip_then_retry_until,
 };
 use chumsky::text::{digits, ident, int};
+use chumsky::{Parser, select};
 use ustr::Ustr;
 
 use crate::semantics::BuiltinType;
-use crate::syntax::Span;
+use crate::syntax::{Expr, Name, Span, Spanned};
+
+type Error<'a, T> = FullError<Rich<'a, T, Span>>;
 
 pub(crate) fn line_col(span: &Span, text: &str) -> (usize, usize) {
     let mut line = 1;
@@ -26,21 +29,16 @@ pub(crate) fn line_col(span: &Span, text: &str) -> (usize, usize) {
     (line, col)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub(crate) enum Token {
     // Contentful.
     Number(Ustr),
     String(Ustr),
     Boolean(bool),
-    Ident(Ustr),
+    Name(Name),
     Ctrl(char),
     Doc(Ustr),
-
-    // Symbols.
-    /// `:=`.
-    Assign,
-    /// `==`.
-    Eq,
+    Op(Ustr),
 
     // Types.
     BuiltinType(BuiltinType),
@@ -55,12 +53,11 @@ pub(crate) enum Token {
     Return,
 }
 
-/// Scan a token.
+/// Lexical analysis.
 ///
 /// Number and string literal parsing extracted from
 /// [the fast JSON example](https://github.com/zesterer/chumsky/blob/main/examples/json_fast.rs).
-pub(crate) fn scan<'s>() -> impl Parser<'s, &'s str, Vec<(Token, Span)>, Error<Rich<'s, char, Span>>>
-{
+pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, Vec<Spanned<Token>>, Error<'s, char>> {
     let dec = digits(10).to_slice();
     let frac = just('.').then(dec);
     let exp = just('e')
@@ -129,37 +126,72 @@ pub(crate) fn scan<'s>() -> impl Parser<'s, &'s str, Vec<(Token, Span)>, Error<R
         "else" => Token::Else,
         "return" => Token::Return,
 
-        _ => Token::Ident(text.into()),
+        _ => Token::Name(Name::bound(text.into())),
     });
 
     let ctrl = one_of("(),").map(Token::Ctrl);
 
     let doc = just("///")
-        .ignore_then(any().and_is(just('\n').not()).repeated())
-        .to_slice()
+        .ignore_then(any().and_is(just('\n').not()).repeated().to_slice())
         .map(|s: &str| Token::Doc(s.into()));
 
-    let ops = choice((
-        just(":=").map(|_| Token::Assign),
-        just("==").map(|_| Token::Eq),
-    ));
+    let ops = choice((just(":="), just("=="))).map(|s| Token::Op(s.into()));
 
     let token = number.or(string).or(ident).or(ctrl).or(doc).or(ops);
 
     let line_comment = just("//")
-        .then(any().and_is(just('\n').not()).repeated())
+        .then_ignore(any().and_is(just('/')).not())
+        .then_ignore(any().and_is(just('\n').not()).repeated())
         .padded();
     let block_comment = just("/*")
-        .then(any().and_is(just("*/").not()).repeated())
+        .then_ignore(any().and_is(just("*/").not()).repeated())
         .then_ignore(just("*/"))
         .padded();
     let comment = line_comment.or(block_comment);
 
     token
-        .map_with(|tok, e| (tok, e.span()))
+        .map_with(|tok, e| Spanned {
+            span: e.span(),
+            item: tok,
+        })
         .padded_by(comment.repeated())
         .padded()
         .recover_with(skip_then_retry_until(any().ignored(), end()))
         .repeated()
         .collect()
+}
+
+pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, Error<'t, Spanned<Token>>>
+where
+    I: ValueInput<'t, Token = Spanned<Token>, Span = Span>,
+{
+    recursive(|expr| {
+        let constant = select! {
+            Spanned { span, item: Token::Number(n) } => Spanned { span, item: Expr::Number(n) },
+            Spanned { span, item: Token::String(s) } => Spanned { span, item: Expr::String(s) },
+            Spanned { span, item: Token::Boolean(b) } => Spanned { span, item: Expr::Boolean(b) },
+        }
+        .labelled("constant");
+
+        let name = select! {
+            Spanned { span, item: Token::Name(n) }  => Spanned { span, item: n }
+        }
+        .labelled("name");
+
+        let assign_op = select! {
+            Spanned { span, item: Token::Op(op) } if op == ":=" => Spanned { span, item: op  }
+        }
+        .labelled(":=");
+
+        let assign = name
+            .then_ignore(assign_op)
+            .then(expr)
+            .map(|(lhs, rhs)| Spanned {
+                span: lhs.span,
+                item: Expr::Assign(lhs.item, None, Box::new(rhs)),
+            })
+            .labelled("assignment");
+
+        constant.or(assign)
+    })
 }

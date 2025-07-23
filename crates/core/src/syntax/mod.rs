@@ -11,6 +11,12 @@ pub(crate) mod parser;
 
 type Span = SimpleSpan;
 
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub(crate) struct Spanned<T> {
+    pub(crate) span: Span,
+    pub(crate) item: T,
+}
+
 #[derive(Clone, Eq)]
 pub(crate) struct Name(Rc<Ustr>);
 
@@ -57,60 +63,51 @@ impl Hash for Name {
 }
 
 #[derive(Debug)]
-enum Expr {
+pub(crate) enum Expr {
     // Blocks.
     Func {
-        span: Span,
         doc: Option<String>,
         name: Name,
-        params: Box<[Param]>,
-        ret: Option<Box<Self>>,
-        body: Box<[Self]>,
+        params: Box<[Spanned<Param>]>,
+        ret: Option<Box<Spanned<Self>>>,
+        body: Box<[Spanned<Self>]>,
     },
 
     // Naming.
-    Name(Span, Name),
+    Name(Name),
+
+    // Binding.
+    Assign(Name, Option<Box<Spanned<Self>>>, Box<Spanned<Self>>),
 
     // Types.
-    BuiltinType(Span, BuiltinType),
+    BuiltinType(BuiltinType),
 
     // Constants.
-    Number(Span, Ustr),
-    String(Span, Ustr),
+    Number(Ustr),
+    String(Ustr),
+    Boolean(bool),
 
     // Values.
-    Call {
-        span: Span,
-        func: Box<Self>,
-        args: Box<[Self]>,
-    },
-    BinaryOp {
-        span: Span,
-        op: Ustr,
-        lhs: Box<Self>,
-        rhs: Box<Self>,
-    },
+    Call(Box<Spanned<Self>>, Box<[Spanned<Self>]>),
+    BinaryOp(Box<Spanned<Self>>, Spanned<Ustr>, Box<Spanned<Self>>),
 
     // Control.
-    Return(Span, Option<Box<Self>>),
+    Return(Option<Box<Spanned<Self>>>),
     If {
-        span: Span,
-        then: Box<Branch>,
-        elif: Option<Box<[Branch]>>,
-        els: Option<Box<Branch>>,
+        then: Box<Spanned<Branch>>,
+        elif: Option<Box<[Spanned<Branch>]>>,
+        els: Option<Box<Spanned<Branch>>>,
     },
 }
 
 #[derive(Debug)]
-struct Param {
-    span: Span,
+pub(crate) struct Param {
     name: Name,
     typ: Option<Expr>,
 }
 
 #[derive(Debug)]
-struct Branch {
-    span: Span,
+pub(crate) struct Branch {
     cond: Expr,
     body: Box<[Expr]>,
 }

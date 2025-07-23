@@ -7,7 +7,7 @@ pub(crate) enum IR {
     BuiltinType(BuiltinType),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub(crate) enum BuiltinType {
     Unit,
     Bool,
