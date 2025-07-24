@@ -115,9 +115,9 @@ pub(crate) enum Stmt {
     // Control.
     Return(Option<Spanned<Expr>>),
     If {
-        then: Spanned<Branch>,
-        elif: Option<Box<[Spanned<Branch>]>>,
-        els: Option<Spanned<Branch>>,
+        then: Branch,
+        elif: Box<[Branch]>,
+        els: Option<Box<[Spanned<Self>]>>,
     },
 }
 #[derive(Debug)]
@@ -128,6 +128,6 @@ pub(crate) struct Param {
 
 #[derive(Debug)]
 pub(crate) struct Branch {
-    cond: Expr,
-    body: Box<[Stmt]>,
+    cond: Spanned<Expr>,
+    body: Box<[Spanned<Stmt>]>,
 }

@@ -17,14 +17,14 @@ function f2()
     c := 42
 
     // An if-guard statement.
-    if c == 0 then
+    if c == 0
         return false
     end
 
     // An if statement.
-    if c == 1 then
+    if c == 1
         return false
-    else if c == 2 then
+    else if c == 2
         return false
     else
         return true

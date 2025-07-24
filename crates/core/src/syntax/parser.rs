@@ -9,7 +9,7 @@ use chumsky::{Parser, select};
 use ustr::Ustr;
 
 use crate::semantics::BuiltinType;
-use crate::syntax::{Expr, Name, Param, Span, Spanned, Stmt};
+use crate::syntax::{Branch, Expr, Name, Param, Span, Spanned, Stmt};
 
 type Error<'a, T> = FullError<Rich<'a, T, Span>>;
 
@@ -51,7 +51,6 @@ pub(crate) enum Token {
     Do,
     End,
     If,
-    Then,
     Else,
     Return,
 }
@@ -145,7 +144,6 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, TokenSet, Error<'s, char>> {
         "do" => Token::Do,
         "end" => Token::End,
         "if" => Token::If,
-        "then" => Token::Else,
         "else" => Token::Else,
         "return" => Token::Return,
 
@@ -191,9 +189,9 @@ where
         Token::Boolean(b) => Expr::Boolean(b),
         Token::BuiltinType(t) => Expr::BuiltinType(t)
     }
-    .labelled("constant");
+    .labelled("constant expression");
 
-    let name = select! { Token::Name(n) => Expr::Name(n) }.labelled("name");
+    let name = select! { Token::Name(n) => Expr::Name(n) }.labelled("name expression");
 
     trivial
         .or(name)
@@ -241,13 +239,13 @@ where
             span,
             item: Stmt::Assign(name, None, rhs),
         })
-        .labelled("assignment");
+        .labelled("assignment statement");
 
     let return_ = just(Token::Return)
         .ignore_then(expr().or_not())
         .map(Stmt::Return)
         .map_with(Spanned::from_map_extra)
-        .labelled("return");
+        .labelled("return statement");
 
     recursive(|stmt| {
         let stmts = stmt.repeated().collect::<Vec<_>>().labelled("statements");
@@ -257,7 +255,7 @@ where
             .then(name)
             .then(params)
             .then(just(Token::Ctrl(':')).ignore_then(expr()).or_not())
-            .then(stmts)
+            .then(stmts.clone())
             .then_ignore(just(Token::End))
             .map(
                 |((((docs, Spanned { span, item: name }), params), ret), body)| Spanned {
@@ -271,8 +269,35 @@ where
                     },
                 },
             )
-            .labelled("function");
+            .labelled("function statement");
 
-        func.or(assign).or(return_).labelled("statement")
+        let branch = just(Token::If)
+            .ignore_then(expr())
+            .then(stmts.clone())
+            .map(|(cond, body)| Branch {
+                cond,
+                body: body.into_boxed_slice(),
+            })
+            .labelled("branch");
+
+        let if_ = branch
+            .clone()
+            .then(
+                just(Token::Else)
+                    .ignore_then(branch)
+                    .repeated()
+                    .collect::<Vec<_>>(),
+            )
+            .then(just(Token::Else).ignore_then(stmts).or_not())
+            .then_ignore(just(Token::End))
+            .map(|((then, elif), els)| Stmt::If {
+                then,
+                elif: elif.into_boxed_slice(),
+                els: els.map(Vec::into_boxed_slice),
+            })
+            .map_with(Spanned::from_map_extra)
+            .labelled("if statement");
+
+        func.or(if_).or(assign).or(return_).labelled("statement")
     })
 }

@@ -41,6 +41,16 @@ fn it_parses_stmt() {
 /// Hey.
 function f(a)
     b := 42 // hi
+    
+    if a
+        return false
+    else if b
+        return true
+    else
+        return false
+    end
+
+    return true
 end"#,
         )
         .unwrap();
