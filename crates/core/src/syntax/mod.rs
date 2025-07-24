@@ -2,35 +2,13 @@ use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
-use chumsky::extra::ParserExtra;
-use chumsky::input::{Input, MapExtra};
-use chumsky::prelude::SimpleSpan;
 use ustr::Ustr;
 
+use crate::Spanned;
 use crate::semantics::{BuiltinType, Op};
 
 pub(crate) mod parser;
-
-type Span = SimpleSpan;
-
-#[derive(Debug, Clone)]
-pub(crate) struct Spanned<T> {
-    pub(crate) span: Span,
-    pub(crate) item: T,
-}
-
-impl<T> Spanned<T> {
-    pub(crate) fn from_map_extra<'src, 'b, I, E>(item: T, e: &mut MapExtra<'src, 'b, I, E>) -> Self
-    where
-        I: Input<'src, Span = Span>,
-        E: ParserExtra<'src, I>,
-    {
-        Self {
-            span: e.span(),
-            item,
-        }
-    }
-}
+mod resolver;
 
 #[derive(Clone, Eq)]
 pub(crate) struct Name(Rc<Ustr>);

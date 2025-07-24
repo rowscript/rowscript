@@ -1,40 +1,38 @@
+use std::fmt::{Display, Formatter};
+use std::str::FromStr;
+
 use chumsky::container::Container;
-use chumsky::extra::Err as FullError;
+use chumsky::extra::Err as Full;
 use chumsky::input::ValueInput;
 use chumsky::prelude::{
     IterParser, Rich, any, choice, end, just, none_of, one_of, recursive, skip_then_retry_until,
 };
 use chumsky::text::{digits, ident, int};
 use chumsky::{Parser, select};
+use strum::{Display, EnumString};
 use ustr::Ustr;
 
 use crate::semantics::{BuiltinType, Op};
-use crate::syntax::{Branch, Expr, Name, Param, Span, Spanned, Stmt};
+use crate::syntax::{Branch, Expr, Name, Param, Stmt};
+use crate::{Error, Out, Span, Spanned};
 
-type Error<'a, T> = FullError<Rich<'a, T, Span>>;
-
-pub(crate) fn line_col(span: &Span, text: &str) -> (usize, usize) {
-    let mut line = 1;
-    let mut col = 1;
-    for (i, c) in text.chars().enumerate() {
-        if i == span.start {
-            break;
-        }
-        if c == '\n' {
-            line += 1;
-            col = 1;
-        } else {
-            col += 1;
-        }
-    }
-    (line, col)
-}
+pub(crate) type SyntaxErr<'a, T> = Full<Rich<'a, T, Span>>;
 
 const ASSIGN: &str = ":=";
 
+#[derive(Debug, Eq, PartialEq, Clone, EnumString, Display)]
+#[strum(serialize_all = "lowercase")]
+pub(crate) enum Keyword {
+    Function,
+    Do,
+    End,
+    If,
+    Else,
+    Return,
+}
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub(crate) enum Token {
-    // Contentful.
     Number(Ustr),
     String(Ustr),
     Boolean(bool),
@@ -43,14 +41,23 @@ pub(crate) enum Token {
     Doc(String),
     Op(Op),
     BuiltinType(BuiltinType),
+    Keyword(Keyword),
+}
 
-    // Misc.
-    Function,
-    Do,
-    End,
-    If,
-    Else,
-    Return,
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Token::Number(n) => write!(f, "{n}"),
+            Token::String(s) => write!(f, "{s}"),
+            Token::Boolean(b) => write!(f, "{b}"),
+            Token::Name(n) => write!(f, "{n}"),
+            Token::Ctrl(c) => write!(f, "{c}"),
+            Token::Doc(d) => write!(f, "{d}"),
+            Token::Op(o) => write!(f, "{o}"),
+            Token::BuiltinType(t) => write!(f, "{t}"),
+            Token::Keyword(w) => write!(f, "{w}"),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -77,7 +84,7 @@ impl Container<Spanned<Token>> for TokenSet {
 ///
 /// Number and string literal parsing extracted from
 /// [the fast JSON example](https://github.com/zesterer/chumsky/blob/main/examples/json_fast.rs).
-pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, TokenSet, Error<'s, char>> {
+pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, TokenSet, SyntaxErr<'s, char>> {
     let dec = digits(10).to_slice();
     let frac = just('.').then(dec);
     let exp = just('e')
@@ -120,32 +127,16 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, TokenSet, Error<'s, char>> {
         .map(|s: &str| Token::String(s.into()))
         .delimited_by(just('"'), just('"'));
 
-    let ident = ident().map(|text| match text {
-        "true" => Token::Boolean(true),
-        "false" => Token::Boolean(false),
-
-        "unit" => Token::BuiltinType(BuiltinType::Unit),
-        "bool" => Token::BuiltinType(BuiltinType::Bool),
-        "i8" => Token::BuiltinType(BuiltinType::I8),
-        "i16" => Token::BuiltinType(BuiltinType::I16),
-        "i32" => Token::BuiltinType(BuiltinType::I32),
-        "i64" => Token::BuiltinType(BuiltinType::I64),
-        "u8" => Token::BuiltinType(BuiltinType::U8),
-        "u16" => Token::BuiltinType(BuiltinType::U16),
-        "u32" => Token::BuiltinType(BuiltinType::U32),
-        "u64" => Token::BuiltinType(BuiltinType::U64),
-        "f32" => Token::BuiltinType(BuiltinType::F32),
-        "f64" => Token::BuiltinType(BuiltinType::F64),
-        "str" => Token::BuiltinType(BuiltinType::Str),
-
-        "function" => Token::Function,
-        "do" => Token::Do,
-        "end" => Token::End,
-        "if" => Token::If,
-        "else" => Token::Else,
-        "return" => Token::Return,
-
-        _ => Token::Name(Name::bound(text.into())),
+    let ident = ident().map(|text| {
+        if let Ok(b) = bool::from_str(text) {
+            Token::Boolean(b)
+        } else if let Ok(t) = BuiltinType::from_str(text) {
+            Token::BuiltinType(t)
+        } else if let Ok(w) = Keyword::from_str(text) {
+            Token::Keyword(w)
+        } else {
+            Token::Name(Name::bound(text.into()))
+        }
     });
 
     let ctrl = one_of("(),").map(Token::Ctrl);
@@ -180,7 +171,7 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, TokenSet, Error<'s, char>> {
         .collect()
 }
 
-pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, Error<'t, Token>> + Clone
+pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, SyntaxErr<'t, Token>> + Clone
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
@@ -231,7 +222,7 @@ where
     })
 }
 
-pub(crate) fn stmt<'t, I>() -> impl Parser<'t, I, Spanned<Stmt>, Error<'t, Token>>
+pub(crate) fn stmt<'t, I>() -> impl Parser<'t, I, Spanned<Stmt>, SyntaxErr<'t, Token>>
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
@@ -277,7 +268,7 @@ where
         )
         .labelled("assignment statement");
 
-    let return_ = just(Token::Return)
+    let return_ = just(Token::Keyword(Keyword::Return))
         .ignore_then(expr().or_not())
         .map(Stmt::Return)
         .map_with(Spanned::from_map_extra)
@@ -317,12 +308,12 @@ where
             .labelled("short function statement");
 
         let func = doc
-            .then_ignore(just(Token::Function))
+            .then_ignore(just(Token::Keyword(Keyword::Function)))
             .then(name)
             .then(params)
             .then(just(Token::Ctrl(':')).ignore_then(expr()).or_not())
             .then(stmts.clone())
-            .then_ignore(just(Token::End))
+            .then_ignore(just(Token::Keyword(Keyword::End)))
             .map(
                 |((((doc, Spanned { span, item: name }), params), ret), body)| Spanned {
                     span,
@@ -337,7 +328,7 @@ where
             )
             .labelled("function statement");
 
-        let branch = just(Token::If)
+        let branch = just(Token::Keyword(Keyword::If))
             .ignore_then(expr())
             .then(stmts.clone())
             .map(|(cond, body)| Branch {
@@ -349,13 +340,17 @@ where
         let if_ = branch
             .clone()
             .then(
-                just(Token::Else)
+                just(Token::Keyword(Keyword::Else))
                     .ignore_then(branch)
                     .repeated()
                     .collect::<Vec<_>>(),
             )
-            .then(just(Token::Else).ignore_then(stmts).or_not())
-            .then_ignore(just(Token::End))
+            .then(
+                just(Token::Keyword(Keyword::Else))
+                    .ignore_then(stmts)
+                    .or_not(),
+            )
+            .then_ignore(just(Token::Keyword(Keyword::End)))
             .map(|((then, elif), els)| Stmt::If {
                 then,
                 elif: elif.into_boxed_slice(),
@@ -373,7 +368,7 @@ where
     })
 }
 
-pub(crate) fn file<'t, I>() -> impl Parser<'t, I, Vec<Spanned<Stmt>>, Error<'t, Token>>
+pub(crate) fn file<'t, I>() -> impl Parser<'t, I, Vec<Spanned<Stmt>>, SyntaxErr<'t, Token>>
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
@@ -385,14 +380,40 @@ fn grouped_by<'t, I, O, P>(
     parser: P,
     sep: Token,
     rhs: Token,
-) -> impl Parser<'t, I, Vec<O>, Error<'t, Token>> + Clone
+) -> impl Parser<'t, I, Vec<O>, SyntaxErr<'t, Token>> + Clone
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
-    P: Parser<'t, I, O, Error<'t, Token>> + Clone,
+    P: Parser<'t, I, O, SyntaxErr<'t, Token>> + Clone,
 {
     parser
         .separated_by(just(sep))
         .allow_trailing()
         .collect()
         .delimited_by(just(lhs), just(rhs))
+}
+
+pub(crate) fn parse(text: &str) -> Out<Vec<Spanned<Stmt>>> {
+    lex()
+        .parse(text)
+        .into_result()
+        .map_err(|errs| {
+            Error::Lexing(
+                errs.into_iter()
+                    .map(|e| (*e.span(), e.reason().to_string()))
+                    .collect(),
+            )
+        })
+        .and_then(|tokens| {
+            file()
+                .parse(tokens.tokens.as_slice())
+                .into_result()
+                .map_err(|errs| {
+                    Error::Parsing(
+                        tokens.spans.into(),
+                        errs.into_iter()
+                            .map(|e| (*e.span(), e.reason().to_string()))
+                            .collect(),
+                    )
+                })
+        })
 }

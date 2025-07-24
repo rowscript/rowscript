@@ -1,3 +1,5 @@
+use strum::{Display, EnumString};
+
 use crate::syntax::Name;
 
 #[derive(Debug)]
@@ -7,7 +9,8 @@ pub(crate) enum IR {
     BuiltinType(BuiltinType),
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, EnumString, Display)]
+#[strum(serialize_all = "lowercase")]
 pub(crate) enum BuiltinType {
     Unit,
     Bool,
@@ -24,10 +27,10 @@ pub(crate) enum BuiltinType {
     Str,
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, Display)]
 pub(crate) enum Op {
-    /// `:=`.
+    #[strum(serialize = ":=")]
     Assign,
-    /// `==`.
+    #[strum(serialize = "==")]
     EqEq,
 }
