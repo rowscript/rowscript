@@ -1,13 +1,6 @@
 use chumsky::Parser;
 
-use crate::syntax::parser::{Token, expr, lex, stmt};
-
-const BASIC: &str = include_str!("basic.rows");
-
-#[test]
-fn it_scans() {
-    lex().parse(BASIC).unwrap();
-}
+use crate::syntax::parser::{Token, expr, file, lex, stmt};
 
 #[test]
 fn it_scans_doc() {
@@ -55,4 +48,10 @@ end"#,
         )
         .unwrap();
     stmt().parse(out.tokens.as_slice()).unwrap();
+}
+
+#[test]
+fn it_parses() {
+    let out = lex().parse(include_str!("basic.rows")).unwrap();
+    file().parse(out.tokens.as_slice()).unwrap();
 }

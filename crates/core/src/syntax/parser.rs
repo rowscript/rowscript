@@ -293,6 +293,29 @@ where
     recursive(|stmt| {
         let stmts = stmt.repeated().collect::<Vec<_>>().labelled("statements");
 
+        let short = doc
+            .then(name)
+            .then(params.clone())
+            .then(expr().or_not())
+            .then_ignore(just(Token::Op(Op::Assign)))
+            .then(expr())
+            .map(
+                |((((doc, Spanned { span, item: name }), params), ret), body)| Spanned {
+                    span,
+                    item: Stmt::Func {
+                        doc: doc.into_boxed_slice(),
+                        name,
+                        params: params.into_boxed_slice(),
+                        ret,
+                        body: Box::new([Spanned {
+                            span: body.span,
+                            item: Stmt::Expr(body.item),
+                        }]),
+                    },
+                },
+            )
+            .labelled("short function statement");
+
         let func = doc
             .then_ignore(just(Token::Function))
             .then(name)
@@ -342,6 +365,7 @@ where
             .labelled("if statement");
 
         func.or(if_)
+            .or(short)
             .or(assign)
             .or(return_)
             .or(expr_)
