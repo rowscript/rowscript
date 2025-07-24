@@ -99,7 +99,7 @@ pub(crate) enum Expr {
 pub(crate) enum Stmt {
     // Blocks.
     Func {
-        doc: Option<String>,
+        doc: Box<[String]>,
         name: Name,
         params: Box<[Spanned<Param>]>,
         ret: Option<Spanned<Expr>>,

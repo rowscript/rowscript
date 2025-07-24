@@ -40,7 +40,7 @@ pub(crate) enum Token {
     Boolean(bool),
     Name(Name),
     Ctrl(char),
-    Doc(Ustr),
+    Doc(String),
     Op(Ustr),
 
     // Types.
@@ -205,41 +205,65 @@ pub(crate) fn stmt<'t, I>() -> impl Parser<'t, I, Spanned<Stmt>, Error<'t, Token
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
-    recursive(|stmt| {
-        let name = select! {
-            Token::Name(n) => n
-        }
+    let docs = select! {
+        Token::Doc(s) => s
+    }
+    .repeated()
+    .collect::<Vec<_>>()
+    .labelled("docstring");
+
+    let name = select! {
+        Token::Name(n) => n
+    }
+    .map_with(Spanned::from_map_extra)
+    .labelled("name");
+
+    let param = name
+        .then(expr().or_not())
+        .map(|(Spanned { span, item: name }, typ)| Spanned {
+            span,
+            item: Param { name, typ },
+        })
+        .labelled("parameter");
+
+    let params = param
+        .separated_by(just(Token::Ctrl(',')))
+        .allow_trailing()
+        .collect::<Vec<_>>()
+        .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
+        .labelled("parameters");
+
+    let assign_op = just(Token::Op(ASSIGN.into())).labelled(ASSIGN);
+    let assign = name
+        .then_ignore(assign_op)
+        .then(expr())
+        .map(|(Spanned { span, item: name }, rhs)| Spanned {
+            span,
+            item: Stmt::Assign(name, None, rhs),
+        })
+        .labelled("assignment");
+
+    let return_ = just(Token::Return)
+        .ignore_then(expr().or_not())
+        .map(Stmt::Return)
         .map_with(Spanned::from_map_extra)
-        .labelled("name");
+        .labelled("return");
 
-        let param = name
-            .then(expr().or_not())
-            .map(|(Spanned { span, item: name }, typ)| Spanned {
-                span,
-                item: Param { name, typ },
-            })
-            .labelled("parameter");
-
-        let params = param
-            .separated_by(just(Token::Ctrl(',')))
-            .allow_trailing()
-            .collect::<Vec<_>>()
-            .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
-            .labelled("parameters");
-
+    recursive(|stmt| {
         let stmts = stmt.repeated().collect::<Vec<_>>().labelled("statements");
 
-        let func = just(Token::Function)
-            .ignore_then(name)
+        let func = docs
+            .then_ignore(just(Token::Function))
+            .then(name)
             .then(params)
             .then(just(Token::Ctrl(':')).ignore_then(expr()).or_not())
             .then(stmts)
             .then_ignore(just(Token::End))
             .map(
-                |(((Spanned { span, item: name }, params), ret), body)| Spanned {
+                |((((docs, Spanned { span, item: name }), params), ret), body)| Spanned {
                     span,
                     item: Stmt::Func {
-                        doc: None,
+                        doc: docs.into_boxed_slice(),
                         name,
                         params: params.into_boxed_slice(),
                         ret,
@@ -248,22 +272,6 @@ where
                 },
             )
             .labelled("function");
-
-        let assign_op = just(Token::Op(ASSIGN.into())).labelled(ASSIGN);
-        let assign = name
-            .then_ignore(assign_op)
-            .then(expr())
-            .map(|(Spanned { span, item: name }, rhs)| Spanned {
-                span,
-                item: Stmt::Assign(name, None, rhs),
-            })
-            .labelled("assignment");
-
-        let return_ = just(Token::Return)
-            .ignore_then(expr().or_not())
-            .map(Stmt::Return)
-            .map_with(Spanned::from_map_extra)
-            .labelled("return");
 
         func.or(assign).or(return_).labelled("statement")
     })

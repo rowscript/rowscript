@@ -19,7 +19,7 @@ fn it_scans_doc() {
 "#;
     let token_set = lex().parse(TEXT).unwrap();
     assert_eq!(token_set.tokens.len(), 1);
-    let Token::Doc(doc) = token_set.tokens[0] else {
+    let Token::Doc(doc) = &token_set.tokens[0] else {
         unreachable!();
     };
     assert_eq!(doc, " hi");
@@ -35,6 +35,14 @@ fn it_parses_expr() {
 
 #[test]
 fn it_parses_stmt() {
-    let out = lex().parse("function f(a) b := 42 end").unwrap();
+    let out = lex()
+        .parse(
+            r#"
+/// Hey.
+function f(a)
+    b := 42 // hi
+end"#,
+        )
+        .unwrap();
     stmt().parse(out.tokens.as_slice()).unwrap();
 }
