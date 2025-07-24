@@ -29,7 +29,7 @@ fn it_scans_doc() {
 
 #[test]
 fn it_parses_expr() {
-    let out = lex().parse("42").unwrap();
+    let out = lex().parse("f(42, x)").unwrap();
     expr().parse(out.tokens.as_slice()).unwrap();
 }
 
@@ -41,7 +41,7 @@ fn it_parses_stmt() {
 /// Hey.
 function f(a)
     b := 42 // hi
-    
+
     if a
         return false
     else if b

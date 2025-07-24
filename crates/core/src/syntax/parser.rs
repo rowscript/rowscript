@@ -183,20 +183,40 @@ pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, Error<'t, Token
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
-    let trivial = select! {
+    let constant = select! {
         Token::Number(n) => Expr::Number(n),
         Token::String(s) => Expr::String(s),
         Token::Boolean(b) => Expr::Boolean(b),
         Token::BuiltinType(t) => Expr::BuiltinType(t)
     }
+    .map_with(Spanned::from_map_extra)
     .labelled("constant expression");
 
-    let name = select! { Token::Name(n) => Expr::Name(n) }.labelled("name expression");
+    let name = select! {
+        Token::Name(n) => Expr::Name(n)
+    }
+    .map_with(Spanned::from_map_extra)
+    .labelled("name expression");
 
-    trivial
-        .or(name)
-        .map_with(Spanned::from_map_extra)
-        .labelled("expression")
+    recursive(|expr| {
+        let paren = expr
+            .clone()
+            .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
+            .labelled("parenthesized expression");
+
+        let primary = constant.or(name).or(paren).labelled("primary expression");
+
+        let args = grouped_by(Token::Ctrl('('), expr, Token::Ctrl(','), Token::Ctrl(')'))
+            .labelled("arguments");
+        let call = primary
+            .foldl_with(args.repeated(), |callee, args, e| Spanned {
+                span: e.span(),
+                item: Expr::Call(Box::new(callee), args.into_boxed_slice()),
+            })
+            .labelled("call expression");
+
+        call.labelled("expression")
+    })
 }
 
 pub(crate) fn stmt<'t, I>() -> impl Parser<'t, I, Spanned<Stmt>, Error<'t, Token>>
@@ -224,11 +244,7 @@ where
         })
         .labelled("parameter");
 
-    let params = param
-        .separated_by(just(Token::Ctrl(',')))
-        .allow_trailing()
-        .collect::<Vec<_>>()
-        .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
+    let params = grouped_by(Token::Ctrl('('), param, Token::Ctrl(','), Token::Ctrl(')'))
         .labelled("parameters");
 
     let assign_op = just(Token::Op(ASSIGN.into())).labelled(ASSIGN);
@@ -246,6 +262,13 @@ where
         .map(Stmt::Return)
         .map_with(Spanned::from_map_extra)
         .labelled("return statement");
+
+    let expr_ = expr()
+        .map(|Spanned { span, item }| Spanned {
+            span,
+            item: Stmt::Expr(item),
+        })
+        .labelled("expression statement");
 
     recursive(|stmt| {
         let stmts = stmt.repeated().collect::<Vec<_>>().labelled("statements");
@@ -278,7 +301,7 @@ where
                 cond,
                 body: body.into_boxed_slice(),
             })
-            .labelled("branch");
+            .labelled("if branch");
 
         let if_ = branch
             .clone()
@@ -298,6 +321,27 @@ where
             .map_with(Spanned::from_map_extra)
             .labelled("if statement");
 
-        func.or(if_).or(assign).or(return_).labelled("statement")
+        func.or(if_)
+            .or(assign)
+            .or(return_)
+            .or(expr_)
+            .labelled("statement")
     })
+}
+
+fn grouped_by<'t, I, O, P>(
+    lhs: Token,
+    parser: P,
+    sep: Token,
+    rhs: Token,
+) -> impl Parser<'t, I, Vec<O>, Error<'t, Token>> + Clone
+where
+    I: ValueInput<'t, Token = Token, Span = Span>,
+    P: Parser<'t, I, O, Error<'t, Token>> + Clone,
+{
+    parser
+        .separated_by(just(sep))
+        .allow_trailing()
+        .collect()
+        .delimited_by(just(lhs), just(rhs))
 }
