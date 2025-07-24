@@ -2,6 +2,8 @@ use strum::{Display, EnumString};
 
 use crate::syntax::Name;
 
+mod checker;
+
 #[derive(Debug)]
 pub(crate) enum IR {
     Name(Name),

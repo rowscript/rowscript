@@ -45,15 +45,16 @@ function f(a)
     end
 
     return true
-end"#,
+end
+"#,
         )
         .unwrap();
     stmt().parse(out.tokens.as_slice()).unwrap();
 }
 
 #[test]
-fn it_resolves_basic() {
-    include_str!("basic.rows")
+fn it_resolves_untyped() {
+    include_str!("untyped.rows")
         .parsed()
         .unwrap()
         .resolved()
