@@ -8,7 +8,7 @@ use crate::Spanned;
 use crate::semantics::{BuiltinType, Op};
 
 pub(crate) mod parser;
-mod resolver;
+pub(crate) mod resolver;
 
 #[derive(Clone, Eq)]
 pub(crate) struct Name(Rc<Ustr>);

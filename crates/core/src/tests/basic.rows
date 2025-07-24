@@ -36,7 +36,5 @@ function f2(a)
         return c
     end
 
-    y := x
-
     false
 end

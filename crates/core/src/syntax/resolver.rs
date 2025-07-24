@@ -4,16 +4,19 @@ use crate::syntax::{Branch, Expr, Name, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
-struct Resolver {
+pub(crate) struct Resolver {
     globals: UstrMap<Name>,
     locals: UstrMap<Name>,
 }
 
 impl Resolver {
-    fn file(&mut self, file: &mut [Spanned<Stmt>]) -> Out<()> {
+    pub(crate) fn file(&mut self, file: &mut [Spanned<Stmt>]) -> Out<()> {
         let mut block = Block::default();
-        file.iter_mut()
-            .try_for_each(|stmt| self.stmt(&mut block, stmt))
+        file.iter_mut().try_for_each(|stmt| {
+            self.stmt(&mut block, stmt)?;
+            debug_assert!(self.locals.is_empty());
+            Ok(())
+        })
     }
 
     fn stmt(&mut self, block: &mut Block, stmt: &mut Spanned<Stmt>) -> Out<()> {
@@ -70,7 +73,10 @@ impl Resolver {
             .iter_mut()
             .try_for_each(|stmt| self.stmt(&mut block, stmt))?;
         block.shadowed.into_iter().for_each(|(raw, name)| {
-            self.locals.insert(raw, name);
+            match name {
+                None => self.locals.remove(&raw),
+                Some(old) => self.locals.insert(raw, old),
+            };
         });
         Ok(())
     }
@@ -109,22 +115,19 @@ impl Resolver {
     }
 
     fn insert(&mut self, block: &mut Block, name: &Name) {
-        if !block.is_local {
-            debug_assert!(self.locals.is_empty());
-            self.globals.insert(name.raw(), name.clone());
-            return;
+        if block.is_local {
+            return block
+                .shadowed
+                .push((name.raw(), self.locals.insert(name.raw(), name.clone())));
         }
-
-        if let Some(old) = self.locals.insert(name.raw(), name.clone()) {
-            block.shadowed.push((name.raw(), old));
-        }
+        self.globals.insert(name.raw(), name.clone());
     }
 }
 
 #[derive(Default)]
 struct Block {
     is_local: bool,
-    shadowed: Vec<(Ustr, Name)>,
+    shadowed: Vec<(Ustr, Option<Name>)>,
 }
 
 impl Block {
