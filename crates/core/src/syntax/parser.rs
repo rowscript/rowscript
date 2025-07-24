@@ -392,28 +392,34 @@ where
         .delimited_by(just(lhs), just(rhs))
 }
 
-pub(crate) fn parse(text: &str) -> Out<Vec<Spanned<Stmt>>> {
-    lex()
-        .parse(text)
-        .into_result()
-        .map_err(|errs| {
-            Error::Lexing(
-                errs.into_iter()
-                    .map(|e| (*e.span(), e.reason().to_string()))
-                    .collect(),
-            )
-        })
-        .and_then(|tokens| {
-            file()
-                .parse(tokens.tokens.as_slice())
-                .into_result()
-                .map_err(|errs| {
-                    Error::Parsing(
-                        tokens.spans.into(),
-                        errs.into_iter()
-                            .map(|e| (*e.span(), e.reason().to_string()))
-                            .collect(),
-                    )
-                })
-        })
+pub(crate) trait Parsed {
+    fn parsed(self) -> Out<Vec<Spanned<Stmt>>>;
+}
+
+impl Parsed for &str {
+    fn parsed(self) -> Out<Vec<Spanned<Stmt>>> {
+        lex()
+            .parse(self)
+            .into_result()
+            .map_err(|errs| {
+                Error::Lexing(
+                    errs.into_iter()
+                        .map(|e| (*e.span(), e.reason().to_string()))
+                        .collect(),
+                )
+            })
+            .and_then(|tokens| {
+                file()
+                    .parse(tokens.tokens.as_slice())
+                    .into_result()
+                    .map_err(|errs| {
+                        Error::Parsing(
+                            tokens.spans.into(),
+                            errs.into_iter()
+                                .map(|e| (*e.span(), e.reason().to_string()))
+                                .collect(),
+                        )
+                    })
+            })
+    }
 }

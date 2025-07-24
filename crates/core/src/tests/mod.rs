@@ -1,7 +1,7 @@
 use chumsky::Parser;
 
-use crate::syntax::parser::{Token, expr, lex, parse, stmt};
-use crate::syntax::resolver::Resolver;
+use crate::syntax::parser::{Parsed, Token, expr, lex, stmt};
+use crate::syntax::resolver::Resolved;
 
 #[test]
 fn it_scans_doc() {
@@ -52,7 +52,10 @@ end"#,
 }
 
 #[test]
-fn it_works() {
-    let mut file = parse(include_str!("basic.rows")).unwrap();
-    Resolver::default().file(file.as_mut_slice()).unwrap();
+fn it_resolves_basic() {
+    include_str!("basic.rows")
+        .parsed()
+        .unwrap()
+        .resolved()
+        .unwrap();
 }

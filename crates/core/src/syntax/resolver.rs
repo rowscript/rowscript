@@ -4,13 +4,13 @@ use crate::syntax::{Branch, Expr, Name, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
-pub(crate) struct Resolver {
+struct Resolver {
     globals: UstrMap<Name>,
     locals: UstrMap<Name>,
 }
 
 impl Resolver {
-    pub(crate) fn file(&mut self, file: &mut [Spanned<Stmt>]) -> Out<()> {
+    fn file(&mut self, file: &mut [Spanned<Stmt>]) -> Out<()> {
         let mut block = Block::default();
         file.iter_mut().try_for_each(|stmt| {
             self.stmt(&mut block, stmt)?;
@@ -136,5 +136,21 @@ impl Block {
             is_local: true,
             ..Default::default()
         }
+    }
+}
+
+pub(crate) trait Resolved {
+    fn resolved(self) -> Out<Self>
+    where
+        Self: Sized;
+}
+
+impl Resolved for Vec<Spanned<Stmt>> {
+    fn resolved(mut self) -> Out<Self>
+    where
+        Self: Sized,
+    {
+        Resolver::default().file(self.as_mut_slice())?;
+        Ok(self)
     }
 }
