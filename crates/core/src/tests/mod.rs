@@ -35,6 +35,6 @@ fn it_parses_expr() {
 
 #[test]
 fn it_parses_stmt() {
-    let out = lex().parse("a := 42").unwrap();
+    let out = lex().parse("function f(a) b := 42 end").unwrap();
     stmt().parse(out.tokens.as_slice()).unwrap();
 }

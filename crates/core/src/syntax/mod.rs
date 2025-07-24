@@ -102,7 +102,7 @@ pub(crate) enum Stmt {
         doc: Option<String>,
         name: Name,
         params: Box<[Spanned<Param>]>,
-        ret: Option<Box<Spanned<Expr>>>,
+        ret: Option<Spanned<Expr>>,
         body: Box<[Spanned<Self>]>,
     },
 
@@ -123,7 +123,7 @@ pub(crate) enum Stmt {
 #[derive(Debug)]
 pub(crate) struct Param {
     name: Name,
-    typ: Option<Expr>,
+    typ: Option<Spanned<Expr>>,
 }
 
 #[derive(Debug)]

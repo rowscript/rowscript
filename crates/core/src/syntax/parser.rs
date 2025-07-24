@@ -2,14 +2,14 @@ use chumsky::container::Container;
 use chumsky::extra::Err as FullError;
 use chumsky::input::ValueInput;
 use chumsky::prelude::{
-    IterParser, Rich, any, choice, end, just, none_of, one_of, skip_then_retry_until,
+    IterParser, Rich, any, choice, end, just, none_of, one_of, recursive, skip_then_retry_until,
 };
 use chumsky::text::{digits, ident, int};
 use chumsky::{Parser, select};
 use ustr::Ustr;
 
 use crate::semantics::BuiltinType;
-use crate::syntax::{Expr, Name, Span, Spanned, Stmt};
+use crate::syntax::{Expr, Name, Param, Span, Spanned, Stmt};
 
 type Error<'a, T> = FullError<Rich<'a, T, Span>>;
 
@@ -181,7 +181,7 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, TokenSet, Error<'s, char>> {
         .collect()
 }
 
-pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, Error<'t, Token>>
+pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, Error<'t, Token>> + Clone
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
@@ -205,22 +205,66 @@ pub(crate) fn stmt<'t, I>() -> impl Parser<'t, I, Spanned<Stmt>, Error<'t, Token
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
-    let name = select! { Token::Name(n) => n }.labelled("name");
-
-    let assign_op = just(Token::Op(ASSIGN.into())).labelled(ASSIGN);
-    let assign = name
-        .then_ignore(assign_op)
-        .then(expr())
-        .map(|(lhs, rhs)| Stmt::Assign(lhs, None, rhs))
-        .labelled("assignment");
-
-    let return_ = just(Token::Return)
-        .ignore_then(expr().or_not())
-        .map(Stmt::Return)
-        .labelled("return");
-
-    assign
-        .or(return_)
+    recursive(|stmt| {
+        let name = select! {
+            Token::Name(n) => n
+        }
         .map_with(Spanned::from_map_extra)
-        .labelled("statement")
+        .labelled("name");
+
+        let param = name
+            .then(expr().or_not())
+            .map(|(Spanned { span, item: name }, typ)| Spanned {
+                span,
+                item: Param { name, typ },
+            })
+            .labelled("parameter");
+
+        let params = param
+            .separated_by(just(Token::Ctrl(',')))
+            .allow_trailing()
+            .collect::<Vec<_>>()
+            .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
+            .labelled("parameters");
+
+        let stmts = stmt.repeated().collect::<Vec<_>>().labelled("statements");
+
+        let func = just(Token::Function)
+            .ignore_then(name)
+            .then(params)
+            .then(just(Token::Ctrl(':')).ignore_then(expr()).or_not())
+            .then(stmts)
+            .then_ignore(just(Token::End))
+            .map(
+                |(((Spanned { span, item: name }, params), ret), body)| Spanned {
+                    span,
+                    item: Stmt::Func {
+                        doc: None,
+                        name,
+                        params: params.into_boxed_slice(),
+                        ret,
+                        body: body.into_boxed_slice(),
+                    },
+                },
+            )
+            .labelled("function");
+
+        let assign_op = just(Token::Op(ASSIGN.into())).labelled(ASSIGN);
+        let assign = name
+            .then_ignore(assign_op)
+            .then(expr())
+            .map(|(Spanned { span, item: name }, rhs)| Spanned {
+                span,
+                item: Stmt::Assign(name, None, rhs),
+            })
+            .labelled("assignment");
+
+        let return_ = just(Token::Return)
+            .ignore_then(expr().or_not())
+            .map(Stmt::Return)
+            .map_with(Spanned::from_map_extra)
+            .labelled("return");
+
+        func.or(assign).or(return_).labelled("statement")
+    })
 }
