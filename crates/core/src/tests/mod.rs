@@ -29,7 +29,7 @@ fn it_scans_doc() {
 
 #[test]
 fn it_parses_expr() {
-    let out = lex().parse("f(42, x)").unwrap();
+    let out = lex().parse("f(42, x) == false").unwrap();
     expr().parse(out.tokens.as_slice()).unwrap();
 }
 

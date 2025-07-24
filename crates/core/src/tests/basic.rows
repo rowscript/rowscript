@@ -14,7 +14,7 @@ v1 := f1(42, "hello")
 /// This function shows all control flow constructs.
 function f2()
     // A local variable.
-    c := 42
+    c u64 := 42
 
     // An if-guard statement.
     if c == 0

@@ -23,3 +23,11 @@ pub(crate) enum BuiltinType {
     F64,
     Str,
 }
+
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub(crate) enum Op {
+    /// `:=`.
+    Assign,
+    /// `==`.
+    EqEq,
+}

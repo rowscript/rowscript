@@ -8,7 +8,7 @@ use chumsky::text::{digits, ident, int};
 use chumsky::{Parser, select};
 use ustr::Ustr;
 
-use crate::semantics::BuiltinType;
+use crate::semantics::{BuiltinType, Op};
 use crate::syntax::{Branch, Expr, Name, Param, Span, Spanned, Stmt};
 
 type Error<'a, T> = FullError<Rich<'a, T, Span>>;
@@ -41,9 +41,7 @@ pub(crate) enum Token {
     Name(Name),
     Ctrl(char),
     Doc(String),
-    Op(Ustr),
-
-    // Types.
+    Op(Op),
     BuiltinType(BuiltinType),
 
     // Misc.
@@ -156,7 +154,10 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, TokenSet, Error<'s, char>> {
         .ignore_then(any().and_is(just('\n').not()).repeated().to_slice())
         .map(|s: &str| Token::Doc(s.into()));
 
-    let ops = choice((just(ASSIGN), just("=="))).map(|s| Token::Op(s.into()));
+    let ops = choice((
+        just(ASSIGN).to(Token::Op(Op::Assign)),
+        just("==").to(Token::Op(Op::EqEq)),
+    ));
 
     let token = number.or(string).or(ident).or(ctrl).or(doc).or(ops);
 
@@ -215,7 +216,18 @@ where
             })
             .labelled("call expression");
 
-        call.labelled("expression")
+        let cmp_op = select! {
+            Token::Op(Op::EqEq) => Op::EqEq
+        }
+        .map_with(Spanned::from_map_extra);
+        let cmp = call
+            .clone()
+            .foldl_with(cmp_op.then(call).repeated(), |a, (op, b), e| Spanned {
+                span: e.span(),
+                item: Expr::BinaryOp(Box::new(a), op, Box::new(b)),
+            });
+
+        cmp.labelled("expression")
     })
 }
 
@@ -223,7 +235,7 @@ pub(crate) fn stmt<'t, I>() -> impl Parser<'t, I, Spanned<Stmt>, Error<'t, Token
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
-    let docs = select! {
+    let doc = select! {
         Token::Doc(s) => s
     }
     .repeated()
@@ -247,14 +259,22 @@ where
     let params = grouped_by(Token::Ctrl('('), param, Token::Ctrl(','), Token::Ctrl(')'))
         .labelled("parameters");
 
-    let assign_op = just(Token::Op(ASSIGN.into())).labelled(ASSIGN);
-    let assign = name
-        .then_ignore(assign_op)
+    let assign = doc
+        .then(name)
+        .then(expr().or_not())
+        .then_ignore(just(Token::Op(Op::Assign)))
         .then(expr())
-        .map(|(Spanned { span, item: name }, rhs)| Spanned {
-            span,
-            item: Stmt::Assign(name, None, rhs),
-        })
+        .map(
+            |(((doc, Spanned { span, item: name }), typ), rhs)| Spanned {
+                span,
+                item: Stmt::Assign {
+                    doc: doc.into_boxed_slice(),
+                    name,
+                    typ,
+                    rhs,
+                },
+            },
+        )
         .labelled("assignment statement");
 
     let return_ = just(Token::Return)
@@ -273,7 +293,7 @@ where
     recursive(|stmt| {
         let stmts = stmt.repeated().collect::<Vec<_>>().labelled("statements");
 
-        let func = docs
+        let func = doc
             .then_ignore(just(Token::Function))
             .then(name)
             .then(params)
@@ -281,10 +301,10 @@ where
             .then(stmts.clone())
             .then_ignore(just(Token::End))
             .map(
-                |((((docs, Spanned { span, item: name }), params), ret), body)| Spanned {
+                |((((doc, Spanned { span, item: name }), params), ret), body)| Spanned {
                     span,
                     item: Stmt::Func {
-                        doc: docs.into_boxed_slice(),
+                        doc: doc.into_boxed_slice(),
                         name,
                         params: params.into_boxed_slice(),
                         ret,
@@ -327,6 +347,13 @@ where
             .or(expr_)
             .labelled("statement")
     })
+}
+
+pub(crate) fn file<'t, I>() -> impl Parser<'t, I, Vec<Spanned<Stmt>>, Error<'t, Token>>
+where
+    I: ValueInput<'t, Token = Token, Span = Span>,
+{
+    stmt().repeated().collect().labelled("file")
 }
 
 fn grouped_by<'t, I, O, P>(

@@ -7,7 +7,7 @@ use chumsky::input::{Input, MapExtra};
 use chumsky::prelude::SimpleSpan;
 use ustr::Ustr;
 
-use crate::semantics::BuiltinType;
+use crate::semantics::{BuiltinType, Op};
 
 pub(crate) mod parser;
 
@@ -92,7 +92,7 @@ pub(crate) enum Expr {
 
     // Values.
     Call(Box<Spanned<Self>>, Box<[Spanned<Self>]>),
-    BinaryOp(Box<Spanned<Self>>, Spanned<Ustr>, Box<Spanned<Self>>),
+    BinaryOp(Box<Spanned<Self>>, Spanned<Op>, Box<Spanned<Self>>),
 }
 
 #[derive(Debug)]
@@ -110,7 +110,12 @@ pub(crate) enum Stmt {
     Expr(Expr),
 
     // Binding.
-    Assign(Name, Option<Spanned<Expr>>, Spanned<Expr>),
+    Assign {
+        doc: Box<[String]>,
+        name: Name,
+        typ: Option<Spanned<Expr>>,
+        rhs: Spanned<Expr>,
+    },
 
     // Control.
     Return(Option<Spanned<Expr>>),
