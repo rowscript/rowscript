@@ -12,7 +12,7 @@ use chumsky::{Parser, select};
 use strum::{Display, EnumString};
 use ustr::Ustr;
 
-use crate::syntax::{Branch, BuiltinType, Expr, Name, Param, Stmt};
+use crate::syntax::{Branch, BuiltinType, Expr, Name, Param, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 pub(crate) type SyntaxErr<'a, T> = Full<Rich<'a, T, Span>>;
@@ -307,16 +307,15 @@ where
             .map(
                 |((((doc, Spanned { span, item: name }), params), ret), body)| Spanned {
                     span,
-                    item: Stmt::Func {
-                        doc: doc.into_boxed_slice(),
-                        name,
-                        params: params.into_boxed_slice(),
-                        ret,
-                        body: Box::new([Spanned {
-                            span: body.span,
-                            item: Stmt::Expr(body.item),
-                        }]),
-                    },
+                    item: Stmt::Fn(
+                        Sig {
+                            doc: doc.into_boxed_slice(),
+                            name,
+                            params: params.into_boxed_slice(),
+                            ret,
+                        },
+                        body,
+                    ),
                 },
             )
             .labelled("short function statement");
@@ -331,13 +330,15 @@ where
             .map(
                 |((((doc, Spanned { span, item: name }), params), ret), body)| Spanned {
                     span,
-                    item: Stmt::Func {
-                        doc: doc.into_boxed_slice(),
-                        name,
-                        params: params.into_boxed_slice(),
-                        ret,
-                        body: body.into_boxed_slice(),
-                    },
+                    item: Stmt::Func(
+                        Sig {
+                            doc: doc.into_boxed_slice(),
+                            name,
+                            params: params.into_boxed_slice(),
+                            ret,
+                        },
+                        body.into_boxed_slice(),
+                    ),
                 },
             )
             .labelled("function statement");

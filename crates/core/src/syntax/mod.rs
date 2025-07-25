@@ -118,13 +118,8 @@ impl Expr {
 #[derive(Debug)]
 pub(crate) enum Stmt {
     // Blocks.
-    Func {
-        doc: Box<[String]>,
-        name: Name,
-        params: Box<[Spanned<Param>]>,
-        ret: Option<Spanned<Expr>>,
-        body: Box<[Spanned<Self>]>,
-    },
+    Func(Sig, Box<[Spanned<Self>]>),
+    Fn(Sig, Spanned<Expr>),
 
     // Expressions.
     Expr(Expr),
@@ -145,6 +140,15 @@ pub(crate) enum Stmt {
         els: Option<Box<[Spanned<Self>]>>,
     },
 }
+
+#[derive(Debug)]
+pub(crate) struct Sig {
+    doc: Box<[String]>,
+    name: Name,
+    params: Box<[Spanned<Param>]>,
+    ret: Option<Spanned<Expr>>,
+}
+
 #[derive(Debug)]
 pub(crate) struct Param {
     name: Name,

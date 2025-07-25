@@ -1,6 +1,6 @@
 use ustr::{Ustr, UstrMap};
 
-use crate::syntax::{Branch, Expr, Name, Stmt};
+use crate::syntax::{Branch, Expr, Name, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -21,28 +21,13 @@ impl Resolver {
 
     fn stmt(&mut self, block: &mut Block, stmt: &mut Spanned<Stmt>) -> Out<()> {
         match &mut stmt.item {
-            Stmt::Func {
-                name,
-                params,
-                ret,
-                body,
-                ..
-            } => {
-                let mut local = Block::local();
-                ret.as_mut()
-                    .map(|t| self.expr(t.span, &mut t.item))
-                    .transpose()?;
-                params.iter_mut().try_for_each(|p| {
-                    p.item
-                        .typ
-                        .as_mut()
-                        .map(|t| self.expr(t.span, &mut t.item))
-                        .transpose()?;
-                    self.insert(&mut local, &p.item.name);
-                    Ok(())
-                })?;
-                self.insert(block, name);
+            Stmt::Func(sig, body) => {
+                let local = self.sig(block, sig)?;
                 self.block(local, body)?;
+            }
+            Stmt::Fn(sig, body) => {
+                let local = self.sig(block, sig)?;
+                self.block_expr(local, body)?;
             }
             Stmt::Expr(e) => self.expr(stmt.span, e)?,
             Stmt::Assign { name, typ, rhs, .. } => {
@@ -68,17 +53,46 @@ impl Resolver {
         Ok(())
     }
 
+    fn sig(&mut self, block: &mut Block, sig: &mut Sig) -> Out<Block> {
+        let mut local = Block::local();
+        sig.ret
+            .as_mut()
+            .map(|t| self.expr(t.span, &mut t.item))
+            .transpose()?;
+        sig.params.iter_mut().try_for_each(|p| {
+            p.item
+                .typ
+                .as_mut()
+                .map(|t| self.expr(t.span, &mut t.item))
+                .transpose()?;
+            self.insert(&mut local, &p.item.name);
+            Ok(())
+        })?;
+        self.insert(block, &sig.name);
+        Ok(local)
+    }
+
     fn block(&mut self, mut block: Block, stmts: &mut [Spanned<Stmt>]) -> Out<()> {
         stmts
             .iter_mut()
             .try_for_each(|stmt| self.stmt(&mut block, stmt))?;
+        self.drop_block(block);
+        Ok(())
+    }
+
+    fn block_expr(&mut self, block: Block, expr: &mut Spanned<Expr>) -> Out<()> {
+        self.expr(expr.span, &mut expr.item)?;
+        self.drop_block(block);
+        Ok(())
+    }
+
+    fn drop_block(&mut self, block: Block) {
         block.shadowed.into_iter().for_each(|(raw, name)| {
             match name {
                 None => self.locals.remove(&raw),
                 Some(old) => self.locals.insert(raw, old),
             };
-        });
-        Ok(())
+        })
     }
 
     fn branch(&mut self, branch: &mut Branch) -> Out<()> {

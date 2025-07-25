@@ -7,7 +7,7 @@ function f0() end
 v0 := f0()
 
 /// Function with parameters and a return type.
-f1(a u64, b str) bool := false
+f1(a u64, b str) bool := a
 
 v1 := f1(42, "hello")
 
