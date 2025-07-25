@@ -1,0 +1,18 @@
+/* Triple slash starts a comment group as the docstring. */
+
+/// Empty function with an unspecified return type.
+function f0() end
+
+/// A global variable.
+v0 := f0()
+
+/// Function with parameters and a return type.
+f1(a u64, b str) bool := false
+
+v1 := f1(42, "hello")
+
+/// Fibonacci number.
+function fib(n u32)
+    if n < 2 return 1 end
+    return fib(n - 2) + fib(n - 1)
+end

@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-ustr = "1.1.0"
 strum = { version = "0.27.2", features = ["derive"] }
-chumsky = "1.0.0-alpha.8"
+ustr = "1.1.0"
+chumsky = {  version = "1.0.0-alpha.8", features = ["pratt"] }

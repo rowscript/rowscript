@@ -53,8 +53,8 @@ end
 }
 
 #[test]
-fn it_resolves_untyped() {
-    include_str!("untyped.rows")
+fn it_works() {
+    include_str!("basic.rows")
         .parsed()
         .unwrap()
         .resolved()

@@ -2,10 +2,13 @@ use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
+use chumsky::extra::ParserExtra;
+use chumsky::input::{Input, MapExtra};
+use strum::{Display, EnumString};
 use ustr::Ustr;
 
-use crate::Spanned;
-use crate::semantics::{BuiltinType, Op};
+use crate::syntax::parser::{Sym, Token};
+use crate::{Span, Spanned};
 
 pub(crate) mod parser;
 pub(crate) mod resolver;
@@ -55,6 +58,24 @@ impl Hash for Name {
     }
 }
 
+#[derive(Debug, Eq, PartialEq, Copy, Clone, EnumString, Display)]
+#[strum(serialize_all = "lowercase")]
+pub(crate) enum BuiltinType {
+    Unit,
+    Bool,
+    I8,
+    I16,
+    I32,
+    I64,
+    U8,
+    U16,
+    U32,
+    U64,
+    F32,
+    F64,
+    Str,
+}
+
 #[derive(Debug)]
 pub(crate) enum Expr {
     // Naming.
@@ -70,7 +91,28 @@ pub(crate) enum Expr {
 
     // Values.
     Call(Box<Spanned<Self>>, Box<[Spanned<Self>]>),
-    BinaryOp(Box<Spanned<Self>>, Spanned<Op>, Box<Spanned<Self>>),
+    BinaryOp(Box<Spanned<Self>>, Sym, Box<Spanned<Self>>),
+}
+
+impl Expr {
+    fn binary<'src, 'b, I, E>(
+        lhs: Spanned<Self>,
+        op: Token,
+        rhs: Spanned<Self>,
+        e: &mut MapExtra<'src, 'b, I, E>,
+    ) -> Spanned<Self>
+    where
+        I: Input<'src, Span = Span>,
+        E: ParserExtra<'src, I>,
+    {
+        let Token::Sym(sym) = op else {
+            unreachable!();
+        };
+        Spanned {
+            span: e.span(),
+            item: Self::BinaryOp(Box::new(lhs), sym, Box::new(rhs)),
+        }
+    }
 }
 
 #[derive(Debug)]

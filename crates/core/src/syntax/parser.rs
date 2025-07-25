@@ -1,9 +1,9 @@
-use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 
 use chumsky::container::Container;
 use chumsky::extra::Err as Full;
 use chumsky::input::ValueInput;
+use chumsky::pratt::{infix, left};
 use chumsky::prelude::{
     IterParser, Rich, any, choice, end, just, none_of, one_of, recursive, skip_then_retry_until,
 };
@@ -12,13 +12,10 @@ use chumsky::{Parser, select};
 use strum::{Display, EnumString};
 use ustr::Ustr;
 
-use crate::semantics::{BuiltinType, Op};
-use crate::syntax::{Branch, Expr, Name, Param, Stmt};
+use crate::syntax::{Branch, BuiltinType, Expr, Name, Param, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 pub(crate) type SyntaxErr<'a, T> = Full<Rich<'a, T, Span>>;
-
-const ASSIGN: &str = ":=";
 
 #[derive(Debug, Eq, PartialEq, Clone, EnumString, Display)]
 #[strum(serialize_all = "lowercase")]
@@ -31,33 +28,44 @@ pub(crate) enum Keyword {
     Return,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
-pub(crate) enum Token {
-    Number(Ustr),
-    String(Ustr),
-    Boolean(bool),
-    Name(Name),
-    Ctrl(char),
-    Doc(String),
-    Op(Op),
-    BuiltinType(BuiltinType),
-    Keyword(Keyword),
+#[derive(Debug, Eq, PartialEq, Clone, Display)]
+pub(crate) enum Sym {
+    // Long.
+    Assign,
+    EqEq,
+    Le,
+    Ge,
+
+    // Short.
+    LParen,
+    RParen,
+    Comma,
+    Colon,
+    Eq,
+    Lt,
+    Gt,
+    Plus,
+    Minus,
 }
 
-impl Display for Token {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Token::Number(n) => write!(f, "{n}"),
-            Token::String(s) => write!(f, "{s}"),
-            Token::Boolean(b) => write!(f, "{b}"),
-            Token::Name(n) => write!(f, "{n}"),
-            Token::Ctrl(c) => write!(f, "{c}"),
-            Token::Doc(d) => write!(f, "{d}"),
-            Token::Op(o) => write!(f, "{o}"),
-            Token::BuiltinType(t) => write!(f, "{t}"),
-            Token::Keyword(w) => write!(f, "{w}"),
-        }
-    }
+#[derive(Debug, Eq, PartialEq, Clone, Display)]
+pub(crate) enum Token {
+    #[strum(transparent)]
+    Number(Ustr),
+    #[strum(transparent)]
+    String(Ustr), // TODO: short (interned) and long strings
+    #[strum(transparent)]
+    Boolean(bool),
+    #[strum(transparent)]
+    Name(Name),
+    #[strum(transparent)]
+    Doc(String),
+    #[strum(transparent)]
+    Sym(Sym),
+    #[strum(transparent)]
+    BuiltinType(BuiltinType),
+    #[strum(transparent)]
+    Keyword(Keyword),
 }
 
 #[derive(Default)]
@@ -139,18 +147,28 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, TokenSet, SyntaxErr<'s, char
         }
     });
 
-    let ctrl = one_of("(),").map(Token::Ctrl);
+    let symbol = choice((
+        just(":=").to(Sym::Assign),
+        just("==").to(Sym::EqEq),
+        just("<=").to(Sym::Le),
+        just(">=").to(Sym::Ge),
+        just('(').to(Sym::LParen),
+        just(')').to(Sym::RParen),
+        just(',').to(Sym::Comma),
+        just(':').to(Sym::Colon),
+        just('=').to(Sym::Eq),
+        just('<').to(Sym::Lt),
+        just('>').to(Sym::Gt),
+        just('+').to(Sym::Plus),
+        just('-').to(Sym::Minus),
+    ))
+    .map(Token::Sym);
 
     let doc = just("///")
         .ignore_then(any().and_is(just('\n').not()).repeated().to_slice())
         .map(|s: &str| Token::Doc(s.into()));
 
-    let ops = choice((
-        just(ASSIGN).to(Token::Op(Op::Assign)),
-        just("==").to(Token::Op(Op::EqEq)),
-    ));
-
-    let token = number.or(string).or(ident).or(ctrl).or(doc).or(ops);
+    let token = number.or(string).or(ident).or(symbol).or(doc);
 
     let line_comment = just("//")
         .then_ignore(any().and_is(just('/')).not())
@@ -193,32 +211,29 @@ where
     recursive(|expr| {
         let paren = expr
             .clone()
-            .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
+            .delimited_by(just(Token::Sym(Sym::LParen)), just(Token::Sym(Sym::RParen)))
             .labelled("parenthesized expression");
 
-        let primary = constant.or(name).or(paren).labelled("primary expression");
-
-        let args = grouped_by(Token::Ctrl('('), expr, Token::Ctrl(','), Token::Ctrl(')'))
-            .labelled("arguments");
-        let call = primary
+        let args = grouped_by(Sym::LParen, expr, Sym::Comma, Sym::RParen).labelled("arguments");
+        let call = constant
+            .or(name)
+            .or(paren)
             .foldl_with(args.repeated(), |callee, args, e| Spanned {
                 span: e.span(),
                 item: Expr::Call(Box::new(callee), args.into_boxed_slice()),
             })
             .labelled("call expression");
 
-        let cmp_op = select! {
-            Token::Op(Op::EqEq) => Op::EqEq
-        }
-        .map_with(Spanned::from_map_extra);
-        let cmp = call
-            .clone()
-            .foldl_with(cmp_op.then(call).repeated(), |a, (op, b), e| Spanned {
-                span: e.span(),
-                item: Expr::BinaryOp(Box::new(a), op, Box::new(b)),
-            });
-
-        cmp.labelled("expression")
+        call.pratt((
+            infix(left(2), just(Token::Sym(Sym::Plus)), Expr::binary),
+            infix(left(2), just(Token::Sym(Sym::Minus)), Expr::binary),
+            infix(left(1), just(Token::Sym(Sym::Lt)), Expr::binary),
+            infix(left(1), just(Token::Sym(Sym::Le)), Expr::binary),
+            infix(left(1), just(Token::Sym(Sym::Gt)), Expr::binary),
+            infix(left(1), just(Token::Sym(Sym::Ge)), Expr::binary),
+            infix(left(1), just(Token::Sym(Sym::EqEq)), Expr::binary),
+        ))
+        .labelled("expression")
     })
 }
 
@@ -247,13 +262,12 @@ where
         })
         .labelled("parameter");
 
-    let params = grouped_by(Token::Ctrl('('), param, Token::Ctrl(','), Token::Ctrl(')'))
-        .labelled("parameters");
+    let params = grouped_by(Sym::LParen, param, Sym::Comma, Sym::RParen).labelled("parameters");
 
     let assign = doc
         .then(name)
         .then(expr().or_not())
-        .then_ignore(just(Token::Op(Op::Assign)))
+        .then_ignore(just(Token::Sym(Sym::Assign)))
         .then(expr())
         .map(
             |(((doc, Spanned { span, item: name }), typ), rhs)| Spanned {
@@ -288,7 +302,7 @@ where
             .then(name)
             .then(params.clone())
             .then(expr().or_not())
-            .then_ignore(just(Token::Op(Op::Assign)))
+            .then_ignore(just(Token::Sym(Sym::Assign)))
             .then(expr())
             .map(
                 |((((doc, Spanned { span, item: name }), params), ret), body)| Spanned {
@@ -311,7 +325,7 @@ where
             .then_ignore(just(Token::Keyword(Keyword::Function)))
             .then(name)
             .then(params)
-            .then(just(Token::Ctrl(':')).ignore_then(expr()).or_not())
+            .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()).or_not())
             .then(stmts.clone())
             .then_ignore(just(Token::Keyword(Keyword::End)))
             .map(
@@ -376,20 +390,20 @@ where
 }
 
 fn grouped_by<'t, I, O, P>(
-    lhs: Token,
+    lhs: Sym,
     parser: P,
-    sep: Token,
-    rhs: Token,
+    sep: Sym,
+    rhs: Sym,
 ) -> impl Parser<'t, I, Vec<O>, SyntaxErr<'t, Token>> + Clone
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
     P: Parser<'t, I, O, SyntaxErr<'t, Token>> + Clone,
 {
     parser
-        .separated_by(just(sep))
+        .separated_by(just(Token::Sym(sep)))
         .allow_trailing()
         .collect()
-        .delimited_by(just(lhs), just(rhs))
+        .delimited_by(just(Token::Sym(lhs)), just(Token::Sym(rhs)))
 }
 
 pub(crate) trait Parsed {
