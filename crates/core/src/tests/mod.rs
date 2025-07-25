@@ -1,5 +1,6 @@
 use chumsky::Parser;
 
+use crate::semantics::checker::Checked;
 use crate::syntax::parser::{Parsed, Token, expr, lex, stmt};
 use crate::syntax::resolver::Resolved;
 
@@ -58,5 +59,7 @@ fn it_works() {
         .parsed()
         .unwrap()
         .resolved()
+        .unwrap()
+        .checked()
         .unwrap();
 }

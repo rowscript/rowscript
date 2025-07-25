@@ -61,6 +61,7 @@ impl Hash for Name {
 #[derive(Debug, Eq, PartialEq, Copy, Clone, EnumString, Display)]
 #[strum(serialize_all = "lowercase")]
 pub(crate) enum BuiltinType {
+    Type,
     Unit,
     Bool,
     I8,
@@ -74,6 +75,24 @@ pub(crate) enum BuiltinType {
     F32,
     F64,
     Str,
+}
+
+impl BuiltinType {
+    pub(crate) fn is_number(&self) -> bool {
+        matches!(
+            self,
+            Self::I8
+                | Self::I16
+                | Self::I32
+                | Self::I64
+                | Self::U8
+                | Self::U16
+                | Self::U32
+                | Self::U64
+                | Self::F32
+                | Self::F64
+        )
+    }
 }
 
 #[derive(Debug)]
@@ -137,26 +156,27 @@ pub(crate) enum Stmt {
     If {
         then: Branch,
         elif: Box<[Branch]>,
-        els: Option<Box<[Spanned<Self>]>>,
+        els: Option<(Span, Box<[Spanned<Self>]>)>,
     },
 }
 
 #[derive(Debug)]
 pub(crate) struct Sig {
-    doc: Box<[String]>,
-    name: Name,
-    params: Box<[Spanned<Param>]>,
-    ret: Option<Spanned<Expr>>,
+    pub(crate) doc: Box<[String]>,
+    pub(crate) name: Name,
+    pub(crate) params: Box<[Spanned<Param>]>,
+    pub(crate) ret: Option<Spanned<Expr>>,
 }
 
 #[derive(Debug)]
 pub(crate) struct Param {
-    name: Name,
-    typ: Option<Spanned<Expr>>,
+    pub(crate) name: Name,
+    pub(crate) typ: Option<Spanned<Expr>>,
 }
 
 #[derive(Debug)]
 pub(crate) struct Branch {
-    cond: Spanned<Expr>,
-    body: Box<[Spanned<Stmt>]>,
+    pub(crate) span: Span,
+    pub(crate) cond: Spanned<Expr>,
+    pub(crate) body: Box<[Spanned<Stmt>]>,
 }

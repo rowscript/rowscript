@@ -344,9 +344,11 @@ where
             .labelled("function statement");
 
         let branch = just(Token::Keyword(Keyword::If))
-            .ignore_then(expr())
+            .map_with(|_, e| e.span())
+            .then(expr())
             .then(stmts.clone())
-            .map(|(cond, body)| Branch {
+            .map(|((span, cond), body)| Branch {
+                span,
                 cond,
                 body: body.into_boxed_slice(),
             })
@@ -362,14 +364,15 @@ where
             )
             .then(
                 just(Token::Keyword(Keyword::Else))
-                    .ignore_then(stmts)
+                    .map_with(|_, e| e.span())
+                    .then(stmts)
                     .or_not(),
             )
             .then_ignore(just(Token::Keyword(Keyword::End)))
             .map(|((then, elif), els)| Stmt::If {
                 then,
                 elif: elif.into_boxed_slice(),
-                els: els.map(Vec::into_boxed_slice),
+                els: els.map(|(span, stmts)| (span, stmts.into_boxed_slice())),
             })
             .map_with(Spanned::from_map_extra)
             .labelled("if statement");

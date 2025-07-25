@@ -65,12 +65,23 @@ impl<T> Spanned<T> {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
-enum Error {
+pub enum Error {
     Lexing(Box<[(Span, String)]>),
     Parsing(Box<[Span]>, Box<[(Span, String)]>),
+
     UndefName(Span, Ustr),
+
+    TypeMismatch {
+        span: Span,
+        got: String,
+        want: String,
+    },
+    ArityMismatch {
+        span: Span,
+        got: usize,
+        want: usize,
+    },
 }
 
 type Out<T> = Result<T, Error>;

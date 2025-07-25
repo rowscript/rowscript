@@ -7,12 +7,12 @@ function f0() end
 v0 := f0()
 
 /// Function with parameters and a return type.
-f1(a u64, b str) bool := a
+f1(a bool, b str) bool := a
 
-v1 := f1(42, "hello")
+v1 := f1(true, "hello")
 
 /// Fibonacci number.
-function fib(n u32)
+function fib(n u32): u32
     if n < 2 return 1 end
     return fib(n - 2) + fib(n - 1)
 end

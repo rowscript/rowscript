@@ -46,7 +46,7 @@ impl Resolver {
                 self.branch(then)?;
                 elif.iter_mut().try_for_each(|b| self.branch(b))?;
                 els.as_mut()
-                    .map(|stmts| self.block(Block::default(), stmts))
+                    .map(|(.., stmts)| self.block(Block::local(), stmts))
                     .transpose()?;
             }
         }
@@ -54,11 +54,11 @@ impl Resolver {
     }
 
     fn sig(&mut self, block: &mut Block, sig: &mut Sig) -> Out<Block> {
-        let mut local = Block::local();
         sig.ret
             .as_mut()
             .map(|t| self.expr(t.span, &mut t.item))
             .transpose()?;
+        let mut local = Block::local();
         sig.params.iter_mut().try_for_each(|p| {
             p.item
                 .typ
@@ -88,16 +88,14 @@ impl Resolver {
 
     fn drop_block(&mut self, block: Block) {
         block.shadowed.into_iter().for_each(|(raw, name)| {
-            match name {
-                None => self.locals.remove(&raw),
-                Some(old) => self.locals.insert(raw, old),
-            };
+            name.map(|old| self.locals.insert(raw, old))
+                .unwrap_or_else(|| self.locals.remove(&raw));
         })
     }
 
     fn branch(&mut self, branch: &mut Branch) -> Out<()> {
         self.expr(branch.cond.span, &mut branch.cond.item)?;
-        self.block(Block::default(), &mut branch.body)
+        self.block(Block::local(), &mut branch.body)
     }
 
     fn expr(&mut self, span: Span, expr: &mut Expr) -> Out<()> {
