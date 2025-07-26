@@ -34,19 +34,19 @@ fn it_parses_stmt() {
         .parse(
             r#"
 /// Hey.
-function f(a)
+function f(a) {
     b := 42 // hi
 
-    if a
+    if a {
         return false
-    else if b
+    } else if b {
         return true
-    else
+    } else {
         return false
-    end
+    }
 
     return true
-end
+}
 "#,
         )
         .unwrap();

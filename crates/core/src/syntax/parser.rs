@@ -21,8 +21,6 @@ pub(crate) type SyntaxErr<'a, T> = Full<Rich<'a, T, Span>>;
 #[strum(serialize_all = "lowercase")]
 pub(crate) enum Keyword {
     Function,
-    Do,
-    End,
     If,
     Else,
     Return,
@@ -39,8 +37,9 @@ pub(crate) enum Sym {
     // Short.
     LParen,
     RParen,
+    LBrace,
+    RBrace,
     Comma,
-    Colon,
     Eq,
     Lt,
     Gt,
@@ -154,8 +153,9 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, TokenSet, SyntaxErr<'s, char
         just(">=").to(Sym::Ge),
         just('(').to(Sym::LParen),
         just(')').to(Sym::RParen),
+        just('{').to(Sym::LBrace),
+        just('}').to(Sym::RBrace),
         just(',').to(Sym::Comma),
-        just(':').to(Sym::Colon),
         just('=').to(Sym::Eq),
         just('<').to(Sym::Lt),
         just('>').to(Sym::Gt),
@@ -324,9 +324,12 @@ where
             .then_ignore(just(Token::Keyword(Keyword::Function)))
             .then(name)
             .then(params)
-            .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()).or_not())
-            .then(stmts.clone())
-            .then_ignore(just(Token::Keyword(Keyword::End)))
+            .then(expr().or_not())
+            .then(
+                stmts
+                    .clone()
+                    .delimited_by(just(Token::Sym(Sym::LBrace)), just(Token::Sym(Sym::RBrace))),
+            )
             .map(
                 |((((doc, Spanned { span, item: name }), params), ret), body)| Spanned {
                     span,
@@ -346,7 +349,11 @@ where
         let branch = just(Token::Keyword(Keyword::If))
             .map_with(|_, e| e.span())
             .then(expr())
-            .then(stmts.clone())
+            .then(
+                stmts
+                    .clone()
+                    .delimited_by(just(Token::Sym(Sym::LBrace)), just(Token::Sym(Sym::RBrace))),
+            )
             .map(|((span, cond), body)| Branch {
                 span,
                 cond,
@@ -354,28 +361,31 @@ where
             })
             .labelled("if branch");
 
-        let if_ = branch
-            .clone()
-            .then(
-                just(Token::Keyword(Keyword::Else))
-                    .ignore_then(branch)
-                    .repeated()
-                    .collect::<Vec<_>>(),
-            )
-            .then(
-                just(Token::Keyword(Keyword::Else))
-                    .map_with(|_, e| e.span())
-                    .then(stmts)
-                    .or_not(),
-            )
-            .then_ignore(just(Token::Keyword(Keyword::End)))
-            .map(|((then, elif), els)| Stmt::If {
-                then,
-                elif: elif.into_boxed_slice(),
-                els: els.map(|(span, stmts)| (span, stmts.into_boxed_slice())),
-            })
-            .map_with(Spanned::from_map_extra)
-            .labelled("if statement");
+        let if_ =
+            branch
+                .clone()
+                .then(
+                    just(Token::Keyword(Keyword::Else))
+                        .ignore_then(branch)
+                        .repeated()
+                        .collect::<Vec<_>>(),
+                )
+                .then(
+                    just(Token::Keyword(Keyword::Else))
+                        .map_with(|_, e| e.span())
+                        .then(stmts.delimited_by(
+                            just(Token::Sym(Sym::LBrace)),
+                            just(Token::Sym(Sym::RBrace)),
+                        ))
+                        .or_not(),
+                )
+                .map(|((then, elif), els)| Stmt::If {
+                    then,
+                    elif: elif.into_boxed_slice(),
+                    els: els.map(|(span, stmts)| (span, stmts.into_boxed_slice())),
+                })
+                .map_with(Spanned::from_map_extra)
+                .labelled("if statement");
 
         func.or(if_)
             .or(short)

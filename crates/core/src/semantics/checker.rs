@@ -243,9 +243,13 @@ impl Checker {
                         }
                     }
 
-                    Sym::Assign | Sym::LParen | Sym::RParen | Sym::Comma | Sym::Colon | Sym::Eq => {
-                        unreachable!()
-                    }
+                    Sym::Assign
+                    | Sym::LParen
+                    | Sym::RParen
+                    | Sym::LBrace
+                    | Sym::RBrace
+                    | Sym::Comma
+                    | Sym::Eq => unreachable!(),
                 },
             },
         ))
