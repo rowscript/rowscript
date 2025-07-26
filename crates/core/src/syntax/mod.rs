@@ -7,11 +7,11 @@ use chumsky::input::{Input, MapExtra};
 use strum::{Display, EnumString};
 use ustr::Ustr;
 
-use crate::syntax::parser::{Sym, Token};
+use crate::syntax::parse::{Sym, Token};
 use crate::{Span, Spanned};
 
-pub(crate) mod parser;
-pub(crate) mod resolver;
+pub(crate) mod parse;
+pub(crate) mod resolve;
 
 #[derive(Clone, Eq)]
 pub(crate) struct Name(Rc<Ustr>);

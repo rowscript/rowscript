@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::semantics::Type;
-use crate::semantics::solver::isa;
-use crate::syntax::parser::Sym;
+use crate::semantics::solve::isa;
+use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, BuiltinType, Expr, Name, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 

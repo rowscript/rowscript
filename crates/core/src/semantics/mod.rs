@@ -2,8 +2,8 @@ use std::fmt::{Display, Formatter};
 
 use crate::syntax::BuiltinType;
 
-pub(crate) mod checker;
-mod solver;
+pub(crate) mod check;
+mod solve;
 
 #[derive(Clone)]
 enum Type {

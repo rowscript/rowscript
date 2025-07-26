@@ -1,8 +1,8 @@
 use chumsky::Parser;
 
-use crate::semantics::checker::Checked;
-use crate::syntax::parser::{Parsed, Token, expr, lex, stmt};
-use crate::syntax::resolver::Resolved;
+use crate::semantics::check::Checked;
+use crate::syntax::parse::{Parsed, Token, expr, lex, stmt};
+use crate::syntax::resolve::Resolved;
 
 #[test]
 fn it_scans_doc() {
