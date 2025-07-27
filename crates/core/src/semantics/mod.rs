@@ -1,9 +1,12 @@
 use std::fmt::{Display, Formatter};
 
-use crate::syntax::BuiltinType;
+use ustr::Ustr;
+
+use crate::syntax::parse::Sym;
+use crate::syntax::{BuiltinType, Name};
 
 pub(crate) mod check;
-mod solve;
+mod vm;
 
 #[derive(Clone)]
 enum Type {
@@ -38,8 +41,32 @@ impl Display for Type {
             Type::BuiltinType(t) => write!(f, "{t}"),
             Type::FunctionType(params, ret) => {
                 write_delimited!(f, "(", params, ",", ")");
-                write!(f, "-> {ret}")
+                write!(f, " -> {ret}")
             }
         }
     }
+}
+
+#[derive(Clone)]
+enum Value {
+    Global(Name),
+    Local(usize),
+
+    BuiltinType(BuiltinType),
+    Unit,
+    Boolean(bool),
+    Number(f64),
+    String(Ustr),
+}
+
+enum IR {
+    Load(usize, Value),
+    Call(Value, Box<[Value]>),
+    BinaryOp(Value, Sym, Value),
+    Return,
+    If {
+        then: (Value, Box<[Self]>),
+        elif: Box<[(Value, Box<[Self]>)]>,
+        els: Option<Box<[Self]>>,
+    },
 }

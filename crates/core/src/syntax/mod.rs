@@ -22,7 +22,7 @@ impl Name {
     }
 
     pub(crate) fn unbound() -> Self {
-        Self::bound("".into())
+        Self::bound(Default::default())
     }
 
     pub(crate) fn raw(&self) -> Ustr {

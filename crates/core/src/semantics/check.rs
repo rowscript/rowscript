@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use crate::semantics::Type;
-use crate::semantics::solve::isa;
 use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, BuiltinType, Expr, Name, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
@@ -25,8 +24,11 @@ struct Checker {
 impl Checker {
     fn file(&mut self, file: &[Spanned<Stmt>]) -> Out<()> {
         let mut block = Block::global();
-        file.iter()
-            .try_for_each(|stmt| self.stmt(&mut block, stmt).map(|_| ()))
+        file.iter().try_for_each(|stmt| {
+            self.stmt(&mut block, stmt)?;
+            debug_assert!(self.locals.is_empty());
+            Ok(())
+        })
     }
 
     fn stmt(&mut self, block: &mut Block, stmt: &Spanned<Stmt>) -> Out<Type> {
@@ -99,7 +101,7 @@ impl Checker {
                 self.insert(&mut local, p.item.name.clone(), typ.clone());
                 Ok(typ)
             })
-            .collect::<Out<Box<_>>>()?;
+            .collect::<Out<_>>()?;
         self.insert(
             block,
             sig.name.clone(),
@@ -293,6 +295,23 @@ impl Block {
             ret: self.ret.clone(),
             is_local: true,
             shadowed: Default::default(),
+        }
+    }
+}
+
+fn isa(span: Span, got: &Type, want: &Type) -> Out<()> {
+    match (got, want) {
+        (Type::BuiltinType(a), Type::BuiltinType(b)) if a == b => Ok(()),
+        (Type::FunctionType(xs, x), Type::FunctionType(ys, y)) if xs.len() == ys.len() => {
+            xs.iter()
+                .zip(ys.iter())
+                .try_for_each(|(a, b)| isa(span, a, b))?;
+            isa(span, x, y)
+        }
+        _ => {
+            let got = got.to_string();
+            let want = want.to_string();
+            Err(Error::TypeMismatch { span, got, want })
         }
     }
 }
