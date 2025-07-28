@@ -1,6 +1,8 @@
+use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
+use std::vec::IntoIter;
 
 use chumsky::extra::ParserExtra;
 use chumsky::input::{Input, MapExtra};
@@ -95,7 +97,7 @@ impl BuiltinType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Expr {
     // Naming.
     Name(Name),
@@ -104,7 +106,8 @@ pub(crate) enum Expr {
     BuiltinType(BuiltinType),
 
     // Constants.
-    Number(Ustr),
+    Unit,
+    Number(f64),
     String(Ustr),
     Boolean(bool),
 
@@ -137,8 +140,11 @@ impl Expr {
 #[derive(Debug)]
 pub(crate) enum Stmt {
     // Blocks.
-    Func(Sig, Box<[Spanned<Self>]>),
-    Fn(Sig, Spanned<Expr>),
+    Func {
+        short: bool,
+        sig: Sig,
+        body: Box<[Spanned<Self>]>,
+    },
 
     // Expressions.
     Expr(Expr),
@@ -179,4 +185,31 @@ pub(crate) struct Branch {
     pub(crate) span: Span,
     pub(crate) cond: Spanned<Expr>,
     pub(crate) body: Box<[Spanned<Stmt>]>,
+}
+
+pub(crate) struct Shadowed<K: Eq + Hash, V>(Vec<(K, Option<V>)>);
+
+impl<K: Eq + Hash, V> Default for Shadowed<K, V> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+impl<K: Eq + Hash, V> Shadowed<K, V> {
+    pub(crate) fn push(&mut self, k: K, v: Option<V>) {
+        self.0.push((k, v));
+    }
+
+    pub(crate) fn into_iter(self) -> IntoIter<(K, Option<V>)> {
+        self.0.into_iter()
+    }
+
+    pub(crate) fn clear(self, locals: &mut HashMap<K, V>) {
+        self.into_iter().for_each(|(raw, name)| {
+            match name {
+                None => locals.remove(&raw),
+                Some(old) => locals.insert(raw, old),
+            };
+        })
+    }
 }

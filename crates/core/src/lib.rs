@@ -4,7 +4,7 @@ use chumsky::prelude::SimpleSpan;
 use ustr::Ustr;
 
 #[allow(dead_code)]
-mod semantics;
+pub(crate) mod semantics;
 #[allow(dead_code)]
 pub(crate) mod syntax;
 

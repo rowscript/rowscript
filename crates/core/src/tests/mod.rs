@@ -1,6 +1,8 @@
 use chumsky::Parser;
 
 use crate::semantics::check::Checked;
+use crate::semantics::vm::Evaluated;
+use crate::syntax::Expr;
 use crate::syntax::parse::{Parsed, Token, expr, lex, stmt};
 use crate::syntax::resolve::Resolved;
 
@@ -55,11 +57,16 @@ function f(a) {
 
 #[test]
 fn it_works() {
-    include_str!("basic.rows")
+    let a = include_str!("basic.rows")
         .parsed()
         .unwrap()
         .resolved()
         .unwrap()
         .checked()
-        .unwrap();
+        .unwrap()
+        .evaluated();
+    let Expr::Number(v) = a else {
+        unreachable!();
+    };
+    assert_eq!(v, 89.);
 }

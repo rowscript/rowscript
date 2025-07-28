@@ -1,12 +1,10 @@
 use std::fmt::{Display, Formatter};
 
-use ustr::Ustr;
-
-use crate::syntax::parse::Sym;
-use crate::syntax::{BuiltinType, Name};
+use crate::Spanned;
+use crate::syntax::{BuiltinType, Name, Stmt};
 
 pub(crate) mod check;
-mod vm;
+pub(crate) mod vm;
 
 #[derive(Clone)]
 enum Type {
@@ -47,26 +45,7 @@ impl Display for Type {
     }
 }
 
-#[derive(Clone)]
-enum Value {
-    Global(Name),
-    Local(usize),
-
-    BuiltinType(BuiltinType),
-    Unit,
-    Boolean(bool),
-    Number(f64),
-    String(Ustr),
-}
-
-enum IR {
-    Load(usize, Value),
-    Call(Value, Box<[Value]>),
-    BinaryOp(Value, Sym, Value),
-    Return,
-    If {
-        then: (Value, Box<[Self]>),
-        elif: Box<[(Value, Box<[Self]>)]>,
-        els: Option<Box<[Self]>>,
-    },
+pub(crate) struct Func {
+    params: Box<[Name]>,
+    body: Box<[Spanned<Stmt>]>,
 }

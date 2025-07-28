@@ -1,7 +1,20 @@
 use ustr::{Ustr, UstrMap};
 
-use crate::syntax::{Branch, Expr, Name, Sig, Stmt};
+use crate::syntax::{Branch, Expr, Name, Shadowed, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
+
+pub(crate) trait Resolved {
+    fn resolved(self) -> Out<Self>
+    where
+        Self: Sized;
+}
+
+impl Resolved for Vec<Spanned<Stmt>> {
+    fn resolved(mut self) -> Out<Self> {
+        Resolver::default().file(self.as_mut_slice())?;
+        Ok(self)
+    }
+}
 
 #[derive(Default)]
 struct Resolver {
@@ -12,22 +25,17 @@ struct Resolver {
 impl Resolver {
     fn file(&mut self, file: &mut [Spanned<Stmt>]) -> Out<()> {
         let mut block = Block::default();
-        file.iter_mut().try_for_each(|stmt| {
-            self.stmt(&mut block, stmt)?;
-            debug_assert!(self.locals.is_empty());
-            Ok(())
-        })
+        file.iter_mut()
+            .try_for_each(|stmt| self.stmt(&mut block, stmt))?;
+        debug_assert!(self.locals.is_empty());
+        Ok(())
     }
 
     fn stmt(&mut self, block: &mut Block, stmt: &mut Spanned<Stmt>) -> Out<()> {
         match &mut stmt.item {
-            Stmt::Func(sig, body) => {
+            Stmt::Func { sig, body, .. } => {
                 let local = self.sig(block, sig)?;
                 self.block(local, body)?;
-            }
-            Stmt::Fn(sig, body) => {
-                let local = self.sig(block, sig)?;
-                self.block_expr(local, body)?;
             }
             Stmt::Expr(e) => self.expr(stmt.span, e)?,
             Stmt::Assign { name, typ, rhs, .. } => {
@@ -80,12 +88,6 @@ impl Resolver {
         Ok(())
     }
 
-    fn block_expr(&mut self, block: Block, expr: &mut Spanned<Expr>) -> Out<()> {
-        self.expr(expr.span, &mut expr.item)?;
-        self.drop_block(block);
-        Ok(())
-    }
-
     fn drop_block(&mut self, block: Block) {
         block.shadowed.into_iter().for_each(|(raw, name)| {
             name.map(|old| self.locals.insert(raw, old))
@@ -121,16 +123,20 @@ impl Resolver {
                 self.expr(rhs.span, &mut rhs.item)?;
             }
 
-            Expr::BuiltinType(..) | Expr::Number(..) | Expr::String(..) | Expr::Boolean(..) => (),
+            Expr::BuiltinType(..)
+            | Expr::Unit
+            | Expr::Number(..)
+            | Expr::String(..)
+            | Expr::Boolean(..) => (),
         }
         Ok(())
     }
 
     fn insert(&mut self, block: &mut Block, name: &Name) {
-        if block.is_local {
+        if block.local {
             return block
                 .shadowed
-                .push((name.raw(), self.locals.insert(name.raw(), name.clone())));
+                .push(name.raw(), self.locals.insert(name.raw(), name.clone()));
         }
         self.globals.insert(name.raw(), name.clone());
     }
@@ -138,31 +144,15 @@ impl Resolver {
 
 #[derive(Default)]
 struct Block {
-    is_local: bool,
-    shadowed: Vec<(Ustr, Option<Name>)>,
+    local: bool,
+    shadowed: Shadowed<Ustr, Name>,
 }
 
 impl Block {
     fn local() -> Self {
         Self {
-            is_local: true,
+            local: true,
             ..Default::default()
         }
-    }
-}
-
-pub(crate) trait Resolved {
-    fn resolved(self) -> Out<Self>
-    where
-        Self: Sized;
-}
-
-impl Resolved for Vec<Spanned<Stmt>> {
-    fn resolved(mut self) -> Out<Self>
-    where
-        Self: Sized,
-    {
-        Resolver::default().file(self.as_mut_slice())?;
-        Ok(self)
     }
 }

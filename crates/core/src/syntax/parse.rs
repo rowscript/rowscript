@@ -9,6 +9,7 @@ use chumsky::prelude::{
 };
 use chumsky::text::{digits, ident, int};
 use chumsky::{Parser, select};
+use serde_json::from_str;
 use strum::{Display, EnumString};
 use ustr::Ustr;
 
@@ -16,6 +17,38 @@ use crate::syntax::{Branch, BuiltinType, Expr, Name, Param, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 pub(crate) type SyntaxErr<'a, T> = Full<Rich<'a, T, Span>>;
+
+pub(crate) trait Parsed {
+    fn parsed(self) -> Out<Vec<Spanned<Stmt>>>;
+}
+
+impl Parsed for &str {
+    fn parsed(self) -> Out<Vec<Spanned<Stmt>>> {
+        lex()
+            .parse(self)
+            .into_result()
+            .map_err(|errs| {
+                Error::Lexing(
+                    errs.into_iter()
+                        .map(|e| (*e.span(), e.reason().to_string()))
+                        .collect(),
+                )
+            })
+            .and_then(|tokens| {
+                file()
+                    .parse(tokens.tokens.as_slice())
+                    .into_result()
+                    .map_err(|errs| {
+                        Error::Parsing(
+                            tokens.spans.into(),
+                            errs.into_iter()
+                                .map(|e| (*e.span(), e.reason().to_string()))
+                                .collect(),
+                        )
+                    })
+            })
+    }
+}
 
 #[derive(Debug, Eq, PartialEq, Clone, EnumString, Display)]
 #[strum(serialize_all = "lowercase")]
@@ -194,7 +227,7 @@ where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
     let constant = select! {
-        Token::Number(n) => Expr::Number(n),
+        Token::Number(n) => Expr::Number(from_str(n.as_str()).unwrap()),
         Token::String(s) => Expr::String(s),
         Token::Boolean(b) => Expr::Boolean(b),
         Token::BuiltinType(t) => Expr::BuiltinType(t)
@@ -307,15 +340,19 @@ where
             .map(
                 |((((doc, Spanned { span, item: name }), params), ret), body)| Spanned {
                     span,
-                    item: Stmt::Fn(
-                        Sig {
+                    item: Stmt::Func {
+                        short: true,
+                        sig: Sig {
                             doc: doc.into_boxed_slice(),
                             name,
                             params: params.into_boxed_slice(),
                             ret,
                         },
-                        body,
-                    ),
+                        body: Box::new([Spanned {
+                            span: body.span,
+                            item: Stmt::Expr(body.item),
+                        }]),
+                    },
                 },
             )
             .labelled("short function statement");
@@ -333,15 +370,16 @@ where
             .map(
                 |((((doc, Spanned { span, item: name }), params), ret), body)| Spanned {
                     span,
-                    item: Stmt::Func(
-                        Sig {
+                    item: Stmt::Func {
+                        short: false,
+                        sig: Sig {
                             doc: doc.into_boxed_slice(),
                             name,
                             params: params.into_boxed_slice(),
                             ret,
                         },
-                        body.into_boxed_slice(),
-                    ),
+                        body: body.into_boxed_slice(),
+                    },
                 },
             )
             .labelled("function statement");
@@ -418,36 +456,4 @@ where
         .allow_trailing()
         .collect()
         .delimited_by(just(Token::Sym(lhs)), just(Token::Sym(rhs)))
-}
-
-pub(crate) trait Parsed {
-    fn parsed(self) -> Out<Vec<Spanned<Stmt>>>;
-}
-
-impl Parsed for &str {
-    fn parsed(self) -> Out<Vec<Spanned<Stmt>>> {
-        lex()
-            .parse(self)
-            .into_result()
-            .map_err(|errs| {
-                Error::Lexing(
-                    errs.into_iter()
-                        .map(|e| (*e.span(), e.reason().to_string()))
-                        .collect(),
-                )
-            })
-            .and_then(|tokens| {
-                file()
-                    .parse(tokens.tokens.as_slice())
-                    .into_result()
-                    .map_err(|errs| {
-                        Error::Parsing(
-                            tokens.spans.into(),
-                            errs.into_iter()
-                                .map(|e| (*e.span(), e.reason().to_string()))
-                                .collect(),
-                        )
-                    })
-            })
-    }
 }
