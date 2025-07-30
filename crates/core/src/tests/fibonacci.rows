@@ -1,0 +1,10 @@
+/// Fibonacci number.
+function fib(n u32) u32 {
+    a := n < 2
+    if a {
+        return 1
+    }
+    return fib(n - 2) + fib(n - 1)
+}
+
+fib(10)

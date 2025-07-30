@@ -54,10 +54,19 @@ function f(a) {
 }
 
 #[test]
-fn it_works() {
-    let a = Ctx::run(include_str!("basic.rows"));
+fn it_runs_fibonacci() {
+    let a = Ctx::run(include_str!("fibonacci.rows"));
     let Expr::Number(v) = a else {
         unreachable!();
     };
     assert_eq!(v, 89.);
+}
+
+#[test]
+fn it_runs_factorial() {
+    let a = Ctx::run(include_str!("factorial.rows"));
+    let Expr::Number(v) = a else {
+        unreachable!();
+    };
+    assert_eq!(v, 3628800.);
 }

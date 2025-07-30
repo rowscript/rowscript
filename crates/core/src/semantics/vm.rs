@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::mem::take;
 use std::ops::ControlFlow;
 use std::slice::from_ref;
@@ -39,6 +40,11 @@ impl<'a> VM<'a> {
                 block.insert(name.clone(), e.clone());
                 e
             }
+            Stmt::Update { name, rhs } => {
+                let e = self.expr(block, &rhs.item);
+                block.update(name.item.clone(), e.clone());
+                e
+            }
             Stmt::Return(v) => {
                 return ControlFlow::Break(
                     v.as_ref()
@@ -58,6 +64,16 @@ impl<'a> VM<'a> {
                     return stmts
                         .iter()
                         .try_fold(Expr::Unit, |_, stmt| self.stmt(block, &stmt.item));
+                }
+                Expr::Unit
+            }
+            Stmt::While(branch) => {
+                loop {
+                    let w = self.branch(block, branch);
+                    let ControlFlow::Break(c) = w else { break };
+                    if c.is_break() {
+                        return c;
+                    }
                 }
                 Expr::Unit
             }
@@ -103,6 +119,7 @@ impl<'a> VM<'a> {
                     (Expr::Number(a), Sym::Gt, Expr::Number(b)) => Expr::Boolean(a > b),
                     (Expr::Number(a), Sym::Plus, Expr::Number(b)) => Expr::Number(a + b),
                     (Expr::Number(a), Sym::Minus, Expr::Number(b)) => Expr::Number(a - b),
+                    (Expr::Number(a), Sym::Mul, Expr::Number(b)) => Expr::Number(a * b),
 
                     (Expr::Unit, Sym::EqEq, Expr::Unit) => Expr::Boolean(true),
                     (Expr::Boolean(a), Sym::EqEq, Expr::Boolean(b)) => Expr::Boolean(a == b),
@@ -132,6 +149,13 @@ impl Block {
     fn insert(&mut self, name: Name, e: Expr) {
         self.shadowed
             .push(name.clone(), self.locals.insert(name, e));
+    }
+
+    fn update(&mut self, name: Name, e: Expr) {
+        let Entry::Occupied(mut entry) = self.locals.entry(name) else {
+            unreachable!();
+        };
+        entry.insert(e);
     }
 
     fn clear(&mut self) {

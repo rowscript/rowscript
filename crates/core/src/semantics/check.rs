@@ -52,6 +52,12 @@ impl Checker {
                 self.insert(block, name.clone(), rhs_type.clone());
                 rhs_type
             }
+            Stmt::Update { name, rhs } => {
+                let rhs_type = self.infer(&rhs.item)?.1;
+                let lhs_type = self.name(&name.item);
+                isa(name.span, &rhs_type, &lhs_type)?;
+                lhs_type
+            }
             Stmt::Return(e) => e
                 .as_ref()
                 .map(|e| {
@@ -74,6 +80,7 @@ impl Checker {
                     .transpose()?;
                 want
             }
+            Stmt::While(branch) => self.branch(block, branch)?,
         })
     }
 
@@ -151,12 +158,7 @@ impl Checker {
         Ok((
             None,
             match expr {
-                Expr::Name(n) => self
-                    .locals
-                    .get(n)
-                    .or_else(|| self.globals.get(n))
-                    .cloned()
-                    .unwrap(),
+                Expr::Name(n) => self.name(n),
                 Expr::BuiltinType(t) => {
                     return Ok((
                         Some(Type::BuiltinType(*t)),
@@ -213,7 +215,7 @@ impl Checker {
                         }
                     }
 
-                    Sym::Plus | Sym::Minus => {
+                    Sym::Plus | Sym::Minus | Sym::Mul => {
                         let got = self.infer(&lhs.item)?.1;
                         if let Type::BuiltinType(t) = got
                             && t.is_number()
@@ -239,6 +241,14 @@ impl Checker {
                 },
             },
         ))
+    }
+
+    fn name(&self, n: &Name) -> Type {
+        self.locals
+            .get(n)
+            .or_else(|| self.globals.get(n))
+            .cloned()
+            .unwrap()
     }
 
     fn insert(&mut self, block: &mut Block, name: Name, typ: Type) {

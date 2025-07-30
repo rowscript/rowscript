@@ -156,6 +156,10 @@ pub(crate) enum Stmt {
         typ: Option<Spanned<Expr>>,
         rhs: Spanned<Expr>,
     },
+    Update {
+        name: Spanned<Name>,
+        rhs: Spanned<Expr>,
+    },
 
     // Control.
     Return(Option<Spanned<Expr>>),
@@ -164,6 +168,7 @@ pub(crate) enum Stmt {
         elif: Box<[Branch]>,
         els: Option<(Span, Box<[Spanned<Self>]>)>,
     },
+    While(Branch),
 }
 
 #[derive(Debug)]

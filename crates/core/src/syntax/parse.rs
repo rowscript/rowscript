@@ -25,6 +25,7 @@ pub(crate) enum Keyword {
     If,
     Else,
     Return,
+    While,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Display)]
@@ -46,6 +47,7 @@ pub(crate) enum Sym {
     Gt,
     Plus,
     Minus,
+    Mul,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Display)]
@@ -162,6 +164,7 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, TokenSet, SyntaxErr<'s, char
         just('>').to(Sym::Gt),
         just('+').to(Sym::Plus),
         just('-').to(Sym::Minus),
+        just('*').to(Sym::Mul),
     ))
     .map(Token::Sym);
 
@@ -226,6 +229,7 @@ where
             .labelled("call expression");
 
         call.pratt((
+            infix(left(3), just(Token::Sym(Sym::Mul)), Expr::binary),
             infix(left(2), just(Token::Sym(Sym::Plus)), Expr::binary),
             infix(left(2), just(Token::Sym(Sym::Minus)), Expr::binary),
             infix(left(1), just(Token::Sym(Sym::Lt)), Expr::binary),
@@ -282,6 +286,13 @@ where
             },
         )
         .labelled("assignment statement");
+
+    let update = name
+        .then_ignore(just(Token::Sym(Sym::Eq)))
+        .then(expr())
+        .map(|(name, rhs)| Stmt::Update { name, rhs })
+        .map_with(Spanned::from_map_extra)
+        .labelled("update statement");
 
     let return_ = just(Token::Keyword(Keyword::Return))
         .ignore_then(expr().or_not())
@@ -379,7 +390,7 @@ where
                 .then(
                     just(Token::Keyword(Keyword::Else))
                         .map_with(|_, e| e.span())
-                        .then(stmts.delimited_by(
+                        .then(stmts.clone().delimited_by(
                             just(Token::Sym(Sym::LBrace)),
                             just(Token::Sym(Sym::RBrace)),
                         ))
@@ -393,9 +404,25 @@ where
                 .map_with(Spanned::from_map_extra)
                 .labelled("if statement");
 
+        let while_ = just(Token::Keyword(Keyword::While))
+            .map_with(|_, e| e.span())
+            .then(expr())
+            .then(stmts.delimited_by(just(Token::Sym(Sym::LBrace)), just(Token::Sym(Sym::RBrace))))
+            .map(|((span, cond), body)| {
+                Stmt::While(Branch {
+                    span,
+                    cond,
+                    body: body.into_boxed_slice(),
+                })
+            })
+            .map_with(Spanned::from_map_extra)
+            .labelled("while statement");
+
         func.or(if_)
+            .or(while_)
             .or(short)
             .or(assign)
+            .or(update)
             .or(return_)
             .or(expr_)
             .labelled("statement")

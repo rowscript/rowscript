@@ -32,6 +32,10 @@ impl Resolver {
                 self.expr(rhs.span, &mut rhs.item)?;
                 self.insert(block, name);
             }
+            Stmt::Update { name, rhs } => {
+                self.name(name.span, &mut name.item)?;
+                self.expr(rhs.span, &mut rhs.item)?;
+            }
             Stmt::Return(e) => {
                 e.as_mut()
                     .map(|e| self.expr(e.span, &mut e.item))
@@ -44,6 +48,7 @@ impl Resolver {
                     .map(|(.., stmts)| self.block(Block::local(), stmts))
                     .transpose()?;
             }
+            Stmt::While(branch) => self.branch(branch)?,
         }
         Ok(())
     }
@@ -89,16 +94,7 @@ impl Resolver {
 
     fn expr(&mut self, span: Span, expr: &mut Expr) -> Out<()> {
         match expr {
-            Expr::Name(n) => {
-                let raw = n.raw();
-                self.locals
-                    .get(&raw)
-                    .or_else(|| self.globals.get(&raw))
-                    .map(|found| {
-                        *n = found.clone();
-                    })
-                    .ok_or(Error::UndefName(span, raw))?;
-            }
+            Expr::Name(n) => self.name(span, n)?,
 
             Expr::Call(callee, args) => {
                 self.expr(callee.span, &mut callee.item)?;
@@ -117,6 +113,17 @@ impl Resolver {
             | Expr::Boolean(..) => (),
         }
         Ok(())
+    }
+
+    fn name(&mut self, span: Span, n: &mut Name) -> Out<()> {
+        let raw = n.raw();
+        self.locals
+            .get(&raw)
+            .or_else(|| self.globals.get(&raw))
+            .map(|found| {
+                *n = found.clone();
+            })
+            .ok_or(Error::UndefName(span, raw))
     }
 
     fn insert(&mut self, block: &mut Block, name: &Name) {
