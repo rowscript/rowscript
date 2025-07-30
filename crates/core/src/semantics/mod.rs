@@ -45,7 +45,17 @@ impl Display for Type {
     }
 }
 
+#[derive(Default)]
 pub(crate) struct Func {
-    params: Box<[Name]>,
-    body: Box<[Spanned<Stmt>]>,
+    pub(crate) params: Box<[Name]>,
+    pub(crate) body: Box<[Spanned<Stmt>]>,
+}
+
+impl Func {
+    pub(crate) fn of_file(body: Vec<Spanned<Stmt>>) -> Self {
+        Self {
+            params: Default::default(),
+            body: body.into(),
+        }
+    }
 }

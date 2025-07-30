@@ -6,28 +6,15 @@ use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, BuiltinType, Expr, Name, Shadowed, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
-pub(crate) trait Checked {
-    fn checked(self) -> Out<(Self, HashMap<Name, Func>)>
-    where
-        Self: Sized;
-}
-
-impl Checked for Vec<Spanned<Stmt>> {
-    fn checked(mut self) -> Out<(Self, HashMap<Name, Func>)> {
-        let fns = Checker::default().file(self.as_mut_slice())?;
-        Ok((self, fns))
-    }
-}
-
 #[derive(Default)]
-struct Checker {
+pub(crate) struct Checker {
     globals: HashMap<Name, Type>,
     locals: HashMap<Name, Type>,
     fns: HashMap<Name, Func>,
 }
 
 impl Checker {
-    fn file(mut self, file: &mut [Spanned<Stmt>]) -> Out<HashMap<Name, Func>> {
+    pub(crate) fn file(mut self, file: &mut [Spanned<Stmt>]) -> Out<HashMap<Name, Func>> {
         let mut block = Block::global();
         file.iter_mut().try_for_each(|stmt| {
             self.stmt(&mut block, stmt)?;

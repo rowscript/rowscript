@@ -3,27 +3,14 @@ use ustr::{Ustr, UstrMap};
 use crate::syntax::{Branch, Expr, Name, Shadowed, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
-pub(crate) trait Resolved {
-    fn resolved(self) -> Out<Self>
-    where
-        Self: Sized;
-}
-
-impl Resolved for Vec<Spanned<Stmt>> {
-    fn resolved(mut self) -> Out<Self> {
-        Resolver::default().file(self.as_mut_slice())?;
-        Ok(self)
-    }
-}
-
 #[derive(Default)]
-struct Resolver {
+pub(crate) struct Resolver {
     globals: UstrMap<Name>,
     locals: UstrMap<Name>,
 }
 
 impl Resolver {
-    fn file(&mut self, file: &mut [Spanned<Stmt>]) -> Out<()> {
+    pub(crate) fn file(&mut self, file: &mut [Spanned<Stmt>]) -> Out<()> {
         let mut block = Block::default();
         file.iter_mut()
             .try_for_each(|stmt| self.stmt(&mut block, stmt))?;

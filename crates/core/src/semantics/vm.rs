@@ -3,37 +3,20 @@ use std::mem::take;
 use std::ops::ControlFlow;
 use std::slice::from_ref;
 
-use crate::Spanned;
 use crate::semantics::Func;
 use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, Expr, Name, Shadowed, Stmt};
 
-pub(crate) trait Evaluated {
-    fn evaluated(self) -> Expr;
+pub(crate) struct VM<'a> {
+    globals: &'a HashMap<Name, Func>,
 }
 
-impl Evaluated for (Vec<Spanned<Stmt>>, HashMap<Name, Func>) {
-    fn evaluated(self) -> Expr {
-        let (file, globals) = self;
-        let vm = VM { globals };
-        vm.file(file)
-    }
-}
-
-struct VM {
-    globals: HashMap<Name, Func>,
-}
-
-impl VM {
-    fn file(&self, file: Vec<Spanned<Stmt>>) -> Expr {
-        let func = Func {
-            params: Default::default(),
-            body: file.into(),
-        };
-        self.func(&func, Default::default())
+impl<'a> VM<'a> {
+    pub(crate) fn new(globals: &'a HashMap<Name, Func>) -> Self {
+        Self { globals }
     }
 
-    fn func(&self, func: &Func, args: Vec<Expr>) -> Expr {
+    pub(crate) fn func(&self, func: &Func, args: Vec<Expr>) -> Expr {
         let mut block = Block::default();
 
         func.params

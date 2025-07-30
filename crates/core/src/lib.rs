@@ -1,7 +1,17 @@
+use std::collections::HashMap;
+
+use chumsky::Parser;
 use chumsky::extra::ParserExtra;
 use chumsky::input::{Input, MapExtra};
 use chumsky::prelude::SimpleSpan;
 use ustr::Ustr;
+
+use crate::semantics::Func;
+use crate::semantics::check::Checker;
+use crate::semantics::vm::VM;
+use crate::syntax::parse::{file, lex};
+use crate::syntax::resolve::Resolver;
+use crate::syntax::{Expr, Name};
 
 #[allow(dead_code)]
 pub(crate) mod semantics;
@@ -10,21 +20,6 @@ pub(crate) mod syntax;
 
 #[cfg(test)]
 mod tests;
-
-#[allow(dead_code)]
-struct Uri(Ustr);
-
-impl Default for Uri {
-    fn default() -> Self {
-        Self("<stdin>".into())
-    }
-}
-
-#[allow(dead_code)]
-#[derive(Default)]
-struct Loc {
-    uri: Uri,
-}
 
 type Span = SimpleSpan;
 
@@ -85,3 +80,75 @@ pub enum Error {
 }
 
 type Out<T> = Result<T, Error>;
+
+#[allow(dead_code)]
+#[derive(Default)]
+struct Ctx<'src> {
+    text: &'src str,
+    file: Func,
+    fns: HashMap<Name, Func>,
+}
+
+#[allow(dead_code)]
+impl<'src> Ctx<'src> {
+    fn new(text: &'src str) -> Self {
+        Self {
+            text,
+            ..Default::default()
+        }
+    }
+
+    fn run(text: &'src str) -> Expr {
+        Self::new(text)
+            .parse()
+            .unwrap()
+            .resolve()
+            .unwrap()
+            .check()
+            .unwrap()
+            .eval()
+    }
+
+    fn parse(&mut self) -> Out<&mut Self> {
+        self.file = Func::of_file(
+            lex()
+                .parse(self.text)
+                .into_result()
+                .map_err(|errs| {
+                    Error::Lexing(
+                        errs.into_iter()
+                            .map(|e| (*e.span(), e.reason().to_string()))
+                            .collect(),
+                    )
+                })
+                .and_then(|tokens| {
+                    file()
+                        .parse(tokens.tokens.as_slice())
+                        .into_result()
+                        .map_err(|errs| {
+                            Error::Parsing(
+                                tokens.spans.into(),
+                                errs.into_iter()
+                                    .map(|e| (*e.span(), e.reason().to_string()))
+                                    .collect(),
+                            )
+                        })
+                })?,
+        );
+        Ok(self)
+    }
+
+    fn resolve(&mut self) -> Out<&mut Self> {
+        Resolver::default().file(self.file.body.as_mut())?;
+        Ok(self)
+    }
+
+    fn check(&mut self) -> Out<&mut Self> {
+        self.fns = Checker::default().file(self.file.body.as_mut())?;
+        Ok(self)
+    }
+
+    fn eval(&self) -> Expr {
+        VM::new(&self.fns).func(&self.file, Default::default())
+    }
+}

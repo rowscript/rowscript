@@ -14,41 +14,9 @@ use strum::{Display, EnumString};
 use ustr::Ustr;
 
 use crate::syntax::{Branch, BuiltinType, Expr, Name, Param, Sig, Stmt};
-use crate::{Error, Out, Span, Spanned};
+use crate::{Span, Spanned};
 
 pub(crate) type SyntaxErr<'a, T> = Full<Rich<'a, T, Span>>;
-
-pub(crate) trait Parsed {
-    fn parsed(self) -> Out<Vec<Spanned<Stmt>>>;
-}
-
-impl Parsed for &str {
-    fn parsed(self) -> Out<Vec<Spanned<Stmt>>> {
-        lex()
-            .parse(self)
-            .into_result()
-            .map_err(|errs| {
-                Error::Lexing(
-                    errs.into_iter()
-                        .map(|e| (*e.span(), e.reason().to_string()))
-                        .collect(),
-                )
-            })
-            .and_then(|tokens| {
-                file()
-                    .parse(tokens.tokens.as_slice())
-                    .into_result()
-                    .map_err(|errs| {
-                        Error::Parsing(
-                            tokens.spans.into(),
-                            errs.into_iter()
-                                .map(|e| (*e.span(), e.reason().to_string()))
-                                .collect(),
-                        )
-                    })
-            })
-    }
-}
 
 #[derive(Debug, Eq, PartialEq, Clone, EnumString, Display)]
 #[strum(serialize_all = "lowercase")]

@@ -1,10 +1,8 @@
 use chumsky::Parser;
 
-use crate::semantics::check::Checked;
-use crate::semantics::vm::Evaluated;
+use crate::Ctx;
 use crate::syntax::Expr;
-use crate::syntax::parse::{Parsed, Token, expr, lex, stmt};
-use crate::syntax::resolve::Resolved;
+use crate::syntax::parse::{Token, expr, lex, stmt};
 
 #[test]
 fn it_scans_doc() {
@@ -57,14 +55,7 @@ function f(a) {
 
 #[test]
 fn it_works() {
-    let a = include_str!("basic.rows")
-        .parsed()
-        .unwrap()
-        .resolved()
-        .unwrap()
-        .checked()
-        .unwrap()
-        .evaluated();
+    let a = Ctx::run(include_str!("basic.rows"));
     let Expr::Number(v) = a else {
         unreachable!();
     };
