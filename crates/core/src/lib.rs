@@ -42,7 +42,7 @@ pub(crate) fn line_col(span: &Span, text: &str) -> (usize, usize) {
 }
 
 #[derive(Debug, Clone)]
-struct Spanned<T> {
+pub struct Spanned<T> {
     span: Span,
     item: T,
 }
@@ -83,7 +83,7 @@ type Out<T> = Result<T, Error>;
 
 #[allow(dead_code)]
 #[derive(Default)]
-struct Ctx<'src> {
+pub struct Ctx<'src> {
     text: &'src str,
     file: Func,
     fns: HashMap<Name, Func>,
@@ -91,7 +91,7 @@ struct Ctx<'src> {
 
 #[allow(dead_code)]
 impl<'src> Ctx<'src> {
-    fn new(text: &'src str) -> Self {
+    pub fn new(text: &'src str) -> Self {
         Self {
             text,
             ..Default::default()
@@ -109,7 +109,7 @@ impl<'src> Ctx<'src> {
             .eval()
     }
 
-    fn parse(&mut self) -> Out<&mut Self> {
+    pub fn parse(&mut self) -> Out<&mut Self> {
         self.file = Func::of_file(
             lex()
                 .parse(self.text)
@@ -138,17 +138,17 @@ impl<'src> Ctx<'src> {
         Ok(self)
     }
 
-    fn resolve(&mut self) -> Out<&mut Self> {
+    pub fn resolve(&mut self) -> Out<&mut Self> {
         Resolver::default().file(self.file.body.as_mut())?;
         Ok(self)
     }
 
-    fn check(&mut self) -> Out<&mut Self> {
+    pub fn check(&mut self) -> Out<&mut Self> {
         self.fns = Checker::default().file(self.file.body.as_mut())?;
         Ok(self)
     }
 
-    fn eval(&self) -> Expr {
+    pub fn eval(&self) -> Expr {
         VM::new(&self.fns).func(&self.file, Default::default())
     }
 }

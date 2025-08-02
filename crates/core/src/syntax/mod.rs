@@ -16,7 +16,7 @@ pub(crate) mod parse;
 pub(crate) mod resolve;
 
 #[derive(Clone, Eq)]
-pub(crate) struct Name(Rc<Ustr>);
+pub struct Name(Rc<Ustr>);
 
 impl Name {
     pub(crate) fn bound(n: Ustr) -> Self {
@@ -62,7 +62,7 @@ impl Hash for Name {
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone, EnumString, Display)]
 #[strum(serialize_all = "lowercase")]
-pub(crate) enum BuiltinType {
+pub enum BuiltinType {
     Type,
     Unit,
     Bool,
@@ -98,7 +98,7 @@ impl BuiltinType {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum Expr {
+pub enum Expr {
     // Naming.
     Name(Name),
 

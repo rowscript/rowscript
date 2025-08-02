@@ -29,7 +29,7 @@ pub(crate) enum Keyword {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Display)]
-pub(crate) enum Sym {
+pub enum Sym {
     // Long.
     Assign,
     EqEq,
