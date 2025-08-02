@@ -1,20 +1,23 @@
 use std::collections::HashMap;
 use std::mem::take;
 
-use crate::semantics::{Func, Type};
+use crate::semantics::Type;
 use crate::syntax::parse::Sym;
-use crate::syntax::{Branch, BuiltinType, Expr, Name, Shadowed, Sig, Stmt};
+use crate::syntax::{Branch, BuiltinType, Expr, Id, Ident, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
 pub(crate) struct Checker {
-    globals: HashMap<Name, Type>,
-    locals: HashMap<Name, Type>,
-    fns: HashMap<Name, Func>,
+    globals: HashMap<Id, Type>,
+    locals: Vec<Type>,
+    fns: HashMap<Id, Box<[Spanned<Stmt>]>>,
 }
 
 impl Checker {
-    pub(crate) fn file(mut self, file: &mut [Spanned<Stmt>]) -> Out<HashMap<Name, Func>> {
+    pub(crate) fn file(
+        mut self,
+        file: &mut [Spanned<Stmt>],
+    ) -> Out<HashMap<Id, Box<[Spanned<Stmt>]>>> {
         let mut block = Block::global();
         file.iter_mut().try_for_each(|stmt| {
             self.stmt(&mut block, stmt)?;
@@ -27,15 +30,9 @@ impl Checker {
     fn stmt(&mut self, block: &mut Block, stmt: &mut Spanned<Stmt>) -> Out<Type> {
         Ok(match &mut stmt.item {
             Stmt::Func { sig, body, .. } => {
-                let local = self.sig(block, sig)?;
+                let local = self.sig(sig)?;
                 let typ = self.block(local, body)?;
-                let old = self.fns.insert(
-                    sig.name.clone(),
-                    Func {
-                        params: sig.params.iter().map(|p| p.item.name.clone()).collect(),
-                        body: take(body),
-                    },
-                );
+                let old = self.fns.insert(sig.name.clone(), take(body));
                 debug_assert!(old.is_none());
                 typ
             }
@@ -49,12 +46,12 @@ impl Checker {
                         Ok(want)
                     })
                     .unwrap_or_else(|| Ok(self.infer(&rhs.item)?.1))?;
-                self.insert(block, name.clone(), rhs_type.clone());
+                self.insert(block, name, rhs_type.clone());
                 rhs_type
             }
             Stmt::Update { name, rhs } => {
                 let rhs_type = self.infer(&rhs.item)?.1;
-                let lhs_type = self.name(&name.item);
+                let lhs_type = self.ident(&name.item);
                 isa(name.span, &rhs_type, &lhs_type)?;
                 lhs_type
             }
@@ -84,7 +81,7 @@ impl Checker {
         })
     }
 
-    fn sig(&mut self, block: &mut Block, sig: &Sig) -> Out<Block> {
+    fn sig(&mut self, sig: &Sig) -> Out<Block> {
         let ret = sig
             .ret
             .as_ref()
@@ -103,15 +100,12 @@ impl Checker {
                     .map(|t| self.check_type(t.span, &t.item))
                     .transpose()?
                     .unwrap_or(Type::BuiltinType(BuiltinType::Unit));
-                self.insert(&mut local, p.item.name.clone(), typ.clone());
+                self.insert(&mut local, &p.item.name, typ.clone());
                 Ok(typ)
             })
             .collect::<Out<_>>()?;
-        self.insert(
-            block,
-            sig.name.clone(),
-            Type::FunctionType(params, Box::new(ret)),
-        );
+        self.globals
+            .insert(sig.name.clone(), Type::FunctionType(params, Box::new(ret)));
         Ok(local)
     }
 
@@ -123,7 +117,9 @@ impl Checker {
             .into_iter()
             .last()
             .unwrap_or(Type::BuiltinType(BuiltinType::Unit));
-        block.shadowed.clear(&mut self.locals);
+        for _ in 0..block.locals {
+            self.locals.pop();
+        }
         Ok(typ)
     }
 
@@ -158,7 +154,7 @@ impl Checker {
         Ok((
             None,
             match expr {
-                Expr::Name(n) => self.name(n),
+                Expr::Ident(ident) => self.ident(ident),
                 Expr::BuiltinType(t) => {
                     return Ok((
                         Some(Type::BuiltinType(*t)),
@@ -243,52 +239,49 @@ impl Checker {
         ))
     }
 
-    fn name(&self, n: &Name) -> Type {
-        self.locals
-            .get(n)
-            .or_else(|| self.globals.get(n))
-            .cloned()
-            .unwrap()
+    fn ident(&self, ident: &Ident) -> Type {
+        match ident {
+            Ident::Id(n) => self.globals.get(n),
+            Ident::Idx(i) => self.locals.get(*i),
+        }
+        .cloned()
+        .unwrap()
     }
 
-    fn insert(&mut self, block: &mut Block, name: Name, typ: Type) {
-        if block.local {
-            return block
-                .shadowed
-                .push(name.clone(), self.locals.insert(name, typ));
+    fn insert(&mut self, block: &mut Block, name: &Ident, typ: Type) {
+        match name {
+            Ident::Id(n) => {
+                self.globals.insert(n.clone(), typ);
+            }
+            Ident::Idx(i) => {
+                self.locals.insert(*i, typ);
+                block.locals += 1;
+            }
         }
-        self.globals.insert(name, typ);
     }
 }
 
 struct Block {
     ret: Type,
-    local: bool,
-    shadowed: Shadowed<Name, Type>,
+    locals: usize,
 }
 
 impl Block {
     fn global() -> Self {
         Self {
             ret: Type::BuiltinType(BuiltinType::Unit),
-            local: false,
-            shadowed: Default::default(),
+            locals: 0,
         }
     }
 
     fn func(ret: Type) -> Self {
-        Self {
-            ret,
-            local: true,
-            shadowed: Default::default(),
-        }
+        Self { ret, locals: 0 }
     }
 
     fn local(&self) -> Self {
         Self {
             ret: self.ret.clone(),
-            local: true,
-            shadowed: Default::default(),
+            locals: 0,
         }
     }
 }

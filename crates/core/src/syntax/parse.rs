@@ -13,7 +13,7 @@ use serde_json::from_str;
 use strum::{Display, EnumString};
 use ustr::Ustr;
 
-use crate::syntax::{Branch, BuiltinType, Expr, Name, Param, Sig, Stmt};
+use crate::syntax::{Branch, BuiltinType, Expr, Id, Ident, Param, Sig, Stmt};
 use crate::{Span, Spanned};
 
 pub(crate) type SyntaxErr<'a, T> = Full<Rich<'a, T, Span>>;
@@ -59,7 +59,7 @@ pub(crate) enum Token {
     #[strum(transparent)]
     Boolean(bool),
     #[strum(transparent)]
-    Name(Name),
+    Ident(Id),
     #[strum(transparent)]
     Doc(String),
     #[strum(transparent)]
@@ -145,7 +145,7 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, TokenSet, SyntaxErr<'s, char
         } else if let Ok(w) = Keyword::from_str(text) {
             Token::Keyword(w)
         } else {
-            Token::Name(Name::bound(text.into()))
+            Token::Ident(Id::bound(text.into()))
         }
     });
 
@@ -206,11 +206,11 @@ where
     .map_with(Spanned::from_map_extra)
     .labelled("constant expression");
 
-    let name = select! {
-        Token::Name(n) => Expr::Name(n)
+    let ident_ = select! {
+        Token::Ident(n) => Expr::Ident(Ident::Id(n))
     }
     .map_with(Spanned::from_map_extra)
-    .labelled("name expression");
+    .labelled("identifier expression");
 
     recursive(|expr| {
         let paren = expr
@@ -220,7 +220,7 @@ where
 
         let args = grouped_by(Sym::LParen, expr, Sym::Comma, Sym::RParen).labelled("arguments");
         let call = constant
-            .or(name)
+            .or(ident_)
             .or(paren)
             .foldl_with(args.repeated(), |callee, args, e| Spanned {
                 span: e.span(),
@@ -253,44 +253,46 @@ where
     .collect::<Vec<_>>()
     .labelled("docstring");
 
-    let name = select! {
-        Token::Name(n) => n
+    let id = select! {
+        Token::Ident(n) => n
     }
     .map_with(Spanned::from_map_extra)
-    .labelled("name");
+    .labelled("identifier");
 
-    let param = name
+    let param = id
         .then(expr().or_not())
-        .map(|(Spanned { span, item: name }, typ)| Spanned {
-            span,
-            item: Param { name, typ },
+        .map(|(id, typ)| {
+            id.map(|name| Param {
+                name: Ident::Id(name),
+                typ,
+            })
         })
         .labelled("parameter");
 
     let params = grouped_by(Sym::LParen, param, Sym::Comma, Sym::RParen).labelled("parameters");
 
     let assign = doc
-        .then(name)
+        .then(id)
         .then(expr().or_not())
         .then_ignore(just(Token::Sym(Sym::Assign)))
         .then(expr())
-        .map(
-            |(((doc, Spanned { span, item: name }), typ), rhs)| Spanned {
-                span,
-                item: Stmt::Assign {
-                    doc: doc.into_boxed_slice(),
-                    name,
-                    typ,
-                    rhs,
-                },
-            },
-        )
+        .map(|(((doc, id), typ), rhs)| {
+            id.map(|id| Stmt::Assign {
+                doc: doc.into_boxed_slice(),
+                name: Ident::Id(id),
+                typ,
+                rhs,
+            })
+        })
         .labelled("assignment statement");
 
-    let update = name
+    let update = id
         .then_ignore(just(Token::Sym(Sym::Eq)))
         .then(expr())
-        .map(|(name, rhs)| Stmt::Update { name, rhs })
+        .map(|(id, rhs)| Stmt::Update {
+            name: id.map(Ident::Id),
+            rhs,
+        })
         .map_with(Spanned::from_map_extra)
         .labelled("update statement");
 
@@ -301,44 +303,35 @@ where
         .labelled("return statement");
 
     let expr_ = expr()
-        .map(|Spanned { span, item }| Spanned {
-            span,
-            item: Stmt::Expr(item),
-        })
+        .map(|e| e.map(Stmt::Expr))
         .labelled("expression statement");
 
     recursive(|stmt| {
         let stmts = stmt.repeated().collect::<Vec<_>>().labelled("statements");
 
         let short = doc
-            .then(name)
+            .then(id)
             .then(params.clone())
             .then(expr().or_not())
             .then_ignore(just(Token::Sym(Sym::Assign)))
             .then(expr())
-            .map(
-                |((((doc, Spanned { span, item: name }), params), ret), body)| Spanned {
-                    span,
-                    item: Stmt::Func {
-                        short: true,
-                        sig: Sig {
-                            doc: doc.into_boxed_slice(),
-                            name,
-                            params: params.into_boxed_slice(),
-                            ret,
-                        },
-                        body: Box::new([Spanned {
-                            span: body.span,
-                            item: Stmt::Expr(body.item),
-                        }]),
+            .map(|((((doc, id), params), ret), body)| {
+                id.map(|name| Stmt::Func {
+                    short: true,
+                    sig: Sig {
+                        doc: doc.into_boxed_slice(),
+                        name,
+                        params: params.into_boxed_slice(),
+                        ret,
                     },
-                },
-            )
+                    body: Box::new([body.map(Stmt::Expr)]),
+                })
+            })
             .labelled("short function statement");
 
         let func = doc
             .then_ignore(just(Token::Keyword(Keyword::Function)))
-            .then(name)
+            .then(id)
             .then(params)
             .then(expr().or_not())
             .then(
@@ -346,21 +339,18 @@ where
                     .clone()
                     .delimited_by(just(Token::Sym(Sym::LBrace)), just(Token::Sym(Sym::RBrace))),
             )
-            .map(
-                |((((doc, Spanned { span, item: name }), params), ret), body)| Spanned {
-                    span,
-                    item: Stmt::Func {
-                        short: false,
-                        sig: Sig {
-                            doc: doc.into_boxed_slice(),
-                            name,
-                            params: params.into_boxed_slice(),
-                            ret,
-                        },
-                        body: body.into_boxed_slice(),
+            .map(|((((doc, id), params), ret), body)| {
+                id.map(|name| Stmt::Func {
+                    short: false,
+                    sig: Sig {
+                        doc: doc.into_boxed_slice(),
+                        name,
+                        params: params.into_boxed_slice(),
+                        ret,
                     },
-                },
-            )
+                    body: body.into_boxed_slice(),
+                })
+            })
             .labelled("function statement");
 
         let branch = just(Token::Keyword(Keyword::If))

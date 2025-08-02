@@ -1,54 +1,68 @@
-use std::collections::HashMap;
-use std::collections::hash_map::Entry;
-use std::mem::take;
 use std::ops::ControlFlow;
 use std::slice::from_ref;
 
-use crate::semantics::Func;
+use crate::Spanned;
+use crate::semantics::Functions;
 use crate::syntax::parse::Sym;
-use crate::syntax::{Branch, Expr, Name, Shadowed, Stmt};
+use crate::syntax::{Branch, Expr, Ident, Stmt};
 
 pub(crate) struct VM<'a> {
-    globals: &'a HashMap<Name, Func>,
+    fs: &'a Functions,
 }
 
 impl<'a> VM<'a> {
-    pub(crate) fn new(globals: &'a HashMap<Name, Func>) -> Self {
-        Self { globals }
+    pub(crate) fn new(fs: &'a Functions) -> Self {
+        Self { fs }
     }
 
-    pub(crate) fn func(&self, func: &Func, args: Vec<Expr>) -> Expr {
-        let mut block = Block::default();
-
-        func.params
-            .iter()
-            .zip(args)
-            .for_each(|(param, arg)| block.insert(param.clone(), arg));
-
-        func.body
-            .iter()
-            .try_fold(Expr::Unit, |_, stmt| self.stmt(&mut block, &stmt.item))
-            .into_expr()
+    pub(crate) fn func(&self, body: &[Spanned<Stmt>], args: Vec<Expr>) -> Expr {
+        let mut block = args.len();
+        let mut frame = args;
+        let e = self.block(&mut frame, &mut block, body).into_expr();
+        debug_assert!(frame.is_empty());
+        e
     }
 
-    fn stmt(&self, block: &mut Block, stmt: &Stmt) -> ControlFlow<Expr, Expr> {
+    fn block(
+        &self,
+        frame: &mut Vec<Expr>,
+        block: &mut usize,
+        body: &[Spanned<Stmt>],
+    ) -> ControlFlow<Expr, Expr> {
+        let e = body
+            .iter()
+            .try_fold(Expr::Unit, |_, stmt| self.stmt(frame, block, &stmt.item));
+        for _ in 0..*block {
+            frame.pop();
+        }
+        e
+    }
+
+    fn stmt(
+        &self,
+        frame: &mut Vec<Expr>,
+        block: &mut usize,
+        stmt: &Stmt,
+    ) -> ControlFlow<Expr, Expr> {
         ControlFlow::Continue(match stmt {
             Stmt::Func { .. } => Expr::Unit,
-            Stmt::Expr(e) => self.expr(block, e),
+            Stmt::Expr(e) => self.expr(frame, e),
             Stmt::Assign { name, rhs, .. } => {
-                let e = self.expr(block, &rhs.item);
-                block.insert(name.clone(), e.clone());
+                let e = self.expr(frame, &rhs.item);
+                frame.insert(name.as_idx(), e.clone());
+                *block += 1;
                 e
             }
             Stmt::Update { name, rhs } => {
-                let e = self.expr(block, &rhs.item);
-                block.update(name.item.clone(), e.clone());
+                let Ident::Idx(idx) = name.item else { todo!() };
+                let e = self.expr(frame, &rhs.item);
+                frame[idx] = e.clone();
                 e
             }
             Stmt::Return(v) => {
                 return ControlFlow::Break(
                     v.as_ref()
-                        .map(|e| self.expr(block, &e.item))
+                        .map(|e| self.expr(frame, &e.item))
                         .unwrap_or(Expr::Unit),
                 );
             }
@@ -56,20 +70,18 @@ impl<'a> VM<'a> {
                 let ret = from_ref(then)
                     .iter()
                     .chain(elif.iter())
-                    .try_fold((), |_, branch| self.branch(block, branch));
+                    .try_fold((), |_, branch| self.branch(frame, branch));
                 if let ControlFlow::Break(c) = ret {
                     return c;
                 }
                 if let Some((.., stmts)) = els {
-                    return stmts
-                        .iter()
-                        .try_fold(Expr::Unit, |_, stmt| self.stmt(block, &stmt.item));
+                    return self.block(frame, &mut 0, stmts);
                 }
                 Expr::Unit
             }
             Stmt::While(branch) => {
                 loop {
-                    let w = self.branch(block, branch);
+                    let w = self.branch(frame, branch);
                     let ControlFlow::Break(c) = w else { break };
                     if c.is_break() {
                         return c;
@@ -80,38 +92,40 @@ impl<'a> VM<'a> {
         })
     }
 
-    fn branch(&self, block: &mut Block, branch: &Branch) -> ControlFlow<ControlFlow<Expr, Expr>> {
-        let Expr::Boolean(cond) = self.expr(block, &branch.cond.item) else {
+    fn branch(
+        &self,
+        frame: &mut Vec<Expr>,
+        branch: &Branch,
+    ) -> ControlFlow<ControlFlow<Expr, Expr>> {
+        let Expr::Boolean(cond) = self.expr(frame, &branch.cond.item) else {
             unreachable!();
         };
         if !cond {
             return ControlFlow::Continue(());
         }
-        ControlFlow::Break(
-            branch
-                .body
-                .iter()
-                .try_fold(Expr::Unit, |_, stmt| self.stmt(block, &stmt.item)),
-        )
+        ControlFlow::Break(self.block(frame, &mut 0, &branch.body))
     }
 
-    fn expr(&self, block: &Block, expr: &Expr) -> Expr {
+    fn expr(&self, frame: &[Expr], expr: &Expr) -> Expr {
         match expr {
-            Expr::Name(n) => block
-                .locals
-                .get(n)
-                .cloned()
-                .unwrap_or_else(|| Expr::Name(n.clone())),
+            Expr::Ident(n) => {
+                if let Ident::Idx(idx) = n
+                    && let Some(e) = frame.get(*idx)
+                {
+                    return e.clone();
+                }
+                Expr::Ident(n.clone())
+            }
             Expr::Call(f, args) => {
-                let Expr::Name(n) = self.expr(block, &f.item) else {
+                let Expr::Ident(n) = self.expr(frame, &f.item) else {
                     unreachable!();
                 };
-                let args = args.iter().map(|e| self.expr(block, &e.item)).collect();
-                let f = self.globals.get(&n).unwrap();
+                let args = args.iter().map(|e| self.expr(frame, &e.item)).collect();
+                let f = self.fs.get(n.as_id()).unwrap();
                 self.func(f, args)
             }
             Expr::BinaryOp(lhs, op, rhs) => {
-                match (self.expr(block, &lhs.item), op, self.expr(block, &rhs.item)) {
+                match (self.expr(frame, &lhs.item), op, self.expr(frame, &rhs.item)) {
                     // TODO: Integers.
                     (Expr::Number(a), Sym::Le, Expr::Number(b)) => Expr::Boolean(a <= b),
                     (Expr::Number(a), Sym::Ge, Expr::Number(b)) => Expr::Boolean(a >= b),
@@ -136,30 +150,6 @@ impl<'a> VM<'a> {
             | Expr::String(..)
             | Expr::Boolean(..) => expr.clone(),
         }
-    }
-}
-
-#[derive(Default)]
-struct Block {
-    locals: HashMap<Name, Expr>,
-    shadowed: Shadowed<Name, Expr>,
-}
-
-impl Block {
-    fn insert(&mut self, name: Name, e: Expr) {
-        self.shadowed
-            .push(name.clone(), self.locals.insert(name, e));
-    }
-
-    fn update(&mut self, name: Name, e: Expr) {
-        let Entry::Occupied(mut entry) = self.locals.entry(name) else {
-            unreachable!();
-        };
-        entry.insert(e);
-    }
-
-    fn clear(&mut self) {
-        take(&mut self.shadowed).clear(&mut self.locals);
     }
 }
 

@@ -1,17 +1,15 @@
-use std::collections::HashMap;
-
 use chumsky::Parser;
 use chumsky::extra::ParserExtra;
 use chumsky::input::{Input, MapExtra};
 use chumsky::prelude::SimpleSpan;
 use ustr::Ustr;
 
-use crate::semantics::Func;
+use crate::semantics::Functions;
 use crate::semantics::check::Checker;
 use crate::semantics::vm::VM;
 use crate::syntax::parse::{file, lex};
 use crate::syntax::resolve::Resolver;
-use crate::syntax::{Expr, Name};
+use crate::syntax::{Expr, Stmt};
 
 #[allow(dead_code)]
 pub(crate) mod semantics;
@@ -48,6 +46,16 @@ pub struct Spanned<T> {
 }
 
 impl<T> Spanned<T> {
+    pub(crate) fn map<F, U>(self, f: F) -> Spanned<U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        Spanned {
+            span: self.span,
+            item: f(self.item),
+        }
+    }
+
     pub(crate) fn from_map_extra<'src, 'b, I, E>(item: T, e: &mut MapExtra<'src, 'b, I, E>) -> Self
     where
         I: Input<'src, Span = Span>,
@@ -85,8 +93,8 @@ type Out<T> = Result<T, Error>;
 #[derive(Default)]
 pub struct Ctx<'src> {
     text: &'src str,
-    file: Func,
-    fns: HashMap<Name, Func>,
+    file: Box<[Spanned<Stmt>]>,
+    fs: Functions,
 }
 
 #[allow(dead_code)]
@@ -109,46 +117,45 @@ impl<'src> Ctx<'src> {
             .eval()
     }
 
-    pub fn parse(&mut self) -> Out<&mut Self> {
-        self.file = Func::of_file(
-            lex()
-                .parse(self.text)
-                .into_result()
-                .map_err(|errs| {
-                    Error::Lexing(
-                        errs.into_iter()
-                            .map(|e| (*e.span(), e.reason().to_string()))
-                            .collect(),
-                    )
-                })
-                .and_then(|tokens| {
-                    file()
-                        .parse(tokens.tokens.as_slice())
-                        .into_result()
-                        .map_err(|errs| {
-                            Error::Parsing(
-                                tokens.spans.into(),
-                                errs.into_iter()
-                                    .map(|e| (*e.span(), e.reason().to_string()))
-                                    .collect(),
-                            )
-                        })
-                })?,
-        );
+    pub fn parse(mut self) -> Out<Self> {
+        self.file = lex()
+            .parse(self.text)
+            .into_result()
+            .map_err(|errs| {
+                Error::Lexing(
+                    errs.into_iter()
+                        .map(|e| (*e.span(), e.reason().to_string()))
+                        .collect(),
+                )
+            })
+            .and_then(|tokens| {
+                file()
+                    .parse(tokens.tokens.as_slice())
+                    .into_result()
+                    .map_err(|errs| {
+                        Error::Parsing(
+                            tokens.spans.into(),
+                            errs.into_iter()
+                                .map(|e| (*e.span(), e.reason().to_string()))
+                                .collect(),
+                        )
+                    })
+            })?
+            .into();
         Ok(self)
     }
 
-    pub fn resolve(&mut self) -> Out<&mut Self> {
-        Resolver::default().file(self.file.body.as_mut())?;
+    pub fn resolve(mut self) -> Out<Self> {
+        Resolver::default().file(self.file.as_mut())?;
         Ok(self)
     }
 
-    pub fn check(&mut self) -> Out<&mut Self> {
-        self.fns = Checker::default().file(self.file.body.as_mut())?;
+    pub fn check(mut self) -> Out<Self> {
+        self.fs = Checker::default().file(self.file.as_mut())?;
         Ok(self)
     }
 
     pub fn eval(&self) -> Expr {
-        VM::new(&self.fns).func(&self.file, Default::default())
+        VM::new(&self.fs).func(&self.file, Default::default())
     }
 }

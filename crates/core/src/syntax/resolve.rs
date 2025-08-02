@@ -1,12 +1,12 @@
 use ustr::{Ustr, UstrMap};
 
-use crate::syntax::{Branch, Expr, Name, Shadowed, Sig, Stmt};
+use crate::syntax::{Branch, Expr, Id, Ident, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
 pub(crate) struct Resolver {
-    globals: UstrMap<Name>,
-    locals: UstrMap<Name>,
+    globals: UstrMap<Id>,
+    locals: Vec<Ustr>,
 }
 
 impl Resolver {
@@ -21,7 +21,7 @@ impl Resolver {
     fn stmt(&mut self, block: &mut Block, stmt: &mut Spanned<Stmt>) -> Out<()> {
         match &mut stmt.item {
             Stmt::Func { sig, body, .. } => {
-                let local = self.sig(block, sig)?;
+                let local = self.sig(sig)?;
                 self.block(local, body)?;
             }
             Stmt::Expr(e) => self.expr(stmt.span, e)?,
@@ -53,7 +53,7 @@ impl Resolver {
         Ok(())
     }
 
-    fn sig(&mut self, block: &mut Block, sig: &mut Sig) -> Out<Block> {
+    fn sig(&mut self, sig: &mut Sig) -> Out<Block> {
         sig.ret
             .as_mut()
             .map(|t| self.expr(t.span, &mut t.item))
@@ -65,10 +65,10 @@ impl Resolver {
                 .as_mut()
                 .map(|t| self.expr(t.span, &mut t.item))
                 .transpose()?;
-            self.insert(&mut local, &p.item.name);
+            self.insert(&mut local, &mut p.item.name);
             Ok(())
         })?;
-        self.insert(block, &sig.name);
+        self.globals.insert(sig.name.raw(), sig.name.clone());
         Ok(local)
     }
 
@@ -81,10 +81,10 @@ impl Resolver {
     }
 
     fn drop_block(&mut self, block: Block) {
-        block.shadowed.into_iter().for_each(|(raw, name)| {
-            name.map(|old| self.locals.insert(raw, old))
-                .unwrap_or_else(|| self.locals.remove(&raw));
-        })
+        debug_assert!(block.local);
+        for _ in 0..block.locals {
+            self.locals.pop();
+        }
     }
 
     fn branch(&mut self, branch: &mut Branch) -> Out<()> {
@@ -94,7 +94,7 @@ impl Resolver {
 
     fn expr(&mut self, span: Span, expr: &mut Expr) -> Out<()> {
         match expr {
-            Expr::Name(n) => self.name(span, n)?,
+            Expr::Ident(id) => self.name(span, id)?,
 
             Expr::Call(callee, args) => {
                 self.expr(callee.span, &mut callee.item)?;
@@ -115,31 +115,36 @@ impl Resolver {
         Ok(())
     }
 
-    fn name(&mut self, span: Span, n: &mut Name) -> Out<()> {
-        let raw = n.raw();
-        self.locals
-            .get(&raw)
-            .or_else(|| self.globals.get(&raw))
-            .map(|found| {
-                *n = found.clone();
-            })
-            .ok_or(Error::UndefName(span, raw))
+    fn name(&mut self, span: Span, ident: &mut Ident) -> Out<()> {
+        let id = ident.as_id_mut();
+        let raw = id.raw();
+        if let Some(found) = self.locals.iter().rposition(|each| raw == **each) {
+            *ident = Ident::Idx(found);
+            return Ok(());
+        }
+        if let Some(found) = self.globals.get(&raw) {
+            *id = found.clone();
+            return Ok(());
+        }
+        Err(Error::UndefName(span, raw))
     }
 
-    fn insert(&mut self, block: &mut Block, name: &Name) {
+    fn insert(&mut self, block: &mut Block, ident: &mut Ident) {
+        let id = ident.as_id_mut();
         if block.local {
-            return block
-                .shadowed
-                .push(name.raw(), self.locals.insert(name.raw(), name.clone()));
+            self.locals.push(id.raw());
+            *ident = Ident::Idx(self.locals.len() - 1);
+            block.locals += 1;
+            return;
         }
-        self.globals.insert(name.raw(), name.clone());
+        self.globals.insert(id.raw(), id.clone());
     }
 }
 
 #[derive(Default)]
 struct Block {
     local: bool,
-    shadowed: Shadowed<Ustr, Name>,
+    locals: usize,
 }
 
 impl Block {

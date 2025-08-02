@@ -1,7 +1,8 @@
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
 use crate::Spanned;
-use crate::syntax::{BuiltinType, Name, Stmt};
+use crate::syntax::{BuiltinType, Id, Stmt};
 
 pub(crate) mod check;
 pub(crate) mod vm;
@@ -45,17 +46,4 @@ impl Display for Type {
     }
 }
 
-#[derive(Default)]
-pub(crate) struct Func {
-    pub(crate) params: Box<[Name]>,
-    pub(crate) body: Box<[Spanned<Stmt>]>,
-}
-
-impl Func {
-    pub(crate) fn of_file(body: Vec<Spanned<Stmt>>) -> Self {
-        Self {
-            params: Default::default(),
-            body: body.into(),
-        }
-    }
-}
+pub(crate) type Functions = HashMap<Id, Box<[Spanned<Stmt>]>>;
