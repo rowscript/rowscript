@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::mem::take;
 
-use crate::semantics::Type;
+use crate::semantics::{Func, Functions, Type};
 use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, BuiltinType, Expr, Id, Ident, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
@@ -10,14 +10,11 @@ use crate::{Error, Out, Span, Spanned};
 pub(crate) struct Checker {
     globals: HashMap<Id, Type>,
     locals: Vec<Type>,
-    fns: HashMap<Id, Box<[Spanned<Stmt>]>>,
+    fns: Functions,
 }
 
 impl Checker {
-    pub(crate) fn file(
-        mut self,
-        file: &mut [Spanned<Stmt>],
-    ) -> Out<HashMap<Id, Box<[Spanned<Stmt>]>>> {
+    pub(crate) fn file(mut self, file: &mut [Spanned<Stmt>]) -> Out<Functions> {
         let mut block = Block::global();
         file.iter_mut().try_for_each(|stmt| {
             self.stmt(&mut block, stmt)?;
@@ -30,9 +27,15 @@ impl Checker {
     fn stmt(&mut self, block: &mut Block, stmt: &mut Spanned<Stmt>) -> Out<Type> {
         Ok(match &mut stmt.item {
             Stmt::Func { sig, body, .. } => {
-                let local = self.sig(sig)?;
+                let (params, local) = self.sig(sig)?;
                 let typ = self.block(local, body)?;
-                let old = self.fns.insert(sig.name.clone(), take(body));
+                let old = self.fns.insert(
+                    sig.name.clone(),
+                    Func {
+                        params,
+                        body: take(body),
+                    },
+                );
                 debug_assert!(old.is_none());
                 typ
             }
@@ -81,7 +84,7 @@ impl Checker {
         })
     }
 
-    fn sig(&mut self, sig: &Sig) -> Out<Block> {
+    fn sig(&mut self, sig: &Sig) -> Out<(Box<[Type]>, Block)> {
         let ret = sig
             .ret
             .as_ref()
@@ -103,10 +106,12 @@ impl Checker {
                 self.insert(&mut local, &p.item.name, typ.clone());
                 Ok(typ)
             })
-            .collect::<Out<_>>()?;
-        self.globals
-            .insert(sig.name.clone(), Type::FunctionType(params, Box::new(ret)));
-        Ok(local)
+            .collect::<Out<Box<_>>>()?;
+        self.globals.insert(
+            sig.name.clone(),
+            Type::FunctionType(params.clone(), Box::new(ret)),
+        );
+        Ok((params, local))
     }
 
     fn block(&mut self, mut block: Block, stmts: &mut [Spanned<Stmt>]) -> Out<Type> {

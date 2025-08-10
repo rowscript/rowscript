@@ -15,10 +15,10 @@ impl<'a> VM<'a> {
         Self { fs }
     }
 
-    pub(crate) fn func(&self, body: &[Spanned<Stmt>], args: Vec<Expr>) -> Expr {
+    pub(crate) fn func(&self, f: &[Spanned<Stmt>], args: Vec<Expr>) -> Expr {
         let mut block = args.len();
         let mut frame = args;
-        let e = self.block(&mut frame, &mut block, body).into_expr();
+        let e = self.block(&mut frame, &mut block, f).into_expr();
         debug_assert!(frame.is_empty());
         e
     }
@@ -122,7 +122,7 @@ impl<'a> VM<'a> {
                 };
                 let args = args.iter().map(|e| self.expr(frame, &e.item)).collect();
                 let f = self.fs.get(n.as_id()).unwrap();
-                self.func(f, args)
+                self.func(&f.body, args)
             }
             Expr::BinaryOp(lhs, op, rhs) => {
                 match (self.expr(frame, &lhs.item), op, self.expr(frame, &rhs.item)) {

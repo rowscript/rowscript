@@ -9,7 +9,7 @@ mod jit;
 pub(crate) mod vm;
 
 #[derive(Clone)]
-enum Type {
+pub(crate) enum Type {
     BuiltinType(BuiltinType),
     FunctionType(Box<[Self]>, Box<Self>),
 }
@@ -47,4 +47,10 @@ impl Display for Type {
     }
 }
 
-pub(crate) type Functions = HashMap<Id, Box<[Spanned<Stmt>]>>;
+#[derive(Default)]
+pub(crate) struct Func {
+    pub(crate) params: Box<[Type]>,
+    pub(crate) body: Box<[Spanned<Stmt>]>,
+}
+
+pub(crate) type Functions = HashMap<Id, Func>;

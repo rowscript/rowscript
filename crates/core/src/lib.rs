@@ -4,12 +4,12 @@ use chumsky::input::{Input, MapExtra};
 use chumsky::prelude::SimpleSpan;
 use ustr::Ustr;
 
-use crate::semantics::Functions;
 use crate::semantics::check::Checker;
 use crate::semantics::vm::VM;
+use crate::semantics::{Func, Functions};
+use crate::syntax::Expr;
 use crate::syntax::parse::{file, lex};
 use crate::syntax::resolve::Resolver;
-use crate::syntax::{Expr, Stmt};
 
 #[allow(dead_code)]
 pub(crate) mod semantics;
@@ -93,7 +93,7 @@ type Out<T> = Result<T, Error>;
 #[derive(Default)]
 pub struct Ctx<'src> {
     text: &'src str,
-    file: Box<[Spanned<Stmt>]>,
+    file: Func,
     fs: Functions,
 }
 
@@ -118,7 +118,7 @@ impl<'src> Ctx<'src> {
     }
 
     pub fn parse(mut self) -> Out<Self> {
-        self.file = lex()
+        self.file.body = lex()
             .parse(self.text)
             .into_result()
             .map_err(|errs| {
@@ -146,16 +146,16 @@ impl<'src> Ctx<'src> {
     }
 
     pub fn resolve(mut self) -> Out<Self> {
-        Resolver::default().file(self.file.as_mut())?;
+        Resolver::default().file(self.file.body.as_mut())?;
         Ok(self)
     }
 
     pub fn check(mut self) -> Out<Self> {
-        self.fs = Checker::default().file(self.file.as_mut())?;
+        self.fs = Checker::default().file(self.file.body.as_mut())?;
         Ok(self)
     }
 
     pub fn eval(&self) -> Expr {
-        VM::new(&self.fs).func(&self.file, Default::default())
+        VM::new(&self.fs).func(&self.file.body, Default::default())
     }
 }
