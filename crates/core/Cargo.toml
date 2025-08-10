@@ -6,11 +6,15 @@ edition = "2024"
 [dependencies]
 strum = { version = "0.27.2", features = ["derive"] }
 ustr = "1.1.0"
-serde_json = "1.0.141"
-chumsky = {  version = "1.0.0-alpha.8", features = ["pratt"] }
+serde_json = "1.0.142"
+chumsky = { version = "1.0.0-alpha.8", features = ["pratt"] }
+cranelift = "0.122.0"
+cranelift-jit = "0.122.0"
+cranelift-native = "0.122.0"
+cranelift-module = "0.122.0"
 
 [dev-dependencies]
-criterion = "0.6.0"
+criterion = "0.7.0"
 
 [[bench]]
 name = "eval"

@@ -5,6 +5,7 @@ use crate::Spanned;
 use crate::syntax::{BuiltinType, Id, Stmt};
 
 pub(crate) mod check;
+mod jit;
 pub(crate) mod vm;
 
 #[derive(Clone)]
