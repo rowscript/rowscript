@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::mem::take;
 
-use crate::semantics::{Func, Functions, Type};
+use crate::semantics::{BuiltinType, Func, FunctionType, Functions, Type};
 use crate::syntax::parse::Sym;
-use crate::syntax::{Branch, BuiltinType, Expr, Id, Ident, Sig, Stmt};
+use crate::syntax::{Branch, Expr, Id, Ident, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -27,17 +27,18 @@ impl Checker {
     fn stmt(&mut self, block: &mut Block, stmt: &mut Spanned<Stmt>) -> Out<Type> {
         Ok(match &mut stmt.item {
             Stmt::Func { sig, body, .. } => {
-                let (params, local) = self.sig(sig)?;
-                let typ = self.block(local, body)?;
+                let (typ, local) = self.sig(sig)?;
+                let got = self.block(local, body)?;
+                isa(stmt.span, &got, &typ.ret)?;
                 let old = self.fns.insert(
                     sig.name.clone(),
                     Func {
-                        params,
+                        typ,
                         body: take(body),
                     },
                 );
                 debug_assert!(old.is_none());
-                typ
+                got
             }
             Stmt::Expr(e) => self.infer(e)?.1,
             Stmt::Assign { name, typ, rhs, .. } => {
@@ -65,7 +66,7 @@ impl Checker {
                         .map(|_| block.ret.clone())
                 })
                 .transpose()?
-                .unwrap_or(Type::BuiltinType(BuiltinType::Unit)),
+                .unwrap_or(Type::Builtin(BuiltinType::Unit)),
             Stmt::If { then, elif, els } => {
                 let want = self.branch(block, then)?;
                 elif.iter_mut().try_for_each(|b| {
@@ -84,13 +85,13 @@ impl Checker {
         })
     }
 
-    fn sig(&mut self, sig: &Sig) -> Out<(Box<[Type]>, Block)> {
+    fn sig(&mut self, sig: &Sig) -> Out<(FunctionType, Block)> {
         let ret = sig
             .ret
             .as_ref()
             .map(|t| self.check_type(t.span, &t.item))
             .transpose()?
-            .unwrap_or(Type::BuiltinType(BuiltinType::Unit));
+            .unwrap_or(Type::Builtin(BuiltinType::Unit));
         let mut local = Block::func(ret.clone());
         let params = sig
             .params
@@ -102,16 +103,15 @@ impl Checker {
                     .as_ref()
                     .map(|t| self.check_type(t.span, &t.item))
                     .transpose()?
-                    .unwrap_or(Type::BuiltinType(BuiltinType::Unit));
+                    .unwrap_or(Type::Builtin(BuiltinType::Unit));
                 self.insert(&mut local, &p.item.name, typ.clone());
                 Ok(typ)
             })
-            .collect::<Out<Box<_>>>()?;
-        self.globals.insert(
-            sig.name.clone(),
-            Type::FunctionType(params.clone(), Box::new(ret)),
-        );
-        Ok((params, local))
+            .collect::<Out<_>>()?;
+        let typ = FunctionType { params, ret };
+        self.globals
+            .insert(sig.name.clone(), Type::Function(Box::new(typ.clone())));
+        Ok((typ, local))
     }
 
     fn block(&mut self, mut block: Block, stmts: &mut [Spanned<Stmt>]) -> Out<Type> {
@@ -121,7 +121,7 @@ impl Checker {
             .collect::<Out<Vec<_>>>()?
             .into_iter()
             .last()
-            .unwrap_or(Type::BuiltinType(BuiltinType::Unit));
+            .unwrap_or(Type::Builtin(BuiltinType::Unit));
         for _ in 0..block.locals {
             self.locals.pop();
         }
@@ -132,14 +132,14 @@ impl Checker {
         self.check(
             branch.cond.span,
             &branch.cond.item,
-            &Type::BuiltinType(BuiltinType::Bool),
+            &Type::Builtin(BuiltinType::Bool),
         )?;
         self.block(block.local(), &mut branch.body)
     }
 
     fn check(&mut self, span: Span, expr: &Expr, want: &Type) -> Out<Option<Type>> {
         if let Expr::Number(..) = expr
-            && let Type::BuiltinType(t) = want
+            && let Type::Builtin(t) = want
             && t.is_number()
         {
             return Ok(None);
@@ -151,7 +151,7 @@ impl Checker {
     }
 
     fn check_type(&mut self, span: Span, expr: &Expr) -> Out<Type> {
-        self.check(span, expr, &Type::BuiltinType(BuiltinType::Type))
+        self.check(span, expr, &Type::Builtin(BuiltinType::Type))
             .map(Option::unwrap)
     }
 
@@ -161,52 +161,51 @@ impl Checker {
             match expr {
                 Expr::Ident(ident) => self.ident(ident),
                 Expr::BuiltinType(t) => {
-                    return Ok((
-                        Some(Type::BuiltinType(*t)),
-                        Type::BuiltinType(BuiltinType::Type),
-                    ));
+                    return Ok((Some(Type::Builtin(*t)), Type::Builtin(BuiltinType::Type)));
                 }
-                Expr::Unit => Type::BuiltinType(BuiltinType::Unit),
-                Expr::Number(..) => Type::BuiltinType(BuiltinType::F64),
-                Expr::String(..) => Type::BuiltinType(BuiltinType::Str),
-                Expr::Boolean(..) => Type::BuiltinType(BuiltinType::Bool),
+                Expr::Unit => Type::Builtin(BuiltinType::Unit),
+                Expr::Number(..) => Type::Builtin(BuiltinType::F64),
+                Expr::String(..) => Type::Builtin(BuiltinType::Str),
+                Expr::Boolean(..) => Type::Builtin(BuiltinType::Bool),
                 Expr::Call(f, args) => {
                     let span = f.span;
-                    let f_type = self.infer(&f.item)?.1;
-                    let Type::FunctionType(params, ret) = f_type else {
+                    let typ = self.infer(&f.item)?.1;
+                    let Type::Function(typ) = typ else {
                         return Err(Error::TypeMismatch {
                             span,
-                            got: f_type.to_string(),
+                            got: typ.to_string(),
                             want: "function".to_string(),
                         });
                     };
                     {
                         let got = args.len();
-                        let want = params.len();
+                        let want = typ.params.len();
                         if got != want {
                             return Err(Error::ArityMismatch { span, got, want });
                         }
                     }
-                    args.iter().zip(params.iter()).try_for_each(|(got, want)| {
-                        self.check(got.span, &got.item, want)?;
-                        Ok(())
-                    })?;
-                    *ret
+                    args.iter()
+                        .zip(typ.params.iter())
+                        .try_for_each(|(got, want)| {
+                            self.check(got.span, &got.item, want)?;
+                            Ok(())
+                        })?;
+                    typ.ret
                 }
                 Expr::BinaryOp(lhs, op, rhs) => match op {
                     Sym::EqEq => {
                         let want = self.infer(&lhs.item)?.1;
                         self.check(rhs.span, &rhs.item, &want)?;
-                        Type::BuiltinType(BuiltinType::Bool)
+                        Type::Builtin(BuiltinType::Bool)
                     }
 
                     Sym::Lt | Sym::Gt | Sym::Le | Sym::Ge => {
                         let got = self.infer(&lhs.item)?.1;
-                        if let Type::BuiltinType(t) = got
+                        if let Type::Builtin(t) = got
                             && t.is_number()
                         {
                             self.check(rhs.span, &rhs.item, &got)?;
-                            Type::BuiltinType(BuiltinType::Bool)
+                            Type::Builtin(BuiltinType::Bool)
                         } else {
                             return Err(Error::TypeMismatch {
                                 span: lhs.span,
@@ -218,7 +217,7 @@ impl Checker {
 
                     Sym::Plus | Sym::Minus | Sym::Mul => {
                         let got = self.infer(&lhs.item)?.1;
-                        if let Type::BuiltinType(t) = got
+                        if let Type::Builtin(t) = got
                             && t.is_number()
                         {
                             self.check(rhs.span, &rhs.item, &got)?;
@@ -274,7 +273,7 @@ struct Block {
 impl Block {
     fn global() -> Self {
         Self {
-            ret: Type::BuiltinType(BuiltinType::Unit),
+            ret: Type::Builtin(BuiltinType::Unit),
             locals: 0,
         }
     }
@@ -293,12 +292,13 @@ impl Block {
 
 fn isa(span: Span, got: &Type, want: &Type) -> Out<()> {
     match (got, want) {
-        (Type::BuiltinType(a), Type::BuiltinType(b)) if a == b => Ok(()),
-        (Type::FunctionType(xs, x), Type::FunctionType(ys, y)) if xs.len() == ys.len() => {
-            xs.iter()
-                .zip(ys.iter())
+        (Type::Builtin(a), Type::Builtin(b)) if a == b => Ok(()),
+        (Type::Function(a), Type::Function(b)) if a.params.len() == b.params.len() => {
+            a.params
+                .iter()
+                .zip(b.params.iter())
                 .try_for_each(|(a, b)| isa(span, a, b))?;
-            isa(span, x, y)
+            isa(span, &a.ret, &b.ret)
         }
         _ => {
             let got = got.to_string();

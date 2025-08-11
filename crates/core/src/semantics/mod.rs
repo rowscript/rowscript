@@ -1,21 +1,16 @@
 use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, Result as FmtResult};
+use strum::{Display, EnumString};
 
 use crate::Spanned;
-use crate::syntax::{BuiltinType, Id, Stmt};
+use crate::syntax::{Id, Stmt};
 
 pub(crate) mod check;
 mod jit;
 pub(crate) mod vm;
 
-#[derive(Clone)]
-pub(crate) enum Type {
-    BuiltinType(BuiltinType),
-    FunctionType(Box<[Self]>, Box<Self>),
-}
-
 macro_rules! write_separated {
-    ($f:ident, $items:ident, $sep:literal) => {
+    ($f:ident, $items:expr, $sep:literal) => {
         let mut it = $items.iter();
         if let Some(first) = it.next() {
             write!($f, "{first}")?;
@@ -28,28 +23,81 @@ macro_rules! write_separated {
 }
 
 macro_rules! write_delimited {
-    ($f:ident, $lhs:literal, $items:ident, $sep:literal, $rhs:literal) => {
+    ($f:ident, $lhs:literal, $items:expr, $sep:literal, $rhs:literal) => {
         write!($f, $lhs)?;
         write_separated!($f, $items, $sep);
         write!($f, $rhs)?;
     };
 }
 
-impl Display for Type {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Type::BuiltinType(t) => write!(f, "{t}"),
-            Type::FunctionType(params, ret) => {
-                write_delimited!(f, "(", params, ",", ")");
-                write!(f, " -> {ret}")
-            }
-        }
+#[derive(Clone, Display)]
+pub(crate) enum Type {
+    #[strum(transparent)]
+    Builtin(BuiltinType),
+    #[strum(transparent)]
+    Function(Box<FunctionType>),
+}
+
+impl Default for Type {
+    fn default() -> Self {
+        Self::Builtin(Default::default())
+    }
+}
+
+#[derive(Default, Debug, Eq, PartialEq, Copy, Clone, EnumString, Display)]
+#[strum(serialize_all = "lowercase")]
+pub enum BuiltinType {
+    Type,
+    #[default]
+    Unit,
+    Bool,
+    I8,
+    I16,
+    I32,
+    I64,
+    U8,
+    U16,
+    U32,
+    U64,
+    F32,
+    F64,
+    Str,
+}
+
+impl BuiltinType {
+    pub(crate) fn is_number(&self) -> bool {
+        matches!(
+            self,
+            Self::I8
+                | Self::I16
+                | Self::I32
+                | Self::I64
+                | Self::U8
+                | Self::U16
+                | Self::U32
+                | Self::U64
+                | Self::F32
+                | Self::F64
+        )
+    }
+}
+
+#[derive(Default, Clone)]
+pub(crate) struct FunctionType {
+    params: Box<[Type]>,
+    ret: Type,
+}
+
+impl Display for FunctionType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write_delimited!(f, "(", self.params, ",", ")");
+        write!(f, " -> {}", self.ret)
     }
 }
 
 #[derive(Default)]
 pub(crate) struct Func {
-    pub(crate) params: Box<[Type]>,
+    pub(crate) typ: FunctionType,
     pub(crate) body: Box<[Spanned<Stmt>]>,
 }
 

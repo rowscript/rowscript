@@ -6,9 +6,9 @@ use std::vec::IntoIter;
 
 use chumsky::extra::ParserExtra;
 use chumsky::input::{Input, MapExtra};
-use strum::{Display, EnumString};
 use ustr::Ustr;
 
+use crate::semantics::BuiltinType;
 use crate::syntax::parse::{Sym, Token};
 use crate::{Span, Spanned};
 
@@ -80,43 +80,6 @@ impl Ident {
     pub(crate) fn as_idx(&self) -> usize {
         let Self::Idx(idx) = self else { unreachable!() };
         *idx
-    }
-}
-
-#[derive(Debug, Eq, PartialEq, Copy, Clone, EnumString, Display)]
-#[strum(serialize_all = "lowercase")]
-pub enum BuiltinType {
-    Type,
-    Unit,
-    Bool,
-    I8,
-    I16,
-    I32,
-    I64,
-    U8,
-    U16,
-    U32,
-    U64,
-    F32,
-    F64,
-    Str,
-}
-
-impl BuiltinType {
-    pub(crate) fn is_number(&self) -> bool {
-        matches!(
-            self,
-            Self::I8
-                | Self::I16
-                | Self::I32
-                | Self::I64
-                | Self::U8
-                | Self::U16
-                | Self::U32
-                | Self::U64
-                | Self::F32
-                | Self::F64
-        )
     }
 }
 

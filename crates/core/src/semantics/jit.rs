@@ -1,13 +1,13 @@
 use cranelift::codegen::Context;
 use cranelift::prelude::settings::{Flags, builder as flags_builder};
 use cranelift::prelude::types::{F32, F64, I8, I16, I32, I64};
-use cranelift::prelude::{Configurable, FunctionBuilderContext, Type};
+use cranelift::prelude::{AbiParam, Configurable, FunctionBuilderContext, Type as JitType};
 use cranelift_jit::{JITBuilder, JITModule};
-use cranelift_module::{Linkage, Module, default_libcall_names};
+use cranelift_module::{Module, default_libcall_names};
 use cranelift_native::builder as native_builder;
 
-use crate::syntax::{BuiltinType, Id, Stmt};
-use crate::{Out, Spanned};
+use crate::semantics::{BuiltinType, Func, Type};
+use crate::syntax::Id;
 
 struct Jit {
     m: JITModule,
@@ -27,34 +27,46 @@ impl Default for Jit {
 }
 
 impl Jit {
-    fn func(&mut self, id: &Id, _body: &[Spanned<Stmt>]) -> Out<*const u8> {
-        let func = Func::new(&self.m);
-
-        let _id =
-            self.m
-                .declare_function(id.raw().as_str(), Linkage::Local, &func.ctx.func.signature);
-
-        todo!()
-    }
-}
-
-struct Func<'a> {
-    m: &'a JITModule,
-    builder: FunctionBuilderContext,
-    ctx: Context,
-}
-
-impl<'a> Func<'a> {
-    fn new(m: &'a JITModule) -> Self {
-        Self {
-            m,
+    fn func<'a>(&'a self, id: &'a Id, f: &'a Func) -> JitFunc<'a> {
+        JitFunc {
             builder: Default::default(),
-            ctx: m.make_context(),
+            ctx: self.m.make_context(),
+            m: &self.m,
+            id,
+            f,
         }
     }
 }
 
-impl From<BuiltinType> for Type {
+struct JitFunc<'a> {
+    builder: FunctionBuilderContext,
+    ctx: Context,
+
+    m: &'a JITModule,
+    id: &'a Id,
+    f: &'a Func,
+}
+
+impl<'a> JitFunc<'a> {
+    fn lower(&mut self) {
+        self.ctx.func.signature.params = self
+            .f
+            .typ
+            .params
+            .iter()
+            .map(|t| {
+                let Type::Builtin(t) = *t else { todo!() };
+                AbiParam::new(t.into())
+            })
+            .collect();
+        let Type::Builtin(t) = self.f.typ.ret else {
+            todo!()
+        };
+        self.ctx.func.signature.returns = vec![AbiParam::new(t.into())];
+    }
+}
+
+impl From<BuiltinType> for JitType {
     fn from(t: BuiltinType) -> Self {
         match t {
             BuiltinType::I8 | BuiltinType::U8 => I8,
