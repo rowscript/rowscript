@@ -2,14 +2,15 @@ use cranelift::codegen::Context;
 use cranelift::prelude::settings::{Flags, builder as flags_builder};
 use cranelift::prelude::types::{F32, F64, I8, I16, I32, I64};
 use cranelift::prelude::{
-    AbiParam, Configurable, FunctionBuilder, FunctionBuilderContext, InstBuilder, Signature,
-    Type as JitType, Value, Variable,
+    AbiParam, Configurable, FloatCC, FunctionBuilder, FunctionBuilderContext, InstBuilder,
+    Signature, Type as JitType, Value, Variable,
 };
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{Linkage, Module, default_libcall_names};
 use cranelift_native::builder as native_builder;
 
 use crate::semantics::{BuiltinType, Func, FunctionType, Functions, Type};
+use crate::syntax::parse::Sym;
 use crate::syntax::{Expr, Id, Ident};
 
 struct Jit<'a> {
@@ -95,7 +96,22 @@ impl<'a> JitFunc<'a> {
                 let call = builder.ins().call(local_callee, &args);
                 builder.inst_results(call)[0]
             }
-            Expr::BinaryOp(..) => todo!(),
+            Expr::BinaryOp(lhs, op, rhs) => {
+                let a = self.expr(builder, &lhs.item);
+                let b = self.expr(builder, &rhs.item);
+                // TODO: Integers.
+                match op {
+                    Sym::Le => builder.ins().fcmp(FloatCC::LessThanOrEqual, a, b),
+                    Sym::Ge => builder.ins().fcmp(FloatCC::GreaterThanOrEqual, a, b),
+                    Sym::Lt => builder.ins().fcmp(FloatCC::LessThan, a, b),
+                    Sym::Gt => builder.ins().fcmp(FloatCC::GreaterThan, a, b),
+                    Sym::Plus => builder.ins().fadd(a, b),
+                    Sym::Minus => builder.ins().fsub(a, b),
+                    Sym::Mul => builder.ins().fmul(a, b),
+                    Sym::EqEq => builder.ins().fcmp(FloatCC::Equal, a, b),
+                    _ => unreachable!(),
+                }
+            }
         }
     }
 }
