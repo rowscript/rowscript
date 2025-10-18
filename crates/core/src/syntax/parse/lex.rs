@@ -81,6 +81,7 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, TokenSet, SyntaxErr<'s, char
         just('{').to(Sym::LBrace),
         just('}').to(Sym::RBrace),
         just(',').to(Sym::Comma),
+        just(':').to(Sym::Colon),
         just('=').to(Sym::Eq),
         just('<').to(Sym::Lt),
         just('>').to(Sym::Gt),

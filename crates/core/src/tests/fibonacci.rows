@@ -1,5 +1,5 @@
 /// Fibonacci number.
-function fib(n u32) u32 {
+function fib(n: u32): u32 {
     a := n < 2
     if a {
         return 1

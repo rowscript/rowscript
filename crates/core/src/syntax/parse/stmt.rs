@@ -25,7 +25,7 @@ where
     .labelled("identifier");
 
     let param = id
-        .then(expr().or_not())
+        .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()).or_not())
         .map(|(id, typ)| {
             id.map(|name| Param {
                 name: Ident::Id(name),
@@ -98,7 +98,7 @@ where
             .then_ignore(just(Token::Keyword(Keyword::Function)))
             .then(id)
             .then(params)
-            .then(expr().or_not())
+            .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()).or_not())
             .then(
                 stmts
                     .clone()

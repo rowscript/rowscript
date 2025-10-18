@@ -40,6 +40,7 @@ pub enum Sym {
     LBrace,
     RBrace,
     Comma,
+    Colon,
     Eq,
     Lt,
     Gt,

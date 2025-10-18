@@ -1,4 +1,4 @@
-function factorial(n u32) u32 {
+function factorial(n: u32): u32 {
     a u32 := 1
     while n > 1 {
         a = a * n

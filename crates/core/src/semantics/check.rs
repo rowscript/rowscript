@@ -237,6 +237,7 @@ impl Checker {
                     | Sym::LBrace
                     | Sym::RBrace
                     | Sym::Comma
+                    | Sym::Colon
                     | Sym::Eq => unreachable!(),
                 },
             },
