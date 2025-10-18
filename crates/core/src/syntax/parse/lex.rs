@@ -72,7 +72,6 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, TokenSet, SyntaxErr<'s, char
     });
 
     let symbol = choice((
-        just(":=").to(Sym::Assign),
         just("==").to(Sym::EqEq),
         just("<=").to(Sym::Le),
         just(">=").to(Sym::Ge),

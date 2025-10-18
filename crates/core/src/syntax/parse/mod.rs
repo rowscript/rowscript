@@ -19,6 +19,7 @@ pub(crate) type SyntaxErr<'a, T> = Full<Rich<'a, T, Span>>;
 #[derive(Debug, Eq, PartialEq, Clone, EnumString, Display)]
 #[strum(serialize_all = "lowercase")]
 pub(crate) enum Keyword {
+    Let,
     Function,
     If,
     Else,
@@ -29,7 +30,6 @@ pub(crate) enum Keyword {
 #[derive(Debug, Eq, PartialEq, Clone, Display)]
 pub enum Sym {
     // Long.
-    Assign,
     EqEq,
     Le,
     Ge,

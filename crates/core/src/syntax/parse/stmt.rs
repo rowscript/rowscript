@@ -37,9 +37,10 @@ where
     let params = grouped_by(Sym::LParen, param, Sym::Comma, Sym::RParen).labelled("parameters");
 
     let assign = doc
+        .then_ignore(just(Token::Keyword(Keyword::Let)))
         .then(id)
-        .then(expr().or_not())
-        .then_ignore(just(Token::Sym(Sym::Assign)))
+        .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()).or_not())
+        .then_ignore(just(Token::Sym(Sym::Eq)))
         .then(expr())
         .map(|(((doc, id), typ), rhs)| {
             id.map(|id| Stmt::Assign {
@@ -73,26 +74,6 @@ where
 
     recursive(|stmt| {
         let stmts = stmt.repeated().collect::<Vec<_>>().labelled("statements");
-
-        let short = doc
-            .then(id)
-            .then(params.clone())
-            .then(expr().or_not())
-            .then_ignore(just(Token::Sym(Sym::Assign)))
-            .then(expr())
-            .map(|((((doc, id), params), ret), body)| {
-                id.map(|name| Stmt::Func {
-                    short: true,
-                    sig: Sig {
-                        doc: doc.into_boxed_slice(),
-                        name,
-                        params: params.into_boxed_slice(),
-                        ret,
-                    },
-                    body: Box::new([body.map(Stmt::Expr)]),
-                })
-            })
-            .labelled("short function statement");
 
         let func = doc
             .then_ignore(just(Token::Keyword(Keyword::Function)))
@@ -175,7 +156,6 @@ where
 
         func.or(if_)
             .or(while_)
-            .or(short)
             .or(assign)
             .or(update)
             .or(return_)

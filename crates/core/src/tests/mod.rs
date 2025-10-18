@@ -38,7 +38,7 @@ fn it_parses_stmt() {
             r#"
 /// Hey.
 function f(a) {
-    b := 42 // hi
+    let b = 42 // hi
 
     if a {
         return false

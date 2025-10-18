@@ -1,6 +1,6 @@
 /// Fibonacci number.
 function fib(n: u32): u32 {
-    a := n < 2
+    let a = n < 2
     if a {
         return 1
     }

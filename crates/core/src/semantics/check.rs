@@ -231,8 +231,7 @@ impl Checker {
                         }
                     }
 
-                    Sym::Assign
-                    | Sym::LParen
+                    Sym::LParen
                     | Sym::RParen
                     | Sym::LBrace
                     | Sym::RBrace

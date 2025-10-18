@@ -1,5 +1,5 @@
 function factorial(n: u32): u32 {
-    a u32 := 1
+    let a: u32 = 1
     while n > 1 {
         a = a * n
         n = n - 1
