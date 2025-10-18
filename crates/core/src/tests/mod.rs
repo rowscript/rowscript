@@ -2,7 +2,10 @@ use chumsky::Parser;
 
 use crate::Ctx;
 use crate::syntax::Expr;
-use crate::syntax::parse::{Token, expr, lex, stmt};
+use crate::syntax::parse::Token;
+use crate::syntax::parse::expr::expr;
+use crate::syntax::parse::lex::lex;
+use crate::syntax::parse::stmt::stmt;
 
 #[test]
 fn it_scans_doc() {

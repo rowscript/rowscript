@@ -755,7 +755,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rowscript_core"
+name = "rowscript-core"
 version = "0.1.0"
 dependencies = [
  "chumsky",

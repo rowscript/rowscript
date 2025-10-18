@@ -8,7 +8,8 @@ use crate::semantics::check::Checker;
 use crate::semantics::vm::VM;
 use crate::semantics::{Func, Functions};
 use crate::syntax::Expr;
-use crate::syntax::parse::{file, lex};
+use crate::syntax::parse::file;
+use crate::syntax::parse::lex::lex;
 use crate::syntax::resolve::Resolver;
 
 #[allow(dead_code)]
