@@ -1,5 +1,5 @@
 {
-  "name": "rowscript",
+  "name": "@rowscript/client",
   "description": "RowScript programming language",
   "version": "1.0.0-alpha.6",
   "license": "MIT",
@@ -24,7 +24,7 @@
   "engines": {
     "vscode": "^1.105.0"
   },
-  "displayName": "RowScript",
+  "displayName": "vscode-rows",
   "categories": [
     "Programming Languages"
   ],
