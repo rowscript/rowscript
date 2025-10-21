@@ -1,0 +1,56 @@
+{
+  "name": "rowscript",
+  "description": "RowScript programming language",
+  "version": "1.0.0-alpha.6",
+  "license": "MIT",
+  "main": "dist/extension.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rowscript/rowscript.git"
+  },
+  "scripts": {
+    "fmt": "prettier -w . --ignore-path ../../.gitignore",
+    "dev": "node esbuild.mjs --watch",
+    "build": "node esbuild.mjs --production",
+    "package": "vsce package --skip-license"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.1",
+    "@types/vscode": "^1.105.0",
+    "@vscode/vsce": "^3.6.2",
+    "esbuild": "^0.25.11",
+    "prettier": "^3.6.2"
+  },
+  "engines": {
+    "vscode": "^1.105.0"
+  },
+  "displayName": "RowScript",
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:rowscript"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "rowscript",
+        "aliases": [
+          "RowScript",
+          "rowscript"
+        ],
+        "extensions": [
+          ".rows"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "rowscript",
+        "scopeName": "source.rowscript",
+        "path": "./syntaxes/rowscript.tmLanguage.json"
+      }
+    ]
+  }
+}

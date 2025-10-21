@@ -1,5 +1,10 @@
 .DS_Store
-.vscode/
 .idea/
+
+.vscode/*
+!.vscode/launch.json
+*.vsix
+node_modules/
+dist/
 
 target/
