@@ -11,7 +11,7 @@ use cranelift_native::builder as native_builder;
 
 use crate::semantics::{BuiltinType, Func, FunctionType, Functions, Type};
 use crate::syntax::parse::Sym;
-use crate::syntax::{Expr, Id, Ident};
+use crate::syntax::{Expr, Id, Ident, Stmt};
 
 struct Jit<'a> {
     fns: &'a Functions,
@@ -22,8 +22,8 @@ struct Jit<'a> {
 impl<'a> Jit<'a> {
     fn new(fns: &'a Functions) -> Self {
         let mut flags = flags_builder();
-        flags.set("use_colocated_libcalls", "false").unwrap();
-        flags.set("is_pic", "false").unwrap();
+        flags.set("opt_level", "none").unwrap();
+        flags.set("enable_verifier", "true").unwrap();
         let m = JITModule::new(JITBuilder::with_isa(
             native_builder().unwrap().finish(Flags::new(flags)).unwrap(),
             default_libcall_names(),
@@ -71,7 +71,7 @@ impl<'a> JitFunc<'a> {
             Expr::BuiltinType(..) => unreachable!(),
             Expr::Unit => builder.ins().iconst(I8, 0),
             Expr::Number(n) => builder.ins().f64const(*n),
-            Expr::String(..) => todo!(),
+            Expr::String(..) => todo!("use UstrSet to prevent duplicate in data sections"),
             Expr::Boolean(b) => builder.ins().iconst(I8, *b as i64),
             Expr::Call(f, args) => {
                 let mut sig = self.jit.m.make_signature();
@@ -112,6 +112,18 @@ impl<'a> JitFunc<'a> {
                     _ => unreachable!(),
                 }
             }
+        }
+    }
+
+    fn stmt(&mut self, builder: &mut FunctionBuilder, stmt: &Stmt) -> Value {
+        match stmt {
+            Stmt::Func { .. } => todo!("nested function"),
+            Stmt::Expr(e) => self.expr(builder, e),
+            Stmt::Assign { .. } => todo!("assignment (definition)"),
+            Stmt::Update { .. } => todo!("assignment (update)"),
+            Stmt::Return(..) => todo!("return statement"),
+            Stmt::If { .. } => todo!("if statement"),
+            Stmt::While(..) => todo!("while statement"),
         }
     }
 }
