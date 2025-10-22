@@ -2,6 +2,7 @@ use chumsky::Parser;
 use chumsky::extra::ParserExtra;
 use chumsky::input::{Input, MapExtra};
 use chumsky::prelude::SimpleSpan;
+use cranelift_module::ModuleError;
 use ustr::Ustr;
 
 use crate::semantics::check::Checker;
@@ -86,6 +87,8 @@ pub enum Error {
         got: usize,
         want: usize,
     },
+
+    Jit(Box<ModuleError>),
 }
 
 type Out<T> = Result<T, Error>;

@@ -13,7 +13,7 @@ use cranelift_native::builder as native_builder;
 use crate::semantics::{BuiltinType, Func, FunctionType, Functions, Type};
 use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, Expr, Ident, Stmt};
-use crate::{Span, Spanned};
+use crate::{Error, Out, Span, Spanned};
 
 struct Jit<'a> {
     fns: &'a Functions,
@@ -34,7 +34,7 @@ impl<'a> Jit<'a> {
 }
 
 impl Func {
-    fn compile(&self, jit: &mut Jit, ctx: &mut Context) {
+    fn compile(&self, name: &Ident, jit: &mut Jit, ctx: &mut Context) -> Out<()> {
         self.typ.to_signature(&mut ctx.func.signature);
 
         let mut builder_ctx = FunctionBuilderContext::default();
@@ -45,11 +45,20 @@ impl Func {
         builder.switch_to_block(entry_block);
         builder.seal_block(entry_block);
 
+        let mut return_value = builder.ins().f64const(0.);
         for s in &self.body {
-            s.item.compile(jit, &mut builder);
+            return_value = s.item.compile(jit, &mut builder);
         }
+        builder.ins().return_(&[return_value]);
+        builder.finalize();
 
-        todo!()
+        let Ident::Id(id) = name else { todo!() };
+        let _func_id = jit
+            .m
+            .declare_function(&id.raw(), Linkage::Export, &ctx.func.signature)
+            .map_err(|e| Error::Jit(Box::new(e)))?;
+
+        Ok(())
     }
 }
 
