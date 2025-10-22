@@ -50,7 +50,7 @@ impl Checker {
                         Ok(want)
                     })
                     .unwrap_or_else(|| Ok(self.infer(&rhs.item)?.1))?;
-                self.insert(block, name, rhs_type.clone());
+                self.insert(block, &name.item, rhs_type.clone());
                 rhs_type
             }
             Stmt::Update { name, rhs } => {

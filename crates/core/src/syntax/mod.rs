@@ -138,7 +138,7 @@ pub(crate) enum Stmt {
     // Binding.
     Assign {
         doc: Box<[String]>,
-        name: Ident,
+        name: Spanned<Ident>,
         typ: Option<Spanned<Expr>>,
         rhs: Spanned<Expr>,
     },

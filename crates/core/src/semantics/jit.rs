@@ -119,9 +119,20 @@ impl<'a> JitFunc<'a> {
         match stmt {
             Stmt::Func { .. } => todo!("nested function"),
             Stmt::Expr(e) => self.expr(builder, e),
-            Stmt::Assign { .. } => todo!("assignment (definition)"),
-            Stmt::Update { .. } => todo!("assignment (update)"),
-            Stmt::Return(..) => todo!("return statement"),
+            Stmt::Assign { name, rhs, .. } | Stmt::Update { name, rhs } => {
+                let Ident::Idx(idx) = name.item else { todo!() };
+                let value = self.expr(builder, &rhs.item);
+                builder.def_var(Variable::from_u32(idx as _), value);
+                value
+            }
+            Stmt::Return(e) => {
+                let value = e
+                    .as_ref()
+                    .map(|v| self.expr(builder, &v.item))
+                    .unwrap_or_else(|| builder.ins().f64const(0.));
+                builder.ins().return_(&[value]);
+                value
+            }
             Stmt::If { .. } => todo!("if statement"),
             Stmt::While(..) => todo!("while statement"),
         }

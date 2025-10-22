@@ -42,14 +42,13 @@ where
         .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()).or_not())
         .then_ignore(just(Token::Sym(Sym::Eq)))
         .then(expr())
-        .map(|(((doc, id), typ), rhs)| {
-            id.map(|id| Stmt::Assign {
-                doc: doc.into_boxed_slice(),
-                name: Ident::Id(id),
-                typ,
-                rhs,
-            })
+        .map(|(((doc, id), typ), rhs)| Stmt::Assign {
+            doc: doc.into_boxed_slice(),
+            name: id.map(Ident::Id),
+            typ,
+            rhs,
         })
+        .map_with(Spanned::from_map_extra)
         .labelled("assignment statement");
 
     let update = id

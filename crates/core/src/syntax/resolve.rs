@@ -30,7 +30,7 @@ impl Resolver {
                     .map(|t| self.expr(t.span, &mut t.item))
                     .transpose()?;
                 self.expr(rhs.span, &mut rhs.item)?;
-                self.insert(block, name);
+                self.insert(block, &mut name.item);
             }
             Stmt::Update { name, rhs } => {
                 self.name(name.span, &mut name.item)?;

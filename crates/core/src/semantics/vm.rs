@@ -49,7 +49,7 @@ impl<'a> VM<'a> {
             Stmt::Expr(e) => self.expr(frame, e),
             Stmt::Assign { name, rhs, .. } => {
                 let e = self.expr(frame, &rhs.item);
-                frame.insert(name.as_idx(), e.clone());
+                frame.insert(name.item.as_idx(), e.clone());
                 *block += 1;
                 e
             }
