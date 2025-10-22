@@ -1,4 +1,5 @@
 use cranelift::codegen::Context;
+use cranelift::codegen::ir::BlockArg;
 use cranelift::prelude::settings::{Flags, builder as flags_builder};
 use cranelift::prelude::types::{F32, F64, I8, I16, I32, I64};
 use cranelift::prelude::{
@@ -11,7 +12,8 @@ use cranelift_native::builder as native_builder;
 
 use crate::semantics::{BuiltinType, Func, FunctionType, Functions, Type};
 use crate::syntax::parse::Sym;
-use crate::syntax::{Expr, Id, Ident, Stmt};
+use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
+use crate::{Span, Spanned};
 
 struct Jit<'a> {
     fns: &'a Functions,
@@ -133,9 +135,67 @@ impl<'a> JitFunc<'a> {
                 builder.ins().return_(&[value]);
                 value
             }
-            Stmt::If { .. } => todo!("if statement"),
+            Stmt::If { then, elif, els } => self.if_stmt(builder, then, elif, els),
             Stmt::While(..) => todo!("while statement"),
         }
+    }
+
+    fn if_stmt(
+        &mut self,
+        builder: &mut FunctionBuilder,
+        then: &Branch,
+        elif: &[Branch],
+        els: &Option<(Span, Box<[Spanned<Stmt>]>)>,
+    ) -> Value {
+        let cond = self.expr(builder, &then.cond.item);
+
+        let then_block = builder.create_block();
+        let merge_block = builder.create_block();
+        let else_block = builder.create_block();
+
+        builder.append_block_param(merge_block, F64); // TODO: correct JIT type
+
+        let no_else = elif.is_empty() && els.is_none();
+        if no_else {
+            builder.ins().brif(cond, then_block, &[], merge_block, &[]);
+        } else {
+            builder.ins().brif(cond, then_block, &[], else_block, &[]);
+        }
+
+        {
+            builder.switch_to_block(then_block);
+            builder.seal_block(then_block);
+            let mut then_return = builder.ins().f64const(0.);
+            for stmt in &then.body {
+                then_return = self.stmt(builder, &stmt.item);
+            }
+            builder
+                .ins()
+                .jump(merge_block, &[BlockArg::Value(then_return)]);
+        }
+
+        if !no_else {
+            builder.switch_to_block(else_block);
+            builder.seal_block(else_block);
+
+            let mut else_return = builder.ins().f64const(0.);
+            if elif.is_empty() {
+                for stmt in &els.as_ref().unwrap().1 {
+                    else_return = self.stmt(builder, &stmt.item);
+                }
+            } else {
+                else_return = self.if_stmt(builder, &elif[0], &elif[1..], els);
+            }
+
+            builder
+                .ins()
+                .jump(merge_block, &[BlockArg::Value(else_return)]);
+        }
+
+        builder.switch_to_block(merge_block);
+        builder.seal_block(merge_block);
+
+        builder.block_params(merge_block)[0]
     }
 }
 
