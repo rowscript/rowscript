@@ -1,3 +1,5 @@
+use std::iter::once;
+
 use cranelift::codegen::Context;
 use cranelift::codegen::ir::BlockArg;
 use cranelift::prelude::settings::{Flags, builder as flags_builder};
@@ -211,54 +213,56 @@ impl Stmt {
         jit: &mut Jit,
         builder: &mut FunctionBuilder,
     ) -> Value {
-        let cond = then.cond.item.compile(jit, builder);
-
-        let then_block = builder.create_block();
         let merge_block = builder.create_block();
-        let else_block = builder.create_block();
-
         builder.append_block_param(merge_block, F64); // TODO: correct JIT type
 
-        let no_else = elif.is_empty() && els.is_none();
-        if no_else {
-            builder.ins().brif(cond, then_block, &[], merge_block, &[]);
-        } else {
-            builder.ins().brif(cond, then_block, &[], else_block, &[]);
-        }
+        let branches = once(then).chain(elif.iter()).enumerate();
+        let branches_len = 1 + elif.len();
+        let mut next_branch = None;
 
-        {
+        for (i, branch) in branches {
+            if let Some(block) = next_branch {
+                builder.switch_to_block(block);
+                builder.seal_block(block);
+            }
+
+            let cond = branch.cond.item.compile(jit, builder);
+            let then_block = builder.create_block();
+            let next_block = if i + 1 < branches_len || els.is_some() {
+                builder.create_block()
+            } else {
+                merge_block
+            };
+            builder.ins().brif(cond, then_block, &[], next_block, &[]);
+
             builder.switch_to_block(then_block);
             builder.seal_block(then_block);
-            let mut then_return = builder.ins().f64const(0.);
-            for stmt in &then.body {
-                then_return = stmt.item.compile(jit, builder);
+            let mut merge_value = builder.ins().f64const(0.);
+            for stmt in &branch.body {
+                merge_value = stmt.item.compile(jit, builder);
             }
             builder
                 .ins()
-                .jump(merge_block, &[BlockArg::Value(then_return)]);
+                .jump(merge_block, &[BlockArg::Value(merge_value)]);
+
+            next_branch = Some(next_block);
         }
 
-        if !no_else {
-            builder.switch_to_block(else_block);
-            builder.seal_block(else_block);
-
-            let mut else_return = builder.ins().f64const(0.);
-            if elif.is_empty() {
-                for stmt in &els.as_ref().unwrap().1 {
-                    else_return = stmt.item.compile(jit, builder);
-                }
-            } else {
-                else_return = Self::r#if(&elif[0], &elif[1..], els, jit, builder);
+        let last_branch = next_branch.unwrap();
+        builder.switch_to_block(last_branch);
+        builder.seal_block(last_branch);
+        let mut merge_value = builder.ins().f64const(0.);
+        if let Some((_, els)) = els {
+            for stmt in els {
+                merge_value = stmt.item.compile(jit, builder);
             }
-
-            builder
-                .ins()
-                .jump(merge_block, &[BlockArg::Value(else_return)]);
         }
+        builder
+            .ins()
+            .jump(merge_block, &[BlockArg::Value(merge_value)]);
 
         builder.switch_to_block(merge_block);
         builder.seal_block(merge_block);
-
         builder.block_params(merge_block)[0]
     }
 }
