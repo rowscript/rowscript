@@ -91,6 +91,12 @@ pub enum Error {
     Jit(Box<ModuleError>),
 }
 
+impl Error {
+    fn jit(e: ModuleError) -> Self {
+        Self::Jit(Box::new(e))
+    }
+}
+
 type Out<T> = Result<T, Error>;
 
 #[allow(dead_code)]

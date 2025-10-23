@@ -7,17 +7,19 @@ use cranelift::prelude::{
     Signature, Type as JitType, Value, Variable,
 };
 use cranelift_jit::{JITBuilder, JITModule};
-use cranelift_module::{Linkage, Module, default_libcall_names};
+use cranelift_module::{FuncId, Linkage, Module, default_libcall_names};
 use cranelift_native::builder as native_builder;
+use std::collections::HashMap;
 
 use crate::semantics::{BuiltinType, Func, FunctionType, Functions, Type};
 use crate::syntax::parse::Sym;
-use crate::syntax::{Branch, Expr, Ident, Stmt};
+use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 struct Jit<'a> {
     fns: &'a Functions,
     m: JITModule,
+    code: HashMap<Id, FuncId>,
 }
 
 impl<'a> Jit<'a> {
@@ -29,12 +31,34 @@ impl<'a> Jit<'a> {
             native_builder().unwrap().finish(Flags::new(flags)).unwrap(),
             default_libcall_names(),
         ));
-        Self { fns, m }
+        let code = Default::default();
+        Self { fns, m, code }
+    }
+
+    fn compile(&mut self) -> Out<()> {
+        let mut ctx = self.m.make_context();
+        self.code = self
+            .fns
+            .iter()
+            .map(|(id, f)| {
+                f.compile(id, self, &mut ctx)
+                    .map(|func_id| (id.clone(), func_id))
+            })
+            .collect::<Out<_>>()?;
+        self.m.clear_context(&mut ctx);
+        self.m.finalize_definitions().map_err(Error::jit)?;
+        Ok(())
+    }
+
+    fn get(&self, id: &Id) -> Option<*const u8> {
+        self.code
+            .get(id)
+            .map(|id| self.m.get_finalized_function(*id))
     }
 }
 
 impl Func {
-    fn compile(&self, name: &Ident, jit: &mut Jit, ctx: &mut Context) -> Out<()> {
+    fn compile(&self, id: &Id, jit: &mut Jit, ctx: &mut Context) -> Out<FuncId> {
         self.typ.to_signature(&mut ctx.func.signature);
 
         let mut builder_ctx = FunctionBuilderContext::default();
@@ -52,13 +76,13 @@ impl Func {
         builder.ins().return_(&[return_value]);
         builder.finalize();
 
-        let Ident::Id(id) = name else { todo!() };
-        let _func_id = jit
+        let id = jit
             .m
             .declare_function(&id.raw(), Linkage::Export, &ctx.func.signature)
-            .map_err(|e| Error::Jit(Box::new(e)))?;
+            .map_err(Error::jit)?;
+        jit.m.define_function(id, ctx).map_err(Error::jit)?;
 
-        Ok(())
+        Ok(id)
     }
 }
 
