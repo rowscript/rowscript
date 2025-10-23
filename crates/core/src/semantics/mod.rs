@@ -6,7 +6,7 @@ use crate::Spanned;
 use crate::syntax::{Id, Stmt};
 
 pub(crate) mod check;
-mod jit;
+pub(crate) mod jit;
 pub(crate) mod vm;
 
 macro_rules! write_separated {
@@ -102,3 +102,5 @@ pub(crate) struct Func {
 }
 
 pub(crate) type Functions = HashMap<Id, Func>;
+
+pub(crate) type Code = HashMap<Id, *const u8>;

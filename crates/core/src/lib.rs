@@ -6,8 +6,9 @@ use cranelift_module::ModuleError;
 use ustr::Ustr;
 
 use crate::semantics::check::Checker;
-use crate::semantics::vm::VM;
-use crate::semantics::{Func, Functions};
+use crate::semantics::jit::Jit;
+use crate::semantics::vm::Vm;
+use crate::semantics::{Code, Func, Functions};
 use crate::syntax::Expr;
 use crate::syntax::parse::file;
 use crate::syntax::parse::lex::lex;
@@ -166,6 +167,10 @@ impl<'src> Ctx<'src> {
     }
 
     pub fn eval(&self) -> Expr {
-        VM::new(&self.fs).func(&self.file.body, Default::default())
+        Vm::new(&self.fs).func(&self.file.body, Default::default())
+    }
+
+    pub fn compile(&self) -> Out<Code> {
+        Jit::new(&self.fs).compile()
     }
 }

@@ -6,11 +6,11 @@ use crate::semantics::Functions;
 use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, Expr, Ident, Stmt};
 
-pub(crate) struct VM<'a> {
+pub(crate) struct Vm<'a> {
     fs: &'a Functions,
 }
 
-impl<'a> VM<'a> {
+impl<'a> Vm<'a> {
     pub(crate) fn new(fs: &'a Functions) -> Self {
         Self { fs }
     }

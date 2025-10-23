@@ -73,3 +73,17 @@ fn it_runs_factorial() {
     };
     assert_eq!(v, 3628800.);
 }
+
+#[test]
+fn it_compiles_fibonacci() {
+    // TODO
+    //Ctx::new(include_str!("fibonacci.rows"))
+    //    .parse()
+    //    .unwrap()
+    //    .resolve()
+    //    .unwrap()
+    //    .check()
+    //    .unwrap()
+    //    .compile()
+    //    .unwrap();
+}

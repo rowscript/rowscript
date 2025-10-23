@@ -9,21 +9,19 @@ use cranelift::prelude::{
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{FuncId, Linkage, Module, default_libcall_names};
 use cranelift_native::builder as native_builder;
-use std::collections::HashMap;
 
-use crate::semantics::{BuiltinType, Func, FunctionType, Functions, Type};
+use crate::semantics::{BuiltinType, Code, Func, FunctionType, Functions, Type};
 use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
-struct Jit<'a> {
-    fns: &'a Functions,
+pub(crate) struct Jit<'a> {
+    fs: &'a Functions,
     m: JITModule,
-    code: HashMap<Id, FuncId>,
 }
 
 impl<'a> Jit<'a> {
-    fn new(fns: &'a Functions) -> Self {
+    pub(crate) fn new(fs: &'a Functions) -> Self {
         let mut flags = flags_builder();
         flags.set("opt_level", "none").unwrap();
         flags.set("enable_verifier", "true").unwrap();
@@ -31,29 +29,22 @@ impl<'a> Jit<'a> {
             native_builder().unwrap().finish(Flags::new(flags)).unwrap(),
             default_libcall_names(),
         ));
-        let code = Default::default();
-        Self { fns, m, code }
+        Self { fs, m }
     }
 
-    fn compile(&mut self) -> Out<()> {
+    pub(crate) fn compile(&mut self) -> Out<Code> {
         let mut ctx = self.m.make_context();
-        self.code = self
-            .fns
+        let code = self
+            .fs
             .iter()
-            .map(|(id, f)| {
-                f.compile(id, self, &mut ctx)
-                    .map(|func_id| (id.clone(), func_id))
-            })
-            .collect::<Out<_>>()?;
+            .map(|(id, f)| f.compile(id, self, &mut ctx).map(|func_id| (id, func_id)))
+            .collect::<Out<Vec<_>>>()?;
         self.m.clear_context(&mut ctx);
         self.m.finalize_definitions().map_err(Error::jit)?;
-        Ok(())
-    }
-
-    fn get(&self, id: &Id) -> Option<*const u8> {
-        self.code
-            .get(id)
-            .map(|id| self.m.get_finalized_function(*id))
+        Ok(code
+            .into_iter()
+            .map(|(id, func_id)| (id.clone(), self.m.get_finalized_function(func_id)))
+            .collect())
     }
 }
 
@@ -105,7 +96,7 @@ impl Expr {
                     unreachable!();
                 };
                 let id = ident.as_id();
-                jit.fns.get(id).unwrap().typ.to_signature(&mut sig);
+                jit.fs.get(id).unwrap().typ.to_signature(&mut sig);
                 // TODO: How to call back to functions in interpretation mode, or we don't?
                 let callee = jit
                     .m
@@ -145,12 +136,10 @@ impl Stmt {
         match self {
             Stmt::Func { .. } => todo!("nested function"),
             Stmt::Expr(e) => e.compile(jit, builder),
-            Stmt::Assign { name, rhs, .. } | Stmt::Update { name, rhs } => {
-                let Ident::Idx(idx) = name.item else { todo!() };
-                let value = rhs.item.compile(jit, builder);
-                builder.def_var(Variable::from_u32(idx as _), value);
-                value
+            Stmt::Assign { name, typ, rhs, .. } => {
+                Self::assign(&name.item, typ, &rhs.item, jit, builder)
             }
+            Stmt::Update { name, rhs } => Self::assign(&name.item, &None, &rhs.item, jit, builder),
             Stmt::Return(e) => {
                 let value = e
                     .as_ref()
@@ -185,6 +174,30 @@ impl Stmt {
                 builder.ins().f64const(0.)
             }
         }
+    }
+
+    fn assign(
+        name: &Ident,
+        typ: &Option<Spanned<Expr>>,
+        rhs: &Expr,
+        jit: &mut Jit,
+        builder: &mut FunctionBuilder,
+    ) -> Value {
+        let Ident::Idx(idx) = name else { todo!() };
+        let idx = *idx as u32;
+        let value = rhs.compile(jit, builder);
+        let var = match typ {
+            None => Variable::from_u32(idx),
+            Some(typ) => {
+                let Expr::BuiltinType(typ) = typ.item else {
+                    todo!()
+                };
+                builder.declare_var(typ.into())
+            }
+        };
+        debug_assert_eq!(var.as_u32(), idx);
+        builder.def_var(var, value);
+        value
     }
 
     fn r#if(
