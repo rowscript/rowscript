@@ -51,6 +51,13 @@ impl Checker {
                     })
                     .unwrap_or_else(|| Ok(self.infer(&rhs.item)?.1))?;
                 self.insert(block, &name.item, rhs_type.clone());
+                *typ = Some(Spanned {
+                    span: typ.as_ref().map(|t| t.span).unwrap_or(name.span),
+                    item: match rhs_type {
+                        Type::Builtin(t) => Expr::BuiltinType(t),
+                        _ => todo!(),
+                    },
+                });
                 rhs_type
             }
             Stmt::Update { name, rhs } => {

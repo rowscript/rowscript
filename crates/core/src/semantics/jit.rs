@@ -60,6 +60,13 @@ impl Func {
         builder.switch_to_block(entry_block);
         builder.seal_block(entry_block);
 
+        for (idx, typ) in self.typ.params.iter().enumerate() {
+            let val = builder.block_params(entry_block)[idx];
+            let &Type::Builtin(typ) = typ else { todo!() };
+            let var = declare_local(idx as _, Some(typ), &mut builder);
+            builder.def_var(var, val);
+        }
+
         let mut return_value = builder.ins().f64const(0.);
         for s in &self.body {
             return_value = s.item.compile(jit, &mut builder);
@@ -183,19 +190,16 @@ impl Stmt {
         jit: &mut Jit,
         builder: &mut FunctionBuilder,
     ) -> Value {
-        let Ident::Idx(idx) = name else { todo!() };
-        let idx = *idx as u32;
         let value = rhs.compile(jit, builder);
-        let var = match typ {
-            None => Variable::from_u32(idx),
-            Some(typ) => {
-                let Expr::BuiltinType(typ) = typ.item else {
-                    todo!()
-                };
-                builder.declare_var(typ.into())
-            }
-        };
-        debug_assert_eq!(var.as_u32(), idx);
+        let Ident::Idx(idx) = name else { todo!() };
+        let var = declare_local(
+            *idx as _,
+            typ.as_ref().map(|t| match t.item {
+                Expr::BuiltinType(t) => t,
+                _ => todo!(),
+            }),
+            builder,
+        );
         builder.def_var(var, value);
         value
     }
@@ -259,10 +263,19 @@ impl Stmt {
     }
 }
 
+fn declare_local(idx: u32, typ: Option<BuiltinType>, builder: &mut FunctionBuilder) -> Variable {
+    let var = match typ {
+        None => Variable::from_u32(idx),
+        Some(typ) => builder.declare_var(typ.into()),
+    };
+    debug_assert_eq!(var.as_u32(), idx);
+    var
+}
+
 impl From<BuiltinType> for JitType {
     fn from(t: BuiltinType) -> Self {
         match t {
-            BuiltinType::I8 | BuiltinType::U8 => I8,
+            BuiltinType::Bool | BuiltinType::I8 | BuiltinType::U8 => I8,
             BuiltinType::I16 | BuiltinType::U16 => I16,
             BuiltinType::I32 | BuiltinType::U32 => I32,
             BuiltinType::I64 | BuiltinType::U64 => I64,
