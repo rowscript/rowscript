@@ -3,7 +3,7 @@ use std::iter::once;
 use cranelift::codegen::Context;
 use cranelift::codegen::ir::BlockArg;
 use cranelift::prelude::settings::{Flags, builder as flags_builder};
-use cranelift::prelude::types::{F32, F64, I8, I16, I32, I64};
+use cranelift::prelude::types::{F64, I8};
 use cranelift::prelude::{
     AbiParam, Configurable, FloatCC, FunctionBuilder, FunctionBuilderContext, InstBuilder,
     Signature, Type as JitType, Value, Variable,
@@ -279,12 +279,25 @@ fn declare_local(idx: u32, typ: Option<BuiltinType>, builder: &mut FunctionBuild
 impl From<BuiltinType> for JitType {
     fn from(t: BuiltinType) -> Self {
         match t {
-            BuiltinType::Bool | BuiltinType::I8 | BuiltinType::U8 => I8,
-            BuiltinType::I16 | BuiltinType::U16 => I16,
-            BuiltinType::I32 | BuiltinType::U32 => I32,
-            BuiltinType::I64 | BuiltinType::U64 => I64,
-            BuiltinType::F32 => F32,
-            BuiltinType::F64 => F64,
+            // TODO: Use these:
+            // BuiltinType::Bool | BuiltinType::I8 | BuiltinType::U8 => I8,
+            // BuiltinType::I16 | BuiltinType::U16 => I16,
+            // BuiltinType::I32 | BuiltinType::U32 => I32,
+            // BuiltinType::I64 | BuiltinType::U64 => I64,
+            // BuiltinType::F32 => F32,
+            BuiltinType::Bool => I8,
+
+            BuiltinType::I8
+            | BuiltinType::U8
+            | BuiltinType::I16
+            | BuiltinType::U16
+            | BuiltinType::I32
+            | BuiltinType::U32
+            | BuiltinType::I64
+            | BuiltinType::U64
+            | BuiltinType::F32
+            | BuiltinType::F64 => F64,
+
             _ => todo!(),
         }
     }
