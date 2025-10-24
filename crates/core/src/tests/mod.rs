@@ -80,10 +80,9 @@ fn run_compiled<T, R>(text: &str, input: T) -> R {
         .unwrap()
         .compile()
         .unwrap()
-        .into_iter()
+        .into_values()
         .next()
-        .unwrap()
-        .1;
+        .unwrap();
     unsafe { transmute::<_, fn(T) -> R>(ptr)(input) }
 }
 
