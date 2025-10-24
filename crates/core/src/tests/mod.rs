@@ -1,3 +1,5 @@
+use std::mem::transmute;
+
 use chumsky::Parser;
 
 use crate::Ctx;
@@ -66,6 +68,29 @@ fn it_runs_fibonacci() {
 fn it_runs_factorial() {
     let a = Ctx::run(include_str!("factorial.rows"));
     assert!(matches!(a, Expr::Number(3628800.)));
+}
+
+fn run_compiled<T, R>(text: &str, input: T) -> R {
+    let ptr = Ctx::new(text)
+        .parse()
+        .unwrap()
+        .resolve()
+        .unwrap()
+        .check()
+        .unwrap()
+        .compile()
+        .unwrap()
+        .into_iter()
+        .next()
+        .unwrap()
+        .1;
+    unsafe { transmute::<_, fn(T) -> R>(ptr)(input) }
+}
+
+#[test]
+fn it_runs_compiled() {
+    let v = run_compiled::<f64, f64>("function f(a: u32): u32 { return a + 1 }", 0.);
+    assert_eq!(v, 1.);
 }
 
 #[test]
