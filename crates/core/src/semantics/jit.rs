@@ -70,10 +70,13 @@ impl Func {
         }
 
         let mut return_value = builder.ins().f64const(0.);
+        let mut returned = false;
         for s in &self.body {
-            return_value = s.item.compile(jit, &mut builder);
+            return_value = s.item.compile(jit, &mut builder, &mut returned);
         }
-        builder.ins().return_(&[return_value]);
+        if !returned {
+            builder.ins().return_(&[return_value]);
+        }
         builder.finalize();
 
         let id = jit
@@ -99,8 +102,12 @@ impl Expr {
             Expr::String(..) => todo!("use UstrSet to prevent duplicate in data sections"),
             Expr::Boolean(b) => builder.ins().iconst(I8, *b as i64),
             Expr::Call(f, args) => {
-                let mut sig = jit.m.make_signature();
+                let args = args
+                    .iter()
+                    .map(|a| a.item.compile(jit, builder))
+                    .collect::<Box<_>>();
 
+                let mut sig = jit.m.make_signature();
                 let Expr::Ident(ident) = &f.item else {
                     unreachable!();
                 };
@@ -112,11 +119,6 @@ impl Expr {
                     .declare_function(&id.raw(), Linkage::Import, &sig)
                     .unwrap();
                 let local_callee = jit.m.declare_func_in_func(callee, builder.func);
-
-                let args = args
-                    .iter()
-                    .map(|a| a.item.compile(jit, builder))
-                    .collect::<Box<_>>();
                 let call = builder.ins().call(local_callee, &args);
                 builder.inst_results(call)[0]
             }
@@ -141,7 +143,7 @@ impl Expr {
 }
 
 impl Stmt {
-    fn compile(&self, jit: &mut Jit, builder: &mut FunctionBuilder) -> Value {
+    fn compile(&self, jit: &mut Jit, builder: &mut FunctionBuilder, returned: &mut bool) -> Value {
         match self {
             Stmt::Func { .. } => todo!("nested function"),
             Stmt::Expr(e) => e.compile(jit, builder),
@@ -153,8 +155,9 @@ impl Stmt {
                 let value = e
                     .as_ref()
                     .map(|v| v.item.compile(jit, builder))
-                    .unwrap_or_else(|| builder.ins().f64const(0.));
+                    .unwrap_or_else(|| builder.ins().iconst(I8, 0));
                 builder.ins().return_(&[value]);
+                *returned = true;
                 value
             }
             Stmt::If { then, elif, els } => Self::r#if(then, elif, els, jit, builder),
@@ -172,7 +175,7 @@ impl Stmt {
                 builder.switch_to_block(body_block);
                 builder.seal_block(body_block);
                 for stmt in &b.body {
-                    stmt.item.compile(jit, builder);
+                    stmt.item.compile(jit, builder, returned);
                 }
                 builder.ins().jump(header_block, &[]);
 
@@ -223,7 +226,6 @@ impl Stmt {
         for (i, branch) in branches {
             if let Some(block) = next_branch {
                 builder.switch_to_block(block);
-                builder.seal_block(block);
             }
 
             let cond = branch.cond.item.compile(jit, builder);
@@ -237,32 +239,35 @@ impl Stmt {
 
             builder.switch_to_block(then_block);
             builder.seal_block(then_block);
+            let mut returned = false;
             let mut merge_value = builder.ins().f64const(0.);
             for stmt in &branch.body {
-                merge_value = stmt.item.compile(jit, builder);
+                merge_value = stmt.item.compile(jit, builder, &mut returned);
             }
-            builder
-                .ins()
-                .jump(merge_block, &[BlockArg::Value(merge_value)]);
+            if !returned {
+                builder
+                    .ins()
+                    .jump(merge_block, &[BlockArg::Value(merge_value)]);
+            }
 
             next_branch = Some(next_block);
         }
 
         let last_branch = next_branch.unwrap();
         builder.switch_to_block(last_branch);
-        builder.seal_block(last_branch);
+        let mut returned = false;
         let mut merge_value = builder.ins().f64const(0.);
         if let Some((_, els)) = els {
             for stmt in els {
-                merge_value = stmt.item.compile(jit, builder);
+                merge_value = stmt.item.compile(jit, builder, &mut returned);
             }
         }
-        builder
-            .ins()
-            .jump(merge_block, &[BlockArg::Value(merge_value)]);
+        if !returned {
+            builder
+                .ins()
+                .jump(merge_block, &[BlockArg::Value(merge_value)]);
+        }
 
-        builder.switch_to_block(merge_block);
-        builder.seal_block(merge_block);
         builder.block_params(merge_block)[0]
     }
 }
