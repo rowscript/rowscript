@@ -255,17 +255,18 @@ impl Stmt {
 
         let last_branch = next_branch.unwrap();
         builder.switch_to_block(last_branch);
-        let mut returned = false;
-        let mut merge_value = builder.ins().f64const(0.);
+        builder.seal_block(last_branch);
         if let Some((_, els)) = els {
+            let mut returned = false;
+            let mut merge_value = builder.ins().f64const(0.);
             for stmt in els {
                 merge_value = stmt.item.compile(jit, builder, &mut returned);
             }
-        }
-        if !returned {
-            builder
-                .ins()
-                .jump(merge_block, &[BlockArg::Value(merge_value)]);
+            if !returned {
+                builder
+                    .ins()
+                    .jump(merge_block, &[BlockArg::Value(merge_value)]);
+            }
         }
 
         builder.block_params(merge_block)[0]
