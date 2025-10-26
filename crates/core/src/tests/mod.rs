@@ -94,14 +94,6 @@ fn it_runs_compiled() {
 
 #[test]
 fn it_compiles_fibonacci() {
-    // TODO
-    //Ctx::new(include_str!("fibonacci.rows"))
-    //    .parse()
-    //    .unwrap()
-    //    .resolve()
-    //    .unwrap()
-    //    .check()
-    //    .unwrap()
-    //    .compile()
-    //    .unwrap();
+    let v = run_compiled::<f64, f64>(include_str!("fibonacci.rows"), 10.);
+    assert_eq!(v, 89.);
 }

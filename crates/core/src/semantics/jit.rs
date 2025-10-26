@@ -1,7 +1,6 @@
 use std::iter::once;
 
 use cranelift::codegen::Context;
-use cranelift::codegen::ir::BlockArg;
 use cranelift::prelude::settings::{Flags, builder as flags_builder};
 use cranelift::prelude::types::{F64, I8};
 use cranelift::prelude::{
@@ -69,13 +68,14 @@ impl Func {
             builder.def_var(var, val);
         }
 
-        let mut return_value = builder.ins().f64const(0.);
+        let mut return_value = None;
         let mut returned = false;
         for s in &self.body {
-            return_value = s.item.compile(jit, &mut builder, &mut returned);
+            return_value = Some(s.item.compile(jit, &mut builder, &mut returned));
         }
         if !returned {
-            builder.ins().return_(&[return_value]);
+            let ret = return_value.unwrap_or_else(|| builder.ins().iconst(I8, 0));
+            builder.ins().return_(&[ret]);
         }
         builder.finalize();
 
@@ -217,7 +217,6 @@ impl Stmt {
         builder: &mut FunctionBuilder,
     ) -> Value {
         let merge_block = builder.create_block();
-        builder.append_block_param(merge_block, F64); // TODO: correct JIT type
 
         let branches = once(then).chain(elif.iter()).enumerate();
         let branches_len = 1 + elif.len();
@@ -240,14 +239,11 @@ impl Stmt {
             builder.switch_to_block(then_block);
             builder.seal_block(then_block);
             let mut returned = false;
-            let mut merge_value = builder.ins().f64const(0.);
             for stmt in &branch.body {
-                merge_value = stmt.item.compile(jit, builder, &mut returned);
+                stmt.item.compile(jit, builder, &mut returned);
             }
             if !returned {
-                builder
-                    .ins()
-                    .jump(merge_block, &[BlockArg::Value(merge_value)]);
+                builder.ins().jump(merge_block, &[]);
             }
 
             next_branch = Some(next_block);
@@ -258,18 +254,15 @@ impl Stmt {
         builder.seal_block(last_branch);
         if let Some((_, els)) = els {
             let mut returned = false;
-            let mut merge_value = builder.ins().f64const(0.);
             for stmt in els {
-                merge_value = stmt.item.compile(jit, builder, &mut returned);
+                stmt.item.compile(jit, builder, &mut returned);
             }
             if !returned {
-                builder
-                    .ins()
-                    .jump(merge_block, &[BlockArg::Value(merge_value)]);
+                builder.ins().jump(merge_block, &[]);
             }
         }
 
-        builder.block_params(merge_block)[0]
+        builder.ins().iconst(I8, 0)
     }
 }
 
