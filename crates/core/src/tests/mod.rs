@@ -93,7 +93,13 @@ fn it_runs_compiled() {
 }
 
 #[test]
-fn it_compiles_fibonacci() {
+fn it_runs_compiled_fibonacci() {
     let v = run_compiled::<f64, f64>(include_str!("fibonacci.rows"), 10.);
     assert_eq!(v, 89.);
+}
+
+#[test]
+fn it_runs_compiled_factorial() {
+    let v = run_compiled::<f64, f64>(include_str!("factorial.rows"), 10.);
+    assert_eq!(v, 3628800.);
 }
