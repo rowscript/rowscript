@@ -1,3 +1,7 @@
+use std::panic::catch_unwind;
+
+use rowscript_core::{Ctx, Out};
+
 use clap::{Parser, Subcommand};
 use dashmap::DashMap;
 use tokio::io::{stdin, stdout};
@@ -36,20 +40,14 @@ enum Command {
     Server,
 }
 
-struct Document {}
+#[allow(dead_code)]
+struct Document {
+    out: Out<()>,
+}
 
 struct Service {
     client: Client,
-    documents: DashMap<Url, Document>,
-}
-
-impl Service {
-    fn new(client: Client) -> Self {
-        Self {
-            client,
-            documents: Default::default(),
-        }
-    }
+    docs: DashMap<Url, Document>,
 }
 
 #[async_trait]
@@ -60,6 +58,13 @@ impl LanguageServer for Service {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::FULL,
                 )),
+                // diagnostic_provider: Some(DiagnosticServerCapabilities::Options(
+                //     DiagnosticOptions {
+                //         identifier: Some(env!("CARGO_PKG_NAME").to_string()),
+                //         inter_file_dependencies: true,
+                //         ..Default::default()
+                //     },
+                // )),
                 ..Default::default()
             },
             server_info: Some(ServerInfo {
@@ -71,7 +76,7 @@ impl LanguageServer for Service {
 
     async fn initialized(&self, _: InitializedParams) {
         self.client
-            .log_message(MessageType::INFO, "server successfully initialized")
+            .log_message(MessageType::INFO, "Server successfully initialized")
             .await;
     }
 
@@ -80,31 +85,20 @@ impl LanguageServer for Service {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        self.client
-            .log_message(
-                MessageType::INFO,
-                format!("open: {}", params.text_document.uri),
-            )
+        self.check(params.text_document.uri, params.text_document.text)
             .await;
-        self.documents.insert(params.text_document.uri, Document {});
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        self.client
-            .log_message(
-                MessageType::INFO,
-                format!("change: {}", params.text_document.uri),
-            )
-            .await;
+        let Some(e) = params.content_changes.into_iter().next() else {
+            return;
+        };
+        self.check(params.text_document.uri, e.text).await;
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        self.client
-            .log_message(
-                MessageType::INFO,
-                format!("save: {}", params.text_document.uri),
-            )
-            .await;
+        let Some(text) = params.text else { return };
+        self.check(params.text_document.uri, text).await;
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
@@ -114,6 +108,36 @@ impl LanguageServer for Service {
                 format!("close: {}", params.text_document.uri),
             )
             .await;
-        self.documents.remove(&params.text_document.uri);
+        self.docs.remove(&params.text_document.uri);
     }
+}
+
+impl Service {
+    fn new(client: Client) -> Self {
+        Self {
+            client,
+            docs: Default::default(),
+        }
+    }
+
+    async fn check(&self, uri: Url, text: String) {
+        self.client
+            .log_message(MessageType::INFO, format!("Checking file: {uri}"))
+            .await;
+        match catch_unwind(|| check(&text)) {
+            Ok(out) => {
+                self.docs.insert(uri, Document { out });
+            }
+            Err(..) => {
+                self.client
+                    .log_message(MessageType::ERROR, "check panics")
+                    .await;
+            }
+        }
+    }
+}
+
+fn check(text: &str) -> Out<()> {
+    Ctx::new(text).parse()?.resolve()?.check()?;
+    Ok(())
 }

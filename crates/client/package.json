@@ -11,7 +11,6 @@
   "scripts": {
     "fmt": "prettier -w . --ignore-path ../../.gitignore",
     "dev": "node esbuild.mjs --watch",
-    "build:dev": "node esbuild.mjs",
     "build": "node esbuild.mjs --production",
     "package": "vsce package --skip-license"
   },

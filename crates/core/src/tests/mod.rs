@@ -9,6 +9,17 @@ use crate::syntax::parse::expr::expr;
 use crate::syntax::parse::lex::lex;
 use crate::syntax::parse::stmt::stmt;
 
+fn run(text: &str) -> Expr {
+    Ctx::new(text)
+        .parse()
+        .unwrap()
+        .resolve()
+        .unwrap()
+        .check()
+        .unwrap()
+        .eval()
+}
+
 #[test]
 fn it_scans_doc() {
     const TEXT: &str = r#"
@@ -60,13 +71,13 @@ function f(a) {
 
 #[test]
 fn it_runs_fibonacci() {
-    let a = Ctx::run(include_str!("fibonacci.rows"));
+    let a = run(include_str!("fibonacci.rows"));
     assert!(matches!(a, Expr::Number(89.)));
 }
 
 #[test]
 fn it_runs_factorial() {
-    let a = Ctx::run(include_str!("factorial.rows"));
+    let a = run(include_str!("factorial.rows"));
     assert!(matches!(a, Expr::Number(3628800.)));
 }
 

@@ -98,7 +98,7 @@ impl Error {
     }
 }
 
-type Out<T> = Result<T, Error>;
+pub type Out<T> = Result<T, Error>;
 
 #[allow(dead_code)]
 #[derive(Default)]
@@ -115,17 +115,6 @@ impl<'src> Ctx<'src> {
             text,
             ..Default::default()
         }
-    }
-
-    fn run(text: &'src str) -> Expr {
-        Self::new(text)
-            .parse()
-            .unwrap()
-            .resolve()
-            .unwrap()
-            .check()
-            .unwrap()
-            .eval()
     }
 
     pub fn parse(mut self) -> Out<Self> {

@@ -1186,6 +1186,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "dashmap 7.0.0-rc2",
+ "rowscript-core",
  "tokio",
  "tower-lsp",
 ]
