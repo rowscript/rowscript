@@ -1,0 +1,10 @@
+[package]
+name = "rowscript"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.48", features = ["derive"] }
+tokio = { version = "1.48.0", features = ["full"] }
+tower-lsp = "0.20.0"
+dashmap = "7.0.0-rc2"

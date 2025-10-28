@@ -1,69 +1,59 @@
 name: Release
 on:
-  #push:
-  #  tags:
-  #    - v*
-  pull_request: # FIXME
+  push:
+    tags:
+      - v*
 env:
   CARGO_TERM_COLOR: always
 jobs:
-  linux:
+  server:
+    strategy:
+      matrix:
+        os:
+          - name: macos-latest
+            suffix: ""
+          - name: windows-latest
+            suffix: ".exe"
+          - name: ubuntu-latest
+            suffix: ""
+    runs-on: ${{ matrix.os.name }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup --version
+      - name: Build
+        run: cargo build --verbose --release
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os.name }}
+          path: "target/release/rowscript${{ matrix.os.suffix }}"
+          retention-days: 1
+  client:
     runs-on: ubuntu-latest
+    needs: server
     steps:
       - uses: actions/checkout@v4
-      - name: Install cross-compilation tools
+      - uses: actions/setup-node@v4
+        with:
+          node-version: latest
+          cache: npm
+          cache-dependency-path: crates/client
+      - uses: actions/download-artifact@v4
+        with:
+          path: crates/client
+      - name: Build
+        working-directory: crates/client
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -qy binutils-aarch64-linux-gnu gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
-      - name: Build x64
-        run: cargo build --release --verbose
-      - name: Build arm64
-        run: |
-          rustup target add aarch64-unknown-linux-gnu
-          cargo build --release --verbose --target aarch64-unknown-linux-gnu --config 'target.aarch64-unknown-linux-gnu.linker = "aarch64-linux-gnu-gcc"'
-      - name: Tar artifacts
-        run: |
-          tar -czvf rowscript-linux-x64.tar.gz target/release/rowscript
-          tar -czvf rowscript-linux-arm64.tar.gz target/aarch64-unknown-linux-gnu/release/rowscript
-      - name: Upload artifacts
+          chmod a+x macos-latest/rowscript ubuntu-latest/rowscript
+          npm i
+          npm run build
+          npm run package
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rowscript-linux
-          path: rowscript*.tar.gz
-          retention-days: 1
-  win32:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build x64
-        run: cargo build --release --verbose
-      - name: Build arm64
-        run: |
-          rustup target add aarch64-pc-windows-msvc
-          cargo build --release --verbose --target aarch64-pc-windows-msvc
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: rowscript-win32
-          path: |
-            target/release/rowscript.exe
-            target/aarch64-pc-windows-msvc/release/rowscript.exe
-          retention-days: 1
-  darwin:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build x64
-        run: cargo build --release --verbose
-      - name: Build arm64
-        run: cargo build --release --verbose --target aarch64-apple-darwin
-      - name: Tar artifacts
-        run: |
-          tar -czvf rowscript-darwin-x64.tar.gz target/release/rowscript
-          tar -czvf rowscript-darwin-arm64.tar.gz target/aarch64-apple-darwin/release/rowscript
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: rowscript-darwin
-          path: rowscript*.tar.gz
+          name: client
+          path: crates/client/*.vsix
           retention-days: 1
