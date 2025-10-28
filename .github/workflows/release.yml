@@ -1,8 +1,9 @@
 name: Release
 on:
-  push:
-    tags:
-      - v*
+  #push:
+  #  tags:
+  #    - v*
+  pull_request: # FIXME
 env:
   CARGO_TERM_COLOR: always
 jobs:
