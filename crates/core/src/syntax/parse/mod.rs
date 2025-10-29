@@ -70,7 +70,7 @@ pub(crate) enum Token {
 }
 
 #[derive(Default)]
-pub(crate) struct TokenSet {
+pub struct TokenSet {
     pub(crate) spans: Vec<Span>,
     pub(crate) tokens: Vec<Token>,
 }

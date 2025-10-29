@@ -17,30 +17,12 @@ use crate::syntax::resolve::Resolver;
 #[allow(dead_code)]
 pub(crate) mod semantics;
 #[allow(dead_code)]
-pub(crate) mod syntax;
+pub mod syntax;
 
 #[cfg(test)]
 mod tests;
 
-type Span = SimpleSpan;
-
-#[allow(dead_code)]
-pub(crate) fn line_col(span: &Span, text: &str) -> (usize, usize) {
-    let mut line = 1;
-    let mut col = 1;
-    for (i, c) in text.chars().enumerate() {
-        if i == span.start {
-            break;
-        }
-        if c == '\n' {
-            line += 1;
-            col = 1;
-        } else {
-            col += 1;
-        }
-    }
-    (line, col)
-}
+pub type Span = SimpleSpan;
 
 #[derive(Debug, Clone)]
 pub struct Spanned<T> {
@@ -74,7 +56,7 @@ impl<T> Spanned<T> {
 #[derive(Debug)]
 pub enum Error {
     Lexing(Box<[(Span, String)]>),
-    Parsing(Box<[Span]>, Box<[(Span, String)]>),
+    Parsing(Box<[(Span, String)]>),
 
     UndefName(Span, Ustr),
 
@@ -100,63 +82,108 @@ impl Error {
 
 pub type Out<T> = Result<T, Error>;
 
-#[allow(dead_code)]
-#[derive(Default)]
-pub struct Ctx<'src> {
-    text: &'src str,
-    file: Func,
-    fs: Functions,
+pub struct LineCol {
+    pub start: (u32, u32),
+    pub end: (u32, u32),
 }
 
-#[allow(dead_code)]
-impl<'src> Ctx<'src> {
+pub struct Source<'src> {
+    text: &'src str,
+    spans: Box<[Span]>,
+}
+
+impl<'src> Source<'src> {
     pub fn new(text: &'src str) -> Self {
         Self {
             text,
-            ..Default::default()
+            spans: Default::default(),
         }
     }
 
-    pub fn parse(mut self) -> Out<Self> {
-        self.file.body = lex()
-            .parse(self.text)
+    pub fn text_range(&self, span: Span) -> LineCol {
+        LineCol {
+            start: self.position(span.start),
+            end: self.position(span.end),
+        }
+    }
+
+    pub fn token_range(&self, token: Span) -> LineCol {
+        let span = if token.start < self.spans.len() {
+            Span::new(self.spans[token.start].start, self.spans[token.end].end)
+        } else if let Some(last) = self.spans.last() {
+            Span::new(last.end, last.end)
+        } else {
+            Span::new(0, 0)
+        };
+        self.text_range(span)
+    }
+
+    fn position(&self, pos: usize) -> (u32, u32) {
+        let mut line = 0;
+        let mut character = 0;
+        for (i, c) in self.text.chars().enumerate() {
+            if i == pos {
+                break;
+            }
+            if c == '\n' {
+                line += 1;
+                character = 1;
+                continue;
+            }
+            character += 1;
+        }
+        (line, character)
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct State {
+    prog: Func,
+    fs: Functions,
+}
+
+impl State {
+    pub fn parse(text: &str) -> Out<Self> {
+        let mut src = Source::new(text);
+        Self::parse_with(&mut src)
+    }
+
+    pub fn parse_with(src: &mut Source) -> Out<Self> {
+        let mut state = Self::default();
+        let token_set = lex().parse(src.text).into_result().map_err(|errs| {
+            Error::Lexing(
+                errs.into_iter()
+                    .map(|e| (*e.span(), e.reason().to_string()))
+                    .collect(),
+            )
+        })?;
+        src.spans = token_set.spans.into();
+        state.prog.body = file()
+            .parse(token_set.tokens.as_slice())
             .into_result()
             .map_err(|errs| {
-                Error::Lexing(
+                Error::Parsing(
                     errs.into_iter()
                         .map(|e| (*e.span(), e.reason().to_string()))
                         .collect(),
                 )
-            })
-            .and_then(|tokens| {
-                file()
-                    .parse(tokens.tokens.as_slice())
-                    .into_result()
-                    .map_err(|errs| {
-                        Error::Parsing(
-                            tokens.spans.into(),
-                            errs.into_iter()
-                                .map(|e| (*e.span(), e.reason().to_string()))
-                                .collect(),
-                        )
-                    })
             })?
             .into();
-        Ok(self)
+        Ok(state)
     }
 
     pub fn resolve(mut self) -> Out<Self> {
-        Resolver::default().file(self.file.body.as_mut())?;
+        Resolver::default().file(self.prog.body.as_mut())?;
         Ok(self)
     }
 
     pub fn check(mut self) -> Out<Self> {
-        self.fs = Checker::default().file(self.file.body.as_mut())?;
+        self.fs = Checker::default().file(self.prog.body.as_mut())?;
         Ok(self)
     }
 
     pub fn eval(&self) -> Expr {
-        Vm::new(&self.fs).func(&self.file.body, Default::default())
+        Vm::new(&self.fs).func(&self.prog.body, Default::default())
     }
 
     pub fn compile(&self) -> Out<Code> {

@@ -2,7 +2,7 @@ use std::mem::transmute;
 
 use chumsky::Parser;
 
-use crate::Ctx;
+use crate::State;
 use crate::syntax::Expr;
 use crate::syntax::parse::Token;
 use crate::syntax::parse::expr::expr;
@@ -10,8 +10,7 @@ use crate::syntax::parse::lex::lex;
 use crate::syntax::parse::stmt::stmt;
 
 fn run(text: &str) -> Expr {
-    Ctx::new(text)
-        .parse()
+    State::parse(text)
         .unwrap()
         .resolve()
         .unwrap()
@@ -82,8 +81,7 @@ fn it_runs_factorial() {
 }
 
 fn run_compiled<T, R>(text: &str, input: T) -> R {
-    let ptr = Ctx::new(text)
-        .parse()
+    let ptr = State::parse(text)
         .unwrap()
         .resolve()
         .unwrap()

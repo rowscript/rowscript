@@ -30,7 +30,7 @@ macro_rules! write_delimited {
     };
 }
 
-#[derive(Clone, Display)]
+#[derive(Debug, Clone, Display)]
 pub(crate) enum Type {
     #[strum(transparent)]
     Builtin(BuiltinType),
@@ -82,7 +82,7 @@ impl BuiltinType {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Debug, Clone)]
 pub(crate) struct FunctionType {
     params: Box<[Type]>,
     ret: Type,
@@ -95,7 +95,7 @@ impl Display for FunctionType {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub(crate) struct Func {
     pub(crate) typ: FunctionType,
     pub(crate) body: Box<[Spanned<Stmt>]>,
