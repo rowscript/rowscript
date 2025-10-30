@@ -24,15 +24,13 @@ function commandHost() {
 
 // noinspection JSUnusedGlobalSymbols
 export async function activate(ctx: ExtensionContext) {
-  const command = isProd
-    ? path.join(ctx.extensionPath, commandHost(), id)
-    : id;
+  const command = isProd ? path.join(ctx.extensionPath, commandHost(), id) : id;
   const run = { command, args: ["server"] };
   const serverOptions = {
     run,
     debug: run,
   };
-  const language = id
+  const language = id;
   const clientOptions = {
     documentSelector: [{ scheme: "file", language }],
     synchronize: {

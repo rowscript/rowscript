@@ -43,7 +43,7 @@
         "extensions": [
           ".rows"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./syntaxes/language-configuration.json"
       }
     ],
     "grammars": [
