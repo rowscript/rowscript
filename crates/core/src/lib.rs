@@ -100,14 +100,43 @@ impl<'src> Source<'src> {
         }
     }
 
-    pub fn text_range(&self, span: Span) -> LineCol {
+    pub fn explain(&self, e: Error) -> Vec<(LineCol, String)> {
+        match e {
+            Error::Lexing(errs) => errs
+                .into_iter()
+                .map(|(span, msg)| (self.text_range(span), msg))
+                .collect(),
+            Error::Parsing(errs) => errs
+                .into_iter()
+                .map(|(span, msg)| (self.token_range(span), msg))
+                .collect(),
+            Error::UndefName(span, n) => {
+                vec![(self.token_range(span), format!("Undefined variable '{n}'"))]
+            }
+            Error::TypeMismatch { span, got, want } => {
+                vec![(
+                    self.token_range(span),
+                    format!("Type mismatch: Expected '{want}', but got '{got}'"),
+                )]
+            }
+            Error::ArityMismatch { span, got, want } => {
+                vec![(
+                    self.token_range(span),
+                    format!("Arity mismatch: Expected '{want}', but got '{got}'"),
+                )]
+            }
+            Error::Jit(..) => unreachable!(),
+        }
+    }
+
+    fn text_range(&self, span: Span) -> LineCol {
         LineCol {
             start: self.position(span.start),
             end: self.position(span.end),
         }
     }
 
-    pub fn token_range(&self, token: Span) -> LineCol {
+    fn token_range(&self, token: Span) -> LineCol {
         let span = if token.start < self.spans.len() {
             self.spans[token.start]
         } else if let Some(last) = self.spans.last() {
