@@ -109,7 +109,7 @@ impl<'src> Source<'src> {
 
     pub fn token_range(&self, token: Span) -> LineCol {
         let span = if token.start < self.spans.len() {
-            Span::new(self.spans[token.start].start, self.spans[token.end].end)
+            self.spans[token.start]
         } else if let Some(last) = self.spans.last() {
             Span::new(last.end, last.end)
         } else {
@@ -127,7 +127,7 @@ impl<'src> Source<'src> {
             }
             if c == '\n' {
                 line += 1;
-                character = 1;
+                character = 0;
                 continue;
             }
             character += 1;

@@ -191,35 +191,21 @@ fn check_text(text: &str) -> Vec<Diagnostic> {
             vec![new_diag(
                 src.token_range(span),
                 DiagnosticSeverity::ERROR,
-                format!("Undefined variable \"{n}\""),
+                format!(r#"Undefined variable "{n}""#),
             )]
         }
         Error::TypeMismatch { span, got, want } => {
             vec![new_diag(
                 src.token_range(span),
                 DiagnosticSeverity::ERROR,
-                format!(
-                    r#"Type mismatch:
-
-Expected:
-    {want}
-Actual:
-    {got}"#
-                ),
+                format!(r#"Type mismatch: Expected "{want}", but got "{got}""#,),
             )]
         }
         Error::ArityMismatch { span, got, want } => {
             vec![new_diag(
                 src.token_range(span),
                 DiagnosticSeverity::ERROR,
-                format!(
-                    r#"Arity mismatch:
-
-Expected:
-    {want}
-Actual:
-    {got}"#
-                ),
+                format!(r#"Arity mismatch: Expected "{want}", but got "{got}""#,),
             )]
         }
         Error::Jit(..) => unreachable!(),
