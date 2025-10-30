@@ -14,6 +14,9 @@
     "build": "node esbuild.mjs --production",
     "package": "vsce package --skip-license"
   },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
   "devDependencies": {
     "@types/node": "^24.9.1",
     "@types/vscode": "^1.105.0",
@@ -25,12 +28,10 @@
     "vscode": "^1.105.0"
   },
   "displayName": "RowScript",
-  "publisher": "RowScript",
+  "publisher": "rowscript",
+  "icon": "images/logo.png",
   "categories": [
     "Programming Languages"
-  ],
-  "activationEvents": [
-    "onLanguage:rowscript"
   ],
   "contributes": {
     "languages": [
@@ -53,8 +54,5 @@
         "path": "./syntaxes/rowscript.tmLanguage.json"
       }
     ]
-  },
-  "dependencies": {
-    "vscode-languageclient": "^9.0.1"
   }
 }

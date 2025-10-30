@@ -19,6 +19,9 @@ use tower_lsp::lsp_types::{
 use tower_lsp::{Client, LspService, Server};
 use tower_lsp::{LanguageServer, async_trait};
 
+const NAME: &str = env!("CARGO_PKG_NAME");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 fn main() {
     let app = App::parse();
     if let Some(Command::Server) = app.command {
@@ -59,7 +62,7 @@ impl LanguageServer for Service {
                 )),
                 diagnostic_provider: Some(DiagnosticServerCapabilities::Options(
                     DiagnosticOptions {
-                        identifier: Some(env!("CARGO_PKG_NAME").to_string()),
+                        identifier: Some(NAME.to_string()),
                         inter_file_dependencies: true,
                         ..Default::default()
                     },
@@ -67,8 +70,8 @@ impl LanguageServer for Service {
                 ..Default::default()
             },
             server_info: Some(ServerInfo {
-                name: env!("CARGO_PKG_NAME").to_string(),
-                version: Some(env!("CARGO_PKG_VERSION").to_string()),
+                name: NAME.to_string(),
+                version: Some(VERSION.to_string()),
             }),
         })
     }
@@ -164,7 +167,7 @@ fn new_diag(lc: LineCol, severity: DiagnosticSeverity, message: String) -> Diagn
     Diagnostic {
         range: lc.into_lsp(),
         severity: Some(severity),
-        source: Some("RowScript".to_string()),
+        source: Some(NAME.to_string()),
         message,
         ..Default::default()
     }
