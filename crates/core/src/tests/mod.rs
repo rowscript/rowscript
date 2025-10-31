@@ -52,9 +52,9 @@ fn it_parses_stmt() {
 function f(a) {
     let b = 42 // hi
 
-    if a {
+    if (a) {
         return false
-    } else if b {
+    } else if (b) {
         return true
     } else {
         return false

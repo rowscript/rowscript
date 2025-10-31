@@ -61,13 +61,13 @@ where
         .map_with(Spanned::from_map_extra)
         .labelled("update statement");
 
-    let return_ = just(Token::Keyword(Keyword::Return))
+    let r#return = just(Token::Keyword(Keyword::Return))
         .ignore_then(expr().or_not())
         .map(Stmt::Return)
         .map_with(Spanned::from_map_extra)
         .labelled("return statement");
 
-    let expr_ = expr()
+    let exp = expr()
         .map(|e| e.map(Stmt::Expr))
         .labelled("expression statement");
 
@@ -100,7 +100,7 @@ where
 
         let branch = just(Token::Keyword(Keyword::If))
             .map_with(|_, e| e.span())
-            .then(expr())
+            .then(expr().delimited_by(just(Token::Sym(Sym::LParen)), just(Token::Sym(Sym::RParen))))
             .then(
                 stmts
                     .clone()
@@ -113,7 +113,7 @@ where
             })
             .labelled("if branch");
 
-        let if_ =
+        let r#if =
             branch
                 .clone()
                 .then(
@@ -139,9 +139,9 @@ where
                 .map_with(Spanned::from_map_extra)
                 .labelled("if statement");
 
-        let while_ = just(Token::Keyword(Keyword::While))
+        let r#while = just(Token::Keyword(Keyword::While))
             .map_with(|_, e| e.span())
-            .then(expr())
+            .then(expr().delimited_by(just(Token::Sym(Sym::LParen)), just(Token::Sym(Sym::RParen))))
             .then(stmts.delimited_by(just(Token::Sym(Sym::LBrace)), just(Token::Sym(Sym::RBrace))))
             .map(|((span, cond), body)| {
                 Stmt::While(Branch {
@@ -153,12 +153,12 @@ where
             .map_with(Spanned::from_map_extra)
             .labelled("while statement");
 
-        func.or(if_)
-            .or(while_)
+        func.or(r#if)
+            .or(r#while)
             .or(assign)
             .or(update)
-            .or(return_)
-            .or(expr_)
+            .or(r#return)
+            .or(exp)
             .labelled("statement")
     })
 }
