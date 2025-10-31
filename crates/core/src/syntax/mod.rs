@@ -1,8 +1,6 @@
-use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
-use std::vec::IntoIter;
 
 use chumsky::extra::ParserExtra;
 use chumsky::input::{Input, MapExtra};
@@ -23,6 +21,7 @@ impl Id {
         Self(Rc::new(n))
     }
 
+    #[allow(dead_code)]
     pub(crate) fn unbound() -> Self {
         Self::bound(Default::default())
     }
@@ -127,7 +126,6 @@ impl Expr {
 pub(crate) enum Stmt {
     // Blocks.
     Func {
-        short: bool,
         sig: Sig,
         body: Box<[Spanned<Self>]>,
     },
@@ -137,6 +135,7 @@ pub(crate) enum Stmt {
 
     // Binding.
     Assign {
+        #[allow(dead_code)]
         doc: Box<[String]>,
         name: Spanned<Ident>,
         typ: Option<Spanned<Expr>>,
@@ -159,6 +158,7 @@ pub(crate) enum Stmt {
 
 #[derive(Debug)]
 pub(crate) struct Sig {
+    #[allow(dead_code)]
     pub(crate) doc: Box<[String]>,
     pub(crate) name: Id,
     pub(crate) params: Box<[Spanned<Param>]>,
@@ -176,31 +176,4 @@ pub(crate) struct Branch {
     pub(crate) span: Span,
     pub(crate) cond: Spanned<Expr>,
     pub(crate) body: Box<[Spanned<Stmt>]>,
-}
-
-pub(crate) struct Shadowed<K: Eq + Hash, V>(Vec<(K, Option<V>)>);
-
-impl<K: Eq + Hash, V> Default for Shadowed<K, V> {
-    fn default() -> Self {
-        Self(Default::default())
-    }
-}
-
-impl<K: Eq + Hash, V> Shadowed<K, V> {
-    pub(crate) fn push(&mut self, k: K, v: Option<V>) {
-        self.0.push((k, v));
-    }
-
-    pub(crate) fn into_iter(self) -> IntoIter<(K, Option<V>)> {
-        self.0.into_iter()
-    }
-
-    pub(crate) fn clear(self, locals: &mut HashMap<K, V>) {
-        self.into_iter().for_each(|(raw, name)| {
-            match name {
-                None => locals.remove(&raw),
-                Some(old) => locals.insert(raw, old),
-            };
-        })
-    }
 }

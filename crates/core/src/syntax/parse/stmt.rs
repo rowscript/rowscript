@@ -86,7 +86,6 @@ where
             )
             .map(|((((doc, id), params), ret), body)| {
                 id.map(|name| Stmt::Func {
-                    short: false,
                     sig: Sig {
                         doc: doc.into_boxed_slice(),
                         name,

@@ -140,7 +140,6 @@ impl Service {
     }
 }
 
-#[allow(dead_code)]
 struct Document {
     diags: Vec<Diagnostic>,
 }

@@ -14,9 +14,7 @@ use crate::syntax::parse::file;
 use crate::syntax::parse::lex::lex;
 use crate::syntax::resolve::Resolver;
 
-#[allow(dead_code)]
 pub(crate) mod semantics;
-#[allow(dead_code)]
 pub mod syntax;
 
 #[cfg(test)]
