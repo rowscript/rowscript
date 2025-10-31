@@ -135,8 +135,6 @@ pub(crate) enum Stmt {
 
     // Binding.
     Assign {
-        #[allow(dead_code)]
-        doc: Box<[String]>,
         name: Spanned<Ident>,
         typ: Option<Spanned<Expr>>,
         rhs: Spanned<Expr>,

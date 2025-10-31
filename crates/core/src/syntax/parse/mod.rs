@@ -11,6 +11,7 @@ use crate::syntax::{BuiltinType, Id, Stmt};
 use crate::{Span, Spanned};
 
 pub(crate) mod expr;
+pub(crate) mod file;
 pub(crate) mod lex;
 pub(crate) mod stmt;
 

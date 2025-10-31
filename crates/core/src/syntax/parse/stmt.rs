@@ -3,6 +3,7 @@ use chumsky::prelude::{IterParser, just, recursive};
 use chumsky::{Parser, select};
 
 use crate::syntax::parse::expr::expr;
+use crate::syntax::parse::file::docstring;
 use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by};
 use crate::syntax::{Branch, Ident, Param, Sig, Stmt};
 use crate::{Span, Spanned};
@@ -11,13 +12,6 @@ pub(crate) fn stmt<'t, I>() -> impl Parser<'t, I, Spanned<Stmt>, SyntaxErr<'t, T
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
-    let doc = select! {
-        Token::Doc(s) => s
-    }
-    .repeated()
-    .collect::<Vec<_>>()
-    .labelled("docstring");
-
     let id = select! {
         Token::Ident(n) => n
     }
@@ -36,14 +30,12 @@ where
 
     let params = grouped_by(Sym::LParen, param, Sym::Comma, Sym::RParen).labelled("parameters");
 
-    let assign = doc
-        .then_ignore(just(Token::Keyword(Keyword::Let)))
-        .then(id)
+    let assign = just(Token::Keyword(Keyword::Let))
+        .ignore_then(id)
         .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()).or_not())
         .then_ignore(just(Token::Sym(Sym::Eq)))
         .then(expr())
-        .map(|(((doc, id), typ), rhs)| Stmt::Assign {
-            doc: doc.into_boxed_slice(),
+        .map(|((id, typ), rhs)| Stmt::Assign {
             name: id.map(Ident::Id),
             typ,
             rhs,
@@ -74,7 +66,7 @@ where
     recursive(|stmt| {
         let stmts = stmt.repeated().collect::<Vec<_>>().labelled("statements");
 
-        let func = doc
+        let func = docstring()
             .then_ignore(just(Token::Keyword(Keyword::Function)))
             .then(id)
             .then(params)
