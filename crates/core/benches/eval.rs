@@ -1,5 +1,6 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use rowscript_core::State;
+use rowscript_core::syntax::Expr;
 
 fn criterion_benchmark(c: &mut Criterion) {
     let state = State::parse(include_str!("fibonacci.rows"))
@@ -8,7 +9,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         .unwrap()
         .check()
         .unwrap();
-    c.bench_function("fibonacci", |b| b.iter(|| state.eval()));
+    c.bench_function("fibonacci", |b| b.iter(|| state.eval(Expr::Number(20.))));
 }
 
 criterion_group!(benches, criterion_benchmark);

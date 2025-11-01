@@ -3,7 +3,7 @@ use std::mem::take;
 
 use crate::semantics::{BuiltinType, Func, FunctionType, Functions, Type};
 use crate::syntax::parse::Sym;
-use crate::syntax::{Branch, Expr, Id, Ident, Sig, Stmt};
+use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -14,32 +14,31 @@ pub(crate) struct Checker {
 }
 
 impl Checker {
-    pub(crate) fn file(mut self, file: &mut [Spanned<Stmt>]) -> Out<Functions> {
-        let mut block = Block::global();
-        file.iter_mut().try_for_each(|stmt| {
-            self.stmt(&mut block, stmt)?;
-            Ok(())
-        })?;
+    pub(crate) fn file(mut self, file: &mut File) -> Out<Functions> {
+        file.defs
+            .iter_mut()
+            .try_for_each(|def| match &mut def.item {
+                Def::Func { sig, body } => {
+                    let (typ, local) = self.sig(sig)?;
+                    let got = self.block(local, body)?;
+                    isa(def.span, &got, &typ.ret)?;
+                    let old = self.fns.insert(
+                        sig.name.clone(),
+                        Func {
+                            typ,
+                            body: take(body),
+                        },
+                    );
+                    debug_assert!(old.is_none());
+                    Ok(())
+                }
+            })?;
         debug_assert!(self.locals.is_empty());
         Ok(self.fns)
     }
 
     fn stmt(&mut self, block: &mut Block, stmt: &mut Spanned<Stmt>) -> Out<Type> {
         Ok(match &mut stmt.item {
-            Stmt::Func { sig, body, .. } => {
-                let (typ, local) = self.sig(sig)?;
-                let got = self.block(local, body)?;
-                isa(stmt.span, &got, &typ.ret)?;
-                let old = self.fns.insert(
-                    sig.name.clone(),
-                    Func {
-                        typ,
-                        body: take(body),
-                    },
-                );
-                debug_assert!(old.is_none());
-                got
-            }
             Stmt::Expr(e) => self.infer(e)?.1,
             Stmt::Assign { name, typ, rhs, .. } => {
                 let rhs_type = typ
@@ -278,13 +277,6 @@ struct Block {
 }
 
 impl Block {
-    fn global() -> Self {
-        Self {
-            ret: Type::Builtin(BuiltinType::Unit),
-            locals: 0,
-        }
-    }
-
     fn func(ret: Type) -> Self {
         Self { ret, locals: 0 }
     }

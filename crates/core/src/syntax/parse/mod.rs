@@ -1,13 +1,12 @@
-use chumsky::Parser;
 use chumsky::container::Container;
 use chumsky::extra::Err as Full;
 use chumsky::input::ValueInput;
 use chumsky::prelude::{IterParser, Rich, just};
+use chumsky::{Parser, select};
 use strum::{Display, EnumString};
 use ustr::Ustr;
 
-use crate::syntax::parse::stmt::stmt;
-use crate::syntax::{BuiltinType, Id, Stmt};
+use crate::syntax::{BuiltinType, Id};
 use crate::{Span, Spanned};
 
 pub(crate) mod expr;
@@ -90,11 +89,15 @@ impl Container<Spanned<Token>> for TokenSet {
     }
 }
 
-pub(crate) fn file<'t, I>() -> impl Parser<'t, I, Vec<Spanned<Stmt>>, SyntaxErr<'t, Token>>
+fn id<'t, I>() -> impl Parser<'t, I, Spanned<Id>, SyntaxErr<'t, Token>> + Clone
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
-    stmt().repeated().collect().labelled("file")
+    select! {
+        Token::Ident(n) => n
+    }
+    .map_with(Spanned::from_map_extra)
+    .labelled("identifier")
 }
 
 fn grouped_by<'t, I, O, P>(

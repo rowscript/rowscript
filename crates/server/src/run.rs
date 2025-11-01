@@ -25,10 +25,7 @@ fn run_file(file: &Path) {
         .and_then(State::resolve)
         .and_then(State::check)
     {
-        Ok(state) => {
-            // TODO: Implement Display.
-            println!("{:?}", state.eval());
-        }
+        Ok(..) => todo!("run a file"),
         Err(e) => {
             src.explain(e).iter().for_each(|(span, msg)| {
                 eprintln!(

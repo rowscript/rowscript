@@ -45,7 +45,6 @@ impl<'a> Vm<'a> {
         stmt: &Stmt,
     ) -> ControlFlow<Expr, Expr> {
         ControlFlow::Continue(match stmt {
-            Stmt::Func { .. } => Expr::Unit,
             Stmt::Expr(e) => self.expr(frame, e),
             Stmt::Assign { name, rhs, .. } => {
                 let e = self.expr(frame, &rhs.item);

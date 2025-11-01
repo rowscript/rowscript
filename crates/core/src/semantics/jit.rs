@@ -145,7 +145,6 @@ impl Expr {
 impl Stmt {
     fn compile(&self, jit: &mut Jit, builder: &mut FunctionBuilder, returned: &mut bool) -> Value {
         match self {
-            Stmt::Func { .. } => todo!("nested function"),
             Stmt::Expr(e) => e.compile(jit, builder),
             Stmt::Assign { name, typ, rhs, .. } => {
                 Self::assign(&name.item, typ, &rhs.item, jit, builder)

@@ -6,17 +6,17 @@ use crate::State;
 use crate::syntax::Expr;
 use crate::syntax::parse::Token;
 use crate::syntax::parse::expr::expr;
+use crate::syntax::parse::file::file;
 use crate::syntax::parse::lex::lex;
-use crate::syntax::parse::stmt::stmt;
 
-fn run(text: &str) -> Expr {
+fn run(text: &str, arg: Expr) -> Expr {
     State::parse(text)
         .unwrap()
         .resolve()
         .unwrap()
         .check()
         .unwrap()
-        .eval()
+        .eval(arg)
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn it_parses_expr() {
 }
 
 #[test]
-fn it_parses_stmt() {
+fn it_parses_file() {
     let out = lex()
         .parse(
             r#"
@@ -65,18 +65,18 @@ function f(a) {
 "#,
         )
         .unwrap();
-    stmt().parse(out.tokens.as_slice()).unwrap();
+    file().parse(out.tokens.as_slice()).unwrap();
 }
 
 #[test]
 fn it_runs_fibonacci() {
-    let a = run(include_str!("fibonacci.rows"));
+    let a = run(include_str!("fibonacci.rows"), Expr::Number(10.));
     assert!(matches!(a, Expr::Number(89.)));
 }
 
 #[test]
 fn it_runs_factorial() {
-    let a = run(include_str!("factorial.rows"));
+    let a = run(include_str!("factorial.rows"), Expr::Number(10.));
     assert!(matches!(a, Expr::Number(3628800.)));
 }
 

@@ -8,11 +8,11 @@ use ustr::Ustr;
 use crate::semantics::check::Checker;
 use crate::semantics::jit::Jit;
 use crate::semantics::vm::Vm;
-use crate::semantics::{Code, Func, Functions};
-use crate::syntax::Expr;
-use crate::syntax::parse::file;
+use crate::semantics::{Code, Functions};
+use crate::syntax::parse::file::file;
 use crate::syntax::parse::lex::lex;
 use crate::syntax::resolve::Resolver;
+use crate::syntax::{Def, Expr, File, Ident, Stmt};
 
 pub(crate) mod semantics;
 pub mod syntax;
@@ -46,6 +46,13 @@ impl<T> Spanned<T> {
     {
         Self {
             span: e.span(),
+            item,
+        }
+    }
+
+    fn stdin(item: T) -> Self {
+        Self {
+            span: Span::new(0, 0),
             item,
         }
     }
@@ -165,7 +172,7 @@ impl<'src> Source<'src> {
 
 #[derive(Default, Debug)]
 pub struct State {
-    prog: Func,
+    file: File,
     fs: Functions,
 }
 
@@ -185,7 +192,7 @@ impl State {
             )
         })?;
         src.spans = token_set.spans.into();
-        state.prog.body = file()
+        state.file = file()
             .parse(token_set.tokens.as_slice())
             .into_result()
             .map_err(|errs| {
@@ -194,23 +201,27 @@ impl State {
                         .map(|e| (*e.span(), e.reason().to_string()))
                         .collect(),
                 )
-            })?
-            .into();
+            })?;
         Ok(state)
     }
 
     pub fn resolve(mut self) -> Out<Self> {
-        Resolver::default().file(self.prog.body.as_mut())?;
+        Resolver::default().file(&mut self.file)?;
         Ok(self)
     }
 
     pub fn check(mut self) -> Out<Self> {
-        self.fs = Checker::default().file(self.prog.body.as_mut())?;
+        self.fs = Checker::default().file(&mut self.file)?;
         Ok(self)
     }
 
-    pub fn eval(&self) -> Expr {
-        Vm::new(&self.fs).func(&self.prog.body, Default::default())
+    pub fn eval(&self, arg: Expr) -> Expr {
+        let Def::Func { sig, .. } = &self.file.defs[0].item;
+        let stmts = &[Spanned::stdin(Stmt::Expr(Expr::Call(
+            Box::new(Spanned::stdin(Expr::Ident(Ident::Id(sig.name.clone())))),
+            Box::new([Spanned::stdin(arg)]),
+        )))];
+        Vm::new(&self.fs).func(stmts, Default::default())
     }
 
     pub fn compile(&self) -> Out<Code> {

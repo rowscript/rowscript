@@ -1,6 +1,6 @@
 use ustr::{Ustr, UstrMap};
 
-use crate::syntax::{Branch, Expr, Id, Ident, Sig, Stmt};
+use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -10,20 +10,21 @@ pub(crate) struct Resolver {
 }
 
 impl Resolver {
-    pub(crate) fn file(&mut self, file: &mut [Spanned<Stmt>]) -> Out<()> {
-        let mut block = Block::default();
-        file.iter_mut()
-            .try_for_each(|stmt| self.stmt(&mut block, stmt))?;
+    pub(crate) fn file(&mut self, file: &mut File) -> Out<()> {
+        file.defs
+            .iter_mut()
+            .try_for_each(|def| match &mut def.item {
+                Def::Func { sig, body } => {
+                    let local = self.sig(sig)?;
+                    self.block(local, body)
+                }
+            })?;
         debug_assert!(self.locals.is_empty());
         Ok(())
     }
 
     fn stmt(&mut self, block: &mut Block, stmt: &mut Spanned<Stmt>) -> Out<()> {
         match &mut stmt.item {
-            Stmt::Func { sig, body, .. } => {
-                let local = self.sig(sig)?;
-                self.block(local, body)?;
-            }
             Stmt::Expr(e) => self.expr(stmt.span, e)?,
             Stmt::Assign { name, typ, rhs, .. } => {
                 typ.as_mut()

@@ -122,14 +122,8 @@ impl Expr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Stmt {
-    // Blocks.
-    Func {
-        sig: Sig,
-        body: Box<[Spanned<Self>]>,
-    },
-
     // Expressions.
     Expr(Expr),
 
@@ -154,6 +148,13 @@ pub(crate) enum Stmt {
     While(Branch),
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct Branch {
+    pub(crate) span: Span,
+    pub(crate) cond: Spanned<Expr>,
+    pub(crate) body: Box<[Spanned<Stmt>]>,
+}
+
 #[derive(Debug)]
 pub(crate) struct Sig {
     #[allow(dead_code)]
@@ -170,8 +171,14 @@ pub(crate) struct Param {
 }
 
 #[derive(Debug)]
-pub(crate) struct Branch {
-    pub(crate) span: Span,
-    pub(crate) cond: Spanned<Expr>,
-    pub(crate) body: Box<[Spanned<Stmt>]>,
+pub(crate) enum Def {
+    Func {
+        sig: Sig,
+        body: Box<[Spanned<Stmt>]>,
+    },
+}
+
+#[derive(Default, Debug)]
+pub(crate) struct File {
+    pub(crate) defs: Box<[Spanned<Def>]>,
 }
