@@ -7,6 +7,7 @@ use chumsky::input::{Input, MapExtra};
 use ustr::Ustr;
 
 use crate::semantics::BuiltinType;
+use crate::semantics::builtin::Builtin;
 use crate::syntax::parse::{Sym, Token};
 use crate::{Span, Spanned};
 
@@ -63,6 +64,7 @@ impl Hash for Id {
 pub enum Ident {
     Id(Id),
     Idx(usize),
+    Builtin(Builtin),
 }
 
 impl Ident {

@@ -263,6 +263,7 @@ impl Checker {
         match ident {
             Ident::Id(n) => self.globals.get(n),
             Ident::Idx(i) => self.locals.get(*i),
+            Ident::Builtin(b) => return b.r#type(),
         }
         .cloned()
         .unwrap()
@@ -277,6 +278,7 @@ impl Checker {
                 self.locals.insert(*i, typ);
                 block.locals += 1;
             }
+            Ident::Builtin(..) => unreachable!(),
         }
     }
 }

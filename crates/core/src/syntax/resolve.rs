@@ -1,5 +1,7 @@
+use std::str::FromStr;
 use ustr::{Ustr, UstrMap};
 
+use crate::semantics::builtin::Builtin;
 use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
@@ -96,25 +98,24 @@ impl Resolver {
 
     fn expr(&mut self, span: Span, expr: &mut Expr) -> Out<()> {
         match expr {
-            Expr::Ident(id) => self.name(span, id)?,
+            Expr::Ident(id) => self.name(span, id),
 
             Expr::Call(callee, args) => {
                 self.expr(callee.span, &mut callee.item)?;
                 args.iter_mut()
-                    .try_for_each(|arg| self.expr(arg.span, &mut arg.item))?;
+                    .try_for_each(|arg| self.expr(arg.span, &mut arg.item))
             }
             Expr::BinaryOp(lhs, .., rhs) => {
                 self.expr(lhs.span, &mut lhs.item)?;
-                self.expr(rhs.span, &mut rhs.item)?;
+                self.expr(rhs.span, &mut rhs.item)
             }
 
             Expr::BuiltinType(..)
             | Expr::Unit
             | Expr::Number(..)
             | Expr::String(..)
-            | Expr::Boolean(..) => (),
+            | Expr::Boolean(..) => Ok(()),
         }
-        Ok(())
     }
 
     fn name(&mut self, span: Span, ident: &mut Ident) -> Out<()> {
@@ -126,6 +127,10 @@ impl Resolver {
         }
         if let Some(found) = self.globals.get(&raw) {
             *id = found.clone();
+            return Ok(());
+        }
+        if let Ok(builtin) = Builtin::from_str(&raw) {
+            *ident = Ident::Builtin(builtin);
             return Ok(());
         }
         Err(Error::UndefName(span, raw))

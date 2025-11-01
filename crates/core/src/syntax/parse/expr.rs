@@ -22,7 +22,7 @@ where
     .map_with(Spanned::from_map_extra)
     .labelled("constant expression");
 
-    let ident_ = select! {
+    let ident = select! {
         Token::Ident(n) => Expr::Ident(Ident::Id(n))
     }
     .map_with(Spanned::from_map_extra)
@@ -36,7 +36,7 @@ where
 
         let args = grouped_by(Sym::LParen, expr, Sym::Comma, Sym::RParen).labelled("arguments");
         let call = constant
-            .or(ident_)
+            .or(ident)
             .or(paren)
             .foldl_with(args.repeated(), |callee, args, e| Spanned {
                 span: e.span(),
