@@ -121,7 +121,7 @@ impl<'a> Vm<'a> {
                 };
                 let args = args.iter().map(|e| self.expr(frame, &e.item)).collect();
                 let f = self.fs.get(n.as_id()).unwrap();
-                self.func(&f.body, args)
+                self.func(&f.item.body, args)
             }
             Expr::BinaryOp(lhs, op, rhs) => {
                 match (self.expr(frame, &lhs.item), op, self.expr(frame, &rhs.item)) {

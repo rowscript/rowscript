@@ -6,3 +6,8 @@ function factorial(n: u32): u32 {
     }
     return a
 }
+
+function main() {
+    factorial(10)
+    return
+}

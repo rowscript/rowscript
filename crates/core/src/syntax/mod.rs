@@ -181,4 +181,5 @@ pub(crate) enum Def {
 #[derive(Default, Debug)]
 pub(crate) struct File {
     pub(crate) defs: Box<[Spanned<Def>]>,
+    pub(crate) main: Option<Id>,
 }

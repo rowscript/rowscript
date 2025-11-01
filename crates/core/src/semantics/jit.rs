@@ -38,9 +38,13 @@ impl<'a> Jit<'a> {
         let code = self
             .fs
             .iter()
-            .map(|(id, f)| f.compile(id, self, &mut ctx).map(|func_id| (id, func_id)))
+            .map(|(id, f)| {
+                f.item.compile(id, self, &mut ctx).map(|func_id| {
+                    self.m.clear_context(&mut ctx);
+                    (id, func_id)
+                })
+            })
             .collect::<Out<Vec<_>>>()?;
-        self.m.clear_context(&mut ctx);
         self.m.finalize_definitions().map_err(Error::jit)?;
         Ok(code
             .into_iter()
@@ -112,7 +116,7 @@ impl Expr {
                     unreachable!();
                 };
                 let id = ident.as_id();
-                jit.fs.get(id).unwrap().typ.to_signature(&mut sig);
+                jit.fs.get(id).unwrap().item.typ.to_signature(&mut sig);
                 // TODO: How to call back to functions in interpretation mode, or we don't?
                 let callee = jit
                     .m
@@ -283,7 +287,7 @@ impl From<BuiltinType> for JitType {
             // BuiltinType::I32 | BuiltinType::U32 => I32,
             // BuiltinType::I64 | BuiltinType::U64 => I64,
             // BuiltinType::F32 => F32,
-            BuiltinType::Bool => I8,
+            BuiltinType::Unit | BuiltinType::Bool => I8,
 
             BuiltinType::I8
             | BuiltinType::U8

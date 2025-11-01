@@ -29,7 +29,7 @@ pub struct Spanned<T> {
 }
 
 impl<T> Spanned<T> {
-    pub(crate) fn map<F, U>(self, f: F) -> Spanned<U>
+    fn map<F, U>(self, f: F) -> Spanned<U>
     where
         F: FnOnce(T) -> U,
     {
@@ -39,7 +39,7 @@ impl<T> Spanned<T> {
         }
     }
 
-    pub(crate) fn from_map_extra<'src, 'b, I, E>(item: T, e: &mut MapExtra<'src, 'b, I, E>) -> Self
+    fn from_map_extra<'src, 'b, I, E>(item: T, e: &mut MapExtra<'src, 'b, I, E>) -> Self
     where
         I: Input<'src, Span = Span>,
         E: ParserExtra<'src, I>,

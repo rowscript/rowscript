@@ -19,6 +19,7 @@ impl Resolver {
                     self.block(local, body)
                 }
             })?;
+        file.main = self.globals.get(&Ustr::from("main")).cloned();
         debug_assert!(self.locals.is_empty());
         Ok(())
     }

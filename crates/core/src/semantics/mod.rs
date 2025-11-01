@@ -38,6 +38,15 @@ pub(crate) enum Type {
     Function(Box<FunctionType>),
 }
 
+impl Type {
+    fn main() -> Self {
+        Self::Function(Box::new(FunctionType {
+            params: Default::default(),
+            ret: Self::Builtin(BuiltinType::Unit),
+        }))
+    }
+}
+
 impl Default for Type {
     fn default() -> Self {
         Self::Builtin(Default::default())
@@ -101,6 +110,6 @@ pub(crate) struct Func {
     pub(crate) body: Box<[Spanned<Stmt>]>,
 }
 
-pub(crate) type Functions = HashMap<Id, Func>;
+pub(crate) type Functions = HashMap<Id, Spanned<Func>>;
 
 pub(crate) type Code = HashMap<Id, *const u8>;

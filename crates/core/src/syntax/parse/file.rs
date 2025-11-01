@@ -68,6 +68,9 @@ where
     func()
         .repeated()
         .collect::<Vec<_>>()
-        .map(|defs| File { defs: defs.into() })
+        .map(|defs| File {
+            defs: defs.into(),
+            main: None,
+        })
         .labelled("file")
 }

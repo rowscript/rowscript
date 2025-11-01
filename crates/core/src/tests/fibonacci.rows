@@ -6,3 +6,8 @@ function fib(n: u32): u32 {
     }
     return fib(n - 2) + fib(n - 1)
 }
+
+function main() {
+    fib(10)
+    return
+}

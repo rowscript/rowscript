@@ -24,15 +24,25 @@ impl Checker {
                     isa(def.span, &got, &typ.ret)?;
                     let old = self.fns.insert(
                         sig.name.clone(),
-                        Func {
-                            typ,
-                            body: take(body),
+                        Spanned {
+                            span: def.span,
+                            item: Func {
+                                typ,
+                                body: take(body),
+                            },
                         },
                     );
                     debug_assert!(old.is_none());
                     Ok(())
                 }
             })?;
+        if let Some(id) = &file.main {
+            isa(
+                self.fns.get(id).unwrap().span,
+                self.globals.get(id).unwrap(),
+                &Type::main(),
+            )?;
+        }
         debug_assert!(self.locals.is_empty());
         Ok(self.fns)
     }
