@@ -68,7 +68,6 @@ const PRINTLN: Impl = Impl {
     },
     declare: |sig| {
         sig.params.push(AbiParam::new(F64)); // FIXME: correct type
-        sig.returns.push(AbiParam::new(F64)); // FIXME: correct type
     },
 };
 

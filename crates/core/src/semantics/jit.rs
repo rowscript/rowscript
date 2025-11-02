@@ -42,10 +42,9 @@ impl<'a> Jit<'a> {
             .fs
             .iter()
             .map(|(id, f)| {
-                f.item.compile(id, self, &mut ctx).map(|func_id| {
-                    self.m.clear_context(&mut ctx);
-                    (id, func_id)
-                })
+                f.item
+                    .compile(id, self, &mut ctx)
+                    .map(|func_id| (id, func_id))
             })
             .collect::<Out<Vec<_>>>()?;
         self.m.finalize_definitions().map_err(Error::jit)?;
@@ -92,6 +91,7 @@ impl Func {
             .map_err(Error::jit)?;
         jit.m.define_function(id, ctx).map_err(Error::jit)?;
 
+        jit.m.clear_context(ctx);
         Ok(id)
     }
 }
@@ -131,7 +131,12 @@ impl Expr {
                 };
                 let local_callee = jit.m.declare_func_in_func(callee, builder.func);
                 let call = builder.ins().call(local_callee, &args);
-                builder.inst_results(call)[0]
+                builder
+                    .inst_results(call)
+                    .iter()
+                    .next()
+                    .cloned()
+                    .unwrap_or_else(|| builder.ins().iconst(I8, 0))
             }
             Expr::BinaryOp(lhs, op, rhs) => {
                 let a = lhs.item.compile(jit, builder);

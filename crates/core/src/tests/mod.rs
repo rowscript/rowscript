@@ -121,8 +121,8 @@ fn run_compiled_main(text: &str) {
         .check()
         .unwrap();
     let code = state.compile().unwrap();
-    let ptr = code.get(&state.file.main.unwrap()).unwrap();
-    unsafe { transmute::<_, fn()>(ptr)() }
+    let ptr = *code.get(&state.file.main.unwrap()).unwrap();
+    unsafe { transmute::<_, fn() -> u8>(ptr)() };
 }
 
 #[test]
@@ -145,6 +145,5 @@ fn it_runs_compiled_factorial() {
 
 #[test]
 fn it_runs_compiled_factorial_main() {
-    // FIXME: Oops, the almighty segmentation fault.
-    //run_compiled_main(include_str!("factorial.rows"));
+    run_compiled_main(include_str!("factorial.rows"));
 }
