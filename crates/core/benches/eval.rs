@@ -9,7 +9,9 @@ fn criterion_benchmark(c: &mut Criterion) {
         .unwrap()
         .check()
         .unwrap();
-    c.bench_function("fibonacci", |b| b.iter(|| state.eval(Expr::Number(20.))));
+    c.bench_function("fibonacci", |b| {
+        b.iter(|| state.eval_nth(0, Expr::Number(20.)))
+    });
 }
 
 criterion_group!(benches, criterion_benchmark);

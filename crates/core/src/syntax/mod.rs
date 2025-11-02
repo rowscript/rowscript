@@ -22,11 +22,6 @@ impl Id {
         Self(Rc::new(n))
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn unbound() -> Self {
-        Self::bound(Default::default())
-    }
-
     pub(crate) fn raw(&self) -> Ustr {
         *self.0
     }
@@ -68,11 +63,6 @@ pub enum Ident {
 }
 
 impl Ident {
-    pub(crate) fn as_id(&self) -> &Id {
-        let Self::Id(id) = self else { unreachable!() };
-        id
-    }
-
     pub(crate) fn as_id_mut(&mut self) -> &mut Id {
         let Self::Id(id) = self else { unreachable!() };
         id

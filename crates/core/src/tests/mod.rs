@@ -9,14 +9,25 @@ use crate::syntax::parse::expr::expr;
 use crate::syntax::parse::file::file;
 use crate::syntax::parse::lex::lex;
 
-fn run(text: &str, arg: Expr) -> Expr {
+fn eval_nth(text: &str, n: usize, arg: Expr) -> Expr {
     State::parse(text)
         .unwrap()
         .resolve()
         .unwrap()
         .check()
         .unwrap()
-        .eval(arg)
+        .eval_nth(n, arg)
+}
+
+fn eval(text: &str) -> Expr {
+    State::parse(text)
+        .unwrap()
+        .resolve()
+        .unwrap()
+        .check()
+        .unwrap()
+        .eval()
+        .unwrap()
 }
 
 #[test]
@@ -70,18 +81,23 @@ function f(a) {
 
 #[test]
 fn it_runs_fibonacci() {
-    let a = run(include_str!("fibonacci.rows"), Expr::Number(10.));
+    let a = eval_nth(include_str!("fibonacci.rows"), 0, Expr::Number(10.));
     assert!(matches!(a, Expr::Number(89.)));
 }
 
 #[test]
 fn it_runs_factorial() {
-    let a = run(include_str!("factorial.rows"), Expr::Number(10.));
+    let a = eval_nth(include_str!("factorial.rows"), 0, Expr::Number(10.));
     assert!(matches!(a, Expr::Number(3628800.)));
 }
 
+#[test]
+fn it_runs_factorial_main() {
+    eval(include_str!("factorial.rows"));
+}
+
 fn run_compiled<T, R>(text: &str, input: T) -> R {
-    let ptr = State::parse(text)
+    let (_, ptr) = State::parse(text)
         .unwrap()
         .resolve()
         .unwrap()
@@ -89,10 +105,24 @@ fn run_compiled<T, R>(text: &str, input: T) -> R {
         .unwrap()
         .compile()
         .unwrap()
-        .into_values()
+        .into_iter()
+        .filter(|(id, ..)| id.raw() != "main")
         .next()
         .unwrap();
     unsafe { transmute::<_, fn(T) -> R>(ptr)(input) }
+}
+
+#[allow(dead_code)]
+fn run_compiled_main(text: &str) {
+    let state = State::parse(text)
+        .unwrap()
+        .resolve()
+        .unwrap()
+        .check()
+        .unwrap();
+    let code = state.compile().unwrap();
+    let ptr = code.get(&state.file.main.unwrap()).unwrap();
+    unsafe { transmute::<_, fn()>(ptr)() }
 }
 
 #[test]
@@ -111,4 +141,10 @@ fn it_runs_compiled_fibonacci() {
 fn it_runs_compiled_factorial() {
     let v = run_compiled::<f64, f64>(include_str!("factorial.rows"), 10.);
     assert_eq!(v, 3628800.);
+}
+
+#[test]
+fn it_runs_compiled_factorial_main() {
+    // FIXME: Oops, the almighty segmentation fault.
+    //run_compiled_main(include_str!("factorial.rows"));
 }

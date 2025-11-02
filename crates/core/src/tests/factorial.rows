@@ -8,6 +8,6 @@ function factorial(n: u32): u32 {
 }
 
 function main() {
-    factorial(10)
+    println(factorial(10))
     return
 }

@@ -5,7 +5,6 @@ use strum::{Display, EnumString};
 use crate::Spanned;
 use crate::syntax::{Id, Stmt};
 
-#[allow(dead_code)]
 pub(crate) mod builtin;
 pub(crate) mod check;
 pub(crate) mod jit;

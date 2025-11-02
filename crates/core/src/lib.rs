@@ -76,6 +76,8 @@ pub enum Error {
         want: usize,
     },
 
+    ExpectedMain,
+
     Jit(Box<ModuleError>),
 }
 
@@ -87,6 +89,7 @@ impl Error {
 
 pub type Out<T> = Result<T, Error>;
 
+#[derive(Default)]
 pub struct LineCol {
     pub start: (u32, u32),
     pub end: (u32, u32),
@@ -130,6 +133,10 @@ impl<'src> Source<'src> {
                     format!("Arity mismatch: Expected '{want}', but got '{got}'"),
                 )]
             }
+            Error::ExpectedMain => vec![(
+                Default::default(),
+                "Expected a 'main' function to run".to_string(),
+            )],
             Error::Jit(..) => unreachable!(),
         }
     }
@@ -215,13 +222,18 @@ impl State {
         Ok(self)
     }
 
-    pub fn eval(&self, arg: Expr) -> Expr {
-        let Def::Func { sig, .. } = &self.file.defs[0].item;
+    pub fn eval_nth(&self, n: usize, arg: Expr) -> Expr {
+        let Def::Func { sig, .. } = &self.file.defs[n].item;
         let stmts = &[Spanned::stdin(Stmt::Expr(Expr::Call(
             Box::new(Spanned::stdin(Expr::Ident(Ident::Id(sig.name.clone())))),
             Box::new([Spanned::stdin(arg)]),
         )))];
         Vm::new(&self.fs).func(stmts, Default::default())
+    }
+
+    pub fn eval(self) -> Out<Expr> {
+        let main = self.file.main.as_ref().ok_or(Error::ExpectedMain)?;
+        Ok(Vm::new(&self.fs).func(&self.fs.get(main).unwrap().item.body, Default::default()))
     }
 
     pub fn compile(&self) -> Out<Code> {

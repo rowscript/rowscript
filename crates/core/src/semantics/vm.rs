@@ -120,8 +120,14 @@ impl<'a> Vm<'a> {
                     unreachable!();
                 };
                 let args = args.iter().map(|e| self.expr(frame, &e.item)).collect();
-                let f = self.fs.get(n.as_id()).unwrap();
-                self.func(&f.item.body, args)
+                match n {
+                    Ident::Id(id) => {
+                        let f = self.fs.get(&id).unwrap();
+                        self.func(&f.item.body, args)
+                    }
+                    Ident::Builtin(b) => b.eval(args),
+                    Ident::Idx(..) => todo!("local function"),
+                }
             }
             Expr::BinaryOp(lhs, op, rhs) => {
                 match (self.expr(frame, &lhs.item), op, self.expr(frame, &rhs.item)) {

@@ -8,6 +8,6 @@ function fib(n: u32): u32 {
 }
 
 function main() {
-    fib(10)
+    println(fib(10))
     return
 }

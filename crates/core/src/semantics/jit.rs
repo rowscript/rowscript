@@ -11,6 +11,7 @@ use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{FuncId, Linkage, Module, default_libcall_names};
 use cranelift_native::builder as native_builder;
 
+use crate::semantics::builtin::import;
 use crate::semantics::{BuiltinType, Code, Func, FunctionType, Functions, Type};
 use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
@@ -26,10 +27,12 @@ impl<'a> Jit<'a> {
         let mut flags = flags_builder();
         flags.set("opt_level", "none").unwrap();
         flags.set("enable_verifier", "true").unwrap();
-        let m = JITModule::new(JITBuilder::with_isa(
+        let mut builder = JITBuilder::with_isa(
             native_builder().unwrap().finish(Flags::new(flags)).unwrap(),
             default_libcall_names(),
-        ));
+        );
+        import(&mut builder);
+        let m = JITModule::new(builder);
         Self { fs, m }
     }
 
@@ -115,13 +118,17 @@ impl Expr {
                 let Expr::Ident(ident) = &f.item else {
                     unreachable!();
                 };
-                let id = ident.as_id();
-                jit.fs.get(id).unwrap().item.typ.to_signature(&mut sig);
-                // TODO: How to call back to functions in interpretation mode, or we don't?
-                let callee = jit
-                    .m
-                    .declare_function(&id.raw(), Linkage::Import, &sig)
-                    .unwrap();
+                let callee = match ident {
+                    Ident::Id(id) => {
+                        jit.fs.get(id).unwrap().item.typ.to_signature(&mut sig);
+                        // TODO: How to call back to functions in interpretation mode, or we don't?
+                        jit.m
+                            .declare_function(&id.raw(), Linkage::Import, &sig)
+                            .unwrap()
+                    }
+                    Ident::Builtin(b) => b.declare(&mut jit.m),
+                    Ident::Idx(..) => todo!("local function"),
+                };
                 let local_callee = jit.m.declare_func_in_func(callee, builder.func);
                 let call = builder.ins().call(local_callee, &args);
                 builder.inst_results(call)[0]

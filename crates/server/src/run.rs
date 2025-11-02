@@ -21,21 +21,19 @@ pub(crate) fn run(path: Option<&Path>) {
 fn run_file(file: &Path) {
     let text = read_to_string(file).expect("Failed to read source file");
     let mut src = Source::new(&text);
-    match State::parse_with(&mut src)
+    if let Err(e) = State::parse_with(&mut src)
         .and_then(State::resolve)
         .and_then(State::check)
+        .and_then(State::eval)
     {
-        Ok(..) => todo!("run a file"),
-        Err(e) => {
-            src.explain(e).iter().for_each(|(span, msg)| {
-                eprintln!(
-                    "{}:{}:{}: {msg}",
-                    file.display(),
-                    span.start.0 + 1,
-                    span.start.1 + 1
-                );
-            });
-            panic!("Failed to run source file");
-        }
+        src.explain(e).iter().for_each(|(span, msg)| {
+            eprintln!(
+                "{}:{}:{}: {msg}",
+                file.display(),
+                span.start.0 + 1,
+                span.start.1 + 1
+            );
+        });
+        panic!("Failed to run source file");
     }
 }
