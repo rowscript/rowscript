@@ -1,10 +1,11 @@
 use std::path::Path;
 
-use clap::{Parser, Subcommand};
-
+use crate::build::build;
 use crate::run::run;
 use crate::serve::serve;
+use clap::{Parser, Subcommand};
 
+mod build;
 mod run;
 mod serve;
 
@@ -13,7 +14,8 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() {
     match Cli::parse().command {
-        Command::Run { path } => run(path.as_deref()),
+        Command::Run { path } => run(&path),
+        Command::Build { path } => build(&path),
         Command::Server => serve(),
     }
 }
@@ -29,7 +31,14 @@ enum Command {
     /// Run a program
     Run {
         /// Path to a file or package
-        path: Option<Box<Path>>,
+        #[clap(default_value = ".")]
+        path: Box<Path>,
+    },
+    /// Build a program
+    Build {
+        /// Path to a file or package
+        #[clap(default_value = ".")]
+        path: Box<Path>,
     },
     /// Start the language server
     Server,

@@ -1,5 +1,3 @@
-use std::mem::transmute;
-
 use chumsky::Parser;
 
 use crate::State;
@@ -96,6 +94,7 @@ fn it_runs_factorial_main() {
     eval(include_str!("factorial.rows"));
 }
 
+/*
 fn run_compiled<T, R>(text: &str, input: T) -> R {
     let (_, ptr) = State::parse(text)
         .unwrap()
@@ -147,3 +146,4 @@ fn it_runs_compiled_factorial() {
 fn it_runs_compiled_factorial_main() {
     run_compiled_main(include_str!("factorial.rows"));
 }
+*/

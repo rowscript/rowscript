@@ -1,6 +1,5 @@
 pub(crate) mod semantics;
 pub mod syntax;
-
 #[cfg(test)]
 mod tests;
 
@@ -9,12 +8,13 @@ use chumsky::extra::ParserExtra;
 use chumsky::input::{Input, MapExtra};
 use chumsky::prelude::SimpleSpan;
 use cranelift_module::ModuleError;
+use std::path::Path;
 use ustr::Ustr;
 
+use crate::semantics::Functions;
 use crate::semantics::check::Checker;
 use crate::semantics::jit::Jit;
 use crate::semantics::vm::Vm;
-use crate::semantics::{Code, Functions};
 use crate::syntax::parse::file::file;
 use crate::syntax::parse::lex::lex;
 use crate::syntax::resolve::Resolver;
@@ -236,7 +236,8 @@ impl State {
         Ok(Vm::new(&self.fs).func(&self.fs.get(main).unwrap().item.body, Default::default()))
     }
 
-    pub fn compile(&self) -> Out<Code> {
-        Jit::new(&self.fs).compile()
+    // pub fn compile(&self) -> Out<Code> {
+    pub fn compile(&self, path: &Path) -> Out<()> {
+        Jit::new(path, &self.fs).compile()
     }
 }

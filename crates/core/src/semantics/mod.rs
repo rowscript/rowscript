@@ -113,4 +113,4 @@ pub(crate) struct Func {
 
 pub(crate) type Functions = HashMap<Id, Spanned<Func>>;
 
-pub(crate) type Code = HashMap<Id, *const u8>;
+// pub(crate) type Code = HashMap<Id, *const u8>;

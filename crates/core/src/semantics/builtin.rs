@@ -1,8 +1,7 @@
 use cranelift::prelude::types::F64;
 use cranelift::prelude::{AbiParam, Signature};
-use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{FuncId, Linkage, Module};
-
+use cranelift_object::ObjectModule;
 use strum::{Display, EnumString};
 
 use crate::Error;
@@ -25,7 +24,7 @@ impl Builtin {
         (self.get().eval)(args)
     }
 
-    pub(crate) fn declare(&self, m: &mut JITModule) -> FuncId {
+    pub(crate) fn declare(&self, m: &mut ObjectModule) -> FuncId {
         let mut sig = m.make_signature();
         (self.get().declare)(&mut sig);
         m.declare_function(&self.to_string(), Linkage::Import, &sig)
@@ -40,9 +39,9 @@ impl Builtin {
     }
 }
 
-pub(crate) fn import(builder: &mut JITBuilder) {
-    builder.symbols([(Builtin::Println.to_string(), println as _)]);
-}
+// pub(crate) fn import(builder: &mut JITBuilder) {
+//     builder.symbols([(Builtin::Println.to_string(), println as _)]);
+// }
 
 struct Impl {
     typ: fn() -> Type,

@@ -1,3 +1,5 @@
+use std::fs::File;
+use std::io::Write;
 use std::iter::once;
 use std::path::Path;
 
@@ -19,51 +21,58 @@ use cranelift::prelude::{
     AbiParam, Configurable, FloatCC, FunctionBuilder, FunctionBuilderContext, InstBuilder,
     Signature, Type as JitType, Value, Variable,
 };
-use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{FuncId, Linkage, Module, default_libcall_names};
 use cranelift_native::builder as native_builder;
+use cranelift_object::{ObjectBuilder, ObjectModule};
 
-use crate::semantics::builtin::import;
-use crate::semantics::{BuiltinType, Code, Func, FunctionType, Functions, Type};
+use crate::semantics::{BuiltinType, Func, FunctionType, Functions, Type};
 use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 pub(crate) struct Jit<'a> {
+    path: &'a Path,
     fs: &'a Functions,
-    m: JITModule,
+    m: ObjectModule,
 }
 
 impl<'a> Jit<'a> {
-    pub(crate) fn new(fs: &'a Functions) -> Self {
+    pub(crate) fn new(path: &'a Path, fs: &'a Functions) -> Self {
         let mut flags = flags_builder();
         flags.set("opt_level", "none").unwrap();
         flags.set("enable_verifier", "true").unwrap();
-        let mut builder = JITBuilder::with_isa(
-            native_builder().unwrap().finish(Flags::new(flags)).unwrap(),
-            default_libcall_names(),
+        // import(&mut builder);
+        let m = ObjectModule::new(
+            ObjectBuilder::new(
+                native_builder().unwrap().finish(Flags::new(flags)).unwrap(),
+                path.as_os_str().as_encoded_bytes(),
+                default_libcall_names(),
+            )
+            .unwrap(),
         );
-        import(&mut builder);
-        let m = JITModule::new(builder);
-        Self { fs, m }
+        Self { path, fs, m }
     }
 
-    pub(crate) fn compile(&mut self) -> Out<Code> {
+    // pub(crate) fn compile(&mut self) -> Out<Code> {
+    pub(crate) fn compile(mut self) -> Out<()> {
         let mut ctx = self.m.make_context();
-        let code = self
-            .fs
-            .iter()
-            .map(|(id, f)| {
-                f.item
-                    .compile(id, self, &mut ctx)
-                    .map(|func_id| (id, func_id))
-            })
-            .collect::<Out<Vec<_>>>()?;
-        self.m.finalize_definitions().map_err(Error::jit)?;
-        Ok(code
-            .into_iter()
-            .map(|(id, func_id)| (id.clone(), self.m.get_finalized_function(func_id)))
-            .collect())
+        self.fs.iter().try_for_each(|(id, f)| {
+            f.item
+                .compile(id, &mut self, &mut ctx)
+                .map(|func_id| (id, func_id))?;
+            Ok(())
+        })?;
+        let bytes = self.m.finish().emit().unwrap();
+        File::create(self.path.with_extension("so"))
+            .unwrap()
+            .write_all(&bytes)
+            .unwrap();
+        Ok(())
+        // self.m.finalize_definitions().map_err(Error::jit)?;
+        // Ok(code
+        //     .into_iter()
+        //     .map(|(id, func_id)| (id.clone(), self.m.get_finalized_function(func_id)))
+        //     .collect())
     }
 }
 
