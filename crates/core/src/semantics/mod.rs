@@ -1,14 +1,14 @@
+pub(crate) mod builtin;
+pub(crate) mod check;
+pub(crate) mod jit;
+pub(crate) mod vm;
+
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use strum::{Display, EnumString};
 
 use crate::Spanned;
 use crate::syntax::{Id, Stmt};
-
-pub(crate) mod builtin;
-pub(crate) mod check;
-pub(crate) mod jit;
-pub(crate) mod vm;
 
 macro_rules! write_separated {
     ($f:ident, $items:expr, $sep:literal) => {

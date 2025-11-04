@@ -1,3 +1,8 @@
+pub(crate) mod expr;
+pub(crate) mod file;
+pub(crate) mod lex;
+pub(crate) mod stmt;
+
 use chumsky::container::Container;
 use chumsky::extra::Err as Full;
 use chumsky::input::ValueInput;
@@ -8,11 +13,6 @@ use ustr::Ustr;
 
 use crate::syntax::{BuiltinType, Id};
 use crate::{Span, Spanned};
-
-pub(crate) mod expr;
-pub(crate) mod file;
-pub(crate) mod lex;
-pub(crate) mod stmt;
 
 pub(crate) type SyntaxErr<'a, T> = Full<Rich<'a, T, Span>>;
 

@@ -1,3 +1,6 @@
+pub(crate) mod parse;
+pub(crate) mod resolve;
+
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
@@ -10,9 +13,6 @@ use crate::semantics::BuiltinType;
 use crate::semantics::builtin::Builtin;
 use crate::syntax::parse::{Sym, Token};
 use crate::{Span, Spanned};
-
-pub(crate) mod parse;
-pub(crate) mod resolve;
 
 #[derive(Clone, Eq)]
 pub struct Id(Rc<Ustr>);

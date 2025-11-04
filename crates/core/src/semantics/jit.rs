@@ -1,6 +1,18 @@
 use std::iter::once;
+use std::path::Path;
 
+use cranelift::VERSION;
 use cranelift::codegen::Context;
+use cranelift::codegen::gimli::write::{
+    Address, AttributeValue, DwarfUnit, LineProgram, LineString, UnitEntryId,
+};
+use cranelift::codegen::gimli::{
+    DW_AT_byte_size, DW_AT_comp_dir, DW_AT_encoding, DW_AT_language, DW_AT_low_pc, DW_AT_name,
+    DW_AT_producer, DW_AT_stmt_list, DW_ATE_unsigned, DW_LANG_Rust, DW_TAG_base_type, Encoding,
+    Format, RunTimeEndian,
+};
+use cranelift::codegen::ir::Endianness;
+use cranelift::codegen::isa::TargetIsa;
 use cranelift::prelude::settings::{Flags, builder as flags_builder};
 use cranelift::prelude::types::{F64, I8};
 use cranelift::prelude::{
@@ -329,5 +341,82 @@ impl FunctionType {
             .collect();
         let Type::Builtin(t) = self.ret else { todo!() };
         sig.returns = vec![AbiParam::new(t.into())];
+    }
+}
+
+#[allow(dead_code)]
+struct DebugContext {
+    endian: RunTimeEndian,
+    dwarf: DwarfUnit,
+    array_size_type: UnitEntryId,
+}
+
+#[allow(dead_code)]
+impl DebugContext {
+    fn new(isa: &dyn TargetIsa, path: &Path) -> Self {
+        let dir = path.parent().unwrap().as_os_str().as_encoded_bytes();
+        let file = path.file_name().unwrap().as_encoded_bytes();
+
+        let encoding = Encoding {
+            address_size: isa.frontend_config().pointer_bytes(),
+            format: Format::Dwarf32,
+            version: 5,
+        };
+
+        let endian = match isa.endianness() {
+            Endianness::Little => RunTimeEndian::Little,
+            Endianness::Big => RunTimeEndian::Big,
+        };
+
+        let mut dwarf = DwarfUnit::new(encoding);
+        dwarf.unit.line_program = LineProgram::new(
+            encoding,
+            Default::default(),
+            LineString::new(dir, encoding, &mut dwarf.line_strings),
+            None,
+            LineString::new(file, encoding, &mut dwarf.line_strings),
+            None,
+        );
+
+        {
+            let root = dwarf.unit.get_mut(dwarf.unit.root());
+            root.set(
+                DW_AT_producer,
+                AttributeValue::StringRef(dwarf.strings.add(format!(
+                    "{} v{} with Cranelift v{VERSION}",
+                    env!("CARGO_PKG_NAME"),
+                    env!("CARGO_PKG_VERSION"),
+                ))),
+            );
+            root.set(DW_AT_language, AttributeValue::Language(DW_LANG_Rust));
+            root.set(
+                DW_AT_name,
+                AttributeValue::StringRef(dwarf.strings.add(path.display().to_string())),
+            );
+            root.set(DW_AT_stmt_list, AttributeValue::Udata(0));
+            root.set(
+                DW_AT_comp_dir,
+                AttributeValue::StringRef(dwarf.strings.add(dir)),
+            );
+            root.set(DW_AT_low_pc, AttributeValue::Address(Address::Constant(0)));
+        }
+
+        let array_size_type = dwarf.unit.add(dwarf.unit.root(), DW_TAG_base_type);
+        let array_size_type_entry = dwarf.unit.get_mut(array_size_type);
+        array_size_type_entry.set(
+            DW_AT_name,
+            AttributeValue::StringRef(dwarf.strings.add("__ARRAY_SIZE_TYPE__")),
+        );
+        array_size_type_entry.set(DW_AT_encoding, AttributeValue::Encoding(DW_ATE_unsigned));
+        array_size_type_entry.set(
+            DW_AT_byte_size,
+            AttributeValue::Udata(isa.frontend_config().pointer_bytes().into()),
+        );
+
+        Self {
+            endian,
+            dwarf,
+            array_size_type,
+        }
     }
 }

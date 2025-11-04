@@ -1,3 +1,9 @@
+pub(crate) mod semantics;
+pub mod syntax;
+
+#[cfg(test)]
+mod tests;
+
 use chumsky::Parser;
 use chumsky::extra::ParserExtra;
 use chumsky::input::{Input, MapExtra};
@@ -13,12 +19,6 @@ use crate::syntax::parse::file::file;
 use crate::syntax::parse::lex::lex;
 use crate::syntax::resolve::Resolver;
 use crate::syntax::{Def, Expr, File, Ident, Stmt};
-
-pub(crate) mod semantics;
-pub mod syntax;
-
-#[cfg(test)]
-mod tests;
 
 pub type Span = SimpleSpan;
 
