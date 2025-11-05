@@ -18,14 +18,7 @@ fn build_file(file: &Path) {
         .and_then(State::check)
         .and_then(|s| s.compile(file))
     {
-        src.explain(e).iter().for_each(|(span, msg)| {
-            eprintln!(
-                "{}:{}:{}: {msg}",
-                file.display(),
-                span.start.0 + 1,
-                span.start.1 + 1
-            );
-        });
+        src.print(file, e);
         panic!("Failed to build source file");
     }
 }

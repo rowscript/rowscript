@@ -164,7 +164,7 @@ fn check_text(text: &str) -> Vec<Diagnostic> {
     };
     src.explain(e)
         .into_iter()
-        .map(|(span, msg)| new_diag(span, DiagnosticSeverity::ERROR, msg))
+        .filter_map(|(span, msg)| span.map(|span| new_diag(span, DiagnosticSeverity::ERROR, msg)))
         .collect()
 }
 

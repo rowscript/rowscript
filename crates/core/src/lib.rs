@@ -3,11 +3,14 @@ pub mod syntax;
 #[cfg(test)]
 mod tests;
 
+use std::io::Error as IoError;
+
 use chumsky::Parser;
 use chumsky::extra::ParserExtra;
 use chumsky::input::{Input, MapExtra};
 use chumsky::prelude::SimpleSpan;
 use cranelift_module::ModuleError;
+use cranelift_object::object::write::Error as ObjectWriteError;
 use std::path::Path;
 use ustr::Ustr;
 
@@ -79,6 +82,8 @@ pub enum Error {
     ExpectedMain,
 
     Jit(Box<ModuleError>),
+    Emit(ObjectWriteError),
+    Io(Box<Path>, IoError),
 }
 
 impl Error {
@@ -108,37 +113,51 @@ impl<'src> Source<'src> {
         }
     }
 
-    pub fn explain(&self, e: Error) -> Vec<(LineCol, String)> {
+    pub fn explain(&self, e: Error) -> Vec<(Option<LineCol>, String)> {
         match e {
             Error::Lexing(errs) => errs
                 .into_iter()
-                .map(|(span, msg)| (self.text_range(span), msg))
+                .map(|(span, msg)| (Some(self.text_range(span)), msg))
                 .collect(),
             Error::Parsing(errs) => errs
                 .into_iter()
-                .map(|(span, msg)| (self.token_range(span), msg))
+                .map(|(span, msg)| (Some(self.token_range(span)), msg))
                 .collect(),
             Error::UndefName(span, n) => {
-                vec![(self.token_range(span), format!("Undefined variable '{n}'"))]
+                vec![(
+                    Some(self.token_range(span)),
+                    format!("Undefined variable '{n}'"),
+                )]
             }
             Error::TypeMismatch { span, got, want } => {
                 vec![(
-                    self.token_range(span),
+                    Some(self.token_range(span)),
                     format!("Type mismatch: Expected '{want}', but got '{got}'"),
                 )]
             }
             Error::ArityMismatch { span, got, want } => {
                 vec![(
-                    self.token_range(span),
+                    Some(self.token_range(span)),
                     format!("Arity mismatch: Expected '{want}', but got '{got}'"),
                 )]
             }
-            Error::ExpectedMain => vec![(
-                Default::default(),
-                "Expected a 'main' function to run".to_string(),
-            )],
-            Error::Jit(..) => unreachable!(),
+            Error::ExpectedMain => vec![(None, "No 'main' function to run or compile".into())],
+            Error::Jit(e) => vec![(None, format!("Compile error: {e}"))],
+            Error::Emit(e) => vec![(None, format!("Emit object file error: {e}"))],
+            Error::Io(path, e) => vec![(None, format!("IO error on path {}: {e}", path.display()))],
         }
+    }
+
+    pub fn print(&self, file: &Path, e: Error) {
+        self.explain(e).iter().for_each(|(span, msg)| match span {
+            None => eprintln!("{}: {msg}", file.display()),
+            Some(span) => eprintln!(
+                "{}:{}:{}: {msg}",
+                file.display(),
+                span.start.0 + 1,
+                span.start.1 + 1
+            ),
+        })
     }
 
     fn text_range(&self, span: Span) -> LineCol {
@@ -236,7 +255,6 @@ impl State {
         Ok(Vm::new(&self.fs).func(&self.fs.get(main).unwrap().item.body, Default::default()))
     }
 
-    // pub fn compile(&self) -> Out<Code> {
     pub fn compile(&self, path: &Path) -> Out<()> {
         Jit::new(path, &self.fs).compile()
     }

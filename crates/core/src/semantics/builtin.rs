@@ -32,24 +32,20 @@ impl Builtin {
             .unwrap()
     }
 
-    fn get(&self) -> &Impl {
+    fn get(&self) -> &Proto {
         match self {
             Builtin::Println => &PRINTLN,
         }
     }
 }
 
-// pub(crate) fn import(builder: &mut JITBuilder) {
-//     builder.symbols([(Builtin::Println.to_string(), println as _)]);
-// }
-
-struct Impl {
+struct Proto {
     typ: fn() -> Type,
     eval: fn(Vec<Expr>) -> Expr,
     declare: fn(&mut Signature),
 }
 
-const PRINTLN: Impl = Impl {
+const PRINTLN: Proto = Proto {
     typ: || {
         Type::Function(Box::new(FunctionType {
             params: Box::new([Type::Builtin(BuiltinType::U32)]),
@@ -60,7 +56,7 @@ const PRINTLN: Impl = Impl {
         if let [v] = &args[..]
             && let Expr::Number(n) = v
         {
-            println(*n);
+            rowscript_core_println(*n);
             return Expr::Unit;
         }
         unreachable!()
@@ -70,6 +66,7 @@ const PRINTLN: Impl = Impl {
     },
 };
 
-fn println(v: f64) {
+#[unsafe(no_mangle)]
+extern "C" fn rowscript_core_println(v: f64) {
     println!("{v}");
 }

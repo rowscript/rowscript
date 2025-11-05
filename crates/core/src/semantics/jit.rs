@@ -21,7 +21,7 @@ use cranelift::prelude::{
     AbiParam, Configurable, FloatCC, FunctionBuilder, FunctionBuilderContext, InstBuilder,
     Signature, Type as JitType, Value, Variable,
 };
-use cranelift_module::{FuncId, Linkage, Module, default_libcall_names};
+use cranelift_module::{Linkage, Module, default_libcall_names};
 use cranelift_native::builder as native_builder;
 use cranelift_object::{ObjectBuilder, ObjectModule};
 
@@ -41,7 +41,6 @@ impl<'a> Jit<'a> {
         let mut flags = flags_builder();
         flags.set("opt_level", "none").unwrap();
         flags.set("enable_verifier", "true").unwrap();
-        // import(&mut builder);
         let m = ObjectModule::new(
             ObjectBuilder::new(
                 native_builder().unwrap().finish(Flags::new(flags)).unwrap(),
@@ -53,31 +52,23 @@ impl<'a> Jit<'a> {
         Self { path, fs, m }
     }
 
-    // pub(crate) fn compile(&mut self) -> Out<Code> {
     pub(crate) fn compile(mut self) -> Out<()> {
         let mut ctx = self.m.make_context();
-        self.fs.iter().try_for_each(|(id, f)| {
-            f.item
-                .compile(id, &mut self, &mut ctx)
-                .map(|func_id| (id, func_id))?;
-            Ok(())
-        })?;
-        let bytes = self.m.finish().emit().unwrap();
-        File::create(self.path.with_extension("so"))
+        self.fs
+            .iter()
+            .try_for_each(|(id, f)| f.item.compile(id, &mut self, &mut ctx))?;
+        let bytes = self.m.finish().emit().map_err(Error::Emit)?;
+        let out = self.path.with_extension("so").into_boxed_path();
+        File::create(&out)
             .unwrap()
             .write_all(&bytes)
-            .unwrap();
+            .map_err(|e| Error::Io(out, e))?;
         Ok(())
-        // self.m.finalize_definitions().map_err(Error::jit)?;
-        // Ok(code
-        //     .into_iter()
-        //     .map(|(id, func_id)| (id.clone(), self.m.get_finalized_function(func_id)))
-        //     .collect())
     }
 }
 
 impl Func {
-    fn compile(&self, id: &Id, jit: &mut Jit, ctx: &mut Context) -> Out<FuncId> {
+    fn compile(&self, id: &Id, jit: &mut Jit, ctx: &mut Context) -> Out<()> {
         self.typ.to_signature(&mut ctx.func.signature);
 
         let mut builder_ctx = FunctionBuilderContext::default();
@@ -113,7 +104,7 @@ impl Func {
         jit.m.define_function(id, ctx).map_err(Error::jit)?;
 
         jit.m.clear_context(ctx);
-        Ok(id)
+        Ok(())
     }
 }
 
