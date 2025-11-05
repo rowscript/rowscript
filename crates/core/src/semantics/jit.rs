@@ -31,34 +31,37 @@ use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 pub(crate) struct Jit<'a> {
-    path: &'a Path,
     fs: &'a Functions,
     m: ObjectModule,
 }
 
 impl<'a> Jit<'a> {
-    pub(crate) fn new(path: &'a Path, fs: &'a Functions) -> Self {
+    pub(crate) fn new(fs: &'a Functions) -> Self {
         let mut flags = flags_builder();
         flags.set("opt_level", "none").unwrap();
-        flags.set("enable_verifier", "true").unwrap();
+        flags.enable("is_pic").unwrap();
+        #[cfg(debug_assertions)]
+        {
+            flags.enable("enable_verifier").unwrap();
+        }
         let m = ObjectModule::new(
             ObjectBuilder::new(
                 native_builder().unwrap().finish(Flags::new(flags)).unwrap(),
-                path.as_os_str().as_encoded_bytes(),
+                b"main",
                 default_libcall_names(),
             )
             .unwrap(),
         );
-        Self { path, fs, m }
+        Self { fs, m }
     }
 
-    pub(crate) fn compile(mut self) -> Out<()> {
+    pub(crate) fn compile(mut self, path: &Path) -> Out<()> {
         let mut ctx = self.m.make_context();
         self.fs
             .iter()
             .try_for_each(|(id, f)| f.item.compile(id, &mut self, &mut ctx))?;
         let bytes = self.m.finish().emit().map_err(Error::Emit)?;
-        let out = self.path.with_extension("so").into_boxed_path();
+        let out = path.with_extension("obj").into_boxed_path();
         File::create(&out)
             .unwrap()
             .write_all(&bytes)

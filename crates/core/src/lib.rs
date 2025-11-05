@@ -11,6 +11,7 @@ use chumsky::input::{Input, MapExtra};
 use chumsky::prelude::SimpleSpan;
 use cranelift_module::ModuleError;
 use cranelift_object::object::write::Error as ObjectWriteError;
+use libloading::{Error as LoadError, Library, Symbol};
 use std::path::Path;
 use ustr::Ustr;
 
@@ -84,6 +85,8 @@ pub enum Error {
     Jit(Box<ModuleError>),
     Emit(ObjectWriteError),
     Io(Box<Path>, IoError),
+
+    Load(LoadError),
 }
 
 impl Error {
@@ -145,6 +148,7 @@ impl<'src> Source<'src> {
             Error::Jit(e) => vec![(None, format!("Compile error: {e}"))],
             Error::Emit(e) => vec![(None, format!("Emit object file error: {e}"))],
             Error::Io(path, e) => vec![(None, format!("IO error on path {}: {e}", path.display()))],
+            Error::Load(e) => vec![(None, format!("Load object error: {e}"))],
         }
     }
 
@@ -255,7 +259,19 @@ impl State {
         Ok(Vm::new(&self.fs).func(&self.fs.get(main).unwrap().item.body, Default::default()))
     }
 
-    pub fn compile(&self, path: &Path) -> Out<()> {
-        Jit::new(path, &self.fs).compile()
+    pub fn compile(self, path: &Path) -> Out<Self> {
+        Jit::new(&self.fs).compile(path)?;
+        Ok(self)
+    }
+
+    pub fn load(&self, path: &Path) -> Out<()> {
+        unsafe {
+            let lib = Library::new(path.with_extension("obj")).map_err(Error::Load)?;
+            let main = lib
+                .get::<Symbol<extern "C" fn() -> u8>>(b"main")
+                .map_err(Error::Load)?;
+            main();
+        }
+        Ok(())
     }
 }

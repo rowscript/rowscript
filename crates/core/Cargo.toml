@@ -12,6 +12,7 @@ cranelift = "0.125.3"
 cranelift-native = "0.125.3"
 cranelift-module = "0.125.3"
 cranelift-object = "0.125.3"
+libloading = "0.8.9"
 
 [dev-dependencies]
 criterion = "0.7.0"
