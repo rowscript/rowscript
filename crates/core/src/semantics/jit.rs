@@ -1,26 +1,26 @@
 use std::iter::once;
 use std::path::Path;
 
-use cranelift::VERSION;
-use cranelift::codegen::Context;
 use cranelift::codegen::gimli::write::{
     Address, AttributeValue, DwarfUnit, LineProgram, LineString, UnitEntryId,
 };
 use cranelift::codegen::gimli::{
-    DW_AT_byte_size, DW_AT_comp_dir, DW_AT_encoding, DW_AT_language, DW_AT_low_pc, DW_AT_name,
-    DW_AT_producer, DW_AT_stmt_list, DW_ATE_unsigned, DW_LANG_Rust, DW_TAG_base_type, Encoding,
+    DW_ATE_unsigned, DW_AT_byte_size, DW_AT_comp_dir, DW_AT_encoding, DW_AT_language, DW_AT_low_pc,
+    DW_AT_name, DW_AT_producer, DW_AT_stmt_list, DW_LANG_Rust, DW_TAG_base_type, Encoding,
     Format, RunTimeEndian,
 };
-use cranelift::codegen::ir::{Endianness, SourceLoc};
+use cranelift::codegen::ir::{Endianness, RelSourceLoc, SourceLoc};
 use cranelift::codegen::isa::TargetIsa;
-use cranelift::prelude::settings::{Flags, builder as flags_builder};
+use cranelift::codegen::Context;
+use cranelift::prelude::settings::{builder as flags_builder, Flags};
 use cranelift::prelude::types::{F64, I8};
 use cranelift::prelude::{
     AbiParam, Configurable, FloatCC, FunctionBuilder, FunctionBuilderContext, InstBuilder,
     Signature, Type as JitType, Value, Variable,
 };
+use cranelift::VERSION;
 use cranelift_jit::{JITBuilder, JITModule};
-use cranelift_module::{FuncId, Linkage, Module, default_libcall_names};
+use cranelift_module::{default_libcall_names, FuncId, Linkage, Module};
 use cranelift_native::builder as native_builder;
 
 use crate::semantics::builtin::import;
@@ -32,6 +32,7 @@ use crate::{Error, Out, Span, Spanned};
 pub(crate) struct Jit<'a> {
     fs: &'a Functions,
     m: JITModule,
+    locs: Vec<(FuncId, Vec<RelSourceLoc>)>,
 }
 
 impl<'a> Jit<'a> {
@@ -48,7 +49,8 @@ impl<'a> Jit<'a> {
         );
         import(&mut builder);
         let m = JITModule::new(builder);
-        Self { fs, m }
+        let locs = Default::default();
+        Self { fs, m, locs }
     }
 
     pub(crate) fn compile(mut self) -> Out<Code> {
@@ -98,6 +100,7 @@ impl Func {
             let ret = return_value.unwrap_or_else(|| builder.ins().iconst(I8, 0));
             builder.ins().return_(&[ret]);
         }
+        let locs = builder.func.srclocs.values().cloned().collect();
         builder.finalize();
 
         let id = jit
@@ -105,6 +108,7 @@ impl Func {
             .declare_function(&id.raw(), Linkage::Export, &ctx.func.signature)
             .map_err(Error::jit)?;
         jit.m.define_function(id, ctx).map_err(Error::jit)?;
+        jit.locs.push((id, locs));
 
         jit.m.clear_context(ctx);
         Ok(id)
