@@ -16,7 +16,7 @@ use ustr::Ustr;
 
 use crate::semantics::Functions;
 use crate::semantics::check::Checker;
-use crate::semantics::jit::{Code, Jit};
+use crate::semantics::jit::Jit;
 use crate::semantics::vm::Vm;
 use crate::syntax::parse::file::file;
 use crate::syntax::parse::lex::lex;
@@ -253,7 +253,7 @@ impl State {
         Ok(Vm::new(&self.fs).func(&self.fs.get(main).unwrap().item.body, Default::default()))
     }
 
-    pub fn compile(self) -> Out<HashMap<Id, Code>> {
+    pub fn compile(self) -> Out<HashMap<Id, *const u8>> {
         Jit::new(&self.fs).compile()
     }
 }

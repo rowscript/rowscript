@@ -37,7 +37,7 @@ pub(crate) struct Jit<'a> {
     isa: OwnedTargetIsa,
     fs: &'a Functions,
     m: JITModule,
-    code: HashMap<Id, Code>,
+    locs: Vec<(FuncId, Vec<RelSourceLoc>)>,
     dbg: Vec<GdbJitImageRegistration>,
 }
 
@@ -56,12 +56,12 @@ impl<'a> Jit<'a> {
             isa,
             fs,
             m: JITModule::new(builder),
-            code: Default::default(),
+            locs: Default::default(),
             dbg: Default::default(),
         }
     }
 
-    pub(crate) fn compile(mut self) -> Out<HashMap<Id, Code>> {
+    pub(crate) fn compile(mut self) -> Out<HashMap<Id, *const u8>> {
         let mut ctx = self.m.make_context();
         let ids = self
             .fs
@@ -73,17 +73,18 @@ impl<'a> Jit<'a> {
             })
             .collect::<Out<Vec<_>>>()?;
         self.m.finalize_definitions().map_err(Error::jit)?;
-        ids.into_iter().for_each(|(id, func_id)| {
-            let (ptr, size) = self.m.get_finalized_function(func_id);
-            let code = self.code.get_mut(id).unwrap();
-            code.ptr = ptr;
-            code.size = size;
-        });
-        Ok(self.code)
+        let code = ids
+            .into_iter()
+            .map(|(id, func_id)| {
+                let (ptr, size) = self.m.get_finalized_function(func_id);
+                self.register_debug_info(id, ptr, size)?;
+                Ok((id.clone(), ptr))
+            })
+            .collect::<Out<_>>()?;
+        Ok(code)
     }
 
-    #[allow(dead_code)]
-    fn register_debuginfo(&mut self, id: &Id, code: *const u8, size: usize) -> Out<()> {
+    fn register_debug_info(&mut self, id: &Id, code: *const u8, size: usize) -> Out<()> {
         let mut obj = Object::new(
             BinaryFormat::Elf,
             match self.isa.triple().architecture {
@@ -117,14 +118,6 @@ impl<'a> Jit<'a> {
 
         Ok(())
     }
-}
-
-#[derive(Default)]
-pub struct Code {
-    pub(crate) ptr: *const u8,
-    size: usize,
-    #[allow(dead_code)]
-    locs: Vec<RelSourceLoc>,
 }
 
 impl Func {
@@ -163,13 +156,7 @@ impl Func {
             .declare_function(&id.raw(), Linkage::Export, &ctx.func.signature)
             .map_err(Error::jit)?;
         jit.m.define_function(func_id, ctx).map_err(Error::jit)?;
-        jit.code.insert(
-            id.clone(),
-            Code {
-                locs,
-                ..Default::default()
-            },
-        );
+        jit.locs.push((func_id, locs));
         jit.m.clear_context(ctx);
 
         Ok(func_id)
