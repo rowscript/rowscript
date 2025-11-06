@@ -11,7 +11,7 @@ use cranelift::codegen::gimli::{
     DW_AT_producer, DW_AT_stmt_list, DW_ATE_unsigned, DW_LANG_Rust, DW_TAG_base_type, Encoding,
     Format, RunTimeEndian,
 };
-use cranelift::codegen::ir::Endianness;
+use cranelift::codegen::ir::{Endianness, SourceLoc};
 use cranelift::codegen::isa::TargetIsa;
 use cranelift::prelude::settings::{Flags, builder as flags_builder};
 use cranelift::prelude::types::{F64, I8};
@@ -92,7 +92,7 @@ impl Func {
         let mut return_value = None;
         let mut returned = false;
         for s in &self.body {
-            return_value = Some(s.item.compile(jit, &mut builder, &mut returned));
+            return_value = Some(s.compile(jit, &mut builder, &mut returned));
         }
         if !returned {
             let ret = return_value.unwrap_or_else(|| builder.ins().iconst(I8, 0));
@@ -173,9 +173,10 @@ impl Expr {
     }
 }
 
-impl Stmt {
+impl Spanned<Stmt> {
     fn compile(&self, jit: &mut Jit, builder: &mut FunctionBuilder, returned: &mut bool) -> Value {
-        match self {
+        builder.set_srcloc(SourceLoc::new(self.span.start as _));
+        match &self.item {
             Stmt::Expr(e) => e.compile(jit, builder),
             Stmt::Assign { name, typ, rhs, .. } => {
                 Self::assign(&name.item, typ, &rhs.item, jit, builder)
@@ -205,7 +206,7 @@ impl Stmt {
                 builder.switch_to_block(body_block);
                 builder.seal_block(body_block);
                 for stmt in &b.body {
-                    stmt.item.compile(jit, builder, returned);
+                    stmt.compile(jit, builder, returned);
                 }
                 builder.ins().jump(header_block, &[]);
 
@@ -242,7 +243,7 @@ impl Stmt {
     fn r#if(
         then: &Branch,
         elif: &[Branch],
-        els: &Option<(Span, Box<[Spanned<Self>]>)>,
+        els: &Option<(Span, Box<[Self]>)>,
         jit: &mut Jit,
         builder: &mut FunctionBuilder,
     ) -> Value {
@@ -270,7 +271,7 @@ impl Stmt {
             builder.seal_block(then_block);
             let mut returned = false;
             for stmt in &branch.body {
-                stmt.item.compile(jit, builder, &mut returned);
+                stmt.compile(jit, builder, &mut returned);
             }
             if !returned {
                 builder.ins().jump(merge_block, &[]);
@@ -285,7 +286,7 @@ impl Stmt {
         if let Some((_, els)) = els {
             let mut returned = false;
             for stmt in els {
-                stmt.item.compile(jit, builder, &mut returned);
+                stmt.compile(jit, builder, &mut returned);
             }
             if !returned {
                 builder.ins().jump(merge_block, &[]);
