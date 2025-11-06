@@ -10,6 +10,7 @@ use chumsky::extra::ParserExtra;
 use chumsky::input::{Input, MapExtra};
 use chumsky::prelude::SimpleSpan;
 use cranelift_module::ModuleError;
+use object::write::Error as ObjectError;
 use ustr::Ustr;
 
 use crate::semantics::check::Checker;
@@ -80,6 +81,7 @@ pub enum Error {
     ExpectedMain,
 
     Jit(Box<ModuleError>),
+    Debuginfo(ObjectError),
 }
 
 impl Error {
@@ -139,6 +141,7 @@ impl<'src> Source<'src> {
             }
             Error::ExpectedMain => vec![(None, "No 'main' function to run or compile".into())],
             Error::Jit(e) => vec![(None, format!("Compile error: {e}"))],
+            Error::Debuginfo(e) => vec![(None, format!("Emit debuginfo error: {e}"))],
         }
     }
 

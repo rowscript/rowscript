@@ -1,27 +1,30 @@
 use std::iter::once;
 use std::path::Path;
 
+use cranelift::VERSION;
+use cranelift::codegen::Context;
 use cranelift::codegen::gimli::write::{
     Address, AttributeValue, DwarfUnit, LineProgram, LineString, UnitEntryId,
 };
 use cranelift::codegen::gimli::{
-    DW_ATE_unsigned, DW_AT_byte_size, DW_AT_comp_dir, DW_AT_encoding, DW_AT_language, DW_AT_low_pc,
-    DW_AT_name, DW_AT_producer, DW_AT_stmt_list, DW_LANG_Rust, DW_TAG_base_type, Encoding,
+    DW_AT_byte_size, DW_AT_comp_dir, DW_AT_encoding, DW_AT_language, DW_AT_low_pc, DW_AT_name,
+    DW_AT_producer, DW_AT_stmt_list, DW_ATE_unsigned, DW_LANG_Rust, DW_TAG_base_type, Encoding,
     Format, RunTimeEndian,
 };
 use cranelift::codegen::ir::{Endianness, RelSourceLoc, SourceLoc};
-use cranelift::codegen::isa::TargetIsa;
-use cranelift::codegen::Context;
-use cranelift::prelude::settings::{builder as flags_builder, Flags};
+use cranelift::codegen::isa::{OwnedTargetIsa, TargetIsa};
+use cranelift::prelude::settings::{Flags, builder as flags_builder};
 use cranelift::prelude::types::{F64, I8};
 use cranelift::prelude::{
     AbiParam, Configurable, FloatCC, FunctionBuilder, FunctionBuilderContext, InstBuilder,
     Signature, Type as JitType, Value, Variable,
 };
-use cranelift::VERSION;
 use cranelift_jit::{JITBuilder, JITModule};
-use cranelift_module::{default_libcall_names, FuncId, Linkage, Module};
+use cranelift_module::{FuncId, Linkage, Module, default_libcall_names};
 use cranelift_native::builder as native_builder;
+use object::write::{Object, Symbol, SymbolSection};
+use object::{BinaryFormat, SectionKind, SymbolFlags, SymbolKind, SymbolScope};
+use wasmtime_internal_jit_debug::gdb_jit_int::GdbJitImageRegistration;
 
 use crate::semantics::builtin::import;
 use crate::semantics::{BuiltinType, Code, Func, FunctionType, Functions, Type};
@@ -30,9 +33,11 @@ use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 pub(crate) struct Jit<'a> {
+    isa: OwnedTargetIsa,
     fs: &'a Functions,
     m: JITModule,
     locs: Vec<(FuncId, Vec<RelSourceLoc>)>,
+    dbg: Vec<GdbJitImageRegistration>,
 }
 
 impl<'a> Jit<'a> {
@@ -43,14 +48,16 @@ impl<'a> Jit<'a> {
         {
             flags.enable("enable_verifier").unwrap();
         }
-        let mut builder = JITBuilder::with_isa(
-            native_builder().unwrap().finish(Flags::new(flags)).unwrap(),
-            default_libcall_names(),
-        );
+        let isa = native_builder().unwrap().finish(Flags::new(flags)).unwrap();
+        let mut builder = JITBuilder::with_isa(isa.clone(), default_libcall_names());
         import(&mut builder);
-        let m = JITModule::new(builder);
-        let locs = Default::default();
-        Self { fs, m, locs }
+        Self {
+            isa,
+            fs,
+            m: JITModule::new(builder),
+            locs: Default::default(),
+            dbg: Default::default(),
+        }
     }
 
     pub(crate) fn compile(mut self) -> Out<Code> {
@@ -69,6 +76,42 @@ impl<'a> Jit<'a> {
             .into_iter()
             .map(|(id, func_id)| (id.clone(), self.m.get_finalized_function(func_id)))
             .collect())
+    }
+
+    #[allow(dead_code)]
+    fn register_debuginfo(&mut self, id: &Id, code: *const u8, size: usize) -> Out<()> {
+        let mut obj = Object::new(
+            BinaryFormat::Elf,
+            match self.isa.triple().architecture {
+                target_lexicon::Architecture::X86_64 => object::Architecture::X86_64,
+                target_lexicon::Architecture::Aarch64(_) => object::Architecture::Aarch64,
+                _ => todo!(),
+            },
+            match self.isa.triple().endianness().unwrap() {
+                target_lexicon::Endianness::Little => object::Endianness::Little,
+                target_lexicon::Endianness::Big => object::Endianness::Big,
+            },
+        );
+
+        let text_id = obj.add_section(b".text".into(), b"".into(), SectionKind::Text);
+        obj.add_symbol(Symbol {
+            name: id.raw().as_str().into(),
+            value: code as _,
+            size: size as _,
+            kind: SymbolKind::Text,
+            scope: SymbolScope::Dynamic,
+            weak: false,
+            section: SymbolSection::Section(text_id),
+            flags: SymbolFlags::None,
+        });
+
+        // TODO: Write `.debug_info`.
+
+        self.dbg.push(GdbJitImageRegistration::register(
+            obj.write().map_err(Error::Debuginfo)?,
+        ));
+
+        Ok(())
     }
 }
 
