@@ -97,7 +97,7 @@ fn it_runs_factorial_main() {
 }
 
 fn run_compiled<T, R>(text: &str, input: T) -> R {
-    let (_, ptr) = State::parse(text)
+    let ptr = State::parse(text)
         .unwrap()
         .resolve()
         .unwrap()
@@ -108,7 +108,9 @@ fn run_compiled<T, R>(text: &str, input: T) -> R {
         .into_iter()
         .filter(|(id, ..)| id.raw() != "main")
         .next()
-        .unwrap();
+        .unwrap()
+        .1
+        .ptr;
     unsafe { transmute::<_, fn(T) -> R>(ptr)(input) }
 }
 
@@ -139,7 +141,7 @@ fn run_compiled_main(text: &str) {
         .check()
         .unwrap();
     let main = state.file.main.as_ref().cloned().unwrap();
-    let ptr = *state.compile().unwrap().get(&main).unwrap();
+    let ptr = state.compile().unwrap().get(&main).unwrap().ptr;
     unsafe { transmute::<_, fn() -> u8>(ptr)() };
 }
 

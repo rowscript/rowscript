@@ -399,8 +399,7 @@ checksum = "1639b2403365212bd7522a725925d86eb6596ce71af61c43db28b428d189800e"
 [[package]]
 name = "cranelift-jit"
 version = "0.125.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27765ae519045bf387851947481fb9425b5befbc1c35344ced8aad36ac25a6ab"
+source = "git+https://github.com/anqur/cranelift-jit?rev=b700a6a#b700a6abbe0c4842b5b58ad0dccefa7924aef71a"
 dependencies = [
  "anyhow",
  "cranelift-codegen",

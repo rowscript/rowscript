@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::iter::once;
 use std::path::Path;
 
@@ -27,7 +28,7 @@ use object::{BinaryFormat, SectionKind, SymbolFlags, SymbolKind, SymbolScope};
 use wasmtime_internal_jit_debug::gdb_jit_int::GdbJitImageRegistration;
 
 use crate::semantics::builtin::import;
-use crate::semantics::{BuiltinType, Code, Func, FunctionType, Functions, Type};
+use crate::semantics::{BuiltinType, Func, FunctionType, Functions, Type};
 use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
 use crate::{Error, Out, Span, Spanned};
@@ -36,7 +37,7 @@ pub(crate) struct Jit<'a> {
     isa: OwnedTargetIsa,
     fs: &'a Functions,
     m: JITModule,
-    locs: Vec<(FuncId, Vec<RelSourceLoc>)>,
+    code: HashMap<Id, Code>,
     dbg: Vec<GdbJitImageRegistration>,
 }
 
@@ -55,14 +56,14 @@ impl<'a> Jit<'a> {
             isa,
             fs,
             m: JITModule::new(builder),
-            locs: Default::default(),
+            code: Default::default(),
             dbg: Default::default(),
         }
     }
 
-    pub(crate) fn compile(mut self) -> Out<Code> {
+    pub(crate) fn compile(mut self) -> Out<HashMap<Id, Code>> {
         let mut ctx = self.m.make_context();
-        let code = self
+        let ids = self
             .fs
             .iter()
             .map(|(id, f)| {
@@ -72,10 +73,13 @@ impl<'a> Jit<'a> {
             })
             .collect::<Out<Vec<_>>>()?;
         self.m.finalize_definitions().map_err(Error::jit)?;
-        Ok(code
-            .into_iter()
-            .map(|(id, func_id)| (id.clone(), self.m.get_finalized_function(func_id)))
-            .collect())
+        ids.into_iter().for_each(|(id, func_id)| {
+            let (ptr, size) = self.m.get_finalized_function(func_id);
+            let code = self.code.get_mut(id).unwrap();
+            code.ptr = ptr;
+            code.size = size;
+        });
+        Ok(self.code)
     }
 
     #[allow(dead_code)]
@@ -115,6 +119,14 @@ impl<'a> Jit<'a> {
     }
 }
 
+#[derive(Default)]
+pub struct Code {
+    pub(crate) ptr: *const u8,
+    size: usize,
+    #[allow(dead_code)]
+    locs: Vec<RelSourceLoc>,
+}
+
 impl Func {
     fn compile(&self, id: &Id, jit: &mut Jit, ctx: &mut Context) -> Out<FuncId> {
         self.typ.to_signature(&mut ctx.func.signature);
@@ -146,15 +158,21 @@ impl Func {
         let locs = builder.func.srclocs.values().cloned().collect();
         builder.finalize();
 
-        let id = jit
+        let func_id = jit
             .m
             .declare_function(&id.raw(), Linkage::Export, &ctx.func.signature)
             .map_err(Error::jit)?;
-        jit.m.define_function(id, ctx).map_err(Error::jit)?;
-        jit.locs.push((id, locs));
-
+        jit.m.define_function(func_id, ctx).map_err(Error::jit)?;
+        jit.code.insert(
+            id.clone(),
+            Code {
+                locs,
+                ..Default::default()
+            },
+        );
         jit.m.clear_context(ctx);
-        Ok(id)
+
+        Ok(func_id)
     }
 }
 
