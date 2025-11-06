@@ -1,5 +1,6 @@
+use std::mem::transmute;
+
 use chumsky::Parser;
-use std::path::Path;
 
 use crate::State;
 use crate::syntax::Expr;
@@ -95,27 +96,6 @@ fn it_runs_factorial_main() {
     eval(include_str!("factorial.rows"));
 }
 
-#[allow(dead_code)]
-fn run_compiled_main(path: &Path, text: &str) {
-    State::parse(text)
-        .unwrap()
-        .resolve()
-        .unwrap()
-        .check()
-        .unwrap()
-        .compile(path)
-        .unwrap()
-        .load(path)
-        .unwrap();
-}
-
-#[test]
-fn it_runs_compiled_factorial_main() {
-    // TODO
-    //run_compiled_main(Path::new("factorial.rows"), include_str!("factorial.rows"));
-}
-
-/*
 fn run_compiled<T, R>(text: &str, input: T) -> R {
     let (_, ptr) = State::parse(text)
         .unwrap()
@@ -131,7 +111,6 @@ fn run_compiled<T, R>(text: &str, input: T) -> R {
         .unwrap();
     unsafe { transmute::<_, fn(T) -> R>(ptr)(input) }
 }
-
 
 #[test]
 fn it_runs_compiled() {
@@ -151,4 +130,20 @@ fn it_runs_compiled_factorial() {
     assert_eq!(v, 3628800.);
 }
 
-*/
+#[allow(dead_code)]
+fn run_compiled_main(text: &str) {
+    let state = State::parse(text)
+        .unwrap()
+        .resolve()
+        .unwrap()
+        .check()
+        .unwrap();
+    let main = state.file.main.as_ref().cloned().unwrap();
+    let ptr = *state.compile().unwrap().get(&main).unwrap();
+    unsafe { transmute::<_, fn() -> u8>(ptr)() };
+}
+
+#[test]
+fn it_runs_compiled_factorial_main() {
+    run_compiled_main(include_str!("factorial.rows"));
+}

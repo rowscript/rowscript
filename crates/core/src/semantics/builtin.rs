@@ -1,7 +1,7 @@
 use cranelift::prelude::types::F64;
 use cranelift::prelude::{AbiParam, Signature};
+use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{FuncId, Linkage, Module};
-use cranelift_object::ObjectModule;
 use strum::{Display, EnumString};
 
 use crate::Error;
@@ -24,7 +24,7 @@ impl Builtin {
         (self.get().eval)(args)
     }
 
-    pub(crate) fn declare(&self, m: &mut ObjectModule) -> FuncId {
+    pub(crate) fn declare(&self, m: &mut JITModule) -> FuncId {
         let mut sig = m.make_signature();
         (self.get().declare)(&mut sig);
         m.declare_function(&self.to_string(), Linkage::Import, &sig)
@@ -37,6 +37,10 @@ impl Builtin {
             Builtin::Println => &PRINTLN,
         }
     }
+}
+
+pub(crate) fn import(builder: &mut JITBuilder) {
+    builder.symbols([(Builtin::Println.to_string(), println as _)]);
 }
 
 struct Proto {
@@ -56,7 +60,7 @@ const PRINTLN: Proto = Proto {
         if let [v] = &args[..]
             && let Expr::Number(n) = v
         {
-            rowscript_core_println(*n);
+            println(*n);
             return Expr::Unit;
         }
         unreachable!()
@@ -66,7 +70,6 @@ const PRINTLN: Proto = Proto {
     },
 };
 
-#[unsafe(no_mangle)]
-extern "C" fn rowscript_core_println(v: f64) {
+fn println(v: f64) {
     println!("{v}");
 }

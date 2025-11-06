@@ -391,6 +391,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1639b2403365212bd7522a725925d86eb6596ce71af61c43db28b428d189800e"
 
 [[package]]
+name = "cranelift-jit"
+version = "0.125.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "27765ae519045bf387851947481fb9425b5befbc1c35344ced8aad36ac25a6ab"
+dependencies = [
+ "anyhow",
+ "cranelift-codegen",
+ "cranelift-control",
+ "cranelift-entity",
+ "cranelift-module",
+ "cranelift-native",
+ "libc",
+ "log",
+ "region",
+ "target-lexicon",
+ "wasmtime-internal-jit-icache-coherence",
+ "windows-sys 0.60.2",
+]
+
+[[package]]
 name = "cranelift-module"
 version = "0.125.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -413,34 +433,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "cranelift-object"
-version = "0.125.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1411bf26f39dc186b87278909eb0f0169680cb44cd7b9394c3728ea433f262b"
-dependencies = [
- "anyhow",
- "cranelift-codegen",
- "cranelift-control",
- "cranelift-module",
- "log",
- "object",
- "target-lexicon",
-]
-
-[[package]]
 name = "cranelift-srcgen"
 version = "0.125.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2af56b41b482b60b0c07e685064b3b40fea7a0d225777a7c5f3b4cf36e448862"
-
-[[package]]
-name = "crc32fast"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9481c1c90cbf2ac953f07c8d4a58aa3945c425b7185c9154d67a65e4230da511"
-dependencies = [
- "cfg-if",
-]
 
 [[package]]
 name = "criterion"
@@ -865,16 +861,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1171693293099992e19cddea4e8b849964e9846f4acee11b3948bcc337be8776"
 
 [[package]]
-name = "libloading"
-version = "0.8.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7c4b02199fee7c5d21a5ae7d8cfa79a6ef5bb2fc834d6e9058e89c825efdc55"
-dependencies = [
- "cfg-if",
- "windows-link",
-]
-
-[[package]]
 name = "libm"
 version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -916,6 +902,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "mach2"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d640282b302c0bb0a2a8e0233ead9035e3bed871f0b7e81fe4a1ec829765db44"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "memchr"
 version = "2.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -939,18 +934,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841"
 dependencies = [
  "autocfg",
-]
-
-[[package]]
-name = "object"
-version = "0.37.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff76201f031d8863c38aa7f905eca4f53abbfa15f609db4277d44cd8938f33fe"
-dependencies = [
- "crc32fast",
- "hashbrown 0.15.4",
- "indexmap",
- "memchr",
 ]
 
 [[package]]
@@ -1186,6 +1169,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
+name = "region"
+version = "3.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6b6ebd13bc009aef9cd476c1310d49ac354d36e240cf1bd753290f3dc7199a7"
+dependencies = [
+ "bitflags 1.3.2",
+ "libc",
+ "mach2",
+ "windows-sys 0.52.0",
+]
+
+[[package]]
 name = "rowscript"
 version = "0.1.0"
 dependencies = [
@@ -1202,11 +1197,10 @@ version = "1.0.0-alpha.6"
 dependencies = [
  "chumsky",
  "cranelift",
+ "cranelift-jit",
  "cranelift-module",
  "cranelift-native",
- "cranelift-object",
  "criterion",
- "libloading",
  "serde_json",
  "strum",
  "ustr",
@@ -1691,6 +1685,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasmtime-internal-jit-icache-coherence"
+version = "38.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29f1c115ac6cbf982cd57b20586950965250f5bfa59a6d3fd4396a18af504d84"
+dependencies = [
+ "anyhow",
+ "cfg-if",
+ "libc",
+ "windows-sys 0.60.2",
+]
+
+[[package]]
 name = "wasmtime-internal-math"
 version = "38.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1723,6 +1729,15 @@ name = "windows-link"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5"
+
+[[package]]
+name = "windows-sys"
+version = "0.52.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "282be5f36a8ce781fad8c8ae18fa3f9beff57ec1b52cb3de0789201425d9a33d"
+dependencies = [
+ "windows-targets 0.52.6",
+]
 
 [[package]]
 name = "windows-sys"

@@ -11,8 +11,7 @@ chumsky = { version = "1.0.0-alpha.8", features = ["pratt"] }
 cranelift = "0.125.3"
 cranelift-native = "0.125.3"
 cranelift-module = "0.125.3"
-cranelift-object = "0.125.3"
-libloading = "0.8.9"
+cranelift-jit = "0.125.3"
 
 [dev-dependencies]
 criterion = "0.7.0"
