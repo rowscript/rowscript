@@ -24,9 +24,12 @@ use cranelift::prelude::{
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{FuncId, Linkage, Module, default_libcall_names};
 use cranelift_native::builder as native_builder;
-use object::build::elf::Builder;
+use object::elf::SectionHeader64;
 use object::write::{Object, StandardSegment, Symbol, SymbolSection};
-use object::{BinaryFormat, SectionKind, SymbolFlags, SymbolKind, SymbolScope};
+use object::{
+    BinaryFormat, Endianness, File, SectionKind, SymbolFlags, SymbolKind, SymbolScope, U64,
+};
+
 use wasmtime_internal_jit_debug::gdb_jit_int::GdbJitImageRegistration;
 
 use crate::semantics::builtin::import;
@@ -107,7 +110,7 @@ impl<'a> Jit<'a> {
             .into_iter()
             .map(|(id, func_id)| {
                 let (ptr, size) = self.m.get_finalized_function(func_id);
-                self.register_debug_info(id, ptr, size)?;
+                self.register_object(id, ptr, size)?;
                 Ok((id.clone(), ptr))
             })
             .collect::<Out<_>>()?;
@@ -116,7 +119,12 @@ impl<'a> Jit<'a> {
         Ok(Code { main, code, _dbg })
     }
 
-    fn register_debug_info(&mut self, id: &Id, code: *const u8, size: usize) -> Out<()> {
+    fn register_object(&mut self, id: &Id, code: *const u8, size: usize) -> Out<()> {
+        let endian = match self.isa.triple().endianness().unwrap() {
+            target_lexicon::Endianness::Little => Endianness::Little,
+            target_lexicon::Endianness::Big => Endianness::Big,
+        };
+
         let mut obj = Object::new(
             BinaryFormat::Elf,
             match self.isa.triple().architecture {
@@ -124,10 +132,7 @@ impl<'a> Jit<'a> {
                 target_lexicon::Architecture::Aarch64(..) => object::Architecture::Aarch64,
                 _ => todo!(),
             },
-            match self.isa.triple().endianness().unwrap() {
-                target_lexicon::Endianness::Little => object::Endianness::Little,
-                target_lexicon::Endianness::Big => object::Endianness::Big,
-            },
+            endian,
         );
 
         let text_id = obj.add_section(
@@ -140,7 +145,7 @@ impl<'a> Jit<'a> {
             value: 0,
             size: size as _,
             kind: SymbolKind::Text,
-            scope: SymbolScope::Compilation,
+            scope: SymbolScope::Linkage,
             weak: false,
             section: SymbolSection::Section(text_id),
             flags: SymbolFlags::None,
@@ -161,28 +166,38 @@ impl<'a> Jit<'a> {
 
         let bytes = obj.write().map_err(Error::WriteObject)?;
 
-        let mut builder = Builder::read(bytes.as_slice()).map_err(Error::ModifyObject)?;
-        builder.sections.iter_mut().for_each(|s| {
-            if s.name.as_slice() == b".text" {
-                s.sh_addr = code as _;
-                s.sh_offset = 0;
-                s.sh_size = size as _;
+        let File::Elf64(file) = File::parse(bytes.as_slice()).map_err(Error::ModifyObject)? else {
+            unreachable!();
+        };
+        let sh_off = file.elf_header().e_shoff.get(endian);
+        let sections = file.elf_section_table();
+        sections.iter().for_each(|s| {
+            if s.sh_name == Default::default() {
                 return;
             }
-            s.sh_addr += bytes.as_ptr() as u64;
+            let s = s as *const _ as *mut SectionHeader64<Endianness>;
+            unsafe {
+                (*s).sh_addr = U64::new(endian, (bytes.as_ptr() as u64) + sh_off);
+            }
         });
-
-        let mut modified = Vec::new();
-        builder.write(&mut modified).map_err(Error::ModifyObject)?;
+        {
+            let (.., text) = sections.section_by_name(endian, b".text").unwrap();
+            let text = text as *const _ as *mut SectionHeader64<Endianness>;
+            unsafe {
+                (*text).sh_addr = U64::new(endian, code as _);
+                (*text).sh_offset = Default::default();
+                (*text).sh_size = U64::new(endian, size as _);
+            }
+        }
 
         // Debug the object file:
         //use std::io::Write;
         //std::fs::File::create(format!("{id}.o"))
         //    .unwrap()
-        //    .write_all(&modified)
+        //    .write_all(&bytes)
         //    .unwrap();
 
-        self.dbg.push(GdbJitImageRegistration::register(modified));
+        self.dbg.push(GdbJitImageRegistration::register(bytes));
 
         Ok(())
     }

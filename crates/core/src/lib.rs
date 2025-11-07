@@ -11,7 +11,7 @@ use chumsky::input::{Input, MapExtra};
 use chumsky::prelude::SimpleSpan;
 use cranelift::codegen::gimli::write::Error as DebugInfoError;
 use cranelift_module::ModuleError;
-use object::build::Error as ModifyObjectError;
+use object::read::Error as ModifyObjectError;
 use object::write::Error as WriteObjectError;
 use ustr::Ustr;
 

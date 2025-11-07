@@ -12,7 +12,7 @@ cranelift = "0.125.3"
 cranelift-native = "0.125.3"
 cranelift-module = "0.125.3"
 cranelift-jit = { git = "https://github.com/anqur/cranelift-jit", rev = "b700a6a" }
-object = { version = "0.37.3", features = ["build"] }
+object = { version = "0.37.3", features = ["write", "read"] }
 target-lexicon = "0.13.3"
 wasmtime-internal-jit-debug = { version = "38.0.3", features = ["std", "gdb_jit_int"] }
 
