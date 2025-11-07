@@ -33,17 +33,42 @@ use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
+pub struct Code {
+    main: Option<Id>,
+    code: HashMap<Id, *const u8>,
+    _dbg: Vec<GdbJitImageRegistration>,
+}
+
+impl Code {
+    pub fn main(&self) -> Option<*const u8> {
+        self.main
+            .as_ref()
+            .and_then(|main| self.code.get(main))
+            .cloned()
+    }
+
+    pub fn first_non_main(&self) -> Option<*const u8> {
+        self.code
+            .iter()
+            .filter(|(id, ..)| id.raw() != "main")
+            .map(|(.., ptr)| ptr)
+            .next()
+            .cloned()
+    }
+}
+
 pub(crate) struct Jit<'a> {
     path: &'a Path,
-    isa: OwnedTargetIsa,
     fs: &'a Functions,
+    main: Option<Id>,
+    isa: OwnedTargetIsa,
     m: JITModule,
-    locs: Vec<(FuncId, Vec<RelSourceLoc>)>,
+    locs: HashMap<Id, Vec<RelSourceLoc>>,
     dbg: Vec<GdbJitImageRegistration>,
 }
 
 impl<'a> Jit<'a> {
-    pub(crate) fn new(path: &'a Path, fs: &'a Functions) -> Self {
+    pub(crate) fn new(path: &'a Path, fs: &'a Functions, main: Option<Id>) -> Self {
         let mut flags = flags_builder();
         flags.set("opt_level", "none").unwrap();
         #[cfg(debug_assertions)]
@@ -55,15 +80,16 @@ impl<'a> Jit<'a> {
         import(&mut builder);
         Self {
             path,
-            isa,
             fs,
+            main,
+            isa,
             m: JITModule::new(builder),
             locs: Default::default(),
             dbg: Default::default(),
         }
     }
 
-    pub(crate) fn compile(mut self) -> Out<HashMap<Id, *const u8>> {
+    pub(crate) fn compile(mut self) -> Out<Code> {
         let mut ctx = self.m.make_context();
         let ids = self
             .fs
@@ -83,7 +109,9 @@ impl<'a> Jit<'a> {
                 Ok((id.clone(), ptr))
             })
             .collect::<Out<_>>()?;
-        Ok(code)
+        let main = self.main;
+        let _dbg = self.dbg;
+        Ok(Code { main, code, _dbg })
     }
 
     fn register_debug_info(&mut self, id: &Id, code: *const u8, size: usize) -> Out<()> {
@@ -116,7 +144,7 @@ impl<'a> Jit<'a> {
             flags: SymbolFlags::None,
         });
 
-        let sections = self.build_debug_info(code, size)?;
+        let sections = self.build_debug_info(id, code, size)?;
         sections
             .for_each(|id, data| {
                 let debug_id = obj.add_section(
@@ -138,6 +166,7 @@ impl<'a> Jit<'a> {
 
     fn build_debug_info(
         &self,
+        id: &Id,
         code: *const u8,
         size: usize,
     ) -> Out<Sections<EndianVec<RunTimeEndian>>> {
@@ -202,6 +231,34 @@ impl<'a> Jit<'a> {
             root.set(DW_AT_ranges, AttributeValue::RangeListRef(range_list_id));
         }
 
+        {
+            let (file_id, _, _) = dwarf.unit.line_program.files().next().unwrap();
+            let locs = self.locs.get(id).unwrap();
+
+            dwarf
+                .unit
+                .line_program
+                .begin_sequence(Some(Address::Constant(code as _)));
+
+            let mut prev = Default::default();
+            for loc in locs {
+                if *loc == prev {
+                    continue;
+                }
+                let row = dwarf.unit.line_program.row();
+                row.address_offset = loc.expand(SourceLoc::new(0)).bits() as _;
+                row.line = 1; // TODO
+                row.column = 1; // TODO
+                row.file = file_id;
+                row.op_index = 0;
+                row.is_statement = true;
+                dwarf.unit.line_program.generate_row();
+                prev = *loc;
+            }
+
+            dwarf.unit.line_program.end_sequence(size as _);
+        }
+
         let mut sections = Sections::new(EndianVec::new(endian));
         dwarf.write(&mut sections).map_err(Error::EmitDebugInfo)?;
 
@@ -245,7 +302,7 @@ impl Func {
             .declare_function(&id.raw(), Linkage::Export, &ctx.func.signature)
             .map_err(Error::jit)?;
         jit.m.define_function(func_id, ctx).map_err(Error::jit)?;
-        jit.locs.push((func_id, locs));
+        jit.locs.insert(id.clone(), locs);
         jit.m.clear_context(ctx);
 
         Ok(func_id)

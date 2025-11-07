@@ -3,7 +3,6 @@ pub mod syntax;
 #[cfg(test)]
 mod tests;
 
-use std::collections::HashMap;
 use std::path::Path;
 
 use chumsky::Parser;
@@ -17,12 +16,12 @@ use ustr::Ustr;
 
 use crate::semantics::Functions;
 use crate::semantics::check::Checker;
-use crate::semantics::jit::Jit;
+use crate::semantics::jit::{Code, Jit};
 use crate::semantics::vm::Vm;
 use crate::syntax::parse::file::file;
 use crate::syntax::parse::lex::lex;
 use crate::syntax::resolve::Resolver;
-use crate::syntax::{Def, Expr, File, Id, Ident, Stmt};
+use crate::syntax::{Def, Expr, File, Ident, Stmt};
 
 pub type Span = SimpleSpan;
 
@@ -256,7 +255,7 @@ impl State {
         Ok(Vm::new(&self.fs).func(&self.fs.get(main).unwrap().item.body, Default::default()))
     }
 
-    pub fn compile(self, path: &Path) -> Out<HashMap<Id, *const u8>> {
-        Jit::new(path, &self.fs).compile()
+    pub fn compile(self, path: &Path) -> Out<Code> {
+        Jit::new(path, &self.fs, self.file.main).compile()
     }
 }

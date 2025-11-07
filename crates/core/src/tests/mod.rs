@@ -97,18 +97,15 @@ fn it_runs_factorial_main() {
 }
 
 fn run_compiled<T, R>(path: &Path, text: &str, input: T) -> R {
-    let (_, ptr) = State::parse(text)
+    let code = State::parse(text)
         .unwrap()
         .resolve()
         .unwrap()
         .check()
         .unwrap()
         .compile(path)
-        .unwrap()
-        .into_iter()
-        .filter(|(id, ..)| id.raw() != "main")
-        .next()
         .unwrap();
+    let ptr = code.first_non_main().unwrap();
     unsafe { transmute::<_, fn(T) -> R>(ptr)(input) }
 }
 
@@ -125,7 +122,10 @@ fn it_runs_compiled() {
 #[test]
 fn it_runs_compiled_fibonacci() {
     let v = run_compiled::<f64, f64>(
-        Path::new("tests").join("fibonacci.rows").as_path(),
+        Path::new("src")
+            .join("tests")
+            .join("fibonacci.rows")
+            .as_path(),
         include_str!("fibonacci.rows"),
         10.,
     );
@@ -135,7 +135,10 @@ fn it_runs_compiled_fibonacci() {
 #[test]
 fn it_runs_compiled_factorial() {
     let v = run_compiled::<f64, f64>(
-        Path::new("tests").join("factorial.rows").as_path(),
+        Path::new("src")
+            .join("tests")
+            .join("factorial.rows")
+            .as_path(),
         include_str!("factorial.rows"),
         10.,
     );
@@ -144,21 +147,25 @@ fn it_runs_compiled_factorial() {
 
 #[allow(dead_code)]
 fn run_compiled_main(path: &Path, text: &str) {
-    let state = State::parse(text)
+    let code = State::parse(text)
         .unwrap()
         .resolve()
         .unwrap()
         .check()
+        .unwrap()
+        .compile(path)
         .unwrap();
-    let main = state.file.main.as_ref().cloned().unwrap();
-    let ptr = *state.compile(path).unwrap().get(&main).unwrap();
+    let ptr = code.main().unwrap();
     unsafe { transmute::<_, fn() -> u8>(ptr)() };
 }
 
 #[test]
 fn it_runs_compiled_factorial_main() {
     run_compiled_main(
-        Path::new("tests").join("factorial.rows").as_path(),
+        Path::new("src")
+            .join("tests")
+            .join("factorial.rows")
+            .as_path(),
         include_str!("factorial.rows"),
     );
 }
