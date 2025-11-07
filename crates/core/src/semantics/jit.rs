@@ -5,15 +5,15 @@ use std::path::Path;
 use cranelift::VERSION;
 use cranelift::codegen::Context;
 use cranelift::codegen::gimli::write::{
-    Address, AttributeValue, DwarfUnit, LineProgram, LineString, UnitEntryId,
+    Address, AttributeValue, DwarfUnit, EndianVec, LineProgram, LineString, Range, RangeList,
+    Sections,
 };
 use cranelift::codegen::gimli::{
-    DW_AT_byte_size, DW_AT_comp_dir, DW_AT_encoding, DW_AT_language, DW_AT_low_pc, DW_AT_name,
-    DW_AT_producer, DW_AT_stmt_list, DW_ATE_unsigned, DW_LANG_Rust, DW_TAG_base_type, Encoding,
-    Format, RunTimeEndian,
+    DW_AT_comp_dir, DW_AT_high_pc, DW_AT_language, DW_AT_low_pc, DW_AT_name, DW_AT_producer,
+    DW_AT_ranges, DW_AT_stmt_list, DW_LANG_Rust, Encoding, Format, RunTimeEndian,
 };
-use cranelift::codegen::ir::{Endianness, RelSourceLoc, SourceLoc};
-use cranelift::codegen::isa::{OwnedTargetIsa, TargetIsa};
+use cranelift::codegen::ir::{RelSourceLoc, SourceLoc};
+use cranelift::codegen::isa::OwnedTargetIsa;
 use cranelift::prelude::settings::{Flags, builder as flags_builder};
 use cranelift::prelude::types::{F64, I8};
 use cranelift::prelude::{
@@ -23,7 +23,7 @@ use cranelift::prelude::{
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{FuncId, Linkage, Module, default_libcall_names};
 use cranelift_native::builder as native_builder;
-use object::write::{Object, Symbol, SymbolSection};
+use object::write::{Object, StandardSegment, Symbol, SymbolSection};
 use object::{BinaryFormat, SectionKind, SymbolFlags, SymbolKind, SymbolScope};
 use wasmtime_internal_jit_debug::gdb_jit_int::GdbJitImageRegistration;
 
@@ -34,6 +34,7 @@ use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 pub(crate) struct Jit<'a> {
+    path: &'a Path,
     isa: OwnedTargetIsa,
     fs: &'a Functions,
     m: JITModule,
@@ -42,7 +43,7 @@ pub(crate) struct Jit<'a> {
 }
 
 impl<'a> Jit<'a> {
-    pub(crate) fn new(fs: &'a Functions) -> Self {
+    pub(crate) fn new(path: &'a Path, fs: &'a Functions) -> Self {
         let mut flags = flags_builder();
         flags.set("opt_level", "none").unwrap();
         #[cfg(debug_assertions)]
@@ -53,6 +54,7 @@ impl<'a> Jit<'a> {
         let mut builder = JITBuilder::with_isa(isa.clone(), default_libcall_names());
         import(&mut builder);
         Self {
+            path,
             isa,
             fs,
             m: JITModule::new(builder),
@@ -98,7 +100,11 @@ impl<'a> Jit<'a> {
             },
         );
 
-        let text_id = obj.add_section(b".text".into(), b"".into(), SectionKind::Text);
+        let text_id = obj.add_section(
+            obj.segment_name(StandardSegment::Text).into(),
+            b"".into(),
+            SectionKind::Text,
+        );
         obj.add_symbol(Symbol {
             name: id.raw().as_str().into(),
             value: code as _,
@@ -110,13 +116,96 @@ impl<'a> Jit<'a> {
             flags: SymbolFlags::None,
         });
 
-        // TODO: Write `.debug_info`.
+        let sections = self.build_debug_info(code, size)?;
+        sections
+            .for_each(|id, data| {
+                let debug_id = obj.add_section(
+                    obj.segment_name(StandardSegment::Debug).into(),
+                    id.name().into(),
+                    SectionKind::Debug,
+                );
+                obj.set_section_data(debug_id, data.slice(), 1);
+                Ok(())
+            })
+            .map_err(Error::EmitObject)?;
 
         self.dbg.push(GdbJitImageRegistration::register(
-            obj.write().map_err(Error::Debuginfo)?,
+            obj.write().map_err(Error::EmitObject)?,
         ));
 
         Ok(())
+    }
+
+    fn build_debug_info(
+        &self,
+        code: *const u8,
+        size: usize,
+    ) -> Out<Sections<EndianVec<RunTimeEndian>>> {
+        let dir = self.path.parent().unwrap().as_os_str().as_encoded_bytes();
+        let file = self.path.file_name().unwrap().as_encoded_bytes();
+
+        let encoding = Encoding {
+            address_size: self.isa.frontend_config().pointer_bytes(),
+            format: Format::Dwarf32,
+            version: 5,
+        };
+
+        let endian = match self.isa.triple().endianness().unwrap() {
+            target_lexicon::Endianness::Little => RunTimeEndian::Little,
+            target_lexicon::Endianness::Big => RunTimeEndian::Big,
+        };
+
+        let mut dwarf = DwarfUnit::new(encoding);
+        dwarf.unit.line_program = LineProgram::new(
+            encoding,
+            Default::default(),
+            LineString::new(dir, encoding, &mut dwarf.line_strings),
+            None,
+            LineString::new(file, encoding, &mut dwarf.line_strings),
+            None,
+        );
+
+        {
+            let range_list = RangeList(vec![Range::StartLength {
+                begin: Address::Constant(code as _),
+                length: size as _,
+            }]);
+            let range_list_id = dwarf.unit.ranges.add(range_list);
+
+            let root = dwarf.unit.get_mut(dwarf.unit.root());
+            root.set(
+                DW_AT_producer,
+                AttributeValue::StringRef(dwarf.strings.add(format!(
+                    "{} v{} with Cranelift v{VERSION}",
+                    env!("CARGO_PKG_NAME"),
+                    env!("CARGO_PKG_VERSION"),
+                ))),
+            );
+            root.set(DW_AT_language, AttributeValue::Language(DW_LANG_Rust));
+            root.set(
+                DW_AT_name,
+                AttributeValue::StringRef(dwarf.strings.add(self.path.display().to_string())),
+            );
+            root.set(DW_AT_stmt_list, AttributeValue::LineProgramRef);
+            root.set(
+                DW_AT_comp_dir,
+                AttributeValue::StringRef(dwarf.strings.add(dir)),
+            );
+            root.set(
+                DW_AT_low_pc,
+                AttributeValue::Address(Address::Constant(code as _)),
+            );
+            root.set(
+                DW_AT_high_pc,
+                AttributeValue::Address(Address::Constant(size as _)),
+            );
+            root.set(DW_AT_ranges, AttributeValue::RangeListRef(range_list_id));
+        }
+
+        let mut sections = Sections::new(EndianVec::new(endian));
+        dwarf.write(&mut sections).map_err(Error::EmitDebugInfo)?;
+
+        Ok(sections)
     }
 }
 
@@ -397,82 +486,5 @@ impl FunctionType {
             .collect();
         let Type::Builtin(t) = self.ret else { todo!() };
         sig.returns = vec![AbiParam::new(t.into())];
-    }
-}
-
-#[allow(dead_code)]
-struct DebugContext {
-    endian: RunTimeEndian,
-    dwarf: DwarfUnit,
-    array_size_type: UnitEntryId,
-}
-
-#[allow(dead_code)]
-impl DebugContext {
-    fn new(isa: &dyn TargetIsa, path: &Path) -> Self {
-        let dir = path.parent().unwrap().as_os_str().as_encoded_bytes();
-        let file = path.file_name().unwrap().as_encoded_bytes();
-
-        let encoding = Encoding {
-            address_size: isa.frontend_config().pointer_bytes(),
-            format: Format::Dwarf32,
-            version: 5,
-        };
-
-        let endian = match isa.endianness() {
-            Endianness::Little => RunTimeEndian::Little,
-            Endianness::Big => RunTimeEndian::Big,
-        };
-
-        let mut dwarf = DwarfUnit::new(encoding);
-        dwarf.unit.line_program = LineProgram::new(
-            encoding,
-            Default::default(),
-            LineString::new(dir, encoding, &mut dwarf.line_strings),
-            None,
-            LineString::new(file, encoding, &mut dwarf.line_strings),
-            None,
-        );
-
-        {
-            let root = dwarf.unit.get_mut(dwarf.unit.root());
-            root.set(
-                DW_AT_producer,
-                AttributeValue::StringRef(dwarf.strings.add(format!(
-                    "{} v{} with Cranelift v{VERSION}",
-                    env!("CARGO_PKG_NAME"),
-                    env!("CARGO_PKG_VERSION"),
-                ))),
-            );
-            root.set(DW_AT_language, AttributeValue::Language(DW_LANG_Rust));
-            root.set(
-                DW_AT_name,
-                AttributeValue::StringRef(dwarf.strings.add(path.display().to_string())),
-            );
-            root.set(DW_AT_stmt_list, AttributeValue::Udata(0));
-            root.set(
-                DW_AT_comp_dir,
-                AttributeValue::StringRef(dwarf.strings.add(dir)),
-            );
-            root.set(DW_AT_low_pc, AttributeValue::Address(Address::Constant(0)));
-        }
-
-        let array_size_type = dwarf.unit.add(dwarf.unit.root(), DW_TAG_base_type);
-        let array_size_type_entry = dwarf.unit.get_mut(array_size_type);
-        array_size_type_entry.set(
-            DW_AT_name,
-            AttributeValue::StringRef(dwarf.strings.add("__ARRAY_SIZE_TYPE__")),
-        );
-        array_size_type_entry.set(DW_AT_encoding, AttributeValue::Encoding(DW_ATE_unsigned));
-        array_size_type_entry.set(
-            DW_AT_byte_size,
-            AttributeValue::Udata(isa.frontend_config().pointer_bytes().into()),
-        );
-
-        Self {
-            endian,
-            dwarf,
-            array_size_type,
-        }
     }
 }

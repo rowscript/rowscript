@@ -10,6 +10,7 @@ use chumsky::Parser;
 use chumsky::extra::ParserExtra;
 use chumsky::input::{Input, MapExtra};
 use chumsky::prelude::SimpleSpan;
+use cranelift::codegen::gimli::write::Error as DebugInfoError;
 use cranelift_module::ModuleError;
 use object::write::Error as ObjectError;
 use ustr::Ustr;
@@ -82,7 +83,8 @@ pub enum Error {
     ExpectedMain,
 
     Jit(Box<ModuleError>),
-    Debuginfo(ObjectError),
+    EmitObject(ObjectError),
+    EmitDebugInfo(DebugInfoError),
 }
 
 impl Error {
@@ -142,7 +144,8 @@ impl<'src> Source<'src> {
             }
             Error::ExpectedMain => vec![(None, "No 'main' function to run or compile".into())],
             Error::Jit(e) => vec![(None, format!("Compile error: {e}"))],
-            Error::Debuginfo(e) => vec![(None, format!("Emit debuginfo error: {e}"))],
+            Error::EmitObject(e) => vec![(None, format!("Emit object error: {e}"))],
+            Error::EmitDebugInfo(e) => vec![(None, format!("Emit debuginfo error: {e}"))],
         }
     }
 
@@ -253,7 +256,7 @@ impl State {
         Ok(Vm::new(&self.fs).func(&self.fs.get(main).unwrap().item.body, Default::default()))
     }
 
-    pub fn compile(self) -> Out<HashMap<Id, *const u8>> {
-        Jit::new(&self.fs).compile()
+    pub fn compile(self, path: &Path) -> Out<HashMap<Id, *const u8>> {
+        Jit::new(path, &self.fs).compile()
     }
 }

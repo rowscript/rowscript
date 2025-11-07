@@ -16,7 +16,7 @@ fn build_file(file: &Path) {
     if let Err(e) = State::parse_with(&mut src)
         .and_then(State::resolve)
         .and_then(State::check)
-        .and_then(State::compile)
+        .and_then(|s| s.compile(file))
     {
         src.print(file, e);
         panic!("Failed to build source file");

@@ -1,6 +1,6 @@
-use std::mem::transmute;
-
 use chumsky::Parser;
+use std::mem::transmute;
+use std::path::Path;
 
 use crate::State;
 use crate::syntax::Expr;
@@ -96,14 +96,14 @@ fn it_runs_factorial_main() {
     eval(include_str!("factorial.rows"));
 }
 
-fn run_compiled<T, R>(text: &str, input: T) -> R {
+fn run_compiled<T, R>(path: &Path, text: &str, input: T) -> R {
     let (_, ptr) = State::parse(text)
         .unwrap()
         .resolve()
         .unwrap()
         .check()
         .unwrap()
-        .compile()
+        .compile(path)
         .unwrap()
         .into_iter()
         .filter(|(id, ..)| id.raw() != "main")
@@ -114,24 +114,36 @@ fn run_compiled<T, R>(text: &str, input: T) -> R {
 
 #[test]
 fn it_runs_compiled() {
-    let v = run_compiled::<f64, f64>("function f(a: u32): u32 { return a + 1 }", 0.);
+    let v = run_compiled::<f64, f64>(
+        Path::new("<stdin>"),
+        "function f(a: u32): u32 { return a + 1 }",
+        0.,
+    );
     assert_eq!(v, 1.);
 }
 
 #[test]
 fn it_runs_compiled_fibonacci() {
-    let v = run_compiled::<f64, f64>(include_str!("fibonacci.rows"), 10.);
+    let v = run_compiled::<f64, f64>(
+        Path::new("tests").join("fibonacci.rows").as_path(),
+        include_str!("fibonacci.rows"),
+        10.,
+    );
     assert_eq!(v, 89.);
 }
 
 #[test]
 fn it_runs_compiled_factorial() {
-    let v = run_compiled::<f64, f64>(include_str!("factorial.rows"), 10.);
+    let v = run_compiled::<f64, f64>(
+        Path::new("tests").join("factorial.rows").as_path(),
+        include_str!("factorial.rows"),
+        10.,
+    );
     assert_eq!(v, 3628800.);
 }
 
 #[allow(dead_code)]
-fn run_compiled_main(text: &str) {
+fn run_compiled_main(path: &Path, text: &str) {
     let state = State::parse(text)
         .unwrap()
         .resolve()
@@ -139,11 +151,14 @@ fn run_compiled_main(text: &str) {
         .check()
         .unwrap();
     let main = state.file.main.as_ref().cloned().unwrap();
-    let ptr = *state.compile().unwrap().get(&main).unwrap();
+    let ptr = *state.compile(path).unwrap().get(&main).unwrap();
     unsafe { transmute::<_, fn() -> u8>(ptr)() };
 }
 
 #[test]
 fn it_runs_compiled_factorial_main() {
-    run_compiled_main(include_str!("factorial.rows"));
+    run_compiled_main(
+        Path::new("tests").join("factorial.rows").as_path(),
+        include_str!("factorial.rows"),
+    );
 }
