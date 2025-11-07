@@ -162,14 +162,15 @@ impl<'a> Jit<'a> {
         let bytes = obj.write().map_err(Error::WriteObject)?;
 
         let mut builder = Builder::read(bytes.as_slice()).map_err(Error::ModifyObject)?;
-        let text = builder
-            .sections
-            .iter_mut()
-            .find(|s| s.name.as_slice() == b".text")
-            .unwrap();
-        text.sh_addr = code as _;
-        text.sh_offset = 0;
-        text.sh_size = size as _;
+        builder.sections.iter_mut().for_each(|s| {
+            if s.name.as_slice() == b".text" {
+                s.sh_addr = code as _;
+                s.sh_offset = 0;
+                s.sh_size = size as _;
+                return;
+            }
+            s.sh_addr += bytes.as_ptr() as u64;
+        });
 
         let mut modified = Vec::new();
         builder.write(&mut modified).map_err(Error::ModifyObject)?;
