@@ -169,3 +169,11 @@ fn it_runs_compiled_factorial_main() {
         include_str!("factorial.rows"),
     );
 }
+
+#[test]
+fn it_runs_compiled_hello_main() {
+    run_compiled_main(
+        Path::new("src").join("tests").join("hello.rows").as_path(),
+        include_str!("hello.rows"),
+    );
+}

@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env::current_dir;
 use std::iter::once;
 use std::path::Path;
 
@@ -23,6 +24,7 @@ use cranelift::prelude::{
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{FuncId, Linkage, Module, default_libcall_names};
 use cranelift_native::builder as native_builder;
+use object::build::elf::Builder;
 use object::write::{Object, StandardSegment, Symbol, SymbolSection};
 use object::{BinaryFormat, SectionKind, SymbolFlags, SymbolKind, SymbolScope};
 use wasmtime_internal_jit_debug::gdb_jit_int::GdbJitImageRegistration;
@@ -130,15 +132,15 @@ impl<'a> Jit<'a> {
 
         let text_id = obj.add_section(
             obj.segment_name(StandardSegment::Text).into(),
-            b"".into(),
+            b".text".into(),
             SectionKind::Text,
         );
         obj.add_symbol(Symbol {
             name: id.raw().as_str().into(),
-            value: code as _,
+            value: 0,
             size: size as _,
             kind: SymbolKind::Text,
-            scope: SymbolScope::Dynamic,
+            scope: SymbolScope::Compilation,
             weak: false,
             section: SymbolSection::Section(text_id),
             flags: SymbolFlags::None,
@@ -155,11 +157,31 @@ impl<'a> Jit<'a> {
                 obj.set_section_data(debug_id, data.slice(), 1);
                 Ok(())
             })
-            .map_err(Error::EmitObject)?;
+            .map_err(Error::WriteObject)?;
 
-        self.dbg.push(GdbJitImageRegistration::register(
-            obj.write().map_err(Error::EmitObject)?,
-        ));
+        let bytes = obj.write().map_err(Error::WriteObject)?;
+
+        let mut builder = Builder::read(bytes.as_slice()).map_err(Error::ModifyObject)?;
+        let text = builder
+            .sections
+            .iter_mut()
+            .find(|s| s.name.as_slice() == b".text")
+            .unwrap();
+        text.sh_addr = code as _;
+        text.sh_offset = 0;
+        text.sh_size = size as _;
+
+        let mut modified = Vec::new();
+        builder.write(&mut modified).map_err(Error::ModifyObject)?;
+
+        // Debug the object file:
+        //use std::io::Write;
+        //std::fs::File::create(format!("{id}.o"))
+        //    .unwrap()
+        //    .write_all(&modified)
+        //    .unwrap();
+
+        self.dbg.push(GdbJitImageRegistration::register(modified));
 
         Ok(())
     }
@@ -170,8 +192,10 @@ impl<'a> Jit<'a> {
         code: *const u8,
         size: usize,
     ) -> Out<Sections<EndianVec<RunTimeEndian>>> {
-        let dir = self.path.parent().unwrap().as_os_str().as_encoded_bytes();
-        let file = self.path.file_name().unwrap().as_encoded_bytes();
+        let dir = current_dir().unwrap();
+        let full = dir.join(self.path);
+        let dir = dir.as_os_str().as_encoded_bytes();
+        let file = self.path.as_os_str().as_encoded_bytes();
 
         let encoding = Encoding {
             address_size: self.isa.frontend_config().pointer_bytes(),
@@ -213,7 +237,7 @@ impl<'a> Jit<'a> {
             root.set(DW_AT_language, AttributeValue::Language(DW_LANG_Rust));
             root.set(
                 DW_AT_name,
-                AttributeValue::StringRef(dwarf.strings.add(self.path.display().to_string())),
+                AttributeValue::StringRef(dwarf.strings.add(full.as_os_str().as_encoded_bytes())),
             );
             root.set(DW_AT_stmt_list, AttributeValue::LineProgramRef);
             root.set(
@@ -232,7 +256,7 @@ impl<'a> Jit<'a> {
         }
 
         {
-            let (file_id, _, _) = dwarf.unit.line_program.files().next().unwrap();
+            let (file_id, ..) = dwarf.unit.line_program.files().next().unwrap();
             let locs = self.locs.get(id).unwrap();
 
             dwarf
@@ -242,16 +266,14 @@ impl<'a> Jit<'a> {
 
             let mut prev = Default::default();
             for loc in locs {
-                if *loc == prev {
-                    continue;
-                }
                 let row = dwarf.unit.line_program.row();
                 row.address_offset = loc.expand(SourceLoc::new(0)).bits() as _;
-                row.line = 1; // TODO
-                row.column = 1; // TODO
+                row.line = 2; // TODO
+                row.column = 2; // TODO
                 row.file = file_id;
-                row.op_index = 0;
-                row.is_statement = true;
+                if *loc != prev {
+                    row.is_statement = true;
+                }
                 dwarf.unit.line_program.generate_row();
                 prev = *loc;
             }
