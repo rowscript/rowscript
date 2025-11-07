@@ -11,8 +11,6 @@ use chumsky::input::{Input, MapExtra};
 use chumsky::prelude::SimpleSpan;
 use cranelift::codegen::gimli::write::Error as DebugInfoError;
 use cranelift_module::ModuleError;
-use object::build::Error as ModifyObjectError;
-use object::write::Error as WriteObjectError;
 use ustr::Ustr;
 
 use crate::semantics::Functions;
@@ -83,8 +81,6 @@ pub enum Error {
     ExpectedMain,
 
     Jit(Box<ModuleError>),
-    WriteObject(WriteObjectError),
-    ModifyObject(ModifyObjectError),
     EmitDebugInfo(DebugInfoError),
 }
 
@@ -145,8 +141,6 @@ impl<'src> Source<'src> {
             }
             Error::ExpectedMain => vec![(None, "No 'main' function to run or compile".into())],
             Error::Jit(e) => vec![(None, format!("Compile error: {e}"))],
-            Error::WriteObject(e) => vec![(None, format!("Serialize object error: {e}"))],
-            Error::ModifyObject(e) => vec![(None, format!("Modify object error: {e}"))],
             Error::EmitDebugInfo(e) => vec![(None, format!("Emit debuginfo error: {e}"))],
         }
     }
