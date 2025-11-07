@@ -119,7 +119,7 @@ impl<'a> Jit<'a> {
             BinaryFormat::Elf,
             match self.isa.triple().architecture {
                 target_lexicon::Architecture::X86_64 => object::Architecture::X86_64,
-                target_lexicon::Architecture::Aarch64(_) => object::Architecture::Aarch64,
+                target_lexicon::Architecture::Aarch64(..) => object::Architecture::Aarch64,
                 _ => todo!(),
             },
             match self.isa.triple().endianness().unwrap() {
