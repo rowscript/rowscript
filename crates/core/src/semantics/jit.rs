@@ -24,6 +24,9 @@ use cranelift::prelude::{
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{FuncId, Linkage, Module, default_libcall_names};
 use cranelift_native::builder as native_builder;
+use object::build::elf::Builder;
+use object::write::{Object, StandardSegment, Symbol, SymbolSection};
+use object::{BinaryFormat, SectionKind, SymbolFlags, SymbolKind, SymbolScope};
 use wasmtime_internal_jit_debug::gdb_jit_int::GdbJitImageRegistration;
 
 use crate::semantics::builtin::import;
@@ -57,11 +60,9 @@ impl Code {
 }
 
 pub(crate) struct Jit<'a> {
-    #[allow(dead_code)]
     path: &'a Path,
     fs: &'a Functions,
     main: Option<Id>,
-    #[allow(dead_code)]
     isa: OwnedTargetIsa,
     m: JITModule,
     locs: HashMap<Id, Vec<RelSourceLoc>>,
@@ -115,20 +116,77 @@ impl<'a> Jit<'a> {
         Ok(Code { main, code, _dbg })
     }
 
-    fn register_debug_info(&mut self, _id: &Id, _code: *const u8, _size: usize) -> Out<()> {
+    fn register_debug_info(&mut self, id: &Id, code: *const u8, size: usize) -> Out<()> {
+        let mut obj = Object::new(
+            BinaryFormat::Elf,
+            match self.isa.triple().architecture {
+                target_lexicon::Architecture::X86_64 => object::Architecture::X86_64,
+                target_lexicon::Architecture::Aarch64(..) => object::Architecture::Aarch64,
+                _ => todo!(),
+            },
+            match self.isa.triple().endianness().unwrap() {
+                target_lexicon::Endianness::Little => object::Endianness::Little,
+                target_lexicon::Endianness::Big => object::Endianness::Big,
+            },
+        );
+
+        let text_id = obj.add_section(
+            obj.segment_name(StandardSegment::Text).into(),
+            b".text".into(),
+            SectionKind::Text,
+        );
+        obj.add_symbol(Symbol {
+            name: id.raw().as_str().into(),
+            value: 0,
+            size: size as _,
+            kind: SymbolKind::Text,
+            scope: SymbolScope::Compilation,
+            weak: false,
+            section: SymbolSection::Section(text_id),
+            flags: SymbolFlags::None,
+        });
+
+        let sections = self.build_debug_info(id, code, size)?;
+        sections
+            .for_each(|id, data| {
+                let debug_id = obj.add_section(
+                    obj.segment_name(StandardSegment::Debug).into(),
+                    id.name().into(),
+                    SectionKind::Debug,
+                );
+                obj.set_section_data(debug_id, data.slice(), 1);
+                Ok(())
+            })
+            .map_err(Error::WriteObject)?;
+
+        let bytes = obj.write().map_err(Error::WriteObject)?;
+
+        let mut builder = Builder::read(bytes.as_slice()).map_err(Error::ModifyObject)?;
+        builder.sections.iter_mut().for_each(|s| {
+            if s.name.as_slice() == b".text" {
+                s.sh_addr = code as _;
+                s.sh_offset = 0;
+                s.sh_size = size as _;
+                return;
+            }
+            s.sh_addr += bytes.as_ptr() as u64;
+        });
+
+        let mut modified = Vec::new();
+        builder.write(&mut modified).map_err(Error::ModifyObject)?;
+
         // Debug the object file:
         //use std::io::Write;
         //std::fs::File::create(format!("{id}.o"))
         //    .unwrap()
-        //    .write_all(&bytes)
+        //    .write_all(&modified)
         //    .unwrap();
 
-        // self.dbg.push(GdbJitImageRegistration::register(bytes));
+        self.dbg.push(GdbJitImageRegistration::register(modified));
 
         Ok(())
     }
 
-    #[allow(dead_code)]
     fn build_debug_info(
         &self,
         id: &Id,
