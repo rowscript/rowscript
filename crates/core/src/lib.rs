@@ -105,13 +105,21 @@ pub struct LineCol {
 pub struct Source<'src> {
     text: &'src str,
     spans: Box<[Span]>,
+    lines: Box<[usize]>,
 }
 
 impl<'src> Source<'src> {
     pub fn new(text: &'src str) -> Self {
+        let mut lines = vec![0];
+        for (i, ch) in text.char_indices() {
+            if ch == '\n' {
+                lines.push(i + 1);
+            }
+        }
         Self {
             text,
             spans: Default::default(),
+            lines: lines.into(),
         }
     }
 
@@ -164,9 +172,16 @@ impl<'src> Source<'src> {
     }
 
     fn text_range(&self, span: Span) -> LineCol {
+        let search = |pos| match self.lines.binary_search(&pos) {
+            Ok(line) => (line as _, 0),
+            Err(line) => {
+                let start = self.lines[line - 1];
+                ((line - 1) as _, (pos - start) as _)
+            }
+        };
         LineCol {
-            start: self.position(span.start),
-            end: self.position(span.end),
+            start: search(span.start),
+            end: search(span.end),
         }
     }
 
@@ -179,23 +194,6 @@ impl<'src> Source<'src> {
             Span::new(0, 0)
         };
         self.text_range(span)
-    }
-
-    fn position(&self, pos: usize) -> (u32, u32) {
-        let mut line = 0;
-        let mut character = 0;
-        for (i, c) in self.text.chars().enumerate() {
-            if i == pos {
-                break;
-            }
-            if c == '\n' {
-                line += 1;
-                character = 0;
-                continue;
-            }
-            character += 1;
-        }
-        (line, character)
     }
 }
 

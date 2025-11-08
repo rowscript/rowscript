@@ -2,12 +2,12 @@ use chumsky::Parser;
 use std::mem::transmute;
 use std::path::Path;
 
-use crate::State;
 use crate::syntax::Expr;
 use crate::syntax::parse::Token;
 use crate::syntax::parse::expr::expr;
 use crate::syntax::parse::file::file;
 use crate::syntax::parse::lex::lex;
+use crate::{Error, LineCol, Out, Source, State};
 
 fn eval_nth(text: &str, n: usize, arg: Expr) -> Expr {
     State::parse(text)
@@ -77,6 +77,30 @@ function f(a) {
         )
         .unwrap();
     file().parse(out.tokens.as_slice()).unwrap();
+}
+
+fn check(src: &mut Source) -> Out<State> {
+    State::parse_with(src)?.resolve()?.check()
+}
+
+#[test]
+fn it_fails_checking_file() {
+    const TEXT: &str = r#"
+function f(): u32 {
+    return "hi"
+}
+"#;
+    let mut src = Source::new(TEXT);
+    let e = check(&mut src).unwrap_err();
+    let Error::TypeMismatch { got, want, .. } = &e else {
+        unreachable!();
+    };
+    assert_eq!(got, "str");
+    assert_eq!(want, "u32");
+    let errs = src.explain(e);
+    let LineCol { start, end } = errs[0].0.as_ref().unwrap();
+    assert_eq!(start, &(2, 11));
+    assert_eq!(end, &(2, 15));
 }
 
 #[test]
