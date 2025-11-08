@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::env::current_dir;
 use std::iter::once;
+use std::mem::transmute;
 use std::path::Path;
 
 use cranelift::VERSION;
@@ -45,14 +46,21 @@ pub struct Code {
 }
 
 impl Code {
-    pub fn main(&self) -> Option<*const u8> {
+    pub fn exec(&self) -> Out<()> {
+        let ptr = self.main()?;
+        unsafe { transmute::<*const u8, fn() -> u8>(ptr)() };
+        Ok(())
+    }
+
+    fn main(&self) -> Out<*const u8> {
         self.main
             .as_ref()
             .and_then(|main| self.code.get(main))
             .cloned()
+            .ok_or(Error::ExpectedMain)
     }
 
-    pub fn first_non_main(&self) -> Option<*const u8> {
+    pub fn first_non_main(self) -> Option<*const u8> {
         self.code
             .iter()
             .filter(|(id, ..)| id.raw() != "main")
@@ -189,13 +197,6 @@ impl<'a> Jit<'a> {
                 (*text).sh_size = U64::new(endian, size as _);
             }
         }
-
-        // Debug the object file:
-        //use std::io::Write;
-        //std::fs::File::create(format!("{id}.o"))
-        //    .unwrap()
-        //    .write_all(&bytes)
-        //    .unwrap();
 
         self.dbg.push(GdbJitImageRegistration::register(bytes));
 

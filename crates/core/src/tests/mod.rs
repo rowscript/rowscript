@@ -97,15 +97,16 @@ fn it_runs_factorial_main() {
 }
 
 fn run_compiled<T, R>(path: &Path, text: &str, input: T) -> R {
-    let code = State::parse(text)
+    let ptr = State::parse(text)
         .unwrap()
         .resolve()
         .unwrap()
         .check()
         .unwrap()
         .compile(path)
+        .unwrap()
+        .first_non_main()
         .unwrap();
-    let ptr = code.first_non_main().unwrap();
     unsafe { transmute::<_, fn(T) -> R>(ptr)(input) }
 }
 
@@ -147,16 +148,16 @@ fn it_runs_compiled_factorial() {
 
 #[allow(dead_code)]
 fn run_compiled_main(path: &Path, text: &str) {
-    let code = State::parse(text)
+    State::parse(text)
         .unwrap()
         .resolve()
         .unwrap()
         .check()
         .unwrap()
         .compile(path)
+        .unwrap()
+        .exec()
         .unwrap();
-    let ptr = code.main().unwrap();
-    unsafe { transmute::<_, fn() -> u8>(ptr)() };
 }
 
 #[test]

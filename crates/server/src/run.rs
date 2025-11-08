@@ -23,7 +23,8 @@ fn run_file(file: &Path) {
     if let Err(e) = State::parse_with(&mut src)
         .and_then(State::resolve)
         .and_then(State::check)
-        .and_then(State::eval)
+        .and_then(|s| s.compile(file))
+        .and_then(|c| c.exec())
     {
         src.print(file, e);
         panic!("Failed to run source file");
