@@ -1,7 +1,7 @@
 use std::panic::catch_unwind;
 
 use dashmap::DashMap;
-use rowscript_core::{LineCol, Source, State};
+use rowscript_core::{LineCol, State};
 use tokio::io::{stdin, stdout};
 use tokio::runtime::Builder;
 use tower_lsp::jsonrpc::Result as JsonRpcResult;
@@ -155,14 +155,12 @@ fn new_diag(lc: LineCol, severity: DiagnosticSeverity, message: String) -> Diagn
 }
 
 fn check_text(text: &str) -> Vec<Diagnostic> {
-    let mut src = Source::new(text);
-    let Err(e) = State::parse_with(&mut src)
-        .and_then(State::resolve)
-        .and_then(State::check)
-    else {
+    let mut s = State::new(text);
+    let Err(e) = s.parse().and_then(|_| s.resolve()).and_then(|_| s.check()) else {
         return Default::default();
     };
-    src.explain(e)
+    s.src
+        .explain(e)
         .into_iter()
         .filter_map(|(span, msg)| span.map(|span| new_diag(span, DiagnosticSeverity::ERROR, msg)))
         .collect()

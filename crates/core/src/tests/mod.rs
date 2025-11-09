@@ -7,27 +7,22 @@ use crate::syntax::parse::Token;
 use crate::syntax::parse::expr::expr;
 use crate::syntax::parse::file::file;
 use crate::syntax::parse::lex::lex;
-use crate::{Error, LineCol, Out, Source, State};
+use crate::{Error, LineCol, State};
 
 fn eval_nth(text: &str, n: usize, arg: Expr) -> Expr {
-    State::parse(text)
-        .unwrap()
-        .resolve()
-        .unwrap()
-        .check()
-        .unwrap()
-        .eval_nth(n, arg)
+    let mut s = State::new(text);
+    s.parse().unwrap();
+    s.resolve().unwrap();
+    s.check().unwrap();
+    s.eval_nth(n, arg)
 }
 
 fn eval(text: &str) -> Expr {
-    State::parse(text)
-        .unwrap()
-        .resolve()
-        .unwrap()
-        .check()
-        .unwrap()
-        .eval()
-        .unwrap()
+    let mut s = State::new(text);
+    s.parse().unwrap();
+    s.resolve().unwrap();
+    s.check().unwrap();
+    s.eval().unwrap()
 }
 
 #[test]
@@ -79,10 +74,6 @@ function f(a) {
     file().parse(out.tokens.as_slice()).unwrap();
 }
 
-fn check(src: &mut Source) -> Out<State> {
-    State::parse_with(src)?.resolve()?.check()
-}
-
 #[test]
 fn it_fails_checking_file() {
     const TEXT: &str = r#"
@@ -90,14 +81,16 @@ function f(): u32 {
     return "hi"
 }
 "#;
-    let mut src = Source::new(TEXT);
-    let e = check(&mut src).unwrap_err();
+    let mut s = State::new(TEXT);
+    s.parse().unwrap();
+    s.resolve().unwrap();
+    let e = s.check().unwrap_err();
     let Error::TypeMismatch { got, want, .. } = &e else {
         unreachable!();
     };
     assert_eq!(got, "str");
     assert_eq!(want, "u32");
-    let errs = src.explain(e);
+    let errs = s.src.explain(e);
     let LineCol { start, end } = errs[0].0.as_ref().unwrap();
     assert_eq!(start, &(2, 11));
     assert_eq!(end, &(2, 15));
@@ -121,16 +114,11 @@ fn it_runs_factorial_main() {
 }
 
 fn run_compiled<T, R>(path: &Path, text: &str, input: T) -> R {
-    let ptr = State::parse(text)
-        .unwrap()
-        .resolve()
-        .unwrap()
-        .check()
-        .unwrap()
-        .compile(path)
-        .unwrap()
-        .first_non_main()
-        .unwrap();
+    let mut s = State::new(text);
+    s.parse().unwrap();
+    s.resolve().unwrap();
+    s.check().unwrap();
+    let ptr = s.compile(path).unwrap().first_non_main().unwrap();
     unsafe { transmute::<_, fn(T) -> R>(ptr)(input) }
 }
 
@@ -172,16 +160,11 @@ fn it_runs_compiled_factorial() {
 
 #[allow(dead_code)]
 fn run_compiled_main(path: &Path, text: &str) {
-    State::parse(text)
-        .unwrap()
-        .resolve()
-        .unwrap()
-        .check()
-        .unwrap()
-        .compile(path)
-        .unwrap()
-        .exec()
-        .unwrap();
+    let mut s = State::new(text);
+    s.parse().unwrap();
+    s.resolve().unwrap();
+    s.check().unwrap();
+    s.compile(path).unwrap().exec().unwrap();
 }
 
 #[test]

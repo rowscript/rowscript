@@ -102,6 +102,7 @@ pub struct LineCol {
     pub end: (u32, u32),
 }
 
+#[derive(Debug)]
 pub struct Source<'src> {
     text: &'src str,
     spans: Box<[Span]>,
@@ -155,7 +156,7 @@ impl<'src> Source<'src> {
             Error::Jit(e) => vec![(None, format!("Compile error: {e}"))],
             Error::WriteObject(e) => vec![(None, format!("Serialize object error: {e}"))],
             Error::ModifyObject(e) => vec![(None, format!("Modify object error: {e}"))],
-            Error::EmitDebugInfo(e) => vec![(None, format!("Emit debuginfo error: {e}"))],
+            Error::EmitDebugInfo(e) => vec![(None, format!("Emit debug info error: {e}"))],
         }
     }
 
@@ -197,29 +198,32 @@ impl<'src> Source<'src> {
     }
 }
 
-#[derive(Default, Debug)]
-pub struct State {
+#[derive(Debug)]
+pub struct State<'src> {
+    pub src: Source<'src>,
     file: File,
     fs: Functions,
 }
 
-impl State {
-    pub fn parse(text: &str) -> Out<Self> {
-        let mut src = Source::new(text);
-        Self::parse_with(&mut src)
+impl<'src> State<'src> {
+    pub fn new(text: &'src str) -> Self {
+        Self {
+            src: Source::new(text),
+            file: Default::default(),
+            fs: Default::default(),
+        }
     }
 
-    pub fn parse_with(src: &mut Source) -> Out<Self> {
-        let mut state = Self::default();
-        let token_set = lex().parse(src.text).into_result().map_err(|errs| {
+    pub fn parse(&mut self) -> Out<()> {
+        let token_set = lex().parse(self.src.text).into_result().map_err(|errs| {
             Error::Lexing(
                 errs.into_iter()
                     .map(|e| (*e.span(), e.reason().to_string()))
                     .collect(),
             )
         })?;
-        src.spans = token_set.spans.into();
-        state.file = file()
+        self.src.spans = token_set.spans.into();
+        self.file = file()
             .parse(token_set.tokens.as_slice())
             .into_result()
             .map_err(|errs| {
@@ -229,17 +233,16 @@ impl State {
                         .collect(),
                 )
             })?;
-        Ok(state)
+        Ok(())
     }
 
-    pub fn resolve(mut self) -> Out<Self> {
-        Resolver::default().file(&mut self.file)?;
-        Ok(self)
+    pub fn resolve(&mut self) -> Out<()> {
+        Resolver::default().file(&mut self.file)
     }
 
-    pub fn check(mut self) -> Out<Self> {
+    pub fn check(&mut self) -> Out<()> {
         self.fs = Checker::default().file(&mut self.file)?;
-        Ok(self)
+        Ok(())
     }
 
     pub fn eval_nth(&self, n: usize, arg: Expr) -> Expr {
@@ -251,12 +254,12 @@ impl State {
         Vm::new(&self.fs).func(stmts, Default::default())
     }
 
-    pub fn eval(self) -> Out<Expr> {
+    pub fn eval(&self) -> Out<Expr> {
         let main = self.file.main.as_ref().ok_or(Error::ExpectedMain)?;
         Ok(Vm::new(&self.fs).func(&self.fs.get(main).unwrap().item.body, Default::default()))
     }
 
-    pub fn compile(self, path: &Path) -> Out<Code> {
-        Jit::new(path, &self.fs, self.file.main).compile()
+    pub fn compile(&self, path: &Path) -> Out<Code> {
+        Jit::new(path, &self.fs, self.file.main.as_ref().cloned()).compile()
     }
 }
