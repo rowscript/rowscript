@@ -10,16 +10,16 @@ use crate::syntax::parse::lex::lex;
 use crate::{Error, LineCol, State};
 
 fn eval_nth(text: &str, n: usize, arg: Expr) -> Expr {
-    let mut s = State::new(text);
-    s.parse().unwrap();
+    let mut s = State::default();
+    s.parse(text).unwrap();
     s.resolve().unwrap();
     s.check().unwrap();
     s.eval_nth(n, arg)
 }
 
 fn eval(text: &str) -> Expr {
-    let mut s = State::new(text);
-    s.parse().unwrap();
+    let mut s = State::default();
+    s.parse(text).unwrap();
     s.resolve().unwrap();
     s.check().unwrap();
     s.eval().unwrap()
@@ -81,8 +81,8 @@ function f(): u32 {
     return "hi"
 }
 "#;
-    let mut s = State::new(TEXT);
-    s.parse().unwrap();
+    let mut s = State::default();
+    s.parse(TEXT).unwrap();
     s.resolve().unwrap();
     let e = s.check().unwrap_err();
     let Error::TypeMismatch { got, want, .. } = &e else {
@@ -90,7 +90,7 @@ function f(): u32 {
     };
     assert_eq!(got, "str");
     assert_eq!(want, "u32");
-    let errs = s.src.explain(e);
+    let errs = s.explain(e);
     let LineCol { start, end } = errs[0].0.as_ref().unwrap();
     assert_eq!(start, &(2, 11));
     assert_eq!(end, &(2, 15));
@@ -114,8 +114,8 @@ fn it_runs_factorial_main() {
 }
 
 fn run_compiled<T, R>(path: &Path, text: &str, input: T) -> R {
-    let mut s = State::new(text);
-    s.parse().unwrap();
+    let mut s = State::default();
+    s.parse(text).unwrap();
     s.resolve().unwrap();
     s.check().unwrap();
     let ptr = s.compile(path).unwrap().first_non_main().unwrap();
@@ -160,8 +160,8 @@ fn it_runs_compiled_factorial() {
 
 #[allow(dead_code)]
 fn run_compiled_main(path: &Path, text: &str) {
-    let mut s = State::new(text);
-    s.parse().unwrap();
+    let mut s = State::default();
+    s.parse(text).unwrap();
     s.resolve().unwrap();
     s.check().unwrap();
     s.compile(path).unwrap().exec().unwrap();

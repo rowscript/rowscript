@@ -155,12 +155,15 @@ fn new_diag(lc: LineCol, severity: DiagnosticSeverity, message: String) -> Diagn
 }
 
 fn check_text(text: &str) -> Vec<Diagnostic> {
-    let mut s = State::new(text);
-    let Err(e) = s.parse().and_then(|_| s.resolve()).and_then(|_| s.check()) else {
+    let mut s = State::default();
+    let Err(e) = s
+        .parse(text)
+        .and_then(|_| s.resolve())
+        .and_then(|_| s.check())
+    else {
         return Default::default();
     };
-    s.src
-        .explain(e)
+    s.explain(e)
         .into_iter()
         .filter_map(|(span, msg)| span.map(|span| new_diag(span, DiagnosticSeverity::ERROR, msg)))
         .collect()

@@ -12,14 +12,14 @@ pub(crate) fn build(path: &Path) {
 
 fn build_file(file: &Path) {
     let text = read_to_string(file).expect("Failed to read source file");
-    let mut s = State::new(&text);
+    let mut s = State::default();
     if let Err(e) = s
-        .parse()
+        .parse(&text)
         .and_then(|_| s.resolve())
         .and_then(|_| s.check())
         .and_then(|_| s.compile(file))
     {
-        s.src.print(file, e);
+        s.print(file, e);
         panic!("Failed to build source file");
     }
 }

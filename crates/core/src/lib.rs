@@ -102,28 +102,15 @@ pub struct LineCol {
     pub end: (u32, u32),
 }
 
-#[derive(Debug)]
-pub struct Source<'src> {
-    text: &'src str,
+#[derive(Default, Debug)]
+pub struct State {
     spans: Box<[Span]>,
     lines: Box<[usize]>,
+    file: File,
+    fs: Functions,
 }
 
-impl<'src> Source<'src> {
-    pub fn new(text: &'src str) -> Self {
-        let mut lines = vec![0];
-        for (i, ch) in text.char_indices() {
-            if ch == '\n' {
-                lines.push(i + 1);
-            }
-        }
-        Self {
-            text,
-            spans: Default::default(),
-            lines: lines.into(),
-        }
-    }
-
+impl State {
     pub fn explain(&self, e: Error) -> Vec<(Option<LineCol>, String)> {
         match e {
             Error::Lexing(errs) => errs
@@ -196,43 +183,37 @@ impl<'src> Source<'src> {
         };
         self.text_range(span)
     }
-}
 
-#[derive(Debug)]
-pub struct State<'src> {
-    pub src: Source<'src>,
-    file: File,
-    fs: Functions,
-}
-
-impl<'src> State<'src> {
-    pub fn new(text: &'src str) -> Self {
-        Self {
-            src: Source::new(text),
-            file: Default::default(),
-            fs: Default::default(),
+    pub fn parse(&mut self, text: &str) -> Out<()> {
+        {
+            let mut lines = vec![0];
+            for (i, ch) in text.char_indices() {
+                if ch == '\n' {
+                    lines.push(i + 1);
+                }
+            }
+            self.lines = lines.into();
         }
-    }
-
-    pub fn parse(&mut self) -> Out<()> {
-        let token_set = lex().parse(self.src.text).into_result().map_err(|errs| {
-            Error::Lexing(
-                errs.into_iter()
-                    .map(|e| (*e.span(), e.reason().to_string()))
-                    .collect(),
-            )
-        })?;
-        self.src.spans = token_set.spans.into();
-        self.file = file()
-            .parse(token_set.tokens.as_slice())
-            .into_result()
-            .map_err(|errs| {
-                Error::Parsing(
+        {
+            let token_set = lex().parse(text).into_result().map_err(|errs| {
+                Error::Lexing(
                     errs.into_iter()
                         .map(|e| (*e.span(), e.reason().to_string()))
                         .collect(),
                 )
             })?;
+            self.spans = token_set.spans.into();
+            self.file = file()
+                .parse(token_set.tokens.as_slice())
+                .into_result()
+                .map_err(|errs| {
+                    Error::Parsing(
+                        errs.into_iter()
+                            .map(|e| (*e.span(), e.reason().to_string()))
+                            .collect(),
+                    )
+                })?;
+        }
         Ok(())
     }
 
