@@ -19,6 +19,7 @@ use crate::semantics::Functions;
 use crate::semantics::check::Checker;
 use crate::semantics::jit::{Code, Jit};
 use crate::semantics::vm::Vm;
+use crate::syntax::parse::Tokens;
 use crate::syntax::parse::file::file;
 use crate::syntax::parse::lex::lex;
 use crate::syntax::resolve::Resolver;
@@ -64,7 +65,7 @@ impl<T> Spanned<T> {
 
 #[derive(Debug)]
 pub enum Error {
-    Lexing(Box<[(Span, String)]>),
+    Lexing(Box<[(LineCol, String)]>),
     Parsing(Box<[(Span, String)]>),
 
     UndefName(Span, Ustr),
@@ -96,7 +97,7 @@ impl Error {
 
 pub type Out<T> = Result<T, Error>;
 
-#[derive(Default)]
+#[derive(Default, Debug, Copy, Clone)]
 pub struct LineCol {
     pub start: (u32, u32),
     pub end: (u32, u32),
@@ -104,8 +105,7 @@ pub struct LineCol {
 
 #[derive(Default, Debug)]
 pub struct State {
-    spans: Box<[Span]>,
-    lines: Box<[usize]>,
+    lines: Box<[LineCol]>,
     file: File,
     fs: Functions,
 }
@@ -115,27 +115,27 @@ impl State {
         match e {
             Error::Lexing(errs) => errs
                 .into_iter()
-                .map(|(span, msg)| (Some(self.text_range(span)), msg))
+                .map(|(line, msg)| (Some(line), format!("Scan error: {msg}")))
                 .collect(),
             Error::Parsing(errs) => errs
                 .into_iter()
-                .map(|(span, msg)| (Some(self.token_range(span)), msg))
+                .map(|(span, msg)| (Some(self.linecol(span)), format!("Parse error: {msg}")))
                 .collect(),
             Error::UndefName(span, n) => {
                 vec![(
-                    Some(self.token_range(span)),
+                    Some(self.linecol(span)),
                     format!("Undefined variable '{n}'"),
                 )]
             }
             Error::TypeMismatch { span, got, want } => {
                 vec![(
-                    Some(self.token_range(span)),
+                    Some(self.linecol(span)),
                     format!("Type mismatch: Expected '{want}', but got '{got}'"),
                 )]
             }
             Error::ArityMismatch { span, got, want } => {
                 vec![(
-                    Some(self.token_range(span)),
+                    Some(self.linecol(span)),
                     format!("Arity mismatch: Expected '{want}', but got '{got}'"),
                 )]
             }
@@ -159,61 +159,50 @@ impl State {
         })
     }
 
-    fn text_range(&self, span: Span) -> LineCol {
-        let search = |pos| match self.lines.binary_search(&pos) {
-            Ok(line) => (line as _, 0),
-            Err(line) => {
-                let start = self.lines[line - 1];
-                ((line - 1) as _, (pos - start) as _)
-            }
-        };
-        LineCol {
-            start: search(span.start),
-            end: search(span.end),
-        }
-    }
-
-    fn token_range(&self, token: Span) -> LineCol {
-        let span = if token.start < self.spans.len() {
-            self.spans[token.start]
-        } else if let Some(last) = self.spans.last() {
-            Span::new(last.end, last.end)
-        } else {
-            Span::new(0, 0)
-        };
-        self.text_range(span)
+    fn linecol(&self, token: Span) -> LineCol {
+        self.lines
+            .get(token.start)
+            .or_else(|| self.lines.last())
+            .cloned()
+            .unwrap_or_default()
     }
 
     pub fn parse(&mut self, text: &str) -> Out<()> {
-        {
-            let mut lines = vec![0];
-            for (i, ch) in text.char_indices() {
-                if ch == '\n' {
-                    lines.push(i + 1);
-                }
+        let mut lines = vec![0];
+        for (i, ch) in text.char_indices() {
+            if ch == '\n' {
+                lines.push(i + 1);
             }
-            self.lines = lines.into();
         }
-        {
-            let token_set = lex().parse(text).into_result().map_err(|errs| {
-                Error::Lexing(
+        let search = |pos| match lines.binary_search(&pos) {
+            Ok(line) => (line as u32, 0u32),
+            Err(line) => {
+                let start = lines[line - 1];
+                ((line - 1) as _, (pos - start) as _)
+            }
+        };
+        let search = |span: Span| LineCol {
+            start: search(span.start),
+            end: search(span.end),
+        };
+        let Tokens { spans, tokens } = lex().parse(text).into_result().map_err(|errs| {
+            Error::Lexing(
+                errs.into_iter()
+                    .map(|e| (search(*e.span()), e.reason().to_string()))
+                    .collect(),
+            )
+        })?;
+        self.lines = spans.into_iter().map(search).collect();
+        self.file = file()
+            .parse(tokens.as_slice())
+            .into_result()
+            .map_err(|errs| {
+                Error::Parsing(
                     errs.into_iter()
                         .map(|e| (*e.span(), e.reason().to_string()))
                         .collect(),
                 )
             })?;
-            self.spans = token_set.spans.into();
-            self.file = file()
-                .parse(token_set.tokens.as_slice())
-                .into_result()
-                .map_err(|errs| {
-                    Error::Parsing(
-                        errs.into_iter()
-                            .map(|e| (*e.span(), e.reason().to_string()))
-                            .collect(),
-                    )
-                })?;
-        }
         Ok(())
     }
 

@@ -10,13 +10,13 @@ use chumsky::text::{digits, ident, int};
 use crate::Spanned;
 use crate::semantics::BuiltinType;
 use crate::syntax::Id;
-use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, TokenSet};
+use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, Tokens};
 
 /// Lexical analysis.
 ///
 /// Number and string literal parsing extracted from
 /// [the fast JSON example](https://github.com/zesterer/chumsky/blob/main/examples/json_fast.rs).
-pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, TokenSet, SyntaxErr<'s, char>> {
+pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, Tokens, SyntaxErr<'s, char>> {
     let dec = digits(10).to_slice();
     let frac = just('.').then(dec);
     let exp = just('e')

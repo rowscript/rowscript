@@ -70,12 +70,12 @@ pub(crate) enum Token {
 }
 
 #[derive(Default)]
-pub struct TokenSet {
+pub struct Tokens {
     pub(crate) spans: Vec<Span>,
     pub(crate) tokens: Vec<Token>,
 }
 
-impl Container<Spanned<Token>> for TokenSet {
+impl Container<Spanned<Token>> for Tokens {
     fn with_capacity(n: usize) -> Self {
         Self {
             spans: Vec::with_capacity(n),

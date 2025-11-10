@@ -281,18 +281,13 @@ impl<'a> Jit<'a> {
                 .line_program
                 .begin_sequence(Some(Address::Constant(code as _)));
 
-            let mut prev = Default::default();
             for loc in locs {
                 let row = dwarf.unit.line_program.row();
                 row.address_offset = loc.expand(SourceLoc::new(0)).bits() as _;
                 row.line = 2; // TODO
                 row.column = 2; // TODO
                 row.file = file_id;
-                if *loc != prev {
-                    row.is_statement = true;
-                }
                 dwarf.unit.line_program.generate_row();
-                prev = *loc;
             }
 
             dwarf.unit.line_program.end_sequence(size as _);
