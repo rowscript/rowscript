@@ -37,7 +37,7 @@ use crate::semantics::builtin::import;
 use crate::semantics::{BuiltinType, Func, FunctionType, Functions, Type};
 use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
-use crate::{Error, Out, Span, Spanned};
+use crate::{Error, LineCol, Out, Span, Spanned};
 
 pub struct Code {
     main: Option<Id>,
@@ -72,6 +72,8 @@ impl Code {
 
 pub(crate) struct Jit<'a> {
     path: &'a Path,
+    #[allow(dead_code)]
+    lines: &'a [LineCol],
     fs: &'a Functions,
     main: Option<Id>,
     isa: OwnedTargetIsa,
@@ -81,7 +83,12 @@ pub(crate) struct Jit<'a> {
 }
 
 impl<'a> Jit<'a> {
-    pub(crate) fn new(path: &'a Path, fs: &'a Functions, main: Option<Id>) -> Self {
+    pub(crate) fn new(
+        path: &'a Path,
+        lines: &'a [LineCol],
+        fs: &'a Functions,
+        main: Option<Id>,
+    ) -> Self {
         let mut flags = flags_builder();
         flags.set("opt_level", "none").unwrap();
         #[cfg(debug_assertions)]
@@ -93,6 +100,7 @@ impl<'a> Jit<'a> {
         import(&mut builder);
         Self {
             path,
+            lines,
             fs,
             main,
             isa,

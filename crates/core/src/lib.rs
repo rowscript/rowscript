@@ -230,6 +230,12 @@ impl State {
     }
 
     pub fn compile(&self, path: &Path) -> Out<Code> {
-        Jit::new(path, &self.fs, self.file.main.as_ref().cloned()).compile()
+        Jit::new(
+            path,
+            &self.lines,
+            &self.fs,
+            self.file.main.as_ref().cloned(),
+        )
+        .compile()
     }
 }
