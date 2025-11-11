@@ -158,7 +158,6 @@ fn it_runs_compiled_factorial() {
     assert_eq!(v, 3628800.);
 }
 
-#[allow(dead_code)]
 fn run_compiled_main(path: &Path, text: &str) {
     let mut s = State::default();
     s.parse(text).unwrap();

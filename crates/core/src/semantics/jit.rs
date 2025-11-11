@@ -72,13 +72,12 @@ impl Code {
 
 pub(crate) struct Jit<'a> {
     path: &'a Path,
-    #[allow(dead_code)]
     lines: &'a [LineCol],
     fs: &'a Functions,
     main: Option<Id>,
     isa: OwnedTargetIsa,
     m: JITModule,
-    locs: HashMap<Id, Vec<RelSourceLoc>>,
+    locs: HashMap<Id, Vec<(LineCol, RelSourceLoc)>>,
     dbg: Vec<GdbJitImageRegistration>,
 }
 
@@ -289,11 +288,11 @@ impl<'a> Jit<'a> {
                 .line_program
                 .begin_sequence(Some(Address::Constant(code as _)));
 
-            for loc in locs {
+            for (line, loc) in locs {
                 let row = dwarf.unit.line_program.row();
                 row.address_offset = loc.expand(SourceLoc::new(0)).bits() as _;
-                row.line = 2; // TODO
-                row.column = 2; // TODO
+                row.line = (line.start.0 + 1) as _;
+                row.column = (line.start.1 + 1) as _;
                 row.file = file_id;
                 dwarf.unit.line_program.generate_row();
             }
@@ -327,16 +326,20 @@ impl Func {
             builder.def_var(var, val);
         }
 
+        let mut lines = Vec::default();
         let mut return_value = None;
         let mut returned = false;
         for s in &self.body {
-            return_value = Some(s.compile(jit, &mut builder, &mut returned));
+            return_value = Some(s.compile(jit, &mut builder, &mut lines, &mut returned));
         }
         if !returned {
             let ret = return_value.unwrap_or_else(|| builder.ins().iconst(I8, 0));
             builder.ins().return_(&[ret]);
         }
-        let locs = builder.func.srclocs.values().cloned().collect();
+        let locs = lines
+            .into_iter()
+            .zip(builder.func.srclocs.values().cloned())
+            .collect();
         builder.finalize();
 
         let func_id = jit
@@ -414,8 +417,15 @@ impl Expr {
 }
 
 impl Spanned<Stmt> {
-    fn compile(&self, jit: &mut Jit, builder: &mut FunctionBuilder, returned: &mut bool) -> Value {
+    fn compile(
+        &self,
+        jit: &mut Jit,
+        builder: &mut FunctionBuilder,
+        lines: &mut Vec<LineCol>,
+        returned: &mut bool,
+    ) -> Value {
         builder.set_srcloc(SourceLoc::new(self.span.start as _));
+        lines.push(jit.lines[self.span.start]);
         match &self.item {
             Stmt::Expr(e) => e.compile(jit, builder),
             Stmt::Assign { name, typ, rhs, .. } => {
@@ -431,7 +441,7 @@ impl Spanned<Stmt> {
                 *returned = true;
                 value
             }
-            Stmt::If { then, elif, els } => Self::r#if(then, elif, els, jit, builder),
+            Stmt::If { then, elif, els } => Self::r#if(then, elif, els, jit, builder, lines),
             Stmt::While(b) => {
                 let header_block = builder.create_block();
                 let body_block = builder.create_block();
@@ -446,7 +456,7 @@ impl Spanned<Stmt> {
                 builder.switch_to_block(body_block);
                 builder.seal_block(body_block);
                 for stmt in &b.body {
-                    stmt.compile(jit, builder, returned);
+                    stmt.compile(jit, builder, lines, returned);
                 }
                 builder.ins().jump(header_block, &[]);
 
@@ -486,6 +496,7 @@ impl Spanned<Stmt> {
         els: &Option<(Span, Box<[Self]>)>,
         jit: &mut Jit,
         builder: &mut FunctionBuilder,
+        lines: &mut Vec<LineCol>,
     ) -> Value {
         let merge_block = builder.create_block();
 
@@ -511,7 +522,7 @@ impl Spanned<Stmt> {
             builder.seal_block(then_block);
             let mut returned = false;
             for stmt in &branch.body {
-                stmt.compile(jit, builder, &mut returned);
+                stmt.compile(jit, builder, lines, &mut returned);
             }
             if !returned {
                 builder.ins().jump(merge_block, &[]);
@@ -526,7 +537,7 @@ impl Spanned<Stmt> {
         if let Some((_, els)) = els {
             let mut returned = false;
             for stmt in els {
-                stmt.compile(jit, builder, &mut returned);
+                stmt.compile(jit, builder, lines, &mut returned);
             }
             if !returned {
                 builder.ins().jump(merge_block, &[]);
