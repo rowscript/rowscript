@@ -16,11 +16,20 @@ RowScript
 >
 > We're working on a rewrite of RowScript, new features and releases are to be declared. See [#195] for an overview of
 > new designs.
->
-> (Update 2025-11-11) Language features and **an IDE** will be developed at the same time, deveopment experience will
-> now be prioritized even for very early releases.
 
 [#195]: https://github.com/rowscript/rowscript/issues/195
+
+## Status
+
+Update 2025-11-11:
+
+* Language features and **an IDE** will be developed at the same time, development experience will now be prioritized
+  even for very early releases.
+* Setting breakpoints at a program is now possible. Shout out to [CodeLLDB].
+
+![debugging](debugging.png)
+
+[CodeLLDB]: https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb
 
 ## Development
 
