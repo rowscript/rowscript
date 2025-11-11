@@ -36,7 +36,7 @@ $ npm run dev
 
 ```
 
-Now, open your VS Code and press <kdb>F5</kdb> to debug the extension. Everything will work like a charm.
+Now, open your VS Code and press <kbd>F5</kbd> to debug the extension. Everything will work like a charm.
 
 ## License
 
