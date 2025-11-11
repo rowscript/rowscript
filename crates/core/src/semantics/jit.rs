@@ -77,7 +77,7 @@ pub(crate) struct Jit<'a> {
     main: Option<Id>,
     isa: OwnedTargetIsa,
     m: JITModule,
-    locs: HashMap<Id, Vec<(LineCol, RelSourceLoc)>>,
+    locs: HashMap<Id, (Vec<LineCol>, Vec<RelSourceLoc>)>,
     dbg: Vec<GdbJitImageRegistration>,
 }
 
@@ -115,8 +115,7 @@ impl<'a> Jit<'a> {
             .fs
             .iter()
             .map(|(id, f)| {
-                f.item
-                    .compile(id, &mut self, &mut ctx)
+                f.compile(id, &mut self, &mut ctx)
                     .map(|func_id| (id, func_id))
             })
             .collect::<Out<Vec<_>>>()?;
@@ -274,27 +273,39 @@ impl<'a> Jit<'a> {
             );
             root.set(
                 DW_AT_high_pc,
-                AttributeValue::Address(Address::Constant(size as _)),
+                AttributeValue::Address(Address::Constant(code as u64 + (size as u64))),
             );
             root.set(DW_AT_ranges, AttributeValue::RangeListRef(range_list_id));
         }
 
         {
             let (file_id, ..) = dwarf.unit.line_program.files().next().unwrap();
-            let locs = self.locs.get(id).unwrap();
+            let (lines, locs) = self.locs.get(id).unwrap();
+            let mut lines = lines.iter();
 
             dwarf
                 .unit
                 .line_program
                 .begin_sequence(Some(Address::Constant(code as _)));
 
-            for (line, loc) in locs {
+            let mut prev = None;
+            let first_row = dwarf.unit.line_program.row();
+            first_row.basic_block = true;
+            first_row.prologue_end = true;
+            for loc in locs {
+                if Some(*loc) == prev {
+                    continue;
+                }
+                let line = lines.next().unwrap();
                 let row = dwarf.unit.line_program.row();
                 row.address_offset = loc.expand(SourceLoc::new(0)).bits() as _;
                 row.line = (line.start.0 + 1) as _;
                 row.column = (line.start.1 + 1) as _;
                 row.file = file_id;
+                row.is_statement = true;
+
                 dwarf.unit.line_program.generate_row();
+                prev = Some(*loc);
             }
 
             dwarf.unit.line_program.end_sequence(size as _);
@@ -307,9 +318,9 @@ impl<'a> Jit<'a> {
     }
 }
 
-impl Func {
+impl Spanned<Func> {
     fn compile(&self, id: &Id, jit: &mut Jit, ctx: &mut Context) -> Out<FuncId> {
-        self.typ.to_signature(&mut ctx.func.signature);
+        self.item.typ.to_signature(&mut ctx.func.signature);
 
         let mut builder_ctx = FunctionBuilderContext::default();
         let mut builder = FunctionBuilder::new(&mut ctx.func, &mut builder_ctx);
@@ -319,7 +330,7 @@ impl Func {
         builder.switch_to_block(entry_block);
         builder.seal_block(entry_block);
 
-        for (idx, typ) in self.typ.params.iter().enumerate() {
+        for (idx, typ) in self.item.typ.params.iter().enumerate() {
             let val = builder.block_params(entry_block)[idx];
             let &Type::Builtin(typ) = typ else { todo!() };
             let var = declare_local(idx as _, Some(typ), &mut builder);
@@ -329,17 +340,14 @@ impl Func {
         let mut lines = Vec::default();
         let mut return_value = None;
         let mut returned = false;
-        for s in &self.body {
+        for s in &self.item.body {
             return_value = Some(s.compile(jit, &mut builder, &mut lines, &mut returned));
         }
         if !returned {
             let ret = return_value.unwrap_or_else(|| builder.ins().iconst(I8, 0));
             builder.ins().return_(&[ret]);
         }
-        let locs = lines
-            .into_iter()
-            .zip(builder.func.srclocs.values().cloned())
-            .collect();
+        let locs = builder.func.srclocs.values().cloned().collect();
         builder.finalize();
 
         let func_id = jit
@@ -347,7 +355,7 @@ impl Func {
             .declare_function(&id.raw(), Linkage::Export, &ctx.func.signature)
             .map_err(Error::jit)?;
         jit.m.define_function(func_id, ctx).map_err(Error::jit)?;
-        jit.locs.insert(id.clone(), locs);
+        jit.locs.insert(id.clone(), (lines, locs));
         jit.m.clear_context(ctx);
 
         Ok(func_id)
@@ -389,12 +397,7 @@ impl Expr {
                 };
                 let local_callee = jit.m.declare_func_in_func(callee, builder.func);
                 let call = builder.ins().call(local_callee, &args);
-                builder
-                    .inst_results(call)
-                    .iter()
-                    .next()
-                    .cloned()
-                    .unwrap_or_else(|| builder.ins().iconst(I8, 0))
+                builder.inst_results(call)[0]
             }
             Expr::BinaryOp(lhs, op, rhs) => {
                 let a = lhs.item.compile(jit, builder);

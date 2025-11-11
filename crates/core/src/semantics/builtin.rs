@@ -1,4 +1,4 @@
-use cranelift::prelude::types::F64;
+use cranelift::prelude::types::{F64, I8};
 use cranelift::prelude::{AbiParam, Signature};
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{FuncId, Linkage, Module};
@@ -67,9 +67,11 @@ const PRINTLN: Proto = Proto {
     },
     declare: |sig| {
         sig.params.push(AbiParam::new(F64)); // FIXME: correct type
+        sig.returns.push(AbiParam::new(I8));
     },
 };
 
-fn println(v: f64) {
+fn println(v: f64) -> u8 {
     println!("{v}");
+    Default::default()
 }

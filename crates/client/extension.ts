@@ -55,9 +55,9 @@ async function activateDebugger(ctx: vscode.ExtensionContext) {
   const lldb = "vadimcn.vscode-lldb";
   const ext = vscode.extensions.getExtension(lldb);
   if (!ext) {
-    const cmd = `command:extension.open?${encodeURIComponent(`"${lldb}"`)}`;
+    const link = `command:extension.open?${encodeURIComponent(`"${lldb}"`)}`;
     await vscode.window.showInformationMessage(
-      `Install or enable [CodeLLDB](${cmd} "Open CodeLLDB") for further debugging`,
+      `Install or enable [CodeLLDB](${link} "Open CodeLLDB") for further debugging`,
     );
     return;
   }
