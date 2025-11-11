@@ -1,12 +1,15 @@
 "use strict";
 
 import * as path from "path";
-import { ExtensionContext, workspace } from "vscode";
+import * as which from "which";
+import * as vscode from "vscode";
 import { LanguageClient } from "vscode-languageclient/node";
 
 const name = "RowScript";
 const id = name.toLowerCase();
 const isProd = process.env.NODE_ENV === "production";
+
+let extensionPath: string;
 
 function commandHost() {
   const host = `${process.platform}-${process.arch}`;
@@ -22,13 +25,19 @@ function commandHost() {
   }
 }
 
-function command(extensionPath: string) {
-  return isProd ? path.join(extensionPath, commandHost(), id) : id;
+function command() {
+  return isProd
+    ? path.join(extensionPath, commandHost(), id)
+    : (which.sync(id, { nothrow: true }) ?? id);
 }
 
 // noinspection JSUnusedGlobalSymbols
-export async function activate(ctx: ExtensionContext) {
-  const run = { command: command(ctx.extensionPath), args: ["server"] };
+export async function activate(ctx: vscode.ExtensionContext) {
+  extensionPath = ctx.extensionPath;
+
+  await activateDebugger(ctx);
+
+  const run = { command: command(), args: ["server"] };
   await new LanguageClient(
     id,
     name,
@@ -36,8 +45,35 @@ export async function activate(ctx: ExtensionContext) {
     {
       documentSelector: [{ scheme: "file", language: id }],
       synchronize: {
-        fileEvents: workspace.createFileSystemWatcher("**/*.rows"),
+        fileEvents: vscode.workspace.createFileSystemWatcher("**/*.rows"),
       },
     },
   ).start();
+}
+
+async function activateDebugger(ctx: vscode.ExtensionContext) {
+  const lldb = "vadimcn.vscode-lldb";
+  const ext = vscode.extensions.getExtension(lldb);
+  if (!ext) {
+    const cmd = `command:extension.open?${encodeURIComponent(`"${lldb}"`)}`;
+    await vscode.window.showInformationMessage(
+      `Install or enable [CodeLLDB](${cmd} "Open CodeLLDB") for further debugging`,
+    );
+    return;
+  }
+  ctx.subscriptions.push(
+    vscode.debug.registerDebugConfigurationProvider("lldb", {
+      provideDebugConfigurations: (_folder) => [
+        {
+          name: "Debug RowScript Program",
+          type: "lldb",
+          request: "launch",
+          program: command(),
+          args: ["run", "${file}"],
+          cwd: "${workspaceRoot}",
+          initCommands: ["settings set plugin.jit-loader.gdb.enable on"],
+        },
+      ],
+    }),
+  );
 }

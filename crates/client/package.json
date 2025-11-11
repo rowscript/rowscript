@@ -15,11 +15,13 @@
     "package": "vsce package --skip-license"
   },
   "dependencies": {
-    "vscode-languageclient": "^9.0.1"
+    "vscode-languageclient": "^9.0.1",
+    "which": "^6.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.9.1",
     "@types/vscode": "^1.105.0",
+    "@types/which": "^3.0.4",
     "@vscode/vsce": "^3.6.2",
     "esbuild": "^0.25.11",
     "prettier": "^3.6.2"
@@ -52,6 +54,11 @@
         "language": "rowscript",
         "scopeName": "source.rowscript",
         "path": "./syntaxes/rowscript.tmLanguage.json"
+      }
+    ],
+    "breakpoints": [
+      {
+        "language": "rowscript"
       }
     ]
   }
