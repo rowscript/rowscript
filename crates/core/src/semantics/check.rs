@@ -179,6 +179,13 @@ impl Checker {
                 Expr::BuiltinType(t) => {
                     return Ok((Some(Type::Builtin(*t)), Type::Builtin(BuiltinType::Type)));
                 }
+                Expr::PtrType(t) => {
+                    let t = self.check_type(t.span, &t.item)?;
+                    return Ok((
+                        Some(Type::Ptr(Box::new(t))),
+                        Type::Builtin(BuiltinType::Type),
+                    ));
+                }
                 Expr::Unit => Type::Builtin(BuiltinType::Unit),
                 Expr::Number(..) => Type::Builtin(BuiltinType::F64),
                 Expr::String(..) => Type::Builtin(BuiltinType::Str),

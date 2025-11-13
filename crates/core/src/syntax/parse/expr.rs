@@ -1,5 +1,5 @@
 use chumsky::input::ValueInput;
-use chumsky::pratt::{infix, left};
+use chumsky::pratt::{infix, left, prefix};
 use chumsky::prelude::{just, recursive};
 use chumsky::{Parser, select};
 use serde_json::from_str;
@@ -45,6 +45,9 @@ where
             .labelled("call expression");
 
         call.pratt((
+            prefix(4, just(Token::Sym(Sym::Mul)), |_, a, e| {
+                Spanned::from_map_extra(Expr::PtrType(Box::new(a)), e)
+            }),
             infix(left(3), just(Token::Sym(Sym::Mul)), Expr::binary),
             infix(left(2), just(Token::Sym(Sym::Plus)), Expr::binary),
             infix(left(2), just(Token::Sym(Sym::Minus)), Expr::binary),

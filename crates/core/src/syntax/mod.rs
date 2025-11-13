@@ -81,6 +81,7 @@ pub enum Expr {
 
     // Types.
     BuiltinType(BuiltinType),
+    PtrType(Box<Spanned<Self>>),
 
     // Constants.
     Unit,
@@ -104,13 +105,8 @@ impl Expr {
         I: Input<'src, Span = Span>,
         E: ParserExtra<'src, I>,
     {
-        let Token::Sym(sym) = op else {
-            unreachable!();
-        };
-        Spanned {
-            span: e.span(),
-            item: Self::BinaryOp(Box::new(lhs), sym, Box::new(rhs)),
-        }
+        let Token::Sym(sym) = op else { unreachable!() };
+        Spanned::from_map_extra(Self::BinaryOp(Box::new(lhs), sym, Box::new(rhs)), e)
     }
 }
 

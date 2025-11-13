@@ -50,6 +50,12 @@ fn it_parses_expr() {
 }
 
 #[test]
+fn it_parses_expr_ptr_type() {
+    let out = lex().parse("*i32").unwrap();
+    expr().parse(out.tokens.as_slice()).unwrap();
+}
+
+#[test]
 fn it_parses_file() {
     let out = lex()
         .parse(

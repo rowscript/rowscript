@@ -100,6 +100,7 @@ impl Resolver {
         match expr {
             Expr::Ident(id) => self.name(span, id),
 
+            Expr::PtrType(e) => self.expr(e.span, &mut e.item),
             Expr::Call(callee, args) => {
                 self.expr(callee.span, &mut callee.item)?;
                 args.iter_mut()

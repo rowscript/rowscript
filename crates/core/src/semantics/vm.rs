@@ -150,6 +150,7 @@ impl<'a> Vm<'a> {
             }
 
             Expr::BuiltinType(..)
+            | Expr::PtrType(..)
             | Expr::Unit
             | Expr::Number(..)
             | Expr::String(..)

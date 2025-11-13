@@ -31,12 +31,11 @@ macro_rules! write_delimited {
     };
 }
 
-#[derive(Debug, Clone, Display)]
+#[derive(Debug, Clone)]
 pub(crate) enum Type {
-    #[strum(transparent)]
     Builtin(BuiltinType),
-    #[strum(transparent)]
     Function(Box<FunctionType>),
+    Ptr(Box<Self>),
 }
 
 impl Type {
@@ -51,6 +50,16 @@ impl Type {
 impl Default for Type {
     fn default() -> Self {
         Self::Builtin(Default::default())
+    }
+}
+
+impl Display for Type {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            Self::Builtin(t) => write!(f, "{t}"),
+            Self::Function(t) => write!(f, "{t}"),
+            Self::Ptr(t) => write!(f, "*{t}"),
+        }
     }
 }
 

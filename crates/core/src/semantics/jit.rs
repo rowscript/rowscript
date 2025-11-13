@@ -369,7 +369,7 @@ impl Expr {
                 let Ident::Idx(idx) = ident else { todo!() };
                 builder.use_var(Variable::from_u32(*idx as _))
             }
-            Expr::BuiltinType(..) => unreachable!(),
+            Expr::BuiltinType(..) | Expr::PtrType(..) => unreachable!(),
             Expr::Unit => builder.ins().iconst(I8, 0),
             Expr::Number(n) => builder.ins().f64const(*n),
             Expr::String(..) => todo!("use UstrSet to prevent duplicate in data sections"),
