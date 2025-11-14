@@ -52,13 +52,13 @@ impl Checker {
             Stmt::Expr(e) => self.infer(e)?.1,
             Stmt::Assign { name, typ, rhs, .. } => {
                 let rhs_type = typ
-                    .as_ref()
+                    .as_mut()
                     .map(|t| {
-                        let want = self.check_type(t.span, &t.item)?;
-                        self.check(rhs.span, &rhs.item, &want)?;
+                        let want = self.check_type(t.span, &mut t.item)?;
+                        self.check(rhs.span, &mut rhs.item, &want)?;
                         Ok(want)
                     })
-                    .unwrap_or_else(|| Ok(self.infer(&rhs.item)?.1))?;
+                    .unwrap_or_else(|| Ok(self.infer(&mut rhs.item)?.1))?;
                 self.insert(block, &name.item, rhs_type.clone());
                 *typ = Some(Spanned {
                     span: typ.as_ref().map(|t| t.span).unwrap_or(name.span),
@@ -70,15 +70,15 @@ impl Checker {
                 rhs_type
             }
             Stmt::Update { name, rhs } => {
-                let rhs_type = self.infer(&rhs.item)?.1;
+                let rhs_type = self.infer(&mut rhs.item)?.1;
                 let lhs_type = self.ident(&name.item);
                 isa(name.span, &rhs_type, &lhs_type)?;
                 lhs_type
             }
             Stmt::Return(e) => e
-                .as_ref()
+                .as_mut()
                 .map(|e| {
-                    self.check(e.span, &e.item, &block.ret)
+                    self.check(e.span, &mut e.item, &block.ret)
                         .map(|_| block.ret.clone())
                 })
                 .transpose()?
@@ -101,23 +101,23 @@ impl Checker {
         })
     }
 
-    fn sig(&mut self, sig: &Sig) -> Out<(FunctionType, Block)> {
+    fn sig(&mut self, sig: &mut Sig) -> Out<(FunctionType, Block)> {
         let ret = sig
             .ret
-            .as_ref()
-            .map(|t| self.check_type(t.span, &t.item))
+            .as_mut()
+            .map(|t| self.check_type(t.span, &mut t.item))
             .transpose()?
             .unwrap_or(Type::Builtin(BuiltinType::Unit));
         let mut local = Block::func(ret.clone());
         let params = sig
             .params
-            .iter()
+            .iter_mut()
             .map(|p| {
                 let typ = p
                     .item
                     .typ
-                    .as_ref()
-                    .map(|t| self.check_type(t.span, &t.item))
+                    .as_mut()
+                    .map(|t| self.check_type(t.span, &mut t.item))
                     .transpose()?
                     .unwrap_or(Type::Builtin(BuiltinType::Unit));
                 self.insert(&mut local, &p.item.name, typ.clone());
@@ -147,13 +147,13 @@ impl Checker {
     fn branch(&mut self, block: &Block, branch: &mut Branch) -> Out<Type> {
         self.check(
             branch.cond.span,
-            &branch.cond.item,
+            &mut branch.cond.item,
             &Type::Builtin(BuiltinType::Bool),
         )?;
         self.block(block.local(), &mut branch.body)
     }
 
-    fn check(&mut self, span: Span, expr: &Expr, want: &Type) -> Out<Option<Type>> {
+    fn check(&mut self, span: Span, expr: &mut Expr, want: &Type) -> Out<Option<Type>> {
         if let Expr::Number(..) = expr
             && let Type::Builtin(t) = want
             && t.is_number()
@@ -166,12 +166,12 @@ impl Checker {
         Ok(typ)
     }
 
-    fn check_type(&mut self, span: Span, expr: &Expr) -> Out<Type> {
+    fn check_type(&mut self, span: Span, expr: &mut Expr) -> Out<Type> {
         self.check(span, expr, &Type::Builtin(BuiltinType::Type))
             .map(Option::unwrap)
     }
 
-    fn infer(&mut self, expr: &Expr) -> Out<(Option<Type>, Type)> {
+    fn infer(&mut self, expr: &mut Expr) -> Out<(Option<Type>, Type)> {
         Ok((
             None,
             match expr {
@@ -180,7 +180,7 @@ impl Checker {
                     return Ok((Some(Type::Builtin(*t)), Type::Builtin(BuiltinType::Type)));
                 }
                 Expr::PtrType(t) => {
-                    let t = self.check_type(t.span, &t.item)?;
+                    let t = self.check_type(t.span, &mut t.item)?;
                     return Ok((
                         Some(Type::Ptr(Box::new(t))),
                         Type::Builtin(BuiltinType::Type),
@@ -192,7 +192,7 @@ impl Checker {
                 Expr::Boolean(..) => Type::Builtin(BuiltinType::Bool),
                 Expr::Call(f, args) => {
                     let span = f.span;
-                    let typ = self.infer(&f.item)?.1;
+                    let typ = self.infer(&mut f.item)?.1;
                     let Type::Function(typ) = typ else {
                         return Err(Error::TypeMismatch {
                             span,
@@ -207,27 +207,27 @@ impl Checker {
                             return Err(Error::ArityMismatch { span, got, want });
                         }
                     }
-                    args.iter()
+                    args.iter_mut()
                         .zip(typ.params.iter())
                         .try_for_each(|(got, want)| {
-                            self.check(got.span, &got.item, want)?;
+                            self.check(got.span, &mut got.item, want)?;
                             Ok(())
                         })?;
                     typ.ret
                 }
                 Expr::BinaryOp(lhs, op, rhs) => match op {
                     Sym::EqEq => {
-                        let want = self.infer(&lhs.item)?.1;
-                        self.check(rhs.span, &rhs.item, &want)?;
+                        let want = self.infer(&mut lhs.item)?.1;
+                        self.check(rhs.span, &mut rhs.item, &want)?;
                         Type::Builtin(BuiltinType::Bool)
                     }
 
                     Sym::Lt | Sym::Gt | Sym::Le | Sym::Ge => {
-                        let got = self.infer(&lhs.item)?.1;
+                        let got = self.infer(&mut lhs.item)?.1;
                         if let Type::Builtin(t) = got
                             && t.is_number()
                         {
-                            self.check(rhs.span, &rhs.item, &got)?;
+                            self.check(rhs.span, &mut rhs.item, &got)?;
                             Type::Builtin(BuiltinType::Bool)
                         } else {
                             return Err(Error::TypeMismatch {
@@ -239,11 +239,11 @@ impl Checker {
                     }
 
                     Sym::Plus | Sym::Minus | Sym::Mul => {
-                        let got = self.infer(&lhs.item)?.1;
+                        let got = self.infer(&mut lhs.item)?.1;
                         if let Type::Builtin(t) = got
                             && t.is_number()
                         {
-                            self.check(rhs.span, &rhs.item, &got)?;
+                            self.check(rhs.span, &mut rhs.item, &got)?;
                             got
                         } else {
                             return Err(Error::TypeMismatch {
