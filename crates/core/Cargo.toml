@@ -11,7 +11,7 @@ chumsky = { version = "1.0.0-alpha.8", features = ["pratt"] }
 cranelift = "0.125.4"
 cranelift-native = "0.125.4"
 cranelift-module = "0.125.4"
-cranelift-jit = { git = "https://github.com/anqur/cranelift-jit", rev = "59fee0f" }
+cranelift-jit = "0.125.4"
 object = { version = "0.37.3", features = ["write", "read"] }
 target-lexicon = "0.13.3"
 wasmtime-internal-jit-debug = { version = "38.0.3", features = ["std", "gdb_jit_int"] }

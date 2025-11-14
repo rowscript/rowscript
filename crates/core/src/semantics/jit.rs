@@ -116,14 +116,14 @@ impl<'a> Jit<'a> {
             .iter()
             .map(|(id, f)| {
                 f.compile(id, &mut self, &mut ctx)
-                    .map(|func_id| (id, func_id))
+                    .map(|(func_id, size)| (id, func_id, size))
             })
             .collect::<Out<Vec<_>>>()?;
         self.m.finalize_definitions().map_err(Error::jit)?;
         let code = ids
             .into_iter()
-            .map(|(id, func_id)| {
-                let (ptr, size) = self.m.get_finalized_function(func_id);
+            .map(|(id, func_id, size)| {
+                let ptr = self.m.get_finalized_function(func_id);
                 self.register_object(id, ptr, size)?;
                 Ok((id.clone(), ptr))
             })
@@ -319,7 +319,7 @@ impl<'a> Jit<'a> {
 }
 
 impl Spanned<Func> {
-    fn compile(&self, id: &Id, jit: &mut Jit, ctx: &mut Context) -> Out<FuncId> {
+    fn compile(&self, id: &Id, jit: &mut Jit, ctx: &mut Context) -> Out<(FuncId, usize)> {
         self.item.typ.to_signature(&mut ctx.func.signature);
 
         let mut builder_ctx = FunctionBuilderContext::default();
@@ -355,10 +355,11 @@ impl Spanned<Func> {
             .declare_function(&id.raw(), Linkage::Export, &ctx.func.signature)
             .map_err(Error::jit)?;
         jit.m.define_function(func_id, ctx).map_err(Error::jit)?;
+        let size = ctx.compiled_code().unwrap().buffer.data().len();
         jit.locs.insert(id.clone(), (lines, locs));
         jit.m.clear_context(ctx);
 
-        Ok(func_id)
+        Ok((func_id, size))
     }
 }
 
