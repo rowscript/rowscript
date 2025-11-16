@@ -22,7 +22,7 @@
     "@types/node": "^24.9.1",
     "@types/vscode": "^1.105.0",
     "@types/which": "^3.0.4",
-    "@vscode/vsce": "^3.6.2",
+    "@vscode/vsce": "^3.7.0",
     "esbuild": "^0.25.11",
     "prettier": "^3.6.2"
   },
