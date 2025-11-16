@@ -113,7 +113,8 @@ impl Resolver {
 
             Expr::BuiltinType(..)
             | Expr::Unit
-            | Expr::Number(..)
+            | Expr::Integer(..)
+            | Expr::Float(..)
             | Expr::String(..)
             | Expr::Boolean(..) => Ok(()),
         }

@@ -1,0 +1,11 @@
+[package]
+name = "rowscript-derive"
+version = "1.0.0-alpha.6"
+edition = "2024"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "2.0.110"
+quote = "1.0.42"

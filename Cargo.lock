@@ -1121,9 +1121,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.40"
+version = "1.0.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1885c039570dc00dcb4ff087a89e185fd56bae234ddc7f056a945bf36467248d"
+checksum = "a338cc41d27e6cc6dce6cefc13a0729dfbb81c262b1f519331575dd80ef3067f"
 dependencies = [
  "proc-macro2",
 ]
@@ -1251,11 +1251,20 @@ dependencies = [
  "cranelift-native",
  "criterion",
  "object",
+ "rowscript-derive",
  "serde_json",
  "strum",
  "target-lexicon",
  "ustr",
  "wasmtime-internal-jit-debug",
+]
+
+[[package]]
+name = "rowscript-derive"
+version = "1.0.0-alpha.6"
+dependencies = [
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -1445,9 +1454,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.104"
+version = "2.0.110"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17b6f705963418cdb9927482fa304bc562ece2fdd4f616084c50b7023b435a40"
+checksum = "a99801b5bd34ede4cf3fc688c5919368fea4e4814a4664359503e6015b280aea"
 dependencies = [
  "proc-macro2",
  "quote",

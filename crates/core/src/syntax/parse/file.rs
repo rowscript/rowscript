@@ -1,6 +1,7 @@
+use chumsky::Parser;
 use chumsky::input::ValueInput;
 use chumsky::prelude::{IterParser, just};
-use chumsky::{Parser, select};
+use chumsky::primitive::select;
 
 use crate::syntax::parse::expr::expr;
 use crate::syntax::parse::stmt::stmt;
@@ -12,9 +13,10 @@ fn docstring<'t, I>() -> impl Parser<'t, I, Vec<String>, SyntaxErr<'t, Token>> +
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
-    select! {
-        Token::Doc(s) => s
-    }
+    select(|x, _| match x {
+        Token::Doc(s) => Some(s),
+        _ => None,
+    })
     .repeated()
     .collect::<Vec<_>>()
     .labelled("docstring")

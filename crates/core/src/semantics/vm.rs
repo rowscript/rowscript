@@ -129,20 +129,35 @@ impl<'a> Vm<'a> {
                     Ident::Idx(..) => todo!("local function"),
                 }
             }
-            Expr::BinaryOp(lhs, op, rhs) => {
+            Expr::BinaryOp(lhs, op, .., rhs) => {
                 match (self.expr(frame, &lhs.item), op, self.expr(frame, &rhs.item)) {
-                    // TODO: Integers.
-                    (Expr::Number(a), Sym::Le, Expr::Number(b)) => Expr::Boolean(a <= b),
-                    (Expr::Number(a), Sym::Ge, Expr::Number(b)) => Expr::Boolean(a >= b),
-                    (Expr::Number(a), Sym::Lt, Expr::Number(b)) => Expr::Boolean(a < b),
-                    (Expr::Number(a), Sym::Gt, Expr::Number(b)) => Expr::Boolean(a > b),
-                    (Expr::Number(a), Sym::Plus, Expr::Number(b)) => Expr::Number(a + b),
-                    (Expr::Number(a), Sym::Minus, Expr::Number(b)) => Expr::Number(a - b),
-                    (Expr::Number(a), Sym::Mul, Expr::Number(b)) => Expr::Number(a * b),
+                    (Expr::Integer(a), Sym::Le, Expr::Integer(b)) => Expr::Boolean(a.le(&b)),
+                    (Expr::Float(a), Sym::Le, Expr::Float(b)) => Expr::Boolean(a.le(&b)),
+
+                    (Expr::Integer(a), Sym::Ge, Expr::Integer(b)) => Expr::Boolean(a.ge(&b)),
+                    (Expr::Float(a), Sym::Ge, Expr::Float(b)) => Expr::Boolean(a.ge(&b)),
+
+                    (Expr::Integer(a), Sym::Lt, Expr::Integer(b)) => Expr::Boolean(a.lt(&b)),
+                    (Expr::Float(a), Sym::Lt, Expr::Float(b)) => Expr::Boolean(a.lt(&b)),
+
+                    (Expr::Integer(a), Sym::Gt, Expr::Integer(b)) => Expr::Boolean(a.gt(&b)),
+                    (Expr::Float(a), Sym::Gt, Expr::Float(b)) => Expr::Boolean(a.gt(&b)),
+
+                    (Expr::Integer(a), Sym::Plus, Expr::Integer(b)) => Expr::Integer(a.add(&b)),
+                    (Expr::Float(a), Sym::Plus, Expr::Float(b)) => Expr::Float(a.add(&b)),
+
+                    (Expr::Integer(a), Sym::Minus, Expr::Integer(b)) => Expr::Integer(a.sub(&b)),
+                    (Expr::Float(a), Sym::Minus, Expr::Float(b)) => Expr::Float(a.sub(&b)),
+
+                    (Expr::Integer(a), Sym::Mul, Expr::Integer(b)) => Expr::Integer(a.mul(&b)),
+                    (Expr::Float(a), Sym::Mul, Expr::Float(b)) => Expr::Float(a.mul(&b)),
 
                     (Expr::Unit, Sym::EqEq, Expr::Unit) => Expr::Boolean(true),
                     (Expr::Boolean(a), Sym::EqEq, Expr::Boolean(b)) => Expr::Boolean(a == b),
-                    (Expr::Number(a), Sym::EqEq, Expr::Number(b)) => Expr::Boolean(a == b),
+
+                    (Expr::Integer(a), Sym::EqEq, Expr::Integer(b)) => Expr::Boolean(a.eq(&b)),
+                    (Expr::Float(a), Sym::EqEq, Expr::Float(b)) => Expr::Boolean(a.eq(&b)),
+
                     (Expr::String(a), Sym::EqEq, Expr::String(b)) => Expr::Boolean(a == b),
 
                     _ => unreachable!(),
@@ -152,7 +167,8 @@ impl<'a> Vm<'a> {
             Expr::BuiltinType(..)
             | Expr::PtrType(..)
             | Expr::Unit
-            | Expr::Number(..)
+            | Expr::Integer(..)
+            | Expr::Float(..)
             | Expr::String(..)
             | Expr::Boolean(..) => expr.clone(),
         }

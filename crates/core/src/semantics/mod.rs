@@ -7,6 +7,8 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use strum::{Display, EnumString};
 
+use rowscript_derive::Ops;
+
 use crate::Spanned;
 use crate::syntax::{Id, Stmt};
 
@@ -32,7 +34,7 @@ macro_rules! write_delimited {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum Type {
+pub enum Type {
     Builtin(BuiltinType),
     Function(Box<FunctionType>),
     Ptr(Box<Self>),
@@ -84,25 +86,65 @@ pub enum BuiltinType {
 }
 
 impl BuiltinType {
-    pub(crate) fn is_number(&self) -> bool {
-        matches!(
-            self,
-            Self::I8
-                | Self::I16
-                | Self::I32
-                | Self::I64
-                | Self::U8
-                | Self::U16
-                | Self::U32
-                | Self::U64
-                | Self::F32
-                | Self::F64
-        )
+    fn narrow_integer(&self, n: i64) -> Option<Integer> {
+        match self {
+            BuiltinType::I8 => i8::try_from(n).ok().map(Integer::I8),
+            BuiltinType::I16 => i16::try_from(n).ok().map(Integer::I16),
+            BuiltinType::I32 => i32::try_from(n).ok().map(Integer::I32),
+            BuiltinType::I64 => Some(Integer::I64(n)),
+            BuiltinType::U8 => u8::try_from(n).ok().map(Integer::U8),
+            BuiltinType::U16 => u16::try_from(n).ok().map(Integer::U16),
+            BuiltinType::U32 => u32::try_from(n).ok().map(Integer::U32),
+            BuiltinType::U64 => u64::try_from(n).ok().map(Integer::U64),
+            _ => unreachable!(),
+        }
+    }
+
+    fn narrow_float(&self, n: f64) -> Float {
+        match self {
+            BuiltinType::F32 => Float::F32(n as _),
+            BuiltinType::F64 => Float::F64(n),
+            _ => unreachable!(),
+        }
+    }
+
+    fn is_integer(&self) -> bool {
+        self.is_signed_integer() || self.is_unsigned_integer()
+    }
+
+    fn is_signed_integer(&self) -> bool {
+        matches!(self, Self::I8 | Self::I16 | Self::I32 | Self::I64)
+    }
+
+    fn is_unsigned_integer(&self) -> bool {
+        matches!(self, Self::U8 | Self::U16 | Self::U32 | Self::U64)
+    }
+
+    fn is_float(&self) -> bool {
+        matches!(self, Self::F32 | Self::F64)
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Ops)]
+pub enum Integer {
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+}
+
+#[derive(Debug, Clone, Ops)]
+pub enum Float {
+    F32(f32),
+    F64(f64),
+}
+
 #[derive(Default, Debug, Clone)]
-pub(crate) struct FunctionType {
+pub struct FunctionType {
     params: Box<[Type]>,
     ret: Type,
 }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::mem::take;
 
-use crate::semantics::{BuiltinType, Func, FunctionType, Functions, Type};
+use crate::semantics::{BuiltinType, Float, Func, FunctionType, Functions, Integer, Type};
 use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
@@ -154,10 +154,20 @@ impl Checker {
     }
 
     fn check(&mut self, span: Span, expr: &mut Expr, want: &Type) -> Out<Option<Type>> {
-        if let Expr::Number(..) = expr
+        if let Expr::Integer(Integer::I64(n)) = expr
             && let Type::Builtin(t) = want
-            && t.is_number()
+            && t.is_integer()
+            && let Some(n) = t.narrow_integer(*n)
         {
+            *expr = Expr::Integer(n);
+            return Ok(None);
+        }
+
+        if let Expr::Float(Float::F64(n)) = expr
+            && let Type::Builtin(t) = want
+            && t.is_float()
+        {
+            *expr = Expr::Float(t.narrow_float(*n));
             return Ok(None);
         }
 
@@ -187,7 +197,14 @@ impl Checker {
                     ));
                 }
                 Expr::Unit => Type::Builtin(BuiltinType::Unit),
-                Expr::Number(..) => Type::Builtin(BuiltinType::F64),
+                Expr::Integer(n) => {
+                    debug_assert!(matches!(n, Integer::I64(..)));
+                    Type::Builtin(BuiltinType::I64)
+                }
+                Expr::Float(n) => {
+                    debug_assert!(matches!(n, Float::F64(..)));
+                    Type::Builtin(BuiltinType::F64)
+                }
                 Expr::String(..) => Type::Builtin(BuiltinType::Str),
                 Expr::Boolean(..) => Type::Builtin(BuiltinType::Bool),
                 Expr::Call(f, args) => {
@@ -215,19 +232,21 @@ impl Checker {
                         })?;
                     typ.ret
                 }
-                Expr::BinaryOp(lhs, op, rhs) => match op {
+                Expr::BinaryOp(lhs, op, typ, rhs) => match op {
                     Sym::EqEq => {
-                        let want = self.infer(&mut lhs.item)?.1;
-                        self.check(rhs.span, &mut rhs.item, &want)?;
+                        let got = self.infer(&mut lhs.item)?.1;
+                        self.check(rhs.span, &mut rhs.item, &got)?;
+                        *typ = Some(got);
                         Type::Builtin(BuiltinType::Bool)
                     }
 
                     Sym::Lt | Sym::Gt | Sym::Le | Sym::Ge => {
                         let got = self.infer(&mut lhs.item)?.1;
                         if let Type::Builtin(t) = got
-                            && t.is_number()
+                            && (t.is_integer() || t.is_float())
                         {
                             self.check(rhs.span, &mut rhs.item, &got)?;
+                            *typ = Some(got);
                             Type::Builtin(BuiltinType::Bool)
                         } else {
                             return Err(Error::TypeMismatch {
@@ -241,9 +260,10 @@ impl Checker {
                     Sym::Plus | Sym::Minus | Sym::Mul => {
                         let got = self.infer(&mut lhs.item)?.1;
                         if let Type::Builtin(t) = got
-                            && t.is_number()
+                            && (t.is_integer() || t.is_float())
                         {
                             self.check(rhs.span, &mut rhs.item, &got)?;
+                            *typ = Some(got.clone());
                             got
                         } else {
                             return Err(Error::TypeMismatch {

@@ -2,6 +2,7 @@ use chumsky::Parser;
 use std::mem::transmute;
 use std::path::Path;
 
+use crate::semantics::Integer;
 use crate::syntax::Expr;
 use crate::syntax::parse::Token;
 use crate::syntax::parse::expr::expr;
@@ -104,19 +105,27 @@ function f(): u32 {
 
 #[test]
 fn it_runs_fibonacci() {
-    let a = eval_nth(include_str!("fibonacci.rows"), 0, Expr::Number(10.));
-    assert!(matches!(a, Expr::Number(89.)));
+    let a = eval_nth(
+        include_str!("fibonacci.rows"),
+        0,
+        Expr::Integer(Integer::U32(10)),
+    );
+    assert!(matches!(a, Expr::Integer(Integer::U32(89))));
 }
 
 #[test]
 fn it_runs_factorial() {
-    let a = eval_nth(include_str!("factorial.rows"), 0, Expr::Number(10.));
-    assert!(matches!(a, Expr::Number(3628800.)));
+    let a = eval_nth(
+        include_str!("factorial.rows"),
+        0,
+        Expr::Integer(Integer::U32(10)),
+    );
+    assert!(matches!(a, Expr::Integer(Integer::U32(3628800))));
 }
 
 #[test]
-fn it_runs_factorial_main() {
-    eval(include_str!("factorial.rows"));
+fn it_runs_hello_main() {
+    eval(include_str!("hello.rows"));
 }
 
 fn run_compiled<T, R>(path: &Path, text: &str, input: T) -> R {
@@ -130,38 +139,38 @@ fn run_compiled<T, R>(path: &Path, text: &str, input: T) -> R {
 
 #[test]
 fn it_runs_compiled() {
-    let v = run_compiled::<f64, f64>(
+    let v = run_compiled::<u32, u32>(
         Path::new("<stdin>"),
         "function f(a: u32): u32 { return a + 1 }",
-        0.,
+        0,
     );
-    assert_eq!(v, 1.);
+    assert_eq!(v, 1);
 }
 
 #[test]
 fn it_runs_compiled_fibonacci() {
-    let v = run_compiled::<f64, f64>(
+    let v = run_compiled::<u32, u32>(
         Path::new("src")
             .join("tests")
             .join("fibonacci.rows")
             .as_path(),
         include_str!("fibonacci.rows"),
-        10.,
+        10,
     );
-    assert_eq!(v, 89.);
+    assert_eq!(v, 89);
 }
 
 #[test]
 fn it_runs_compiled_factorial() {
-    let v = run_compiled::<f64, f64>(
+    let v = run_compiled::<u32, u32>(
         Path::new("src")
             .join("tests")
             .join("factorial.rows")
             .as_path(),
         include_str!("factorial.rows"),
-        10.,
+        10,
     );
-    assert_eq!(v, 3628800.);
+    assert_eq!(v, 3628800);
 }
 
 fn run_compiled_main(path: &Path, text: &str) {

@@ -9,8 +9,8 @@ use chumsky::extra::ParserExtra;
 use chumsky::input::{Input, MapExtra};
 use ustr::Ustr;
 
-use crate::semantics::BuiltinType;
 use crate::semantics::builtin::Builtin;
+use crate::semantics::{BuiltinType, Float, Integer, Type};
 use crate::syntax::parse::{Sym, Token};
 use crate::{Span, Spanned};
 
@@ -85,13 +85,14 @@ pub enum Expr {
 
     // Constants.
     Unit,
-    Number(f64),
+    Integer(Integer),
+    Float(Float),
     String(Ustr),
     Boolean(bool),
 
     // Values.
     Call(Box<Spanned<Self>>, Box<[Spanned<Self>]>),
-    BinaryOp(Box<Spanned<Self>>, Sym, Box<Spanned<Self>>),
+    BinaryOp(Box<Spanned<Self>>, Sym, Option<Type>, Box<Spanned<Self>>),
 }
 
 impl Expr {
@@ -106,7 +107,7 @@ impl Expr {
         E: ParserExtra<'src, I>,
     {
         let Token::Sym(sym) = op else { unreachable!() };
-        Spanned::from_map_extra(Self::BinaryOp(Box::new(lhs), sym, Box::new(rhs)), e)
+        Spanned::from_map_extra(Self::BinaryOp(Box::new(lhs), sym, None, Box::new(rhs)), e)
     }
 }
 

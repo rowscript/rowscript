@@ -3,11 +3,12 @@ pub(crate) mod file;
 pub(crate) mod lex;
 pub(crate) mod stmt;
 
+use chumsky::Parser;
 use chumsky::container::Container;
 use chumsky::extra::Err as Full;
 use chumsky::input::ValueInput;
 use chumsky::prelude::{IterParser, Rich, just};
-use chumsky::{Parser, select};
+use chumsky::primitive::select;
 use strum::{Display, EnumString};
 use ustr::Ustr;
 
@@ -93,9 +94,10 @@ fn id<'t, I>() -> impl Parser<'t, I, Spanned<Id>, SyntaxErr<'t, Token>> + Clone
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
-    select! {
-        Token::Ident(n) => n
-    }
+    select(|x, _| match x {
+        Token::Ident(n) => Some(n),
+        _ => None,
+    })
     .map_with(Spanned::from_map_extra)
     .labelled("identifier")
 }

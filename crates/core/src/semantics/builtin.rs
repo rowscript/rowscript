@@ -1,11 +1,11 @@
-use cranelift::prelude::types::{F64, I8};
+use cranelift::prelude::types::{I8, I32};
 use cranelift::prelude::{AbiParam, Signature};
 use cranelift_jit::{JITBuilder, JITModule};
 use cranelift_module::{FuncId, Linkage, Module};
 use strum::{Display, EnumString};
 
 use crate::Error;
-use crate::semantics::{BuiltinType, FunctionType, Type};
+use crate::semantics::{BuiltinType, FunctionType, Integer, Type};
 use crate::syntax::Expr;
 
 #[derive(Debug, Clone, Display, EnumString)]
@@ -58,7 +58,7 @@ const PRINTLN: Proto = Proto {
     },
     eval: |args| {
         if let [v] = &args[..]
-            && let Expr::Number(n) = v
+            && let Expr::Integer(Integer::U32(n)) = v
         {
             println(*n);
             return Expr::Unit;
@@ -66,12 +66,12 @@ const PRINTLN: Proto = Proto {
         unreachable!()
     },
     declare: |sig| {
-        sig.params.push(AbiParam::new(F64)); // FIXME: correct type
+        sig.params.push(AbiParam::new(I32)); // FIXME: correct type
         sig.returns.push(AbiParam::new(I8));
     },
 };
 
-fn println(v: f64) -> u8 {
+fn println(v: u32) -> u8 {
     println!("{v}");
     Default::default()
 }

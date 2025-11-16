@@ -17,9 +17,9 @@ use cranelift::codegen::gimli::{
 use cranelift::codegen::ir::{RelSourceLoc, SourceLoc};
 use cranelift::codegen::isa::OwnedTargetIsa;
 use cranelift::prelude::settings::{Flags, builder as flags_builder};
-use cranelift::prelude::types::{F64, I8};
+use cranelift::prelude::types::{F32, F64, I8, I16, I32, I64};
 use cranelift::prelude::{
-    AbiParam, Configurable, FloatCC, FunctionBuilder, FunctionBuilderContext, InstBuilder,
+    AbiParam, Configurable, FloatCC, FunctionBuilder, FunctionBuilderContext, InstBuilder, IntCC,
     Signature, Type as JitType, Value, Variable,
 };
 use cranelift_jit::{JITBuilder, JITModule};
@@ -34,7 +34,7 @@ use object::{
 use wasmtime_internal_jit_debug::gdb_jit_int::GdbJitImageRegistration;
 
 use crate::semantics::builtin::import;
-use crate::semantics::{BuiltinType, Func, FunctionType, Functions, Type};
+use crate::semantics::{BuiltinType, Float, Func, FunctionType, Functions, Integer, Type};
 use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
 use crate::{Error, LineCol, Out, Span, Spanned};
@@ -363,63 +363,6 @@ impl Spanned<Func> {
     }
 }
 
-impl Expr {
-    fn compile(&self, jit: &mut Jit, builder: &mut FunctionBuilder) -> Value {
-        match self {
-            Expr::Ident(ident) => {
-                let Ident::Idx(idx) = ident else { todo!() };
-                builder.use_var(Variable::from_u32(*idx as _))
-            }
-            Expr::BuiltinType(..) | Expr::PtrType(..) => unreachable!(),
-            Expr::Unit => builder.ins().iconst(I8, 0),
-            Expr::Number(n) => builder.ins().f64const(*n),
-            Expr::String(..) => todo!("use UstrSet to prevent duplicate in data sections"),
-            Expr::Boolean(b) => builder.ins().iconst(I8, *b as i64),
-            Expr::Call(f, args) => {
-                let args = args
-                    .iter()
-                    .map(|a| a.item.compile(jit, builder))
-                    .collect::<Box<_>>();
-
-                let mut sig = jit.m.make_signature();
-                let Expr::Ident(ident) = &f.item else {
-                    unreachable!();
-                };
-                let callee = match ident {
-                    Ident::Id(id) => {
-                        jit.fs.get(id).unwrap().item.typ.to_signature(&mut sig);
-                        // TODO: How to call back to functions in interpretation mode, or we don't?
-                        jit.m
-                            .declare_function(&id.raw(), Linkage::Import, &sig)
-                            .unwrap()
-                    }
-                    Ident::Builtin(b) => b.declare(&mut jit.m),
-                    Ident::Idx(..) => todo!("local function"),
-                };
-                let local_callee = jit.m.declare_func_in_func(callee, builder.func);
-                let call = builder.ins().call(local_callee, &args);
-                builder.inst_results(call)[0]
-            }
-            Expr::BinaryOp(lhs, op, rhs) => {
-                let a = lhs.item.compile(jit, builder);
-                let b = rhs.item.compile(jit, builder);
-                // TODO: Integers.
-                match op {
-                    Sym::Le => builder.ins().fcmp(FloatCC::LessThanOrEqual, a, b),
-                    Sym::Ge => builder.ins().fcmp(FloatCC::GreaterThanOrEqual, a, b),
-                    Sym::Lt => builder.ins().fcmp(FloatCC::LessThan, a, b),
-                    Sym::Gt => builder.ins().fcmp(FloatCC::GreaterThan, a, b),
-                    Sym::Plus => builder.ins().fadd(a, b),
-                    Sym::Minus => builder.ins().fsub(a, b),
-                    Sym::Mul => builder.ins().fmul(a, b),
-                    Sym::EqEq => builder.ins().fcmp(FloatCC::Equal, a, b),
-                    _ => unreachable!(),
-                }
-            }
-        }
-    }
-}
-
 impl Spanned<Stmt> {
     fn compile(
         &self,
@@ -552,6 +495,136 @@ impl Spanned<Stmt> {
     }
 }
 
+impl Expr {
+    fn compile(&self, jit: &mut Jit, builder: &mut FunctionBuilder) -> Value {
+        match self {
+            Expr::Ident(ident) => {
+                let Ident::Idx(idx) = ident else { todo!() };
+                builder.use_var(Variable::from_u32(*idx as _))
+            }
+            Expr::BuiltinType(..) | Expr::PtrType(..) => unreachable!(),
+            Expr::Unit => builder.ins().iconst(I8, 0),
+            Expr::Integer(n) => match n {
+                Integer::I8(n) => builder.ins().iconst(I8, *n as i64),
+                Integer::I16(n) => builder.ins().iconst(I16, *n as i64),
+                Integer::I32(n) => builder.ins().iconst(I32, *n as i64),
+                Integer::I64(n) => builder.ins().iconst(I64, *n),
+                Integer::U8(n) => builder.ins().iconst(I8, *n as i64),
+                Integer::U16(n) => builder.ins().iconst(I16, *n as i64),
+                Integer::U32(n) => builder.ins().iconst(I32, *n as i64),
+                Integer::U64(n) => builder.ins().iconst(I64, *n as i64),
+            },
+            Expr::Float(n) => match n {
+                Float::F32(n) => builder.ins().f32const(*n),
+                Float::F64(n) => builder.ins().f64const(*n),
+            },
+            Expr::String(..) => todo!("use UstrSet to prevent duplicate in data sections"),
+            Expr::Boolean(b) => builder.ins().iconst(I8, *b as i64),
+            Expr::Call(f, args) => {
+                let args = args
+                    .iter()
+                    .map(|a| a.item.compile(jit, builder))
+                    .collect::<Box<_>>();
+
+                let mut sig = jit.m.make_signature();
+                let Expr::Ident(ident) = &f.item else {
+                    unreachable!();
+                };
+                let callee = match ident {
+                    Ident::Id(id) => {
+                        jit.fs.get(id).unwrap().item.typ.to_signature(&mut sig);
+                        // TODO: How to call back to functions in interpretation mode, or we don't?
+                        jit.m
+                            .declare_function(&id.raw(), Linkage::Import, &sig)
+                            .unwrap()
+                    }
+                    Ident::Builtin(b) => b.declare(&mut jit.m),
+                    Ident::Idx(..) => todo!("local function"),
+                };
+                let local_callee = jit.m.declare_func_in_func(callee, builder.func);
+                let call = builder.ins().call(local_callee, &args);
+                builder.inst_results(call)[0]
+            }
+            Expr::BinaryOp(lhs, op, typ, rhs) => {
+                let a = lhs.item.compile(jit, builder);
+                let b = rhs.item.compile(jit, builder);
+                let Type::Builtin(typ) = *typ.as_ref().unwrap() else {
+                    unreachable!()
+                };
+                if typ.is_integer() {
+                    typ.compile_integer(builder, op, a, b)
+                } else if typ.is_float() {
+                    typ.compile_float(builder, op, a, b)
+                } else {
+                    unreachable!()
+                }
+            }
+        }
+    }
+}
+
+impl BuiltinType {
+    fn compile_integer(self, builder: &mut FunctionBuilder, op: &Sym, a: Value, b: Value) -> Value {
+        match op {
+            Sym::Le => builder.ins().icmp(
+                if self.is_signed_integer() {
+                    IntCC::SignedLessThanOrEqual
+                } else {
+                    IntCC::UnsignedLessThanOrEqual
+                },
+                a,
+                b,
+            ),
+            Sym::Ge => builder.ins().icmp(
+                if self.is_signed_integer() {
+                    IntCC::SignedGreaterThanOrEqual
+                } else {
+                    IntCC::UnsignedGreaterThanOrEqual
+                },
+                a,
+                b,
+            ),
+            Sym::Lt => builder.ins().icmp(
+                if self.is_signed_integer() {
+                    IntCC::SignedLessThan
+                } else {
+                    IntCC::UnsignedLessThan
+                },
+                a,
+                b,
+            ),
+            Sym::Gt => builder.ins().icmp(
+                if self.is_signed_integer() {
+                    IntCC::SignedGreaterThan
+                } else {
+                    IntCC::UnsignedGreaterThan
+                },
+                a,
+                b,
+            ),
+            Sym::Plus => builder.ins().iadd(a, b),
+            Sym::Minus => builder.ins().isub(a, b),
+            Sym::Mul => builder.ins().imul(a, b),
+            Sym::EqEq => builder.ins().icmp(IntCC::Equal, a, b),
+            _ => unreachable!(),
+        }
+    }
+
+    fn compile_float(self, builder: &mut FunctionBuilder, op: &Sym, a: Value, b: Value) -> Value {
+        match op {
+            Sym::Le => builder.ins().fcmp(FloatCC::LessThanOrEqual, a, b),
+            Sym::Ge => builder.ins().fcmp(FloatCC::GreaterThanOrEqual, a, b),
+            Sym::Lt => builder.ins().fcmp(FloatCC::LessThan, a, b),
+            Sym::Gt => builder.ins().fcmp(FloatCC::GreaterThan, a, b),
+            Sym::Plus => builder.ins().fadd(a, b),
+            Sym::Minus => builder.ins().fsub(a, b),
+            Sym::Mul => builder.ins().fmul(a, b),
+            Sym::EqEq => builder.ins().fcmp(FloatCC::Equal, a, b),
+            _ => unreachable!(),
+        }
+    }
+}
+
 fn declare_local(idx: u32, typ: Option<BuiltinType>, builder: &mut FunctionBuilder) -> Variable {
     let var = match typ {
         None => Variable::from_u32(idx),
@@ -564,25 +637,12 @@ fn declare_local(idx: u32, typ: Option<BuiltinType>, builder: &mut FunctionBuild
 impl From<BuiltinType> for JitType {
     fn from(t: BuiltinType) -> Self {
         match t {
-            // TODO: Use these:
-            // BuiltinType::Bool | BuiltinType::I8 | BuiltinType::U8 => I8,
-            // BuiltinType::I16 | BuiltinType::U16 => I16,
-            // BuiltinType::I32 | BuiltinType::U32 => I32,
-            // BuiltinType::I64 | BuiltinType::U64 => I64,
-            // BuiltinType::F32 => F32,
-            BuiltinType::Unit | BuiltinType::Bool => I8,
-
-            BuiltinType::I8
-            | BuiltinType::U8
-            | BuiltinType::I16
-            | BuiltinType::U16
-            | BuiltinType::I32
-            | BuiltinType::U32
-            | BuiltinType::I64
-            | BuiltinType::U64
-            | BuiltinType::F32
-            | BuiltinType::F64 => F64,
-
+            BuiltinType::Unit | BuiltinType::Bool | BuiltinType::I8 | BuiltinType::U8 => I8,
+            BuiltinType::I16 | BuiltinType::U16 => I16,
+            BuiltinType::I32 | BuiltinType::U32 => I32,
+            BuiltinType::I64 | BuiltinType::U64 => I64,
+            BuiltinType::F32 => F32,
+            BuiltinType::F64 => F64,
             _ => todo!(),
         }
     }

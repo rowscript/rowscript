@@ -1,4 +1,4 @@
-pub(crate) mod semantics;
+pub mod semantics;
 pub mod syntax;
 #[cfg(test)]
 mod tests;

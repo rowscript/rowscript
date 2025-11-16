@@ -1,9 +1,11 @@
+use chumsky::Parser;
 use chumsky::input::ValueInput;
 use chumsky::pratt::{infix, left, prefix};
 use chumsky::prelude::{just, recursive};
-use chumsky::{Parser, select};
+use chumsky::primitive::select;
 use serde_json::from_str;
 
+use crate::semantics::{Float, Integer};
 use crate::syntax::parse::{Sym, SyntaxErr, Token, grouped_by};
 use crate::syntax::{Expr, Ident};
 use crate::{Span, Spanned};
@@ -12,19 +14,27 @@ pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, SyntaxErr<'t, T
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
-    let constant = select! {
-        Token::Number(n) => Expr::Number(
-            from_str(n.as_str()).unwrap()),
-        Token::String(s) => Expr::String(s),
-        Token::Boolean(b) => Expr::Boolean(b),
-        Token::BuiltinType(t) => Expr::BuiltinType(t)
-    }
+    let constant = select(|x, _| {
+        Some(match x {
+            Token::Number(n) => {
+                let s = n.as_str();
+                from_str::<i64>(s)
+                    .map(|n| Expr::Integer(Integer::I64(n)))
+                    .unwrap_or_else(|_| Expr::Float(Float::F64(from_str(s).unwrap())))
+            }
+            Token::String(s) => Expr::String(s),
+            Token::Boolean(b) => Expr::Boolean(b),
+            Token::BuiltinType(t) => Expr::BuiltinType(t),
+            _ => return None,
+        })
+    })
     .map_with(Spanned::from_map_extra)
     .labelled("constant expression");
 
-    let ident = select! {
-        Token::Ident(n) => Expr::Ident(Ident::Id(n))
-    }
+    let ident = select(|x, _| match x {
+        Token::Ident(n) => Some(Expr::Ident(Ident::Id(n))),
+        _ => None,
+    })
     .map_with(Spanned::from_map_extra)
     .labelled("identifier expression");
 
