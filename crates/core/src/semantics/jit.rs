@@ -502,7 +502,7 @@ impl Expr {
                 let Ident::Idx(idx) = ident else { todo!() };
                 builder.use_var(Variable::from_u32(*idx as _))
             }
-            Expr::BuiltinType(..) | Expr::PtrType(..) => unreachable!(),
+            Expr::BuiltinType(..) | Expr::RefType(..) => unreachable!(),
             Expr::Unit => builder.ins().iconst(I8, 0),
             Expr::Integer(n) => match n {
                 Integer::I8(n) => builder.ins().iconst(I8, *n as i64),

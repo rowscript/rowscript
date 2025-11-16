@@ -165,7 +165,7 @@ impl<'a> Vm<'a> {
             }
 
             Expr::BuiltinType(..)
-            | Expr::PtrType(..)
+            | Expr::RefType(..)
             | Expr::Unit
             | Expr::Integer(..)
             | Expr::Float(..)

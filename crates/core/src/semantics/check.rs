@@ -189,10 +189,10 @@ impl Checker {
                 Expr::BuiltinType(t) => {
                     return Ok((Some(Type::Builtin(*t)), Type::Builtin(BuiltinType::Type)));
                 }
-                Expr::PtrType(t) => {
+                Expr::RefType(t) => {
                     let t = self.check_type(t.span, &mut t.item)?;
                     return Ok((
-                        Some(Type::Ptr(Box::new(t))),
+                        Some(Type::Ref(Box::new(t))),
                         Type::Builtin(BuiltinType::Type),
                     ));
                 }
@@ -280,7 +280,8 @@ impl Checker {
                     | Sym::RBrace
                     | Sym::Comma
                     | Sym::Colon
-                    | Sym::Eq => unreachable!(),
+                    | Sym::Eq
+                    | Sym::And => unreachable!(),
                 },
             },
         ))

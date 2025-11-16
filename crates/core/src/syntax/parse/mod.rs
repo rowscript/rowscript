@@ -43,6 +43,7 @@ pub enum Sym {
     Comma,
     Colon,
     Eq,
+    And,
     Lt,
     Gt,
     Plus,

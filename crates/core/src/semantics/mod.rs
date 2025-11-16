@@ -37,7 +37,7 @@ macro_rules! write_delimited {
 pub enum Type {
     Builtin(BuiltinType),
     Function(Box<FunctionType>),
-    Ptr(Box<Self>),
+    Ref(Box<Self>),
 }
 
 impl Type {
@@ -60,7 +60,7 @@ impl Display for Type {
         match self {
             Self::Builtin(t) => write!(f, "{t}"),
             Self::Function(t) => write!(f, "{t}"),
-            Self::Ptr(t) => write!(f, "*{t}"),
+            Self::Ref(t) => write!(f, "&{t}"),
         }
     }
 }

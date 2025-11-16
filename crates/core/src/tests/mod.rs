@@ -51,8 +51,8 @@ fn it_parses_expr() {
 }
 
 #[test]
-fn it_parses_expr_ptr_type() {
-    let out = lex().parse("*i32").unwrap();
+fn it_parses_expr_ref_type() {
+    let out = lex().parse("&i32").unwrap();
     expr().parse(out.tokens.as_slice()).unwrap();
 }
 

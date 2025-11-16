@@ -81,7 +81,7 @@ pub enum Expr {
 
     // Types.
     BuiltinType(BuiltinType),
-    PtrType(Box<Spanned<Self>>),
+    RefType(Box<Spanned<Self>>),
 
     // Constants.
     Unit,
