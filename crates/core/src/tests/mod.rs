@@ -57,6 +57,12 @@ fn it_parses_expr_ref_type() {
 }
 
 #[test]
+fn it_parses_expr_new() {
+    let out = lex().parse("new i32(42)").unwrap();
+    expr().parse(out.tokens.as_slice()).unwrap();
+}
+
+#[test]
 fn it_parses_file() {
     let out = lex()
         .parse(
@@ -101,6 +107,21 @@ function f(): u32 {
     let LineCol { start, end } = errs[0].0.as_ref().unwrap();
     assert_eq!(start, &(2, 11));
     assert_eq!(end, &(2, 15));
+}
+
+#[test]
+fn it_checks_ref_type() {
+    let mut s = State::default();
+    s.parse(
+        r#"
+function f(): &u32 {
+    return new u32(42)
+}
+"#,
+    )
+    .unwrap();
+    s.resolve().unwrap();
+    s.check().unwrap();
 }
 
 #[test]

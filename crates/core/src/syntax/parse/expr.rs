@@ -6,7 +6,7 @@ use chumsky::primitive::select;
 use serde_json::from_str;
 
 use crate::semantics::{Float, Integer};
-use crate::syntax::parse::{Sym, SyntaxErr, Token, grouped_by};
+use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by};
 use crate::syntax::{Expr, Ident};
 use crate::{Span, Spanned};
 
@@ -45,9 +45,16 @@ where
             .labelled("parenthesized expression");
 
         let args = grouped_by(Sym::LParen, expr, Sym::Comma, Sym::RParen).labelled("arguments");
-        let call = constant
-            .or(ident)
-            .or(paren)
+        let call = just(Token::Keyword(Keyword::New))
+            .or_not()
+            .then(constant.or(ident).or(paren))
+            .map_with(|(new, callee), e| match new {
+                None => callee,
+                Some(..) => Spanned {
+                    span: e.span(),
+                    item: Expr::New(Box::new(callee)),
+                },
+            })
             .foldl_with(args.repeated(), |callee, args, e| Spanned {
                 span: e.span(),
                 item: Expr::Call(Box::new(callee), args.into_boxed_slice()),

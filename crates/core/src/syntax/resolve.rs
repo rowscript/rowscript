@@ -110,6 +110,7 @@ impl Resolver {
                 self.expr(lhs.span, &mut lhs.item)?;
                 self.expr(rhs.span, &mut rhs.item)
             }
+            Expr::New(e) => self.expr(e.span, &mut e.item),
 
             Expr::BuiltinType(..)
             | Expr::Unit

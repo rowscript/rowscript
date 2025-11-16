@@ -119,23 +119,23 @@ impl State {
                 .collect(),
             Error::Parsing(errs) => errs
                 .into_iter()
-                .map(|(span, msg)| (Some(self.linecol(span)), format!("Parse error: {msg}")))
+                .map(|(span, msg)| (Some(self.line_col(span)), format!("Parse error: {msg}")))
                 .collect(),
             Error::UndefName(span, n) => {
                 vec![(
-                    Some(self.linecol(span)),
+                    Some(self.line_col(span)),
                     format!("Undefined variable '{n}'"),
                 )]
             }
             Error::TypeMismatch { span, got, want } => {
                 vec![(
-                    Some(self.linecol(span)),
+                    Some(self.line_col(span)),
                     format!("Type mismatch: Expected '{want}', but got '{got}'"),
                 )]
             }
             Error::ArityMismatch { span, got, want } => {
                 vec![(
-                    Some(self.linecol(span)),
+                    Some(self.line_col(span)),
                     format!("Arity mismatch: Expected '{want}', but got '{got}'"),
                 )]
             }
@@ -159,12 +159,18 @@ impl State {
         })
     }
 
-    fn linecol(&self, token: Span) -> LineCol {
-        self.lines
-            .get(token.start)
-            .or_else(|| self.lines.last())
-            .cloned()
-            .unwrap_or_default()
+    fn line_col(&self, token: Span) -> LineCol {
+        if let Some(start) = self.lines.get(token.start) {
+            if token.end - token.start > 1
+                && let Some(end) = self.lines.get(token.end - 1)
+            {
+                let start = start.start;
+                let end = end.end;
+                return LineCol { start, end };
+            }
+            return *start;
+        }
+        self.lines.last().cloned().unwrap_or_default()
     }
 
     pub fn parse(&mut self, text: &str) -> Out<()> {

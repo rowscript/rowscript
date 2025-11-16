@@ -283,6 +283,13 @@ impl Checker {
                     | Sym::Eq
                     | Sym::And => unreachable!(),
                 },
+                Expr::New(t) => {
+                    let typ = self.check_type(t.span, &mut t.item)?;
+                    Type::Function(Box::new(FunctionType {
+                        params: Box::new([typ.clone()]), // TODO: accurate arity
+                        ret: Type::Ref(Box::new(typ)),
+                    }))
+                }
             },
         ))
     }
@@ -339,6 +346,7 @@ fn isa(span: Span, got: &Type, want: &Type) -> Out<()> {
                 .try_for_each(|(a, b)| isa(span, a, b))?;
             isa(span, &a.ret, &b.ret)
         }
+        (Type::Ref(a), Type::Ref(b)) => isa(span, a, b),
         _ => {
             let got = got.to_string();
             let want = want.to_string();

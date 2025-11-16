@@ -163,6 +163,7 @@ impl<'a> Vm<'a> {
                     _ => unreachable!(),
                 }
             }
+            Expr::New(..) => todo!("new expression"),
 
             Expr::BuiltinType(..)
             | Expr::RefType(..)

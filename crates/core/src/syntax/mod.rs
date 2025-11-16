@@ -93,6 +93,7 @@ pub enum Expr {
     // Values.
     Call(Box<Spanned<Self>>, Box<[Spanned<Self>]>),
     BinaryOp(Box<Spanned<Self>>, Sym, Option<Type>, Box<Spanned<Self>>),
+    New(Box<Spanned<Self>>),
 }
 
 impl Expr {

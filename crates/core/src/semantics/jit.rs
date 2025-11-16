@@ -528,7 +528,7 @@ impl Expr {
 
                 let mut sig = jit.m.make_signature();
                 let Expr::Ident(ident) = &f.item else {
-                    unreachable!();
+                    todo!("new expression");
                 };
                 let callee = match ident {
                     Ident::Id(id) => {
@@ -559,6 +559,7 @@ impl Expr {
                     unreachable!()
                 }
             }
+            Expr::New(..) => unreachable!(),
         }
     }
 }

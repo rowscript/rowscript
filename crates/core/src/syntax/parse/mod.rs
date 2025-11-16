@@ -26,6 +26,7 @@ pub(crate) enum Keyword {
     Else,
     Return,
     While,
+    New,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Display)]
