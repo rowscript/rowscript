@@ -22,6 +22,13 @@ impl Checker {
                     let (typ, local) = self.sig(sig)?;
                     let got = self.block(local, body)?;
                     isa(def.span, &got, &typ.ret)?;
+                    if file.main.as_ref() == Some(&sig.name) {
+                        isa(
+                            sig.ret.as_ref().map(|s| s.span).unwrap_or(def.span),
+                            &Type::Function(Box::new(typ.clone())),
+                            &Type::main(),
+                        )?;
+                    }
                     let old = self.fns.insert(
                         sig.name.clone(),
                         Spanned {
@@ -36,20 +43,13 @@ impl Checker {
                     Ok(())
                 }
             })?;
-        if let Some(id) = &file.main {
-            isa(
-                self.fns.get(id).unwrap().span,
-                self.globals.get(id).unwrap(),
-                &Type::main(),
-            )?;
-        }
         debug_assert!(self.locals.is_empty());
         Ok(self.fns)
     }
 
     fn stmt(&mut self, block: &mut Block, stmt: &mut Spanned<Stmt>) -> Out<Type> {
         Ok(match &mut stmt.item {
-            Stmt::Expr(e) => self.infer(e)?.1,
+            Stmt::Expr(e) => self.infer(stmt.span, e)?.1,
             Stmt::Assign { name, typ, rhs, .. } => {
                 let rhs_type = typ
                     .as_mut()
@@ -58,7 +58,7 @@ impl Checker {
                         self.check(rhs.span, &mut rhs.item, &want)?;
                         Ok(want)
                     })
-                    .unwrap_or_else(|| Ok(self.infer(&mut rhs.item)?.1))?;
+                    .unwrap_or_else(|| Ok(self.infer(rhs.span, &mut rhs.item)?.1))?;
                 self.insert(block, &name.item, rhs_type.clone());
                 *typ = Some(Spanned {
                     span: typ.as_ref().map(|t| t.span).unwrap_or(name.span),
@@ -70,7 +70,7 @@ impl Checker {
                 rhs_type
             }
             Stmt::Update { name, rhs } => {
-                let rhs_type = self.infer(&mut rhs.item)?.1;
+                let rhs_type = self.infer(rhs.span, &mut rhs.item)?.1;
                 let lhs_type = self.ident(&name.item);
                 isa(name.span, &rhs_type, &lhs_type)?;
                 lhs_type
@@ -171,7 +171,7 @@ impl Checker {
             return Ok(None);
         }
 
-        let (typ, got) = self.infer(expr)?;
+        let (typ, got) = self.infer(span, expr)?;
         isa(span, &got, want)?;
         Ok(typ)
     }
@@ -181,7 +181,7 @@ impl Checker {
             .map(Option::unwrap)
     }
 
-    fn infer(&mut self, expr: &mut Expr) -> Out<(Option<Type>, Type)> {
+    fn infer(&mut self, span: Span, expr: &mut Expr) -> Out<(Option<Type>, Type)> {
         Ok((
             None,
             match expr {
@@ -208,8 +208,7 @@ impl Checker {
                 Expr::String(..) => Type::Builtin(BuiltinType::Str),
                 Expr::Boolean(..) => Type::Builtin(BuiltinType::Bool),
                 Expr::Call(f, args) => {
-                    let span = f.span;
-                    let typ = self.infer(&mut f.item)?.1;
+                    let typ = self.infer(f.span, &mut f.item)?.1;
                     let Type::Function(typ) = typ else {
                         return Err(Error::TypeMismatch {
                             span,
@@ -234,14 +233,14 @@ impl Checker {
                 }
                 Expr::BinaryOp(lhs, op, typ, rhs) => match op {
                     Sym::EqEq => {
-                        let got = self.infer(&mut lhs.item)?.1;
+                        let got = self.infer(lhs.span, &mut lhs.item)?.1;
                         self.check(rhs.span, &mut rhs.item, &got)?;
                         *typ = Some(got);
                         Type::Builtin(BuiltinType::Bool)
                     }
 
                     Sym::Lt | Sym::Gt | Sym::Le | Sym::Ge => {
-                        let got = self.infer(&mut lhs.item)?.1;
+                        let got = self.infer(lhs.span, &mut lhs.item)?.1;
                         if let Type::Builtin(t) = got
                             && (t.is_integer() || t.is_float())
                         {
@@ -258,7 +257,7 @@ impl Checker {
                     }
 
                     Sym::Plus | Sym::Minus | Sym::Mul => {
-                        let got = self.infer(&mut lhs.item)?.1;
+                        let got = self.infer(lhs.span, &mut lhs.item)?.1;
                         if let Type::Builtin(t) = got
                             && (t.is_integer() || t.is_float())
                         {
