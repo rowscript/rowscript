@@ -116,17 +116,18 @@ impl<'a> Vm<'a> {
                 Expr::Ident(n.clone())
             }
             Expr::Call(f, args) => {
-                let Expr::Ident(n) = self.expr(frame, &f.item) else {
-                    unreachable!();
-                };
                 let args = args.iter().map(|e| self.expr(frame, &e.item)).collect();
-                match n {
-                    Ident::Id(id) => {
-                        let f = self.fs.get(&id).unwrap();
-                        self.func(&f.item.body, args)
-                    }
-                    Ident::Builtin(b) => b.eval(args),
-                    Ident::Idx(..) => todo!("local function"),
+                match self.expr(frame, &f.item) {
+                    Expr::Ident(n) => match n {
+                        Ident::Id(id) => {
+                            let f = self.fs.get(&id).unwrap();
+                            self.func(&f.item.body, args)
+                        }
+                        Ident::Builtin(b) => b.eval(args),
+                        Ident::Idx(..) => unreachable!(),
+                    },
+                    Expr::New(..) => todo!("new expression"),
+                    _ => unreachable!(),
                 }
             }
             Expr::BinaryOp(lhs, op, .., rhs) => {
@@ -163,7 +164,7 @@ impl<'a> Vm<'a> {
                     _ => unreachable!(),
                 }
             }
-            Expr::New(..) => todo!("new expression"),
+            Expr::New(..) => unreachable!(),
 
             Expr::BuiltinType(..)
             | Expr::RefType(..)

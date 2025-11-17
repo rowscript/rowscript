@@ -151,7 +151,7 @@ pub struct FunctionType {
 
 impl Display for FunctionType {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write_delimited!(f, "(", self.params, ",", ")");
+        write_delimited!(f, "(", self.params, ", ", ")");
         write!(f, " -> {}", self.ret)
     }
 }

@@ -1,6 +1,7 @@
-use chumsky::Parser;
 use std::mem::transmute;
 use std::path::Path;
+
+use chumsky::Parser;
 
 use crate::semantics::Integer;
 use crate::syntax::Expr;
