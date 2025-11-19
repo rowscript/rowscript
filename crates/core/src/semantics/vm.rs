@@ -1,4 +1,5 @@
 use std::ops::ControlFlow;
+use std::rc::Rc;
 use std::slice::from_ref;
 
 use crate::Spanned;
@@ -126,7 +127,11 @@ impl<'a> Vm<'a> {
                         Ident::Builtin(b) => b.eval(args),
                         Ident::Idx(..) => unreachable!(),
                     },
-                    Expr::New(..) => todo!("new expression"),
+                    Expr::New(..) => {
+                        // TODO: Other arity and other types.
+                        let arg = args.into_iter().next().unwrap();
+                        Expr::Ref(Rc::new(arg))
+                    }
                     _ => unreachable!(),
                 }
             }
@@ -172,7 +177,8 @@ impl<'a> Vm<'a> {
             | Expr::Integer(..)
             | Expr::Float(..)
             | Expr::String(..)
-            | Expr::Boolean(..) => expr.clone(),
+            | Expr::Boolean(..)
+            | Expr::Ref(..) => expr.clone(),
         }
     }
 }

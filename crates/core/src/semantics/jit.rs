@@ -559,7 +559,7 @@ impl Expr {
                     unreachable!()
                 }
             }
-            Expr::New(..) => unreachable!(),
+            Expr::New(..) | Expr::Ref(..) => unreachable!(),
         }
     }
 }

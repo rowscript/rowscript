@@ -289,6 +289,7 @@ impl Checker {
                         ret: Type::Ref(Box::new(typ)),
                     }))
                 }
+                Expr::Ref(..) => unreachable!(),
             },
         ))
     }

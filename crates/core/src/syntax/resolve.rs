@@ -118,6 +118,8 @@ impl Resolver {
             | Expr::Float(..)
             | Expr::String(..)
             | Expr::Boolean(..) => Ok(()),
+
+            Expr::Ref(..) => unreachable!(),
         }
     }
 
