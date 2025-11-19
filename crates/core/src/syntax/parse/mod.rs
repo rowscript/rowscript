@@ -57,7 +57,7 @@ pub(crate) enum Token {
     #[strum(transparent)]
     Number(Ustr),
     #[strum(transparent)]
-    String(Ustr), // TODO: short (interned) and long strings
+    String(String),
     #[strum(transparent)]
     Boolean(bool),
     #[strum(transparent)]

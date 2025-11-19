@@ -87,7 +87,7 @@ pub enum Expr {
     Unit,
     Integer(Integer),
     Float(Float),
-    String(Ustr),
+    String(String),
     Boolean(bool),
 
     // Values.
