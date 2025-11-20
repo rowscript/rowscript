@@ -8,6 +8,7 @@ import { LanguageClient } from "vscode-languageclient/node";
 const name = "RowScript";
 const id = name.toLowerCase();
 const isProd = process.env.NODE_ENV === "production";
+const ext = ".rows";
 
 let extensionPath: string;
 
@@ -53,27 +54,30 @@ export async function activate(ctx: vscode.ExtensionContext) {
 
 async function activateDebugger(ctx: vscode.ExtensionContext) {
   const lldb = "vadimcn.vscode-lldb";
-  const ext = vscode.extensions.getExtension(lldb);
-  if (!ext) {
+  const dbg = vscode.extensions.getExtension(lldb);
+  if (!dbg) {
     const link = `command:extension.open?${encodeURIComponent(`"${lldb}"`)}`;
     await vscode.window.showInformationMessage(
       `Install or enable [CodeLLDB](${link} "Open CodeLLDB") for further debugging`,
     );
     return;
   }
+  const debugConfig = {
+    name: "Debug RowScript Program",
+    type: "lldb",
+    request: "launch",
+    program: command(),
+    args: ["run", "${file}"],
+    initCommands: ["settings set plugin.jit-loader.gdb.enable on"],
+  };
   ctx.subscriptions.push(
     vscode.debug.registerDebugConfigurationProvider("lldb", {
-      provideDebugConfigurations: (_folder) => [
-        {
-          name: "Debug RowScript Program",
-          type: "lldb",
-          request: "launch",
-          program: command(),
-          args: ["run", "${file}"],
-          cwd: "${workspaceRoot}",
-          initCommands: ["settings set plugin.jit-loader.gdb.enable on"],
-        },
-      ],
+      provideDebugConfigurations: (_folder) => [debugConfig],
+      resolveDebugConfiguration(_folder, _debugConfiguration) {
+        return vscode.window.activeTextEditor?.document.fileName.endsWith(ext)
+          ? debugConfig
+          : undefined;
+      },
     }),
   );
 }
