@@ -150,6 +150,11 @@ fn it_runs_hello_main() {
     eval(include_str!("hello.rows"));
 }
 
+#[test]
+fn it_runs_ref_main() {
+    eval(include_str!("ref.rows"));
+}
+
 fn run_compiled<T, R>(path: &Path, text: &str, input: T) -> R {
     let mut s = State::default();
     s.parse(text).unwrap();

@@ -169,7 +169,15 @@ impl<'a> Vm<'a> {
                     _ => unreachable!(),
                 }
             }
-            Expr::New(..) => unreachable!(),
+            Expr::UnaryOp(x, op, ..) => match op {
+                Sym::Mul => {
+                    let Expr::Ref(v) = self.expr(frame, &x.item) else {
+                        unreachable!()
+                    };
+                    Rc::try_unwrap(v).unwrap()
+                }
+                _ => unreachable!(),
+            },
 
             Expr::BuiltinType(..)
             | Expr::RefType(..)
@@ -178,6 +186,7 @@ impl<'a> Vm<'a> {
             | Expr::Float(..)
             | Expr::String(..)
             | Expr::Boolean(..)
+            | Expr::New(..)
             | Expr::Ref(..) => expr.clone(),
         }
     }

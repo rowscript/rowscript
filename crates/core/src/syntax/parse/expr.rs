@@ -65,6 +65,7 @@ where
             prefix(4, just(Token::Sym(Sym::And)), |_, a, e| {
                 Spanned::from_map_extra(Expr::RefType(Box::new(a)), e)
             }),
+            prefix(4, just(Token::Sym(Sym::Mul)), Expr::unary),
             infix(left(3), just(Token::Sym(Sym::Mul)), Expr::binary),
             infix(left(2), just(Token::Sym(Sym::Plus)), Expr::binary),
             infix(left(2), just(Token::Sym(Sym::Minus)), Expr::binary),

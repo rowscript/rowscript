@@ -9,8 +9,8 @@ use strum::{Display, EnumString};
 
 use rowscript_derive::Ops;
 
-use crate::Spanned;
-use crate::syntax::{Id, Stmt};
+use crate::syntax::{Expr, Id, Stmt};
+use crate::{Span, Spanned};
 
 macro_rules! write_separated {
     ($f:ident, $items:expr, $sep:literal) => {
@@ -46,6 +46,17 @@ impl Type {
             params: Default::default(),
             ret: Self::Builtin(BuiltinType::Unit),
         }))
+    }
+
+    fn to_expr(&self, span: Span) -> Expr {
+        match self {
+            Type::Builtin(t) => Expr::BuiltinType(*t),
+            Type::Ref(t) => Expr::RefType(Box::new(Spanned {
+                span,
+                item: t.to_expr(span),
+            })),
+            _ => unreachable!(),
+        }
     }
 }
 

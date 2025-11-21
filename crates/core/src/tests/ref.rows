@@ -1,0 +1,9 @@
+function f(): &u32 {
+    return new u32(42)
+}
+
+function main() {
+    // Doing this will panic on Rc::try_unwrap.
+    //let a = f()
+    println(*f())
+}

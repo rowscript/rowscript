@@ -62,10 +62,7 @@ impl Checker {
                 self.insert(block, &name.item, rhs_type.clone());
                 *typ = Some(Spanned {
                     span: typ.as_ref().map(|t| t.span).unwrap_or(name.span),
-                    item: match rhs_type {
-                        Type::Builtin(t) => Expr::BuiltinType(t),
-                        _ => todo!(),
-                    },
+                    item: rhs_type.to_expr(name.span),
                 });
                 rhs_type
             }
@@ -238,7 +235,6 @@ impl Checker {
                         *typ = Some(got);
                         Type::Builtin(BuiltinType::Bool)
                     }
-
                     Sym::Lt | Sym::Gt | Sym::Le | Sym::Ge => {
                         let got = self.infer(lhs.span, &mut lhs.item)?.1;
                         if let Type::Builtin(t) = got
@@ -255,7 +251,6 @@ impl Checker {
                             });
                         }
                     }
-
                     Sym::Plus | Sym::Minus | Sym::Mul => {
                         let got = self.infer(lhs.span, &mut lhs.item)?.1;
                         if let Type::Builtin(t) = got
@@ -272,15 +267,22 @@ impl Checker {
                             });
                         }
                     }
-
-                    Sym::LParen
-                    | Sym::RParen
-                    | Sym::LBrace
-                    | Sym::RBrace
-                    | Sym::Comma
-                    | Sym::Colon
-                    | Sym::Eq
-                    | Sym::And => unreachable!(),
+                    _ => unreachable!(),
+                },
+                Expr::UnaryOp(x, op, typ) => match op {
+                    Sym::Mul => {
+                        let got = self.infer(x.span, &mut x.item)?.1;
+                        let Type::Ref(got) = got else {
+                            return Err(Error::TypeMismatch {
+                                span,
+                                got: got.to_string(),
+                                want: "reference type".to_string(),
+                            });
+                        };
+                        *typ = Some(*got.clone());
+                        *got
+                    }
+                    _ => unreachable!(),
                 },
                 Expr::New(t) => {
                     let typ = self.check_type(t.span, &mut t.item)?;

@@ -93,6 +93,7 @@ pub enum Expr {
     // Values.
     Call(Box<Spanned<Self>>, Box<[Spanned<Self>]>),
     BinaryOp(Box<Spanned<Self>>, Sym, Option<Type>, Box<Spanned<Self>>),
+    UnaryOp(Box<Spanned<Self>>, Sym, Option<Type>),
     New(Box<Spanned<Self>>),
 
     // VM-specific constructs.
@@ -112,6 +113,19 @@ impl Expr {
     {
         let Token::Sym(sym) = op else { unreachable!() };
         Spanned::from_map_extra(Self::BinaryOp(Box::new(lhs), sym, None, Box::new(rhs)), e)
+    }
+
+    fn unary<'src, 'b, I, E>(
+        op: Token,
+        x: Spanned<Self>,
+        e: &mut MapExtra<'src, 'b, I, E>,
+    ) -> Spanned<Self>
+    where
+        I: Input<'src, Span = Span>,
+        E: ParserExtra<'src, I>,
+    {
+        let Token::Sym(sym) = op else { unreachable!() };
+        Spanned::from_map_extra(Self::UnaryOp(Box::new(x), sym, None), e)
     }
 }
 

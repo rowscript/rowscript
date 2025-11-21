@@ -559,6 +559,7 @@ impl Expr {
                     unreachable!()
                 }
             }
+            Expr::UnaryOp(..) => todo!(),
             Expr::New(..) | Expr::Ref(..) => unreachable!(),
         }
     }
