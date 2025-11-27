@@ -19,12 +19,12 @@ fn eval_nth(text: &str, n: usize, arg: Expr) -> Expr {
     s.eval_nth(n, arg)
 }
 
-fn eval(text: &str) -> Expr {
+fn eval(text: &str) {
     let mut s = State::default();
     s.parse(text).unwrap();
     s.resolve().unwrap();
     s.check().unwrap();
-    s.eval().unwrap()
+    s.eval().unwrap();
 }
 
 #[test]

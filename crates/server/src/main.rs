@@ -14,7 +14,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() {
     match Cli::parse().command {
-        Command::Run { path } => run(&path),
+        Command::Run { path, interp } => run(&path, interp),
         Command::Build { path } => build(&path),
         Command::Server => serve(),
     }
@@ -33,6 +33,9 @@ enum Command {
         /// Path to a file or package
         #[clap(default_value = ".")]
         path: Box<Path>,
+        /// Interpret the program without JIT compilation
+        #[arg(short, long)]
+        interp: bool,
     },
     /// Build a program
     Build {

@@ -230,9 +230,10 @@ impl State {
         Vm::new(&self.fs).func(stmts, Default::default())
     }
 
-    pub fn eval(&self) -> Out<Expr> {
+    pub fn eval(&self) -> Out<()> {
         let main = self.file.main.as_ref().ok_or(Error::ExpectedMain)?;
-        Ok(Vm::new(&self.fs).func(&self.fs.get(main).unwrap().item.body, Default::default()))
+        Vm::new(&self.fs).func(&self.fs.get(main).unwrap().item.body, Default::default());
+        Ok(())
     }
 
     pub fn compile(&self, path: &Path) -> Out<Code> {
