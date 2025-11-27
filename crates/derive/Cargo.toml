@@ -7,5 +7,5 @@ edition = "2024"
 proc-macro = true
 
 [dependencies]
-syn = "2.0.110"
+syn = "2.0.111"
 quote = "1.0.42"

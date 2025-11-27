@@ -9,13 +9,13 @@ strum = { version = "0.27.2", features = ["derive"] }
 ustr = "1.1.0"
 serde_json = "1.0.145"
 chumsky = { version = "1.0.0-alpha.8", features = ["pratt"] }
-cranelift = "0.125.4"
-cranelift-native = "0.125.4"
-cranelift-module = "0.125.4"
-cranelift-jit = "0.125.4"
-object = { version = "0.37.3", features = ["write", "read"] }
+cranelift = "0.126.1"
+cranelift-native = "0.126.1"
+cranelift-module = "0.126.1"
+cranelift-jit = "0.126.1"
+object = { version = "0.38.0", features = ["write", "read"] }
 target-lexicon = "0.13.3"
-wasmtime-internal-jit-debug = { version = "38.0.3", features = ["std", "gdb_jit_int"] }
+wasmtime-internal-jit-debug = { version = "39.0.1", features = ["std", "gdb_jit_int"] }
 
 [dev-dependencies]
 criterion = "0.7.0"
