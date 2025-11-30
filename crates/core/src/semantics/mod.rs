@@ -154,7 +154,7 @@ pub enum Float {
     F64(f64),
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct FunctionType {
     params: Box<[Type]>,
     ret: Type,
@@ -167,10 +167,21 @@ impl Display for FunctionType {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub(crate) struct Func {
     pub(crate) typ: FunctionType,
     pub(crate) body: Box<[Spanned<Stmt>]>,
 }
 
-pub(crate) type Functions = HashMap<Id, Spanned<Func>>;
+#[derive(Debug)]
+pub(crate) struct Static {
+    #[allow(dead_code)]
+    pub(crate) typ: Type,
+    pub(crate) expr: Spanned<Expr>,
+}
+
+#[derive(Default, Debug)]
+pub(crate) struct Globals {
+    pub(crate) fns: HashMap<Id, Spanned<Func>>,
+    pub(crate) statics: HashMap<Id, Spanned<Static>>,
+}

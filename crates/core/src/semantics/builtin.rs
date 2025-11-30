@@ -8,7 +8,7 @@ use crate::Error;
 use crate::semantics::{BuiltinType, FunctionType, Integer, Type};
 use crate::syntax::Expr;
 
-#[derive(Debug, Clone, Display, EnumString)]
+#[derive(Debug, Copy, Clone, Display, EnumString)]
 #[strum(prefix = "rowscript_core_")]
 #[strum(serialize_all = "snake_case")]
 pub enum Builtin {

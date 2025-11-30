@@ -34,7 +34,7 @@ use object::{
 use wasmtime_internal_jit_debug::gdb_jit_int::GdbJitImageRegistration;
 
 use crate::semantics::builtin::import;
-use crate::semantics::{BuiltinType, Float, Func, FunctionType, Functions, Integer, Type};
+use crate::semantics::{BuiltinType, Float, Func, FunctionType, Globals, Integer, Type};
 use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
 use crate::{Error, LineCol, Out, Span, Spanned};
@@ -73,7 +73,7 @@ impl Code {
 pub(crate) struct Jit<'a> {
     path: &'a Path,
     lines: &'a [LineCol],
-    fs: &'a Functions,
+    gs: &'a Globals,
     main: Option<Id>,
     isa: OwnedTargetIsa,
     m: JITModule,
@@ -85,7 +85,7 @@ impl<'a> Jit<'a> {
     pub(crate) fn new(
         path: &'a Path,
         lines: &'a [LineCol],
-        fs: &'a Functions,
+        gs: &'a Globals,
         main: Option<Id>,
     ) -> Self {
         let mut flags = flags_builder();
@@ -100,7 +100,7 @@ impl<'a> Jit<'a> {
         Self {
             path,
             lines,
-            fs,
+            gs,
             main,
             isa,
             m: JITModule::new(builder),
@@ -112,7 +112,8 @@ impl<'a> Jit<'a> {
     pub(crate) fn compile(mut self) -> Out<Code> {
         let mut ctx = self.m.make_context();
         let ids = self
-            .fs
+            .gs
+            .fns
             .iter()
             .map(|(id, f)| {
                 f.compile(id, &mut self, &mut ctx)
@@ -532,7 +533,7 @@ impl Expr {
                 };
                 let callee = match ident {
                     Ident::Id(id) => {
-                        jit.fs.get(id).unwrap().item.typ.to_signature(&mut sig);
+                        jit.gs.fns.get(id).unwrap().item.typ.to_signature(&mut sig);
                         // TODO: How to call back to functions in interpretation mode, or we don't?
                         jit.m
                             .declare_function(&id.raw(), Linkage::Import, &sig)

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::mem::take;
 
-use crate::semantics::{BuiltinType, Float, Func, FunctionType, Functions, Integer, Type};
+use crate::semantics::{BuiltinType, Float, Func, FunctionType, Globals, Integer, Static, Type};
 use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
@@ -10,11 +10,11 @@ use crate::{Error, Out, Span, Spanned};
 pub(crate) struct Checker {
     globals: HashMap<Id, Type>,
     locals: Vec<Type>,
-    fns: Functions,
+    gs: Globals,
 }
 
 impl Checker {
-    pub(crate) fn file(mut self, file: &mut File) -> Out<Functions> {
+    pub(crate) fn file(mut self, file: &mut File) -> Out<Globals> {
         file.defs
             .iter_mut()
             .try_for_each(|def| match &mut def.item {
@@ -29,7 +29,7 @@ impl Checker {
                             &Type::main(),
                         )?;
                     }
-                    let old = self.fns.insert(
+                    let old = self.gs.fns.insert(
                         sig.name.clone(),
                         Spanned {
                             span: def.span,
@@ -58,12 +58,22 @@ impl Checker {
                             t
                         }
                     };
-                    self.globals.insert(name.clone(), t);
+                    self.globals.insert(name.clone(), t.clone());
+                    self.gs.statics.insert(
+                        name.clone(),
+                        Spanned {
+                            span: def.span,
+                            item: Static {
+                                typ: t,
+                                expr: rhs.clone(),
+                            },
+                        },
+                    );
                     Ok(())
                 }
             })?;
         debug_assert!(self.locals.is_empty());
-        Ok(self.fns)
+        Ok(self.gs)
     }
 
     fn stmt(&mut self, block: &mut Block, stmt: &mut Spanned<Stmt>) -> Out<Type> {

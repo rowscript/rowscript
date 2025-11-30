@@ -1,22 +1,27 @@
+use std::collections::HashMap;
 use std::ops::ControlFlow;
 use std::rc::Rc;
 use std::slice::from_ref;
 
 use crate::Spanned;
-use crate::semantics::Functions;
+use crate::semantics::Globals;
 use crate::syntax::parse::Sym;
-use crate::syntax::{Branch, Expr, Ident, Stmt};
+use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
 
 pub(crate) struct Vm<'a> {
-    fs: &'a Functions,
+    gs: &'a Globals,
+    statics: HashMap<Id, Expr>,
 }
 
 impl<'a> Vm<'a> {
-    pub(crate) fn new(fs: &'a Functions) -> Self {
-        Self { fs }
+    pub(crate) fn new(gs: &'a Globals) -> Self {
+        Self {
+            gs,
+            statics: Default::default(),
+        }
     }
 
-    pub(crate) fn func(&self, f: &[Spanned<Stmt>], args: Vec<Expr>) -> Expr {
+    pub(crate) fn func(&mut self, f: &[Spanned<Stmt>], args: Vec<Expr>) -> Expr {
         let mut block = args.len();
         let mut frame = args;
         let e = self.block(&mut frame, &mut block, f).into_expr();
@@ -25,7 +30,7 @@ impl<'a> Vm<'a> {
     }
 
     fn block(
-        &self,
+        &mut self,
         frame: &mut Vec<Expr>,
         block: &mut usize,
         body: &[Spanned<Stmt>],
@@ -40,7 +45,7 @@ impl<'a> Vm<'a> {
     }
 
     fn stmt(
-        &self,
+        &mut self,
         frame: &mut Vec<Expr>,
         block: &mut usize,
         stmt: &Stmt,
@@ -53,12 +58,19 @@ impl<'a> Vm<'a> {
                 *block += 1;
                 e
             }
-            Stmt::Update { name, rhs } => {
-                let Ident::Idx(idx) = name.item else { todo!() };
-                let e = self.expr(frame, &rhs.item);
-                frame[idx] = e.clone();
-                e
-            }
+            Stmt::Update { name, rhs } => match &name.item {
+                Ident::Id(id) => {
+                    let e = self.expr(frame, &rhs.item);
+                    self.statics.insert(id.clone(), e.clone());
+                    e
+                }
+                Ident::Idx(idx) => {
+                    let e = self.expr(frame, &rhs.item);
+                    frame[*idx] = e.clone();
+                    e
+                }
+                _ => unreachable!(),
+            },
             Stmt::Return(v) => {
                 return ControlFlow::Break(
                     v.as_ref()
@@ -93,7 +105,7 @@ impl<'a> Vm<'a> {
     }
 
     fn branch(
-        &self,
+        &mut self,
         frame: &mut Vec<Expr>,
         branch: &Branch,
     ) -> ControlFlow<ControlFlow<Expr, Expr>> {
@@ -106,22 +118,24 @@ impl<'a> Vm<'a> {
         ControlFlow::Break(self.block(frame, &mut 0, &branch.body))
     }
 
-    fn expr(&self, frame: &[Expr], expr: &Expr) -> Expr {
+    fn expr(&mut self, frame: &[Expr], expr: &Expr) -> Expr {
         match expr {
-            Expr::Ident(n) => {
-                if let Ident::Idx(idx) = n
-                    && let Some(e) = frame.get(*idx)
-                {
-                    return e.clone();
-                }
-                Expr::Ident(n.clone())
-            }
+            Expr::Ident(n) => match n {
+                Ident::Id(id) => self
+                    .statics
+                    .get(id)
+                    .or_else(|| self.gs.statics.get(id).map(|s| &s.item.expr.item))
+                    .cloned()
+                    .unwrap_or_else(|| Expr::Ident(Ident::Id(id.clone()))),
+                Ident::Idx(idx) => frame.get(*idx).unwrap().clone(),
+                Ident::Builtin(b) => Expr::Ident(Ident::Builtin(*b)),
+            },
             Expr::Call(f, args) => {
                 let args = args.iter().map(|e| self.expr(frame, &e.item)).collect();
                 match self.expr(frame, &f.item) {
                     Expr::Ident(n) => match n {
                         Ident::Id(id) => {
-                            let f = self.fs.get(&id).unwrap();
+                            let f = self.gs.fns.get(&id).unwrap();
                             self.func(&f.item.body, args)
                         }
                         Ident::Builtin(b) => b.eval(args),

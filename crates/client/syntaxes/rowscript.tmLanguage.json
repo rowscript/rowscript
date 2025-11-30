@@ -26,7 +26,7 @@
       "patterns": [
         {
           "name": "keyword.control.rowscript",
-          "match": "\\b(function|let|if|while|for|return|new)\\b"
+          "match": "\\b(function|let|if|while|for|return|new|static)\\b"
         }
       ]
     },

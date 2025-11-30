@@ -15,7 +15,7 @@ use object::read::Error as ModifyObjectError;
 use object::write::Error as WriteObjectError;
 use ustr::Ustr;
 
-use crate::semantics::Functions;
+use crate::semantics::Globals;
 use crate::semantics::check::Checker;
 use crate::semantics::jit::{Code, Jit};
 use crate::semantics::vm::Vm;
@@ -107,7 +107,7 @@ pub struct LineCol {
 pub struct State {
     lines: Box<[LineCol]>,
     file: File,
-    fs: Functions,
+    gs: Globals,
 }
 
 impl State {
@@ -217,7 +217,7 @@ impl State {
     }
 
     pub fn check(&mut self) -> Out<()> {
-        self.fs = Checker::default().file(&mut self.file)?;
+        self.gs = Checker::default().file(&mut self.file)?;
         Ok(())
     }
 
@@ -229,12 +229,15 @@ impl State {
             Box::new(Spanned::stdin(Expr::Ident(Ident::Id(sig.name.clone())))),
             Box::new([Spanned::stdin(arg)]),
         )))];
-        Vm::new(&self.fs).func(stmts, Default::default())
+        Vm::new(&self.gs).func(stmts, Default::default())
     }
 
     pub fn eval(&self) -> Out<()> {
         let main = self.file.main.as_ref().ok_or(Error::ExpectedMain)?;
-        Vm::new(&self.fs).func(&self.fs.get(main).unwrap().item.body, Default::default());
+        Vm::new(&self.gs).func(
+            &self.gs.fns.get(main).unwrap().item.body,
+            Default::default(),
+        );
         Ok(())
     }
 
@@ -242,7 +245,7 @@ impl State {
         Jit::new(
             path,
             &self.lines,
-            &self.fs,
+            &self.gs,
             self.file.main.as_ref().cloned(),
         )
         .compile()
