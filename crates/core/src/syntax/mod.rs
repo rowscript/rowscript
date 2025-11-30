@@ -183,6 +183,13 @@ pub(crate) enum Def {
         sig: Sig,
         body: Box<[Spanned<Stmt>]>,
     },
+    Static {
+        #[allow(dead_code)]
+        doc: Box<[String]>,
+        name: Id,
+        typ: Option<Spanned<Expr>>,
+        rhs: Spanned<Expr>,
+    },
 }
 
 #[derive(Default, Debug)]

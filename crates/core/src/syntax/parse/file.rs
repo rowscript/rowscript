@@ -63,11 +63,33 @@ where
         .labelled("function definition")
 }
 
+fn r#static<'t, I>() -> impl Parser<'t, I, Spanned<Def>, SyntaxErr<'t, Token>>
+where
+    I: ValueInput<'t, Token = Token, Span = Span>,
+{
+    docstring()
+        .then_ignore(just(Token::Keyword(Keyword::Static)))
+        .then(id())
+        .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()).or_not())
+        .then_ignore(just(Token::Sym(Sym::Eq)))
+        .then(expr())
+        .map(|(((doc, id), typ), rhs)| {
+            id.map(|name| Def::Static {
+                doc: doc.into_boxed_slice(),
+                name,
+                typ,
+                rhs,
+            })
+        })
+        .labelled("static definition")
+}
+
 pub(crate) fn file<'t, I>() -> impl Parser<'t, I, File, SyntaxErr<'t, Token>>
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
     func()
+        .or(r#static())
         .repeated()
         .collect::<Vec<_>>()
         .map(|defs| File {

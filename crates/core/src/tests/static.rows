@@ -1,0 +1,6 @@
+static a: u32 = 1
+
+function main() {
+    a = 2
+    println(a)
+}

@@ -20,6 +20,14 @@ impl Resolver {
                     let local = self.sig(sig)?;
                     self.block(local, body)
                 }
+                Def::Static { name, typ, rhs, .. } => {
+                    typ.as_mut()
+                        .map(|t| self.expr(t.span, &mut t.item))
+                        .transpose()?;
+                    self.expr(rhs.span, &mut rhs.item)?;
+                    self.globals.insert(name.raw(), name.clone());
+                    Ok(())
+                }
             })?;
         file.main = self.globals.get(&Ustr::from("main")).cloned();
         debug_assert!(self.locals.is_empty());

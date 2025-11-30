@@ -42,6 +42,25 @@ impl Checker {
                     debug_assert!(old.is_none());
                     Ok(())
                 }
+                Def::Static { name, typ, rhs, .. } => {
+                    let t = match typ {
+                        None => {
+                            let t = self.infer(def.span, &mut rhs.item)?.1;
+                            *typ = Some(Spanned {
+                                span: def.span,
+                                item: t.to_expr(def.span),
+                            });
+                            t
+                        }
+                        Some(e) => {
+                            let t = self.check_type(e.span, &mut e.item)?;
+                            self.check(rhs.span, &mut rhs.item, &t)?;
+                            t
+                        }
+                    };
+                    self.globals.insert(name.clone(), t);
+                    Ok(())
+                }
             })?;
         debug_assert!(self.locals.is_empty());
         Ok(self.fns)
@@ -67,10 +86,9 @@ impl Checker {
                 rhs_type
             }
             Stmt::Update { name, rhs } => {
-                let rhs_type = self.infer(rhs.span, &mut rhs.item)?.1;
-                let lhs_type = self.ident(&name.item);
-                isa(name.span, &rhs_type, &lhs_type)?;
-                lhs_type
+                let t = self.ident(&name.item);
+                self.check(rhs.span, &mut rhs.item, &t)?;
+                t
             }
             Stmt::Return(e) => e
                 .as_mut()
