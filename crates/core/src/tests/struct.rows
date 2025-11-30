@@ -1,0 +1,8 @@
+struct A {
+    n: u32
+}
+
+function main() {
+    let a = A(42)
+    println(a.n)
+}
