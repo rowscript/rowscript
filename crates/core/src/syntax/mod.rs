@@ -173,23 +173,29 @@ pub(crate) struct Decl {
     #[allow(dead_code)]
     pub(crate) doc: Box<[String]>,
     pub(crate) name: Id,
+    pub(crate) sig: Sig,
     pub(crate) def: Def,
 }
 
 #[derive(Debug)]
-pub(crate) enum Def {
+pub(crate) enum Sig {
     Func {
         params: Box<[Spanned<Param>]>,
         ret: Option<Spanned<Expr>>,
-        body: Box<[Spanned<Stmt>]>,
     },
     Static {
-        typ: Option<Spanned<Expr>>,
-        rhs: Spanned<Expr>,
+        typ: Spanned<Expr>,
     },
     Struct {
         members: Box<[Spanned<Member>]>,
     },
+}
+
+#[derive(Debug)]
+pub(crate) enum Def {
+    Func { body: Box<[Spanned<Stmt>]> },
+    Static { rhs: Spanned<Expr> },
+    Struct,
 }
 
 #[derive(Debug)]

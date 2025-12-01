@@ -157,7 +157,6 @@ fn it_runs_ref_main() {
 
 #[test]
 fn it_runs_static_main() {
-    // TODO
     eval(include_str!("static.rows"));
 }
 

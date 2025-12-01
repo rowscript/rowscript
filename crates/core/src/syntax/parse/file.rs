@@ -6,7 +6,7 @@ use chumsky::primitive::select;
 use crate::syntax::parse::expr::expr;
 use crate::syntax::parse::stmt::stmt;
 use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, id};
-use crate::syntax::{Decl, Def, File, Ident, Member, Param};
+use crate::syntax::{Decl, Def, File, Ident, Member, Param, Sig};
 use crate::{Span, Spanned};
 
 fn docstring<'t, I>() -> impl Parser<'t, I, Vec<String>, SyntaxErr<'t, Token>> + Clone
@@ -53,9 +53,11 @@ where
             id.map(|name| Decl {
                 doc: doc.into_boxed_slice(),
                 name,
-                def: Def::Func {
+                sig: Sig::Func {
                     params: params.into_boxed_slice(),
                     ret,
+                },
+                def: Def::Func {
                     body: body.into_boxed_slice(),
                 },
             })
@@ -70,14 +72,15 @@ where
     docstring()
         .then_ignore(just(Token::Keyword(Keyword::Static)))
         .then(id())
-        .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()).or_not())
+        .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()))
         .then_ignore(just(Token::Sym(Sym::Eq)))
         .then(expr())
         .map(|(((doc, id), typ), rhs)| {
             id.map(|name| Decl {
                 doc: doc.into_boxed_slice(),
                 name,
-                def: Def::Static { typ, rhs },
+                sig: Sig::Static { typ },
+                def: Def::Static { rhs },
             })
         })
         .labelled("static definition")
@@ -105,9 +108,10 @@ where
             id.map(|name| Decl {
                 doc: doc.into_boxed_slice(),
                 name,
-                def: Def::Struct {
+                sig: Sig::Struct {
                     members: members.into_boxed_slice(),
                 },
+                def: Def::Struct,
             })
         })
         .labelled("struct definition")
