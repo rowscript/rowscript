@@ -164,31 +164,30 @@ pub(crate) struct Branch {
 
 #[derive(Default, Debug)]
 pub(crate) struct File {
-    pub(crate) decls: Box<[Spanned<Def>]>,
+    pub(crate) decls: Box<[Spanned<Decl>]>,
     pub(crate) main: Option<Id>,
+}
+
+#[derive(Debug)]
+pub(crate) struct Decl {
+    #[allow(dead_code)]
+    pub(crate) doc: Box<[String]>,
+    pub(crate) name: Id,
+    pub(crate) def: Def,
 }
 
 #[derive(Debug)]
 pub(crate) enum Def {
     Func {
-        #[allow(dead_code)]
-        doc: Box<[String]>,
-        name: Id,
         params: Box<[Spanned<Param>]>,
         ret: Option<Spanned<Expr>>,
         body: Box<[Spanned<Stmt>]>,
     },
     Static {
-        #[allow(dead_code)]
-        doc: Box<[String]>,
-        name: Id,
         typ: Option<Spanned<Expr>>,
         rhs: Spanned<Expr>,
     },
     Struct {
-        #[allow(dead_code)]
-        doc: Box<[String]>,
-        name: Id,
         members: Box<[Spanned<Member>]>,
     },
 }

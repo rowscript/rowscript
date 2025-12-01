@@ -3,7 +3,7 @@ use std::str::FromStr;
 use ustr::{Ustr, UstrMap};
 
 use crate::semantics::builtin::Builtin;
-use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Param, Stmt};
+use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -14,35 +14,42 @@ pub(crate) struct Resolver {
 
 impl Resolver {
     pub(crate) fn file(&mut self, file: &mut File) -> Out<()> {
-        file.decls
-            .iter_mut()
-            .try_for_each(|def| match &mut def.item {
-                Def::Func {
-                    name,
-                    params,
-                    ret,
-                    body,
-                    ..
-                } => {
-                    let local = self.sig(name, params, ret)?;
-                    self.block(local, body)
+        file.decls.iter_mut().try_for_each(|decl| {
+            let name = &decl.item.name;
+            match &mut decl.item.def {
+                Def::Func { params, ret, body } => {
+                    ret.as_mut()
+                        .map(|t| self.expr(t.span, &mut t.item))
+                        .transpose()?;
+                    let mut local = Block::local();
+                    params.iter_mut().try_for_each(|p| {
+                        p.item
+                            .typ
+                            .as_mut()
+                            .map(|t| self.expr(t.span, &mut t.item))
+                            .transpose()?;
+                        self.insert(&mut local, &mut p.item.name);
+                        Ok(())
+                    })?;
+                    self.globals.insert(name.raw(), name.clone());
+                    self.block(local, body)?;
                 }
-                Def::Static { name, typ, rhs, .. } => {
+                Def::Static { typ, rhs } => {
                     typ.as_mut()
                         .map(|t| self.expr(t.span, &mut t.item))
                         .transpose()?;
                     self.expr(rhs.span, &mut rhs.item)?;
                     self.globals.insert(name.raw(), name.clone());
-                    Ok(())
                 }
-                Def::Struct { name, members, .. } => {
+                Def::Struct { members } => {
                     members
                         .iter_mut()
                         .try_for_each(|m| self.expr(m.item.typ.span, &mut m.item.typ.item))?;
                     self.globals.insert(name.raw(), name.clone());
-                    Ok(())
                 }
-            })?;
+            }
+            Ok(())
+        })?;
         file.main = self.globals.get(&Ustr::from("main")).cloned();
         debug_assert!(self.locals.is_empty());
         Ok(())
@@ -77,29 +84,6 @@ impl Resolver {
             Stmt::While(branch) => self.branch(branch)?,
         }
         Ok(())
-    }
-
-    fn sig(
-        &mut self,
-        name: &Id,
-        params: &mut [Spanned<Param>],
-        ret: &mut Option<Spanned<Expr>>,
-    ) -> Out<Block> {
-        ret.as_mut()
-            .map(|t| self.expr(t.span, &mut t.item))
-            .transpose()?;
-        let mut local = Block::local();
-        params.iter_mut().try_for_each(|p| {
-            p.item
-                .typ
-                .as_mut()
-                .map(|t| self.expr(t.span, &mut t.item))
-                .transpose()?;
-            self.insert(&mut local, &mut p.item.name);
-            Ok(())
-        })?;
-        self.globals.insert(name.raw(), name.clone());
-        Ok(local)
     }
 
     fn block(&mut self, mut block: Block, stmts: &mut [Spanned<Stmt>]) -> Out<()> {

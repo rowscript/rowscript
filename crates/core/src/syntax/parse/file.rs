@@ -6,7 +6,7 @@ use chumsky::primitive::select;
 use crate::syntax::parse::expr::expr;
 use crate::syntax::parse::stmt::stmt;
 use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, id};
-use crate::syntax::{Def, File, Ident, Member, Param};
+use crate::syntax::{Decl, Def, File, Ident, Member, Param};
 use crate::{Span, Spanned};
 
 fn docstring<'t, I>() -> impl Parser<'t, I, Vec<String>, SyntaxErr<'t, Token>> + Clone
@@ -22,7 +22,7 @@ where
     .labelled("docstring")
 }
 
-fn func<'t, I>() -> impl Parser<'t, I, Spanned<Def>, SyntaxErr<'t, Token>>
+fn func<'t, I>() -> impl Parser<'t, I, Spanned<Decl>, SyntaxErr<'t, Token>>
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
@@ -50,18 +50,20 @@ where
                 .delimited_by(just(Token::Sym(Sym::LBrace)), just(Token::Sym(Sym::RBrace))),
         )
         .map(|((((doc, id), params), ret), body)| {
-            id.map(|name| Def::Func {
+            id.map(|name| Decl {
                 doc: doc.into_boxed_slice(),
                 name,
-                params: params.into_boxed_slice(),
-                ret,
-                body: body.into_boxed_slice(),
+                def: Def::Func {
+                    params: params.into_boxed_slice(),
+                    ret,
+                    body: body.into_boxed_slice(),
+                },
             })
         })
         .labelled("function definition")
 }
 
-fn r#static<'t, I>() -> impl Parser<'t, I, Spanned<Def>, SyntaxErr<'t, Token>>
+fn r#static<'t, I>() -> impl Parser<'t, I, Spanned<Decl>, SyntaxErr<'t, Token>>
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
@@ -72,17 +74,16 @@ where
         .then_ignore(just(Token::Sym(Sym::Eq)))
         .then(expr())
         .map(|(((doc, id), typ), rhs)| {
-            id.map(|name| Def::Static {
+            id.map(|name| Decl {
                 doc: doc.into_boxed_slice(),
                 name,
-                typ,
-                rhs,
+                def: Def::Static { typ, rhs },
             })
         })
         .labelled("static definition")
 }
 
-fn r#struct<'t, I>() -> impl Parser<'t, I, Spanned<Def>, SyntaxErr<'t, Token>>
+fn r#struct<'t, I>() -> impl Parser<'t, I, Spanned<Decl>, SyntaxErr<'t, Token>>
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
@@ -101,13 +102,15 @@ where
                 .delimited_by(just(Token::Sym(Sym::LBrace)), just(Token::Sym(Sym::RBrace))),
         )
         .map(|((doc, id), members)| {
-            id.map(|name| Def::Struct {
+            id.map(|name| Decl {
                 doc: doc.into_boxed_slice(),
                 name,
-                members: members.into_boxed_slice(),
+                def: Def::Struct {
+                    members: members.into_boxed_slice(),
+                },
             })
         })
-        .labelled("static definition")
+        .labelled("struct definition")
 }
 
 pub(crate) fn file<'t, I>() -> impl Parser<'t, I, File, SyntaxErr<'t, Token>>
@@ -119,8 +122,8 @@ where
         .or(r#struct())
         .repeated()
         .collect::<Vec<_>>()
-        .map(|defs| File {
-            decls: defs.into(),
+        .map(|decls| File {
+            decls: decls.into(),
             main: None,
         })
         .labelled("file")
