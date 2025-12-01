@@ -377,6 +377,7 @@ fn isa(span: Span, got: &Type, want: &Type) -> Out<()> {
             isa(span, &a.ret, &b.ret)
         }
         (Type::Ref(a), Type::Ref(b)) => isa(span, a, b),
+        (Type::Struct(a), Type::Struct(b)) if a == b => Ok(()),
         _ => {
             let got = got.to_string();
             let want = want.to_string();
