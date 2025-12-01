@@ -164,14 +164,18 @@ pub(crate) struct Branch {
 
 #[derive(Default, Debug)]
 pub(crate) struct File {
-    pub(crate) defs: Box<[Spanned<Def>]>,
+    pub(crate) decls: Box<[Spanned<Def>]>,
     pub(crate) main: Option<Id>,
 }
 
 #[derive(Debug)]
 pub(crate) enum Def {
     Func {
-        sig: Sig,
+        #[allow(dead_code)]
+        doc: Box<[String]>,
+        name: Id,
+        params: Box<[Spanned<Param>]>,
+        ret: Option<Spanned<Expr>>,
         body: Box<[Spanned<Stmt>]>,
     },
     Static {
@@ -187,15 +191,6 @@ pub(crate) enum Def {
         name: Id,
         members: Box<[Spanned<Member>]>,
     },
-}
-
-#[derive(Debug)]
-pub(crate) struct Sig {
-    #[allow(dead_code)]
-    pub(crate) doc: Box<[String]>,
-    pub(crate) name: Id,
-    pub(crate) params: Box<[Spanned<Param>]>,
-    pub(crate) ret: Option<Spanned<Expr>>,
 }
 
 #[derive(Debug)]

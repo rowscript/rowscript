@@ -3,7 +3,7 @@ use std::mem::take;
 
 use crate::semantics::{BuiltinType, Float, Func, FunctionType, Globals, Integer, Static, Type};
 use crate::syntax::parse::Sym;
-use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Sig, Stmt};
+use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Param, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -15,22 +15,28 @@ pub(crate) struct Checker {
 
 impl Checker {
     pub(crate) fn file(mut self, file: &mut File) -> Out<Globals> {
-        file.defs
+        file.decls
             .iter_mut()
             .try_for_each(|def| match &mut def.item {
-                Def::Func { sig, body } => {
-                    let (typ, local) = self.sig(sig)?;
+                Def::Func {
+                    name,
+                    params,
+                    ret,
+                    body,
+                    ..
+                } => {
+                    let (typ, local) = self.sig(name, params, ret)?;
                     let got = self.block(local, body)?;
                     isa(def.span, &got, &typ.ret)?;
-                    if file.main.as_ref() == Some(&sig.name) {
+                    if file.main.as_ref() == Some(name) {
                         isa(
-                            sig.ret.as_ref().map(|s| s.span).unwrap_or(def.span),
+                            ret.as_ref().map(|s| s.span).unwrap_or(def.span),
                             &Type::Function(Box::new(typ.clone())),
                             &Type::main(),
                         )?;
                     }
                     let old = self.gs.fns.insert(
-                        sig.name.clone(),
+                        name.clone(),
                         Spanned {
                             span: def.span,
                             item: Func {
@@ -127,16 +133,19 @@ impl Checker {
         })
     }
 
-    fn sig(&mut self, sig: &mut Sig) -> Out<(FunctionType, Block)> {
-        let ret = sig
-            .ret
+    fn sig(
+        &mut self,
+        name: &Id,
+        params: &mut [Spanned<Param>],
+        ret: &mut Option<Spanned<Expr>>,
+    ) -> Out<(FunctionType, Block)> {
+        let ret = ret
             .as_mut()
             .map(|t| self.check_type(t.span, &mut t.item))
             .transpose()?
             .unwrap_or(Type::Builtin(BuiltinType::Unit));
         let mut local = Block::func(ret.clone());
-        let params = sig
-            .params
+        let params = params
             .iter_mut()
             .map(|p| {
                 let typ = p
@@ -152,7 +161,7 @@ impl Checker {
             .collect::<Out<_>>()?;
         let typ = FunctionType { params, ret };
         self.globals
-            .insert(sig.name.clone(), Type::Function(Box::new(typ.clone())));
+            .insert(name.clone(), Type::Function(Box::new(typ.clone())));
         Ok((typ, local))
     }
 

@@ -6,7 +6,7 @@ use chumsky::primitive::select;
 use crate::syntax::parse::expr::expr;
 use crate::syntax::parse::stmt::stmt;
 use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, id};
-use crate::syntax::{Def, File, Ident, Member, Param, Sig};
+use crate::syntax::{Def, File, Ident, Member, Param};
 use crate::{Span, Spanned};
 
 fn docstring<'t, I>() -> impl Parser<'t, I, Vec<String>, SyntaxErr<'t, Token>> + Clone
@@ -51,12 +51,10 @@ where
         )
         .map(|((((doc, id), params), ret), body)| {
             id.map(|name| Def::Func {
-                sig: Sig {
-                    doc: doc.into_boxed_slice(),
-                    name,
-                    params: params.into_boxed_slice(),
-                    ret,
-                },
+                doc: doc.into_boxed_slice(),
+                name,
+                params: params.into_boxed_slice(),
+                ret,
                 body: body.into_boxed_slice(),
             })
         })
@@ -122,7 +120,7 @@ where
         .repeated()
         .collect::<Vec<_>>()
         .map(|defs| File {
-            defs: defs.into(),
+            decls: defs.into(),
             main: None,
         })
         .labelled("file")

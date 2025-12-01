@@ -222,11 +222,11 @@ impl State {
     }
 
     pub fn eval_nth(&self, n: usize, arg: Expr) -> Expr {
-        let Def::Func { sig, .. } = &self.file.defs[n].item else {
+        let Def::Func { name, .. } = &self.file.decls[n].item else {
             unreachable!()
         };
         let stmts = &[Spanned::stdin(Stmt::Expr(Expr::Call(
-            Box::new(Spanned::stdin(Expr::Ident(Ident::Id(sig.name.clone())))),
+            Box::new(Spanned::stdin(Expr::Ident(Ident::Id(name.clone())))),
             Box::new([Spanned::stdin(arg)]),
         )))];
         Vm::new(&self.gs).func(stmts, Default::default())

@@ -1,8 +1,9 @@
 use std::str::FromStr;
+
 use ustr::{Ustr, UstrMap};
 
 use crate::semantics::builtin::Builtin;
-use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Sig, Stmt};
+use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Param, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -13,11 +14,17 @@ pub(crate) struct Resolver {
 
 impl Resolver {
     pub(crate) fn file(&mut self, file: &mut File) -> Out<()> {
-        file.defs
+        file.decls
             .iter_mut()
             .try_for_each(|def| match &mut def.item {
-                Def::Func { sig, body } => {
-                    let local = self.sig(sig)?;
+                Def::Func {
+                    name,
+                    params,
+                    ret,
+                    body,
+                    ..
+                } => {
+                    let local = self.sig(name, params, ret)?;
                     self.block(local, body)
                 }
                 Def::Static { name, typ, rhs, .. } => {
@@ -72,13 +79,17 @@ impl Resolver {
         Ok(())
     }
 
-    fn sig(&mut self, sig: &mut Sig) -> Out<Block> {
-        sig.ret
-            .as_mut()
+    fn sig(
+        &mut self,
+        name: &Id,
+        params: &mut [Spanned<Param>],
+        ret: &mut Option<Spanned<Expr>>,
+    ) -> Out<Block> {
+        ret.as_mut()
             .map(|t| self.expr(t.span, &mut t.item))
             .transpose()?;
         let mut local = Block::local();
-        sig.params.iter_mut().try_for_each(|p| {
+        params.iter_mut().try_for_each(|p| {
             p.item
                 .typ
                 .as_mut()
@@ -87,7 +98,7 @@ impl Resolver {
             self.insert(&mut local, &mut p.item.name);
             Ok(())
         })?;
-        self.globals.insert(sig.name.raw(), sig.name.clone());
+        self.globals.insert(name.raw(), name.clone());
         Ok(local)
     }
 
