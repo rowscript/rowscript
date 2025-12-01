@@ -71,6 +71,7 @@ impl Checker {
                     );
                     Ok(())
                 }
+                Def::Struct { .. } => todo!(),
             })?;
         debug_assert!(self.locals.is_empty());
         Ok(self.gs)

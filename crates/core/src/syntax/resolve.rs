@@ -28,6 +28,13 @@ impl Resolver {
                     self.globals.insert(name.raw(), name.clone());
                     Ok(())
                 }
+                Def::Struct { name, members, .. } => {
+                    members
+                        .iter_mut()
+                        .try_for_each(|m| self.expr(m.item.typ.span, &mut m.item.typ.item))?;
+                    self.globals.insert(name.raw(), name.clone());
+                    Ok(())
+                }
             })?;
         file.main = self.globals.get(&Ustr::from("main")).cloned();
         debug_assert!(self.locals.is_empty());

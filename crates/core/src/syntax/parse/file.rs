@@ -6,7 +6,7 @@ use chumsky::primitive::select;
 use crate::syntax::parse::expr::expr;
 use crate::syntax::parse::stmt::stmt;
 use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, id};
-use crate::syntax::{Def, File, Ident, Param, Sig};
+use crate::syntax::{Def, File, Ident, Member, Param, Sig};
 use crate::{Span, Spanned};
 
 fn docstring<'t, I>() -> impl Parser<'t, I, Vec<String>, SyntaxErr<'t, Token>> + Clone
@@ -84,12 +84,41 @@ where
         .labelled("static definition")
 }
 
+fn r#struct<'t, I>() -> impl Parser<'t, I, Spanned<Def>, SyntaxErr<'t, Token>>
+where
+    I: ValueInput<'t, Token = Token, Span = Span>,
+{
+    let member = id()
+        .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()))
+        .map(|(id, typ)| id.map(|name| Member { name, typ }))
+        .labelled("member");
+
+    docstring()
+        .then_ignore(just(Token::Keyword(Keyword::Struct)))
+        .then(id())
+        .then(
+            member
+                .repeated()
+                .collect::<Vec<_>>()
+                .delimited_by(just(Token::Sym(Sym::LBrace)), just(Token::Sym(Sym::RBrace))),
+        )
+        .map(|((doc, id), members)| {
+            id.map(|name| Def::Struct {
+                doc: doc.into_boxed_slice(),
+                name,
+                members: members.into_boxed_slice(),
+            })
+        })
+        .labelled("static definition")
+}
+
 pub(crate) fn file<'t, I>() -> impl Parser<'t, I, File, SyntaxErr<'t, Token>>
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
     func()
         .or(r#static())
+        .or(r#struct())
         .repeated()
         .collect::<Vec<_>>()
         .map(|defs| File {

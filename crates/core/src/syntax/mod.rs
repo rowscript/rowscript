@@ -162,6 +162,33 @@ pub(crate) struct Branch {
     pub(crate) body: Box<[Spanned<Stmt>]>,
 }
 
+#[derive(Default, Debug)]
+pub(crate) struct File {
+    pub(crate) defs: Box<[Spanned<Def>]>,
+    pub(crate) main: Option<Id>,
+}
+
+#[derive(Debug)]
+pub(crate) enum Def {
+    Func {
+        sig: Sig,
+        body: Box<[Spanned<Stmt>]>,
+    },
+    Static {
+        #[allow(dead_code)]
+        doc: Box<[String]>,
+        name: Id,
+        typ: Option<Spanned<Expr>>,
+        rhs: Spanned<Expr>,
+    },
+    Struct {
+        #[allow(dead_code)]
+        doc: Box<[String]>,
+        name: Id,
+        members: Box<[Spanned<Member>]>,
+    },
+}
+
 #[derive(Debug)]
 pub(crate) struct Sig {
     #[allow(dead_code)]
@@ -178,22 +205,8 @@ pub(crate) struct Param {
 }
 
 #[derive(Debug)]
-pub(crate) enum Def {
-    Func {
-        sig: Sig,
-        body: Box<[Spanned<Stmt>]>,
-    },
-    Static {
-        #[allow(dead_code)]
-        doc: Box<[String]>,
-        name: Id,
-        typ: Option<Spanned<Expr>>,
-        rhs: Spanned<Expr>,
-    },
-}
-
-#[derive(Default, Debug)]
-pub(crate) struct File {
-    pub(crate) defs: Box<[Spanned<Def>]>,
-    pub(crate) main: Option<Id>,
+pub(crate) struct Member {
+    #[allow(dead_code)]
+    pub(crate) name: Id,
+    pub(crate) typ: Spanned<Expr>,
 }
