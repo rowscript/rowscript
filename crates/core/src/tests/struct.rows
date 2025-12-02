@@ -1,8 +1,10 @@
 struct A {
     n: u32
+    m: i64
 }
 
 function main() {
-    let a = A(42)
-    println(a.n)
+    // TODO
+    //let a = A(42)
+    //println(a.n)
 }

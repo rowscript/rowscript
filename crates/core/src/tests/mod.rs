@@ -160,6 +160,11 @@ fn it_runs_static_main() {
     eval(include_str!("static.rows"));
 }
 
+#[test]
+fn it_runs_struct_main() {
+    eval(include_str!("struct.rows"));
+}
+
 fn run_compiled<T, R>(path: &Path, text: &str, input: T) -> R {
     let mut s = State::default();
     s.parse(text).unwrap();

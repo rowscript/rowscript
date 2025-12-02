@@ -20,7 +20,7 @@ impl Checker {
 
         file.decls.iter_mut().try_for_each(|decl| {
             let name = &decl.item.name;
-            match &mut decl.item.sig {
+            let t = match &mut decl.item.sig {
                 Sig::Func { params, ret } => {
                     let span = ret.as_ref().map(|s| s.span).unwrap_or(decl.span);
                     let ret = ret
@@ -45,12 +45,12 @@ impl Checker {
                         isa(span, &got, &Type::main())?;
                     }
                     funcs.push(f);
-                    self.globals.insert(name.clone(), got);
+                    got
                 }
                 Sig::Static { typ } => {
                     let t = self.check_type(typ.span, &mut typ.item)?;
                     statics.push(t.clone());
-                    self.globals.insert(name.clone(), t);
+                    t
                 }
                 Sig::Struct { members } => {
                     members.iter_mut().try_for_each(|m| {
@@ -58,10 +58,10 @@ impl Checker {
                         Ok(())
                     })?;
                     // TODO: Member types inserted into the global context.
-                    self.globals
-                        .insert(name.clone(), Type::Struct(name.clone()));
+                    Type::Struct(name.clone())
                 }
-            }
+            };
+            self.globals.insert(name.clone(), t);
             Ok(())
         })?;
 
