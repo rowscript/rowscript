@@ -9,7 +9,6 @@ use chumsky::text::{digits, ident, int};
 
 use crate::Spanned;
 use crate::semantics::BuiltinType;
-use crate::syntax::Id;
 use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, Tokens};
 
 /// Lexical analysis.
@@ -67,7 +66,7 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, Tokens, SyntaxErr<'s, char>>
         } else if let Ok(w) = Keyword::from_str(text) {
             Token::Keyword(w)
         } else {
-            Token::Ident(Id::bound(text.into()))
+            Token::Ident(text.into())
         }
     });
 

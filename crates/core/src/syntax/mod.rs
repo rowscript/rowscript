@@ -95,9 +95,9 @@ pub enum Expr {
     BinaryOp(Box<Spanned<Self>>, Sym, Option<Type>, Box<Spanned<Self>>),
     UnaryOp(Box<Spanned<Self>>, Sym, Option<Type>),
     New(Box<Spanned<Self>>),
-    Initialize(Box<Spanned<Self>>, Box<[(Spanned<Id>, Spanned<Self>)]>),
-    Access(Box<Spanned<Self>>, Spanned<Id>),
-    Method(Box<Spanned<Self>>, Spanned<Id>, Box<[Spanned<Self>]>),
+    Initialize(Box<Spanned<Self>>, Box<[(Spanned<Ustr>, Spanned<Self>)]>),
+    Access(Box<Spanned<Self>>, Spanned<Ustr>),
+    Method(Box<Spanned<Self>>, Spanned<Ustr>, Box<[Spanned<Self>]>),
 
     // VM-specific constructs.
     Ref(Rc<Self>),
@@ -210,6 +210,6 @@ pub(crate) struct Param {
 #[derive(Debug)]
 pub(crate) struct Member {
     #[allow(dead_code)]
-    pub(crate) name: Id,
+    pub(crate) name: Ustr,
     pub(crate) typ: Spanned<Expr>,
 }

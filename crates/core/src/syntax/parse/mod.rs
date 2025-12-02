@@ -64,7 +64,7 @@ pub(crate) enum Token {
     #[strum(transparent)]
     Boolean(bool),
     #[strum(transparent)]
-    Ident(Id),
+    Ident(Ustr),
     #[strum(transparent)]
     Doc(String),
     #[strum(transparent)]
@@ -95,7 +95,7 @@ impl Container<Spanned<Token>> for Tokens {
     }
 }
 
-fn id<'t, I>() -> impl Parser<'t, I, Spanned<Id>, SyntaxErr<'t, Token>> + Clone
+fn name<'t, I>() -> impl Parser<'t, I, Spanned<Ustr>, SyntaxErr<'t, Token>> + Clone
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
@@ -104,7 +104,14 @@ where
         _ => None,
     })
     .map_with(Spanned::from_map_extra)
-    .labelled("identifier")
+    .labelled("name")
+}
+
+fn id<'t, I>() -> impl Parser<'t, I, Spanned<Id>, SyntaxErr<'t, Token>> + Clone
+where
+    I: ValueInput<'t, Token = Token, Span = Span>,
+{
+    name().map(|n| n.map(Id::bound)).labelled("identifier")
 }
 
 fn grouped_by<'t, I, O, P>(

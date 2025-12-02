@@ -17,7 +17,7 @@ pub(crate) struct Checker {
 
 impl Checker {
     pub(crate) fn file(mut self, file: &mut File) -> Out<Globals> {
-        let mut funcs = Vec::default();
+        let mut fns = Vec::default();
         let mut statics = Vec::default();
 
         file.decls.iter_mut().try_for_each(|decl| {
@@ -46,7 +46,7 @@ impl Checker {
                     if file.main.as_ref() == Some(name) {
                         isa(span, &got, &Type::main())?;
                     }
-                    funcs.push(f);
+                    fns.push(f);
                     Kind::ValueLevel(got)
                 }
                 Sig::Static { typ } => {
@@ -60,7 +60,7 @@ impl Checker {
                         .enumerate()
                         .map(|(i, m)| {
                             let t = self.check_type(m.span, &mut m.item.typ.item)?;
-                            Ok((m.item.name.clone(), (i, t)))
+                            Ok((m.item.name, (i, t)))
                         })
                         .collect::<Out<_>>()?;
                     self.gs.structs.insert(name.clone(), Struct { members });
@@ -71,14 +71,14 @@ impl Checker {
             Ok(())
         })?;
 
-        let mut funcs = funcs.into_iter();
+        let mut fns = fns.into_iter();
         let mut statics = statics.into_iter();
 
         file.decls
             .iter_mut()
             .try_for_each(|decl| match &mut decl.item.def {
                 Def::Func { body } => {
-                    let FunctionType { params, ret } = funcs.next().unwrap();
+                    let FunctionType { params, ret } = fns.next().unwrap();
                     let mut local = Block::func(ret.clone());
                     params.iter().enumerate().for_each(|(i, p)| {
                         self.insert(&mut local, i, p.clone());
@@ -331,7 +331,16 @@ impl Checker {
                 }))
             }
             Expr::Initialize(t, args) => {
-                self.check_type(t.span, &mut t.item)?;
+                let got = self.check_type(t.span, &mut t.item)?;
+                let Type::Struct(sid) = got else {
+                    return Err(Error::TypeMismatch {
+                        span: t.span,
+                        got: got.to_string(),
+                        want: "struct".to_string(),
+                    });
+                };
+                let s = self.gs.structs.get(&sid).unwrap();
+                _ = s;
                 _ = args;
                 todo!()
             }

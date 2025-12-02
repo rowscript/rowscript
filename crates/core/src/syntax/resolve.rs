@@ -34,12 +34,12 @@ impl Resolver {
                 Sig::Struct { members } => {
                     let mut names = Names::default();
                     members.iter_mut().try_for_each(|m| {
-                        names.ensure_unique(m.span, &m.item.name)?;
+                        names.ensure_unique(m.span, m.item.name)?;
                         self.expr(m.item.typ.span, &mut m.item.typ.item)
                     })?
                 }
             }
-            self.names.ensure_unique(decl.span, &decl.item.name)?;
+            self.names.ensure_unique(decl.span, decl.item.name.raw())?;
             self.globals
                 .insert(decl.item.name.raw(), decl.item.name.clone());
             Ok(())
@@ -199,8 +199,7 @@ impl Block {
 struct Names(UstrSet);
 
 impl Names {
-    fn ensure_unique(&mut self, span: Span, id: &Id) -> Out<()> {
-        let raw = id.raw();
+    fn ensure_unique(&mut self, span: Span, raw: Ustr) -> Out<()> {
         if self.0.insert(raw) {
             return Ok(());
         }

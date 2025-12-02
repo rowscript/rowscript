@@ -5,7 +5,7 @@ use chumsky::primitive::select;
 
 use crate::syntax::parse::expr::expr;
 use crate::syntax::parse::stmt::stmt;
-use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, id};
+use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, id, name};
 use crate::syntax::{Decl, Def, File, Ident, Member, Param, Sig};
 use crate::{Span, Spanned};
 
@@ -88,9 +88,9 @@ fn r#struct<'t, I>() -> impl Parser<'t, I, Spanned<Decl>, SyntaxErr<'t, Token>>
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
-    let member = id()
+    let member = name()
         .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()))
-        .map(|(id, typ)| id.map(|name| Member { name, typ }))
+        .map(|(name, typ)| name.map(|name| Member { name, typ }))
         .labelled("member");
 
     docstring()

@@ -4,17 +4,18 @@ use chumsky::pratt::{infix, left, prefix};
 use chumsky::prelude::{just, recursive};
 use chumsky::primitive::select;
 use serde_json::from_str;
+use ustr::Ustr;
 
 use crate::semantics::{Float, Integer};
-use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, id};
+use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, name};
 use crate::syntax::{Expr, Id, Ident};
 use crate::{Span, Spanned};
 
 enum Chainer {
     Args(Vec<Spanned<Expr>>),
-    Initializer(Vec<(Spanned<Id>, Spanned<Expr>)>),
-    Access(Spanned<Id>),
-    Method(Spanned<Id>, Vec<Spanned<Expr>>),
+    Initializer(Vec<(Spanned<Ustr>, Spanned<Expr>)>),
+    Access(Spanned<Ustr>),
+    Method(Spanned<Ustr>, Vec<Spanned<Expr>>),
 }
 
 pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, SyntaxErr<'t, Token>> + Clone
@@ -39,7 +40,7 @@ where
     .labelled("constant expression");
 
     let ident = select(|x, _| match x {
-        Token::Ident(n) => Some(Expr::Ident(Ident::Id(n))),
+        Token::Ident(n) => Some(Expr::Ident(Ident::Id(Id::bound(n)))),
         _ => None,
     })
     .map_with(Spanned::from_map_extra)
@@ -51,27 +52,27 @@ where
             .delimited_by(just(Token::Sym(Sym::LParen)), just(Token::Sym(Sym::RParen)))
             .labelled("parenthesized expression");
 
-        let args = grouped_by(Sym::LParen, expr.clone(), Sym::Comma, Sym::RParen)
-            .labelled("arguments expression");
+        let args =
+            grouped_by(Sym::LParen, expr.clone(), Sym::Comma, Sym::RParen).labelled("arguments");
         let arguments = args
             .clone()
             .map(Chainer::Args)
             .labelled("arguments expression");
         let initializer = grouped_by(
             Sym::LParen,
-            id().then_ignore(just(Token::Sym(Sym::Eq))).then(expr),
+            name().then_ignore(just(Token::Sym(Sym::Eq))).then(expr),
             Sym::Comma,
             Sym::RParen,
         )
         .map(Chainer::Initializer)
         .labelled("initializer expression");
         let method = just(Token::Sym(Sym::Dot))
-            .ignore_then(id())
+            .ignore_then(name())
             .then(args)
             .map(|(id, args)| Chainer::Method(id, args))
             .labelled("method expression");
         let access = just(Token::Sym(Sym::Dot))
-            .ignore_then(id())
+            .ignore_then(name())
             .map(Chainer::Access)
             .labelled("access expression");
         let chainer = arguments.or(initializer).or(method).or(access);

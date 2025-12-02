@@ -5,9 +5,10 @@ pub(crate) mod vm;
 
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result as FmtResult};
-use strum::{Display, EnumString};
 
 use rowscript_derive::Ops;
+use strum::{Display, EnumString};
+use ustr::UstrMap;
 
 use crate::syntax::{Expr, Id, Stmt};
 use crate::{Span, Spanned};
@@ -178,7 +179,7 @@ pub(crate) struct Static {
 #[derive(Debug)]
 pub(crate) struct Struct {
     #[allow(dead_code)]
-    pub(crate) members: HashMap<Id, (usize, Type)>,
+    pub(crate) members: UstrMap<(usize, Type)>,
 }
 
 #[derive(Default, Debug)]
