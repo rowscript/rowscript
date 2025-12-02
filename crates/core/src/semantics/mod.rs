@@ -175,8 +175,15 @@ pub(crate) struct Static {
     pub(crate) expr: Spanned<Expr>,
 }
 
+#[derive(Debug)]
+pub(crate) struct Struct {
+    #[allow(dead_code)]
+    pub(crate) members: HashMap<Id, (usize, Type)>,
+}
+
 #[derive(Default, Debug)]
 pub(crate) struct Globals {
     pub(crate) fns: HashMap<Id, Spanned<Func>>,
     pub(crate) statics: HashMap<Id, Spanned<Static>>,
+    pub(crate) structs: HashMap<Id, Struct>,
 }

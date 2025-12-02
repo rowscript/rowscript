@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 use std::mem::take;
 
-use crate::semantics::{BuiltinType, Float, Func, FunctionType, Globals, Integer, Static, Type};
+use crate::semantics::{
+    BuiltinType, Float, Func, FunctionType, Globals, Integer, Static, Struct, Type,
+};
 use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
 pub(crate) struct Checker {
-    globals: HashMap<Id, Type>,
+    globals: HashMap<Id, (Option<Type>, Type)>,
     locals: Vec<Type>,
     gs: Globals,
 }
@@ -45,20 +47,27 @@ impl Checker {
                         isa(span, &got, &Type::main())?;
                     }
                     funcs.push(f);
-                    got
+                    (None, got)
                 }
                 Sig::Static { typ } => {
                     let t = self.check_type(typ.span, &mut typ.item)?;
                     statics.push(t.clone());
-                    t
+                    (None, t)
                 }
                 Sig::Struct { members } => {
-                    members.iter_mut().try_for_each(|m| {
-                        self.check_type(m.span, &mut m.item.typ.item)?;
-                        Ok(())
-                    })?;
-                    // TODO: Member types inserted into the global context.
-                    Type::Struct(name.clone())
+                    let members = members
+                        .iter_mut()
+                        .enumerate()
+                        .map(|(i, m)| {
+                            let t = self.check_type(m.span, &mut m.item.typ.item)?;
+                            Ok((m.item.name.clone(), (i, t)))
+                        })
+                        .collect::<Out<_>>()?;
+                    self.gs.structs.insert(name.clone(), Struct { members });
+                    (
+                        Some(Type::Struct(name.clone())),
+                        Type::Builtin(BuiltinType::Type),
+                    )
                 }
             };
             self.globals.insert(name.clone(), t);
@@ -133,7 +142,7 @@ impl Checker {
                 rhs_type
             }
             Stmt::Update { name, rhs } => {
-                let t = self.ident(&name.item);
+                let t = self.ident(&name.item)?.1;
                 self.check(rhs.span, &mut rhs.item, &t)?;
                 t
             }
@@ -218,7 +227,7 @@ impl Checker {
         Ok((
             None,
             match expr {
-                Expr::Ident(ident) => self.ident(ident),
+                Expr::Ident(ident) => return self.ident(ident),
                 Expr::BuiltinType(t) => {
                     return Ok((Some(Type::Builtin(*t)), Type::Builtin(BuiltinType::Type)));
                 }
@@ -327,21 +336,23 @@ impl Checker {
                         ret: Type::Ref(Box::new(typ)),
                     }))
                 }
-                Expr::Initialize(..) => todo!("initializer"),
+                Expr::Initialize(t, args) => {
+                    self.check_type(t.span, &mut t.item)?;
+                    _ = args;
+                    todo!()
+                }
                 Expr::Access(..) => todo!("access"),
                 Expr::Ref(..) => unreachable!(),
             },
         ))
     }
 
-    fn ident(&self, ident: &Ident) -> Type {
-        match ident {
-            Ident::Id(n) => self.globals.get(n),
-            Ident::Idx(i) => self.locals.get(*i),
-            Ident::Builtin(b) => return b.r#type(),
-        }
-        .cloned()
-        .unwrap()
+    fn ident(&self, ident: &Ident) -> Out<(Option<Type>, Type)> {
+        Ok(match ident {
+            Ident::Id(n) => self.globals.get(n).unwrap().clone(),
+            Ident::Idx(i) => (None, self.locals.get(*i).unwrap().clone()),
+            Ident::Builtin(b) => (None, b.r#type()),
+        })
     }
 
     fn insert(&mut self, block: &mut Block, idx: usize, typ: Type) {
