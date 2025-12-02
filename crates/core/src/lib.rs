@@ -69,6 +69,7 @@ pub enum Error {
     Parsing(Box<[(Span, String)]>),
 
     UndefName(Span, Ustr),
+    DuplicateName(Span, Ustr),
 
     TypeMismatch {
         span: Span,
@@ -122,23 +123,19 @@ impl State {
                 .map(|(span, msg)| (Some(self.line_col(span)), format!("Parse error: {msg}")))
                 .collect(),
             Error::UndefName(span, n) => {
-                vec![(
-                    Some(self.line_col(span)),
-                    format!("Undefined variable '{n}'"),
-                )]
+                vec![(Some(self.line_col(span)), format!("Undefined name '{n}'"))]
             }
-            Error::TypeMismatch { span, got, want } => {
-                vec![(
-                    Some(self.line_col(span)),
-                    format!("Type mismatch: Expected '{want}', but got '{got}'"),
-                )]
+            Error::DuplicateName(span, n) => {
+                vec![(Some(self.line_col(span)), format!("Duplicate name '{n}'"))]
             }
-            Error::ArityMismatch { span, got, want } => {
-                vec![(
-                    Some(self.line_col(span)),
-                    format!("Arity mismatch: Expected '{want}', but got '{got}'"),
-                )]
-            }
+            Error::TypeMismatch { span, got, want } => vec![(
+                Some(self.line_col(span)),
+                format!("Type mismatch: Expected '{want}', but got '{got}'"),
+            )],
+            Error::ArityMismatch { span, got, want } => vec![(
+                Some(self.line_col(span)),
+                format!("Arity mismatch: Expected '{want}', but got '{got}'"),
+            )],
             Error::ExpectedMain => vec![(None, "No 'main' function to run or compile".into())],
             Error::Jit(e) => vec![(None, format!("Compile error: {e}"))],
             Error::WriteObject(e) => vec![(None, format!("Serialize object error: {e}"))],

@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use ustr::{Ustr, UstrMap};
+use ustr::{Ustr, UstrMap, UstrSet};
 
 use crate::semantics::builtin::Builtin;
 use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Sig, Stmt};
@@ -10,6 +10,7 @@ use crate::{Error, Out, Span, Spanned};
 pub(crate) struct Resolver {
     globals: UstrMap<Id>,
     locals: Vec<Ustr>,
+    names: Names,
 }
 
 impl Resolver {
@@ -30,10 +31,15 @@ impl Resolver {
                     })?;
                 }
                 Sig::Static { typ } => self.expr(typ.span, &mut typ.item)?,
-                Sig::Struct { members } => members
-                    .iter_mut()
-                    .try_for_each(|m| self.expr(m.item.typ.span, &mut m.item.typ.item))?,
+                Sig::Struct { members } => {
+                    let mut names = Names::default();
+                    members.iter_mut().try_for_each(|m| {
+                        names.ensure_unique(m.span, &m.item.name)?;
+                        self.expr(m.item.typ.span, &mut m.item.typ.item)
+                    })?
+                }
             }
+            self.names.ensure_unique(decl.span, &decl.item.name)?;
             self.globals
                 .insert(decl.item.name.raw(), decl.item.name.clone());
             Ok(())
@@ -186,5 +192,18 @@ impl Block {
             local: true,
             ..Default::default()
         }
+    }
+}
+
+#[derive(Default)]
+struct Names(UstrSet);
+
+impl Names {
+    fn ensure_unique(&mut self, span: Span, id: &Id) -> Out<()> {
+        let raw = id.raw();
+        if self.0.insert(raw) {
+            return Ok(());
+        }
+        Err(Error::DuplicateName(span, raw))
     }
 }

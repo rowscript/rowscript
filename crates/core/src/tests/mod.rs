@@ -89,6 +89,27 @@ function f(a) {
 }
 
 #[test]
+fn it_fails_resolving_file_duplicate() {
+    let mut s = State::default();
+    s.parse(
+        r#"
+function f() {}
+function f() {}
+"#,
+    )
+    .unwrap();
+    let e = s.resolve().unwrap_err();
+    let Error::DuplicateName(.., n) = e else {
+        unreachable!();
+    };
+    assert_eq!(n, "f");
+    let errs = s.explain(e);
+    let LineCol { start, end } = errs[0].0.as_ref().unwrap();
+    assert_eq!(start, &(2, 9));
+    assert_eq!(end, &(2, 10));
+}
+
+#[test]
 fn it_fails_checking_file() {
     const TEXT: &str = r#"
 function f(): u32 {
