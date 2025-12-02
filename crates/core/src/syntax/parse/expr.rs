@@ -14,6 +14,7 @@ enum Chainer {
     Args(Vec<Spanned<Expr>>),
     Initializer(Vec<(Spanned<Id>, Spanned<Expr>)>),
     Access(Spanned<Id>),
+    Method(Spanned<Id>, Vec<Spanned<Expr>>),
 }
 
 pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, SyntaxErr<'t, Token>> + Clone
@@ -51,8 +52,11 @@ where
             .labelled("parenthesized expression");
 
         let args = grouped_by(Sym::LParen, expr.clone(), Sym::Comma, Sym::RParen)
+            .labelled("arguments expression");
+        let arguments = args
+            .clone()
             .map(Chainer::Args)
-            .labelled("arguments");
+            .labelled("arguments expression");
         let initializer = grouped_by(
             Sym::LParen,
             id().then_ignore(just(Token::Sym(Sym::Eq))).then(expr),
@@ -60,12 +64,17 @@ where
             Sym::RParen,
         )
         .map(Chainer::Initializer)
-        .labelled("initializer");
+        .labelled("initializer expression");
+        let method = just(Token::Sym(Sym::Dot))
+            .ignore_then(id())
+            .then(args)
+            .map(|(id, args)| Chainer::Method(id, args))
+            .labelled("method expression");
         let access = just(Token::Sym(Sym::Dot))
             .ignore_then(id())
             .map(Chainer::Access)
-            .labelled("access");
-        let chainer = args.or(initializer).or(access);
+            .labelled("access expression");
+        let chainer = arguments.or(initializer).or(method).or(access);
 
         let call = just(Token::Keyword(Keyword::New))
             .or_not()
@@ -83,6 +92,7 @@ where
                     Chainer::Args(args) => Expr::Call(Box::new(a), args.into()),
                     Chainer::Initializer(xs) => Expr::Initialize(Box::new(a), xs.into()),
                     Chainer::Access(m) => Expr::Access(Box::new(a), m),
+                    Chainer::Method(id, args) => Expr::Method(Box::new(a), id, args.into()),
                 },
             })
             .labelled("call expression");

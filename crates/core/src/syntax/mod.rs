@@ -91,12 +91,13 @@ pub enum Expr {
     Boolean(bool),
 
     // Values.
-    Call(Box<Spanned<Self>>, Box<[Spanned<Expr>]>),
+    Call(Box<Spanned<Self>>, Box<[Spanned<Self>]>),
     BinaryOp(Box<Spanned<Self>>, Sym, Option<Type>, Box<Spanned<Self>>),
     UnaryOp(Box<Spanned<Self>>, Sym, Option<Type>),
     New(Box<Spanned<Self>>),
     Initialize(Box<Spanned<Self>>, Box<[(Spanned<Id>, Spanned<Self>)]>),
     Access(Box<Spanned<Self>>, Spanned<Id>),
+    Method(Box<Spanned<Self>>, Spanned<Id>, Box<[Spanned<Self>]>),
 
     // VM-specific constructs.
     Ref(Rc<Self>),

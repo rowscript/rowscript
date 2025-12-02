@@ -562,6 +562,7 @@ impl Expr {
             Expr::UnaryOp(..) => todo!(),
             Expr::Initialize(..) => todo!("initializer"),
             Expr::Access(..) => todo!("access"),
+            Expr::Method(..) => todo!("method"),
             Expr::New(..) | Expr::Ref(..) => unreachable!(),
         }
     }

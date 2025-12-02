@@ -47,20 +47,22 @@ fn it_scans_doc() {
 
 #[test]
 fn it_parses_expr() {
-    let out = lex().parse("f(42, x) == false").unwrap();
-    expr().parse(out.tokens.as_slice()).unwrap();
-}
-
-#[test]
-fn it_parses_expr_ref_type() {
-    let out = lex().parse("&i32").unwrap();
-    expr().parse(out.tokens.as_slice()).unwrap();
-}
-
-#[test]
-fn it_parses_expr_new() {
-    let out = lex().parse("new i32(42)").unwrap();
-    expr().parse(out.tokens.as_slice()).unwrap();
+    const TESTS: &[(&str, fn(Expr) -> bool)] = &[
+        ("f(42, x) == false", |e| matches!(e, Expr::BinaryOp(..))),
+        ("&i32", |e| matches!(e, Expr::RefType(..))),
+        ("new i32(42)", |e| matches!(e, Expr::Call(..))),
+        ("a()", |e| matches!(e, Expr::Call(..))),
+        ("a()()", |e| matches!(e, Expr::Call(..))),
+        ("a.b", |e| matches!(e, Expr::Access(..))),
+        ("a.b()", |e| matches!(e, Expr::Method(..))),
+        ("a.b()()", |e| matches!(e, Expr::Call(..))),
+        ("a.b()().c.d()()()", |e| matches!(e, Expr::Call(..))),
+    ];
+    for (text, test) in TESTS {
+        let out = lex().parse(text).unwrap();
+        let e = expr().parse(out.tokens.as_slice()).unwrap();
+        assert!(test(e.item));
+    }
 }
 
 #[test]

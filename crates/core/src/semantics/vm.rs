@@ -194,6 +194,7 @@ impl<'a> Vm<'a> {
             },
             Expr::Initialize(..) => todo!("initializer"),
             Expr::Access(..) => todo!("access"),
+            Expr::Method(..) => todo!("method"),
 
             Expr::BuiltinType(..)
             | Expr::RefType(..)

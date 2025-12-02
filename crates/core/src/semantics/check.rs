@@ -336,6 +336,7 @@ impl Checker {
                 todo!()
             }
             Expr::Access(..) => todo!("access"),
+            Expr::Method(..) => todo!("method"),
             Expr::Ref(..) => unreachable!(),
         }))
     }
