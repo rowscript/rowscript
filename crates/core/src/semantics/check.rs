@@ -328,6 +328,7 @@ impl Checker {
                     }))
                 }
                 Expr::Initialize(..) => todo!("initializer"),
+                Expr::Access(..) => todo!("access"),
                 Expr::Ref(..) => unreachable!(),
             },
         ))

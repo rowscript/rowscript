@@ -193,6 +193,7 @@ impl<'a> Vm<'a> {
                 _ => unreachable!(),
             },
             Expr::Initialize(..) => todo!("initializer"),
+            Expr::Access(..) => todo!("access"),
 
             Expr::BuiltinType(..)
             | Expr::RefType(..)

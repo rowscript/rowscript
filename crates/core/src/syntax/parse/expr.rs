@@ -13,6 +13,7 @@ use crate::{Span, Spanned};
 enum Chainer {
     Args(Vec<Spanned<Expr>>),
     Initializer(Vec<(Spanned<Id>, Spanned<Expr>)>),
+    Access(Spanned<Id>),
 }
 
 pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, SyntaxErr<'t, Token>> + Clone
@@ -60,7 +61,11 @@ where
         )
         .map(Chainer::Initializer)
         .labelled("initializer");
-        let chainer = args.or(initializer);
+        let access = just(Token::Sym(Sym::Dot))
+            .ignore_then(id())
+            .map(Chainer::Access)
+            .labelled("access");
+        let chainer = args.or(initializer).or(access);
 
         let call = just(Token::Keyword(Keyword::New))
             .or_not()
@@ -77,6 +82,7 @@ where
                 item: match c {
                     Chainer::Args(args) => Expr::Call(Box::new(a), args.into()),
                     Chainer::Initializer(xs) => Expr::Initialize(Box::new(a), xs.into()),
+                    Chainer::Access(m) => Expr::Access(Box::new(a), m),
                 },
             })
             .labelled("call expression");

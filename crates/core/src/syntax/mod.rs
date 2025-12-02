@@ -96,6 +96,7 @@ pub enum Expr {
     UnaryOp(Box<Spanned<Self>>, Sym, Option<Type>),
     New(Box<Spanned<Self>>),
     Initialize(Box<Spanned<Self>>, Box<[(Spanned<Id>, Spanned<Self>)]>),
+    Access(Box<Spanned<Self>>, Spanned<Id>),
 
     // VM-specific constructs.
     Ref(Rc<Self>),

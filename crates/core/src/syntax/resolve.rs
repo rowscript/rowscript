@@ -131,6 +131,7 @@ impl Resolver {
                 args.iter_mut()
                     .try_for_each(|(.., a)| self.expr(a.span, &mut a.item))
             }
+            Expr::Access(callee, ..) => self.expr(callee.span, &mut callee.item),
 
             Expr::BuiltinType(..)
             | Expr::Unit

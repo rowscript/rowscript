@@ -561,6 +561,7 @@ impl Expr {
             }
             Expr::UnaryOp(..) => todo!(),
             Expr::Initialize(..) => todo!("initializer"),
+            Expr::Access(..) => todo!("access"),
             Expr::New(..) | Expr::Ref(..) => unreachable!(),
         }
     }
