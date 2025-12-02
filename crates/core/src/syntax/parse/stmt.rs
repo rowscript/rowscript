@@ -62,7 +62,7 @@ where
             .map(|((span, cond), body)| Branch {
                 span,
                 cond,
-                body: body.into_boxed_slice(),
+                body: body.into(),
             })
             .labelled("if branch");
 
@@ -86,8 +86,8 @@ where
                 )
                 .map(|((then, elif), els)| Stmt::If {
                     then,
-                    elif: elif.into_boxed_slice(),
-                    els: els.map(|(span, stmts)| (span, stmts.into_boxed_slice())),
+                    elif: elif.into(),
+                    els: els.map(|(span, stmts)| (span, stmts.into())),
                 })
                 .map_with(Spanned::from_map_extra)
                 .labelled("if statement");
@@ -102,7 +102,7 @@ where
                 Stmt::While(Branch {
                     span,
                     cond,
-                    body: body.into_boxed_slice(),
+                    body: body.into(),
                 })
             })
             .map_with(Spanned::from_map_extra)

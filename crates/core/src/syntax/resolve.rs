@@ -3,7 +3,7 @@ use std::str::FromStr;
 use ustr::{Ustr, UstrMap};
 
 use crate::semantics::builtin::Builtin;
-use crate::syntax::{Args, Branch, Def, Expr, File, Id, Ident, Sig, Stmt};
+use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -117,14 +117,8 @@ impl Resolver {
             Expr::RefType(e) => self.expr(e.span, &mut e.item),
             Expr::Call(callee, args) => {
                 self.expr(callee.span, &mut callee.item)?;
-                match args {
-                    Args::Unnamed(xs) => xs
-                        .iter_mut()
-                        .try_for_each(|a| self.expr(a.span, &mut a.item)),
-                    Args::Named(xs) => xs
-                        .iter_mut()
-                        .try_for_each(|a| self.expr(a.arg.span, &mut a.arg.item)),
-                }
+                args.iter_mut()
+                    .try_for_each(|a| self.expr(a.span, &mut a.item))
             }
             Expr::BinaryOp(lhs, .., rhs) => {
                 self.expr(lhs.span, &mut lhs.item)?;
@@ -132,6 +126,11 @@ impl Resolver {
             }
             Expr::UnaryOp(x, ..) => self.expr(x.span, &mut x.item),
             Expr::New(e) => self.expr(e.span, &mut e.item),
+            Expr::Initialize(callee, args) => {
+                self.expr(callee.span, &mut callee.item)?;
+                args.iter_mut()
+                    .try_for_each(|(.., a)| self.expr(a.span, &mut a.item))
+            }
 
             Expr::BuiltinType(..)
             | Expr::Unit

@@ -51,15 +51,13 @@ where
         )
         .map(|((((doc, id), params), ret), body)| {
             id.map(|name| Decl {
-                doc: doc.into_boxed_slice(),
+                doc: doc.into(),
                 name,
                 sig: Sig::Func {
-                    params: params.into_boxed_slice(),
+                    params: params.into(),
                     ret,
                 },
-                def: Def::Func {
-                    body: body.into_boxed_slice(),
-                },
+                def: Def::Func { body: body.into() },
             })
         })
         .labelled("function definition")
@@ -77,7 +75,7 @@ where
         .then(expr())
         .map(|(((doc, id), typ), rhs)| {
             id.map(|name| Decl {
-                doc: doc.into_boxed_slice(),
+                doc: doc.into(),
                 name,
                 sig: Sig::Static { typ },
                 def: Def::Static { rhs },
@@ -106,10 +104,10 @@ where
         )
         .map(|((doc, id), members)| {
             id.map(|name| Decl {
-                doc: doc.into_boxed_slice(),
+                doc: doc.into(),
                 name,
                 sig: Sig::Struct {
-                    members: members.into_boxed_slice(),
+                    members: members.into(),
                 },
                 def: Def::Struct,
             })

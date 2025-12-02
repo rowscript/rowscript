@@ -91,10 +91,11 @@ pub enum Expr {
     Boolean(bool),
 
     // Values.
-    Call(Box<Spanned<Self>>, Args),
+    Call(Box<Spanned<Self>>, Box<[Spanned<Expr>]>),
     BinaryOp(Box<Spanned<Self>>, Sym, Option<Type>, Box<Spanned<Self>>),
     UnaryOp(Box<Spanned<Self>>, Sym, Option<Type>),
     New(Box<Spanned<Self>>),
+    Initialize(Box<Spanned<Self>>, Box<[(Spanned<Id>, Spanned<Self>)]>),
 
     // VM-specific constructs.
     Ref(Rc<Self>),
@@ -127,28 +128,6 @@ impl Expr {
         let Token::Sym(sym) = op else { unreachable!() };
         Spanned::from_map_extra(Self::UnaryOp(Box::new(x), sym, None), e)
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum Args {
-    Unnamed(Box<[Spanned<Expr>]>),
-    Named(Box<[Named]>),
-}
-
-impl Args {
-    pub(crate) fn len(&self) -> usize {
-        match self {
-            Self::Unnamed(xs) => xs.len(),
-            Self::Named(xs) => xs.len(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Named {
-    #[allow(dead_code)]
-    name: Spanned<Id>,
-    arg: Spanned<Expr>,
 }
 
 #[derive(Debug, Clone)]

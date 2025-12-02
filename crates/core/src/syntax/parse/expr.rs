@@ -7,8 +7,13 @@ use serde_json::from_str;
 
 use crate::semantics::{Float, Integer};
 use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, id};
-use crate::syntax::{Args, Expr, Ident, Named};
+use crate::syntax::{Expr, Id, Ident};
 use crate::{Span, Spanned};
+
+enum Chainer {
+    Args(Vec<Spanned<Expr>>),
+    Initializer(Vec<(Spanned<Id>, Spanned<Expr>)>),
+}
 
 pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, SyntaxErr<'t, Token>> + Clone
 where
@@ -44,19 +49,18 @@ where
             .delimited_by(just(Token::Sym(Sym::LParen)), just(Token::Sym(Sym::RParen)))
             .labelled("parenthesized expression");
 
-        let unnamed = grouped_by(Sym::LParen, expr.clone(), Sym::Comma, Sym::RParen)
-            .map(|args| Args::Unnamed(args.into_boxed_slice()))
-            .labelled("unnamed arguments");
-        let named = grouped_by(
+        let args = grouped_by(Sym::LParen, expr.clone(), Sym::Comma, Sym::RParen)
+            .map(Chainer::Args)
+            .labelled("arguments");
+        let initializer = grouped_by(
             Sym::LParen,
-            id().then_ignore(just(Token::Sym(Sym::Eq)))
-                .then(expr)
-                .map(|(name, arg)| Named { name, arg }),
+            id().then_ignore(just(Token::Sym(Sym::Eq))).then(expr),
             Sym::Comma,
             Sym::RParen,
         )
-        .map(|args| Args::Named(args.into_boxed_slice()))
-        .labelled("named arguments");
+        .map(Chainer::Initializer)
+        .labelled("initializer");
+        let chainer = args.or(initializer);
 
         let call = just(Token::Keyword(Keyword::New))
             .or_not()
@@ -68,9 +72,12 @@ where
                     item: Expr::New(Box::new(callee)),
                 },
             })
-            .foldl_with(unnamed.or(named).repeated(), |callee, args, e| Spanned {
+            .foldl_with(chainer.repeated(), |a, c, e| Spanned {
                 span: e.span(),
-                item: Expr::Call(Box::new(callee), args),
+                item: match c {
+                    Chainer::Args(args) => Expr::Call(Box::new(a), args.into()),
+                    Chainer::Initializer(xs) => Expr::Initialize(Box::new(a), xs.into()),
+                },
             })
             .labelled("call expression");
 
