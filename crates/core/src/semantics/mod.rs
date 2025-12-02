@@ -41,7 +41,7 @@ pub enum Type {
     Function(Box<FunctionType>),
     #[strum(to_string = "&{0}")]
     Ref(Box<Self>),
-    #[strum(transparent)]
+    #[strum(to_string = "struct {0}")]
     Struct(Id),
 }
 

@@ -6,7 +6,7 @@ use std::slice::from_ref;
 use crate::Spanned;
 use crate::semantics::Globals;
 use crate::syntax::parse::Sym;
-use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
+use crate::syntax::{Args, Branch, Expr, Id, Ident, Stmt};
 
 pub(crate) struct Vm<'a> {
     gs: &'a Globals,
@@ -131,7 +131,10 @@ impl<'a> Vm<'a> {
                 Ident::Builtin(b) => Expr::Ident(Ident::Builtin(*b)),
             },
             Expr::Call(f, args) => {
-                let args = args.iter().map(|e| self.expr(frame, &e.item)).collect();
+                let args = match args {
+                    Args::Unnamed(xs) => xs.iter().map(|arg| self.expr(frame, &arg.item)).collect(),
+                    Args::Named(..) => todo!("named arguments"),
+                };
                 match self.expr(frame, &f.item) {
                     Expr::Ident(n) => match n {
                         Ident::Id(id) => {

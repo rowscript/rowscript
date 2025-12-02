@@ -5,6 +5,6 @@ struct A {
 
 function main() {
     // TODO
-    //let a = A(42)
+    //let a = A(n=42, m=69)
     //println(a.n)
 }

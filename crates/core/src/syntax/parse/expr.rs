@@ -6,8 +6,8 @@ use chumsky::primitive::select;
 use serde_json::from_str;
 
 use crate::semantics::{Float, Integer};
-use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by};
-use crate::syntax::{Expr, Ident};
+use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, id};
+use crate::syntax::{Args, Expr, Ident, Named};
 use crate::{Span, Spanned};
 
 pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, SyntaxErr<'t, Token>> + Clone
@@ -44,7 +44,20 @@ where
             .delimited_by(just(Token::Sym(Sym::LParen)), just(Token::Sym(Sym::RParen)))
             .labelled("parenthesized expression");
 
-        let args = grouped_by(Sym::LParen, expr, Sym::Comma, Sym::RParen).labelled("arguments");
+        let unnamed = grouped_by(Sym::LParen, expr.clone(), Sym::Comma, Sym::RParen)
+            .map(|args| Args::Unnamed(args.into_boxed_slice()))
+            .labelled("unnamed arguments");
+        let named = grouped_by(
+            Sym::LParen,
+            id().then_ignore(just(Token::Sym(Sym::Eq)))
+                .then(expr)
+                .map(|(name, arg)| Named { name, arg }),
+            Sym::Comma,
+            Sym::RParen,
+        )
+        .map(|args| Args::Named(args.into_boxed_slice()))
+        .labelled("named arguments");
+
         let call = just(Token::Keyword(Keyword::New))
             .or_not()
             .then(constant.or(ident).or(paren))
@@ -55,9 +68,9 @@ where
                     item: Expr::New(Box::new(callee)),
                 },
             })
-            .foldl_with(args.repeated(), |callee, args, e| Spanned {
+            .foldl_with(unnamed.or(named).repeated(), |callee, args, e| Spanned {
                 span: e.span(),
-                item: Expr::Call(Box::new(callee), args.into_boxed_slice()),
+                item: Expr::Call(Box::new(callee), args),
             })
             .labelled("call expression");
 

@@ -43,6 +43,7 @@ pub enum Sym {
     RParen,
     LBrace,
     RBrace,
+    Dot,
     Comma,
     Colon,
     Eq,

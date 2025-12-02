@@ -23,7 +23,7 @@ use crate::syntax::parse::Tokens;
 use crate::syntax::parse::file::file;
 use crate::syntax::parse::lex::lex;
 use crate::syntax::resolve::Resolver;
-use crate::syntax::{Expr, File, Ident, Stmt};
+use crate::syntax::{Args, Expr, File, Ident, Stmt};
 
 pub type Span = SimpleSpan;
 
@@ -226,7 +226,7 @@ impl State {
             Box::new(Spanned::stdin(Expr::Ident(Ident::Id(
                 self.file.decls[n].item.name.clone(),
             )))),
-            Box::new([Spanned::stdin(arg)]),
+            Args::Unnamed(Box::new([Spanned::stdin(arg)])),
         )))];
         Vm::new(&self.gs).func(stmts, Default::default())
     }

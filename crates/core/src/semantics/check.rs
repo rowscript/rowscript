@@ -3,7 +3,7 @@ use std::mem::take;
 
 use crate::semantics::{BuiltinType, Float, Func, FunctionType, Globals, Integer, Static, Type};
 use crate::syntax::parse::Sym;
-use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Sig, Stmt};
+use crate::syntax::{Args, Branch, Def, Expr, File, Id, Ident, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -256,12 +256,17 @@ impl Checker {
                             return Err(Error::ArityMismatch { span, got, want });
                         }
                     }
-                    args.iter_mut()
-                        .zip(typ.params.iter())
-                        .try_for_each(|(got, want)| {
-                            self.check(got.span, &mut got.item, want)?;
-                            Ok(())
-                        })?;
+                    match args {
+                        Args::Unnamed(xs) => {
+                            xs.iter_mut()
+                                .zip(typ.params.iter())
+                                .try_for_each(|(got, want)| {
+                                    self.check(got.span, &mut got.item, want)?;
+                                    Ok(())
+                                })?
+                        }
+                        Args::Named(..) => todo!("named arguments"),
+                    }
                     typ.ret
                 }
                 Expr::BinaryOp(lhs, op, typ, rhs) => match op {

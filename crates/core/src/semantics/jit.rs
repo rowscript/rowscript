@@ -30,13 +30,12 @@ use object::write::{Object, StandardSegment, Symbol, SymbolSection};
 use object::{
     BinaryFormat, Endianness, File, SectionKind, SymbolFlags, SymbolKind, SymbolScope, U64,
 };
-
 use wasmtime_internal_jit_debug::gdb_jit_int::GdbJitImageRegistration;
 
 use crate::semantics::builtin::import;
 use crate::semantics::{BuiltinType, Float, Func, FunctionType, Globals, Integer, Type};
 use crate::syntax::parse::Sym;
-use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
+use crate::syntax::{Args, Branch, Expr, Id, Ident, Stmt};
 use crate::{Error, LineCol, Out, Span, Spanned};
 
 pub struct Code {
@@ -522,10 +521,13 @@ impl Expr {
             Expr::String(..) => todo!("use UstrSet to prevent duplicate in data sections"),
             Expr::Boolean(b) => builder.ins().iconst(I8, *b as i64),
             Expr::Call(f, args) => {
-                let args = args
-                    .iter()
-                    .map(|a| a.item.compile(jit, builder))
-                    .collect::<Box<_>>();
+                let args = match args {
+                    Args::Unnamed(xs) => xs
+                        .iter()
+                        .map(|a| a.item.compile(jit, builder))
+                        .collect::<Box<_>>(),
+                    Args::Named(..) => todo!("named arguments"),
+                };
 
                 let mut sig = jit.m.make_signature();
                 let Expr::Ident(ident) = &f.item else {
