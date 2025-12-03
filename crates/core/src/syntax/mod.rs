@@ -95,9 +95,12 @@ pub enum Expr {
     BinaryOp(Box<Spanned<Self>>, Sym, Option<Type>, Box<Spanned<Self>>),
     UnaryOp(Box<Spanned<Self>>, Sym, Option<Type>),
     New(Box<Spanned<Self>>),
-    Initialize(Box<Spanned<Self>>, Box<[(Spanned<Ustr>, Spanned<Self>)]>),
+    CallKw(Box<Spanned<Self>>, Kwargs),
     Access(Box<Spanned<Self>>, Spanned<Ustr>),
     Method(Box<Spanned<Self>>, Spanned<Ustr>, Box<[Spanned<Self>]>),
+
+    // Typechecking-specific constructs, especially those are "readback" (a.k.a. "reified").
+    StructType(Id),
 
     // VM-specific constructs.
     Ref(Rc<Self>),
@@ -130,6 +133,12 @@ impl Expr {
         let Token::Sym(sym) = op else { unreachable!() };
         Spanned::from_map_extra(Self::UnaryOp(Box::new(x), sym, None), e)
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum Kwargs {
+    Unordered(Box<[(Spanned<Ustr>, Spanned<Expr>)]>),
+    Ordered(Box<[Expr]>),
 }
 
 #[derive(Debug, Clone)]

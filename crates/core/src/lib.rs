@@ -68,8 +68,16 @@ pub enum Error {
     Lexing(Box<[(LineCol, String)]>),
     Parsing(Box<[(Span, String)]>),
 
-    UndefName(Span, Ustr),
-    DuplicateName(Span, Ustr),
+    UndefName {
+        span: Span,
+        name: Ustr,
+        is_member: bool,
+    },
+    DuplicateName {
+        span: Span,
+        name: Ustr,
+        is_member: bool,
+    },
 
     TypeMismatch {
         span: Span,
@@ -81,6 +89,7 @@ pub enum Error {
         got: usize,
         want: usize,
     },
+    MissingMembers(Span, Box<[Ustr]>),
 
     ExpectedMain,
 
@@ -122,12 +131,28 @@ impl State {
                 .into_iter()
                 .map(|(span, msg)| (Some(self.line_col(span)), format!("Parse error: {msg}")))
                 .collect(),
-            Error::UndefName(span, n) => {
-                vec![(Some(self.line_col(span)), format!("Undefined name '{n}'"))]
-            }
-            Error::DuplicateName(span, n) => {
-                vec![(Some(self.line_col(span)), format!("Duplicate name '{n}'"))]
-            }
+            Error::UndefName {
+                span,
+                name,
+                is_member,
+            } => vec![(
+                Some(self.line_col(span)),
+                format!(
+                    "Undefined {} '{name}'",
+                    if is_member { "member" } else { "name" }
+                ),
+            )],
+            Error::DuplicateName {
+                span,
+                name,
+                is_member,
+            } => vec![(
+                Some(self.line_col(span)),
+                format!(
+                    "Duplicate {} '{name}'",
+                    if is_member { "member" } else { "name" }
+                ),
+            )],
             Error::TypeMismatch { span, got, want } => vec![(
                 Some(self.line_col(span)),
                 format!("Type mismatch: Expected '{want}', but got '{got}'"),
@@ -136,6 +161,10 @@ impl State {
                 Some(self.line_col(span)),
                 format!("Arity mismatch: Expected '{want}', but got '{got}'"),
             )],
+            Error::MissingMembers(span, members) => members
+                .into_iter()
+                .map(|m| (Some(self.line_col(span)), format!("Missing member '{m}'")))
+                .collect(),
             Error::ExpectedMain => vec![(None, "No 'main' function to run or compile".into())],
             Error::Jit(e) => vec![(None, format!("Compile error: {e}"))],
             Error::WriteObject(e) => vec![(None, format!("Serialize object error: {e}"))],

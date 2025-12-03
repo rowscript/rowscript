@@ -3,7 +3,7 @@ use std::str::FromStr;
 use ustr::{Ustr, UstrMap, UstrSet};
 
 use crate::semantics::builtin::Builtin;
-use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Sig, Stmt};
+use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Kwargs, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -34,12 +34,13 @@ impl Resolver {
                 Sig::Struct { members } => {
                     let mut names = Names::default();
                     members.iter_mut().try_for_each(|m| {
-                        names.ensure_unique(m.span, m.item.name)?;
+                        names.ensure_unique(m.span, m.item.name, true)?;
                         self.expr(m.item.typ.span, &mut m.item.typ.item)
                     })?
                 }
             }
-            self.names.ensure_unique(decl.span, decl.item.name.raw())?;
+            self.names
+                .ensure_unique(decl.span, decl.item.name.raw(), false)?;
             self.globals
                 .insert(decl.item.name.raw(), decl.item.name.clone());
             Ok(())
@@ -132,10 +133,16 @@ impl Resolver {
             }
             Expr::UnaryOp(x, ..) => self.expr(x.span, &mut x.item),
             Expr::New(e) => self.expr(e.span, &mut e.item),
-            Expr::Initialize(callee, args) => {
+            Expr::CallKw(callee, args) => {
+                let mut names = Names::default();
                 self.expr(callee.span, &mut callee.item)?;
-                args.iter_mut()
-                    .try_for_each(|(.., a)| self.expr(a.span, &mut a.item))
+                let Kwargs::Unordered(args) = args else {
+                    unreachable!()
+                };
+                args.iter_mut().try_for_each(|(name, a)| {
+                    names.ensure_unique(name.span, name.item, true)?;
+                    self.expr(a.span, &mut a.item)
+                })
             }
             Expr::Access(callee, ..) => self.expr(callee.span, &mut callee.item),
 
@@ -146,26 +153,30 @@ impl Resolver {
             | Expr::String(..)
             | Expr::Boolean(..) => Ok(()),
 
-            Expr::Ref(..) => unreachable!(),
+            Expr::StructType(..) | Expr::Ref(..) => unreachable!(),
         }
     }
 
     fn name(&mut self, span: Span, ident: &mut Ident) -> Out<()> {
         let id = ident.as_id_mut();
-        let raw = id.raw();
-        if let Some(found) = self.locals.iter().rposition(|each| raw == **each) {
+        let name = id.raw();
+        if let Some(found) = self.locals.iter().rposition(|each| name == **each) {
             *ident = Ident::Idx(found);
             return Ok(());
         }
-        if let Some(found) = self.globals.get(&raw) {
+        if let Some(found) = self.globals.get(&name) {
             *id = found.clone();
             return Ok(());
         }
-        if let Ok(builtin) = Builtin::from_str(&raw) {
+        if let Ok(builtin) = Builtin::from_str(&name) {
             *ident = Ident::Builtin(builtin);
             return Ok(());
         }
-        Err(Error::UndefName(span, raw))
+        Err(Error::UndefName {
+            span,
+            name,
+            is_member: false,
+        })
     }
 
     fn insert(&mut self, block: &mut Block, ident: &mut Ident) {
@@ -199,10 +210,14 @@ impl Block {
 struct Names(UstrSet);
 
 impl Names {
-    fn ensure_unique(&mut self, span: Span, raw: Ustr) -> Out<()> {
-        if self.0.insert(raw) {
+    fn ensure_unique(&mut self, span: Span, name: Ustr, is_member: bool) -> Out<()> {
+        if self.0.insert(name) {
             return Ok(());
         }
-        Err(Error::DuplicateName(span, raw))
+        Err(Error::DuplicateName {
+            span,
+            name,
+            is_member,
+        })
     }
 }

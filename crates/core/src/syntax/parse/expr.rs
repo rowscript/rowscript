@@ -8,12 +8,12 @@ use ustr::Ustr;
 
 use crate::semantics::{Float, Integer};
 use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, name};
-use crate::syntax::{Expr, Id, Ident};
+use crate::syntax::{Expr, Id, Ident, Kwargs};
 use crate::{Span, Spanned};
 
 enum Chainer {
     Args(Vec<Spanned<Expr>>),
-    Initializer(Vec<(Spanned<Ustr>, Spanned<Expr>)>),
+    Kwargs(Vec<(Spanned<Ustr>, Spanned<Expr>)>),
     Access(Spanned<Ustr>),
     Method(Spanned<Ustr>, Vec<Spanned<Expr>>),
 }
@@ -58,14 +58,14 @@ where
             .clone()
             .map(Chainer::Args)
             .labelled("arguments expression");
-        let initializer = grouped_by(
+        let kwargs = grouped_by(
             Sym::LParen,
             name().then_ignore(just(Token::Sym(Sym::Eq))).then(expr),
             Sym::Comma,
             Sym::RParen,
         )
-        .map(Chainer::Initializer)
-        .labelled("initializer expression");
+        .map(Chainer::Kwargs)
+        .labelled("kwargs expression");
         let method = just(Token::Sym(Sym::Dot))
             .ignore_then(name())
             .then(args)
@@ -75,7 +75,7 @@ where
             .ignore_then(name())
             .map(Chainer::Access)
             .labelled("access expression");
-        let chainer = arguments.or(initializer).or(method).or(access);
+        let chainer = arguments.or(kwargs).or(method).or(access);
 
         let call = just(Token::Keyword(Keyword::New))
             .or_not()
@@ -91,7 +91,7 @@ where
                 span: e.span(),
                 item: match c {
                     Chainer::Args(args) => Expr::Call(Box::new(a), args.into()),
-                    Chainer::Initializer(xs) => Expr::Initialize(Box::new(a), xs.into()),
+                    Chainer::Kwargs(xs) => Expr::CallKw(Box::new(a), Kwargs::Unordered(xs.into())),
                     Chainer::Access(m) => Expr::Access(Box::new(a), m),
                     Chainer::Method(id, args) => Expr::Method(Box::new(a), id, args.into()),
                 },

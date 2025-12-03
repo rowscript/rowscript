@@ -192,7 +192,7 @@ impl<'a> Vm<'a> {
                 }
                 _ => unreachable!(),
             },
-            Expr::Initialize(..) => todo!("initializer"),
+            Expr::CallKw(..) => todo!("initializer"),
             Expr::Access(..) => todo!("access"),
             Expr::Method(..) => todo!("method"),
 
@@ -205,6 +205,8 @@ impl<'a> Vm<'a> {
             | Expr::Boolean(..)
             | Expr::New(..)
             | Expr::Ref(..) => expr.clone(),
+
+            Expr::StructType(..) => unreachable!(),
         }
     }
 }

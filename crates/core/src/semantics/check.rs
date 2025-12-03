@@ -5,7 +5,7 @@ use crate::semantics::{
     BuiltinType, Float, Func, FunctionType, Globals, Integer, Static, Struct, Type,
 };
 use crate::syntax::parse::Sym;
-use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Sig, Stmt};
+use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Kwargs, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -330,23 +330,42 @@ impl Checker {
                     ret: Type::Ref(Box::new(typ)),
                 }))
             }
-            Expr::Initialize(t, args) => {
+            Expr::CallKw(t, unordered) => {
                 let got = self.check_type(t.span, &mut t.item)?;
-                let Type::Struct(sid) = got else {
+                let Type::Struct(s) = &got else {
                     return Err(Error::TypeMismatch {
                         span: t.span,
                         got: got.to_string(),
                         want: "struct".to_string(),
                     });
                 };
-                let s = self.gs.structs.get(&sid).unwrap();
-                _ = s;
-                _ = args;
-                todo!()
+                let mut members = self.gs.structs.get(s).unwrap().members.clone();
+                let Kwargs::Unordered(args) = unordered else {
+                    unreachable!()
+                };
+                let mut ordered = Vec::with_capacity(members.len());
+                take(args).into_iter().try_for_each(|(name, mut arg)| {
+                    let (i, typ) = members.remove(&name.item).ok_or(Error::UndefName {
+                        span: name.span,
+                        name: name.item,
+                        is_member: true,
+                    })?;
+                    self.check(arg.span, &mut arg.item, &typ)?;
+                    ordered.insert(i, arg.item);
+                    Ok(())
+                })?;
+                if !members.is_empty() {
+                    return Err(Error::MissingMembers(
+                        span,
+                        members.keys().cloned().collect(),
+                    ));
+                }
+                *unordered = Kwargs::Ordered(ordered.into());
+                got
             }
             Expr::Access(..) => todo!("access"),
             Expr::Method(..) => todo!("method"),
-            Expr::Ref(..) => unreachable!(),
+            Expr::StructType(..) | Expr::Ref(..) => unreachable!(),
         }))
     }
 

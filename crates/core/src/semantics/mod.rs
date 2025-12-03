@@ -61,6 +61,7 @@ impl Type {
                 span,
                 item: t.to_expr(span),
             })),
+            Type::Struct(id) => Expr::StructType(id.clone()),
             _ => unreachable!(),
         }
     }
@@ -178,7 +179,6 @@ pub(crate) struct Static {
 
 #[derive(Debug)]
 pub(crate) struct Struct {
-    #[allow(dead_code)]
     pub(crate) members: UstrMap<(usize, Type)>,
 }
 

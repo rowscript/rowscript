@@ -560,10 +560,10 @@ impl Expr {
                 }
             }
             Expr::UnaryOp(..) => todo!(),
-            Expr::Initialize(..) => todo!("initializer"),
+            Expr::CallKw(..) => todo!("initializer"),
             Expr::Access(..) => todo!("access"),
             Expr::Method(..) => todo!("method"),
-            Expr::New(..) | Expr::Ref(..) => unreachable!(),
+            Expr::New(..) | Expr::StructType(..) | Expr::Ref(..) => unreachable!(),
         }
     }
 }

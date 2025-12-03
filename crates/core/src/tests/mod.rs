@@ -101,10 +101,10 @@ function f() {}
     )
     .unwrap();
     let e = s.resolve().unwrap_err();
-    let Error::DuplicateName(.., n) = e else {
+    let Error::DuplicateName { name, .. } = e else {
         unreachable!();
     };
-    assert_eq!(n, "f");
+    assert_eq!(name, "f");
     let errs = s.explain(e);
     let LineCol { start, end } = errs[0].0.as_ref().unwrap();
     assert_eq!(start, &(2, 9));
