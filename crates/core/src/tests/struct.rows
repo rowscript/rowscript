@@ -4,6 +4,6 @@ struct A {
 }
 
 function main() {
-    let a = A(n=42, m=69)
+    let a = A{n: 42, m: 69}
     println(a.n)
 }

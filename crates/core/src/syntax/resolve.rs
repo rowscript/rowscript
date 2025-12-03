@@ -3,7 +3,7 @@ use std::str::FromStr;
 use ustr::{Ustr, UstrMap, UstrSet};
 
 use crate::semantics::builtin::Builtin;
-use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Kwargs, Sig, Stmt};
+use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Object, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -133,10 +133,10 @@ impl Resolver {
             }
             Expr::UnaryOp(x, ..) => self.expr(x.span, &mut x.item),
             Expr::New(e) => self.expr(e.span, &mut e.item),
-            Expr::CallKw(callee, args) => {
+            Expr::Object(callee, args) => {
                 let mut names = Names::default();
                 self.expr(callee.span, &mut callee.item)?;
-                let Kwargs::Unordered(args) = args else {
+                let Object::Unordered(args) = args else {
                     unreachable!()
                 };
                 args.iter_mut().try_for_each(|(name, a)| {

@@ -95,7 +95,7 @@ pub enum Expr {
     BinaryOp(Box<Spanned<Self>>, Sym, Option<Type>, Box<Spanned<Self>>),
     UnaryOp(Box<Spanned<Self>>, Sym, Option<Type>),
     New(Box<Spanned<Self>>),
-    CallKw(Box<Spanned<Self>>, Kwargs),
+    Object(Box<Spanned<Self>>, Object),
     Access(Box<Spanned<Self>>, Access),
     Method(Box<Spanned<Self>>, Spanned<Ustr>, Box<[Spanned<Self>]>),
 
@@ -137,7 +137,7 @@ impl Expr {
 }
 
 #[derive(Debug, Clone)]
-pub enum Kwargs {
+pub enum Object {
     Unordered(Box<[(Spanned<Ustr>, Spanned<Expr>)]>),
     Ordered(Box<[Expr]>),
 }

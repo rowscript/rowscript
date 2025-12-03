@@ -560,7 +560,7 @@ impl Expr {
                 }
             }
             Expr::UnaryOp(..) => todo!(),
-            Expr::CallKw(..) => todo!("initializer"),
+            Expr::Object(..) => todo!("initializer"),
             Expr::Access(..) => todo!("access"),
             Expr::Method(..) => todo!("method"),
             Expr::New(..) | Expr::StructType(..) | Expr::Ref(..) | Expr::Struct(..) => {

@@ -8,12 +8,12 @@ use ustr::Ustr;
 
 use crate::semantics::{Float, Integer};
 use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, name};
-use crate::syntax::{Access, Expr, Id, Ident, Kwargs};
+use crate::syntax::{Access, Expr, Id, Ident, Object};
 use crate::{Span, Spanned};
 
 enum Chainer {
     Args(Vec<Spanned<Expr>>),
-    Kwargs(Vec<(Spanned<Ustr>, Spanned<Expr>)>),
+    Object(Vec<(Spanned<Ustr>, Spanned<Expr>)>),
     Access(Spanned<Ustr>),
     Method(Spanned<Ustr>, Vec<Spanned<Expr>>),
 }
@@ -58,14 +58,14 @@ where
             .clone()
             .map(Chainer::Args)
             .labelled("arguments expression");
-        let kwargs = grouped_by(
-            Sym::LParen,
-            name().then_ignore(just(Token::Sym(Sym::Eq))).then(expr),
+        let obj = grouped_by(
+            Sym::LBrace,
+            name().then_ignore(just(Token::Sym(Sym::Colon))).then(expr),
             Sym::Comma,
-            Sym::RParen,
+            Sym::RBrace,
         )
-        .map(Chainer::Kwargs)
-        .labelled("kwargs expression");
+        .map(Chainer::Object)
+        .labelled("object expression");
         let method = just(Token::Sym(Sym::Dot))
             .ignore_then(name())
             .then(args)
@@ -75,7 +75,7 @@ where
             .ignore_then(name())
             .map(Chainer::Access)
             .labelled("access expression");
-        let chainer = arguments.or(kwargs).or(method).or(access);
+        let chainer = arguments.or(obj).or(method).or(access);
 
         let call = just(Token::Keyword(Keyword::New))
             .or_not()
@@ -91,7 +91,7 @@ where
                 span: e.span(),
                 item: match c {
                     Chainer::Args(args) => Expr::Call(Box::new(a), args.into()),
-                    Chainer::Kwargs(xs) => Expr::CallKw(Box::new(a), Kwargs::Unordered(xs.into())),
+                    Chainer::Object(xs) => Expr::Object(Box::new(a), Object::Unordered(xs.into())),
                     Chainer::Access(m) => Expr::Access(Box::new(a), Access::Named(m)),
                     Chainer::Method(id, args) => Expr::Method(Box::new(a), id, args.into()),
                 },

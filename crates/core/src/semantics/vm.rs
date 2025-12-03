@@ -6,7 +6,7 @@ use std::slice::from_ref;
 use crate::Spanned;
 use crate::semantics::Globals;
 use crate::syntax::parse::Sym;
-use crate::syntax::{Access, Branch, Expr, Id, Ident, Kwargs, Stmt};
+use crate::syntax::{Access, Branch, Expr, Id, Ident, Object, Stmt};
 
 pub(crate) struct Vm<'a> {
     gs: &'a Globals,
@@ -192,8 +192,8 @@ impl<'a> Vm<'a> {
                 }
                 _ => unreachable!(),
             },
-            Expr::CallKw(.., args) => {
-                let Kwargs::Ordered(args) = args else {
+            Expr::Object(.., args) => {
+                let Object::Ordered(args) = args else {
                     unreachable!()
                 };
                 Expr::Struct(args.into_iter().map(|x| self.expr(frame, x)).collect())

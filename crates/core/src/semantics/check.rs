@@ -5,7 +5,7 @@ use crate::semantics::{
     BuiltinType, Float, Func, FunctionType, Globals, Integer, Static, Struct, Type,
 };
 use crate::syntax::parse::Sym;
-use crate::syntax::{Access, Branch, Def, Expr, File, Id, Ident, Kwargs, Sig, Stmt};
+use crate::syntax::{Access, Branch, Def, Expr, File, Id, Ident, Object, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -330,7 +330,7 @@ impl Checker {
                     ret: Type::Ref(Box::new(typ)),
                 }))
             }
-            Expr::CallKw(t, unordered) => {
+            Expr::Object(t, unordered) => {
                 let got = self.check_type(t.span, &mut t.item)?;
                 let Type::Struct(s) = &got else {
                     return Err(Error::TypeMismatch {
@@ -340,7 +340,7 @@ impl Checker {
                     });
                 };
                 let mut members = self.gs.structs.get(s).unwrap().members.clone();
-                let Kwargs::Unordered(args) = unordered else {
+                let Object::Unordered(args) = unordered else {
                     unreachable!()
                 };
                 let mut ordered = Vec::with_capacity(members.len());
@@ -360,7 +360,7 @@ impl Checker {
                         members.keys().cloned().collect(),
                     ));
                 }
-                *unordered = Kwargs::Ordered(ordered.into());
+                *unordered = Object::Ordered(ordered.into());
                 got
             }
             Expr::Access(a, acc) => {
