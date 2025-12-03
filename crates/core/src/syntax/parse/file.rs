@@ -6,7 +6,7 @@ use chumsky::primitive::select;
 use crate::syntax::parse::expr::expr;
 use crate::syntax::parse::stmt::stmt;
 use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, id, name};
-use crate::syntax::{Decl, Def, File, Ident, Member, Param, Sig};
+use crate::syntax::{Decl, Def, Expr, File, Id, Ident, Member, Param, Sig, Stmt};
 use crate::{Span, Spanned};
 
 fn docstring<'t, I>() -> impl Parser<'t, I, Vec<String>, SyntaxErr<'t, Token>> + Clone
@@ -22,7 +22,14 @@ where
     .labelled("docstring")
 }
 
-fn func<'t, I>() -> impl Parser<'t, I, Spanned<Decl>, SyntaxErr<'t, Token>>
+struct Method {
+    name: Id,
+    params: Box<[Spanned<Param>]>,
+    ret: Option<Spanned<Expr>>,
+    body: Box<[Spanned<Stmt>]>,
+}
+
+fn method<'t, I>() -> impl Parser<'t, I, Spanned<Method>, SyntaxErr<'t, Token>>
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
@@ -38,10 +45,7 @@ where
 
     let params = grouped_by(Sym::LParen, param, Sym::Comma, Sym::RParen).labelled("parameters");
 
-    docstring()
-        .then_ignore(just(Token::Keyword(Keyword::Function)))
-        .then(id())
-        .then(params)
+    id().then(params)
         .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()).or_not())
         .then(
             stmt()
@@ -49,15 +53,32 @@ where
                 .collect::<Vec<_>>()
                 .delimited_by(just(Token::Sym(Sym::LBrace)), just(Token::Sym(Sym::RBrace))),
         )
-        .map(|((((doc, id), params), ret), body)| {
-            id.map(|name| Decl {
-                doc: doc.into(),
+        .map(|(((id, params), ret), body)| {
+            id.map(|name| Method {
                 name,
+                params: params.into(),
+                ret,
+                body: body.into(),
+            })
+        })
+}
+
+fn func<'t, I>() -> impl Parser<'t, I, Spanned<Decl>, SyntaxErr<'t, Token>>
+where
+    I: ValueInput<'t, Token = Token, Span = Span>,
+{
+    docstring()
+        .then_ignore(just(Token::Keyword(Keyword::Function)))
+        .then(method())
+        .map(|(doc, method)| {
+            method.map(|m| Decl {
+                doc: doc.into(),
+                name: m.name,
                 sig: Sig::Func {
-                    params: params.into(),
-                    ret,
+                    params: m.params,
+                    ret: m.ret,
                 },
-                def: Def::Func { body: body.into() },
+                def: Def::Func { body: m.body },
             })
         })
         .labelled("function definition")
