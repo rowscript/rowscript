@@ -363,7 +363,25 @@ impl Checker {
                 *unordered = Kwargs::Ordered(ordered.into());
                 got
             }
-            Expr::Access(..) => todo!("access"),
+            Expr::Access(a, name) => {
+                let got = self.infer(a.span, &mut a.item)?.value_level();
+                let Type::Struct(s) = got else {
+                    return Err(Error::TypeMismatch {
+                        span: a.span,
+                        got: got.to_string(),
+                        want: "struct".to_string(),
+                    });
+                };
+                let Some((.., typ)) = self.gs.structs.get(&s).unwrap().members.get(&name.item)
+                else {
+                    return Err(Error::UndefName {
+                        span: name.span,
+                        name: name.item,
+                        is_member: true,
+                    });
+                };
+                typ.clone()
+            }
             Expr::Method(..) => todo!("method"),
             Expr::StructType(..) | Expr::Ref(..) => unreachable!(),
         }))
