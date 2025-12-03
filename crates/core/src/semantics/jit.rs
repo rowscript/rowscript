@@ -563,7 +563,9 @@ impl Expr {
             Expr::CallKw(..) => todo!("initializer"),
             Expr::Access(..) => todo!("access"),
             Expr::Method(..) => todo!("method"),
-            Expr::New(..) | Expr::StructType(..) | Expr::Ref(..) => unreachable!(),
+            Expr::New(..) | Expr::StructType(..) | Expr::Ref(..) | Expr::Struct(..) => {
+                unreachable!()
+            }
         }
     }
 }

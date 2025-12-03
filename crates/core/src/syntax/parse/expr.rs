@@ -8,7 +8,7 @@ use ustr::Ustr;
 
 use crate::semantics::{Float, Integer};
 use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, name};
-use crate::syntax::{Expr, Id, Ident, Kwargs};
+use crate::syntax::{Access, Expr, Id, Ident, Kwargs};
 use crate::{Span, Spanned};
 
 enum Chainer {
@@ -92,7 +92,7 @@ where
                 item: match c {
                     Chainer::Args(args) => Expr::Call(Box::new(a), args.into()),
                     Chainer::Kwargs(xs) => Expr::CallKw(Box::new(a), Kwargs::Unordered(xs.into())),
-                    Chainer::Access(m) => Expr::Access(Box::new(a), m),
+                    Chainer::Access(m) => Expr::Access(Box::new(a), Access::Named(m)),
                     Chainer::Method(id, args) => Expr::Method(Box::new(a), id, args.into()),
                 },
             })

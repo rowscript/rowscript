@@ -96,7 +96,7 @@ pub enum Expr {
     UnaryOp(Box<Spanned<Self>>, Sym, Option<Type>),
     New(Box<Spanned<Self>>),
     CallKw(Box<Spanned<Self>>, Kwargs),
-    Access(Box<Spanned<Self>>, Spanned<Ustr>),
+    Access(Box<Spanned<Self>>, Access),
     Method(Box<Spanned<Self>>, Spanned<Ustr>, Box<[Spanned<Self>]>),
 
     // Typechecking-specific constructs, especially those are "readback" (a.k.a. "reified").
@@ -104,6 +104,7 @@ pub enum Expr {
 
     // VM-specific constructs.
     Ref(Rc<Self>),
+    Struct(Box<[Self]>),
 }
 
 impl Expr {
@@ -139,6 +140,12 @@ impl Expr {
 pub enum Kwargs {
     Unordered(Box<[(Spanned<Ustr>, Spanned<Expr>)]>),
     Ordered(Box<[Expr]>),
+}
+
+#[derive(Debug, Clone)]
+pub enum Access {
+    Named(Spanned<Ustr>),
+    Indexed(usize),
 }
 
 #[derive(Debug, Clone)]

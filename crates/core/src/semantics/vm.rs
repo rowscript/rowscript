@@ -6,7 +6,7 @@ use std::slice::from_ref;
 use crate::Spanned;
 use crate::semantics::Globals;
 use crate::syntax::parse::Sym;
-use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
+use crate::syntax::{Access, Branch, Expr, Id, Ident, Kwargs, Stmt};
 
 pub(crate) struct Vm<'a> {
     gs: &'a Globals,
@@ -192,9 +192,24 @@ impl<'a> Vm<'a> {
                 }
                 _ => unreachable!(),
             },
-            Expr::CallKw(..) => todo!("initializer"),
-            Expr::Access(..) => todo!("access"),
+            Expr::CallKw(.., args) => {
+                let Kwargs::Ordered(args) = args else {
+                    unreachable!()
+                };
+                Expr::Struct(args.into_iter().map(|x| self.expr(frame, x)).collect())
+            }
+            Expr::Access(s, acc) => {
+                let Expr::Struct(s) = self.expr(frame, &s.item) else {
+                    unreachable!()
+                };
+                let Access::Indexed(i) = acc else {
+                    unreachable!()
+                };
+                s.to_vec().remove(*i)
+            }
             Expr::Method(..) => todo!("method"),
+            Expr::Ref(e) => self.expr(frame, e),
+            Expr::Struct(xs) => Expr::Struct(xs.into_iter().map(|x| self.expr(frame, x)).collect()),
 
             Expr::BuiltinType(..)
             | Expr::RefType(..)
@@ -203,8 +218,7 @@ impl<'a> Vm<'a> {
             | Expr::Float(..)
             | Expr::String(..)
             | Expr::Boolean(..)
-            | Expr::New(..)
-            | Expr::Ref(..) => expr.clone(),
+            | Expr::New(..) => expr.clone(),
 
             Expr::StructType(..) => unreachable!(),
         }

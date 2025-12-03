@@ -5,7 +5,7 @@ use crate::semantics::{
     BuiltinType, Float, Func, FunctionType, Globals, Integer, Static, Struct, Type,
 };
 use crate::syntax::parse::Sym;
-use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Kwargs, Sig, Stmt};
+use crate::syntax::{Access, Branch, Def, Expr, File, Id, Ident, Kwargs, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -363,7 +363,7 @@ impl Checker {
                 *unordered = Kwargs::Ordered(ordered.into());
                 got
             }
-            Expr::Access(a, name) => {
+            Expr::Access(a, acc) => {
                 let got = self.infer(a.span, &mut a.item)?.value_level();
                 let Type::Struct(s) = got else {
                     return Err(Error::TypeMismatch {
@@ -372,7 +372,10 @@ impl Checker {
                         want: "struct".to_string(),
                     });
                 };
-                let Some((.., typ)) = self.gs.structs.get(&s).unwrap().members.get(&name.item)
+                let Access::Named(name) = acc else {
+                    unreachable!()
+                };
+                let Some((i, typ)) = self.gs.structs.get(&s).unwrap().members.get(&name.item)
                 else {
                     return Err(Error::UndefName {
                         span: name.span,
@@ -380,10 +383,11 @@ impl Checker {
                         is_member: true,
                     });
                 };
+                *acc = Access::Indexed(*i);
                 typ.clone()
             }
             Expr::Method(..) => todo!("method"),
-            Expr::StructType(..) | Expr::Ref(..) => unreachable!(),
+            Expr::StructType(..) | Expr::Ref(..) | Expr::Struct(..) => unreachable!(),
         }))
     }
 
