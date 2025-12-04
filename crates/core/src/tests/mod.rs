@@ -7,7 +7,6 @@ use crate::semantics::Integer;
 use crate::syntax::Expr;
 use crate::syntax::parse::Token;
 use crate::syntax::parse::expr::expr;
-use crate::syntax::parse::file::file;
 use crate::syntax::parse::lex::lex;
 use crate::{Error, LineCol, State};
 
@@ -66,15 +65,16 @@ fn it_parses_expr() {
 }
 
 #[test]
-fn it_parses_file() {
+fn it_resolves_file() {
     const TEXTS: &[&str] = &[
         include_str!("ref.rows"),
         include_str!("static.rows"),
         include_str!("struct.rows"),
     ];
     for text in TEXTS {
-        let out = lex().parse(text).unwrap();
-        file().parse(out.tokens.as_slice()).unwrap();
+        let mut s = State::default();
+        s.parse(text).unwrap();
+        s.resolve().unwrap();
     }
 }
 

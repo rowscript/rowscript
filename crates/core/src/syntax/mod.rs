@@ -22,6 +22,10 @@ impl Id {
         Self(Rc::new(n))
     }
 
+    pub(crate) fn this() -> Self {
+        Self::bound("this".into())
+    }
+
     pub(crate) fn raw(&self) -> Ustr {
         *self.0
     }
@@ -237,7 +241,7 @@ pub(crate) enum Def {
 #[derive(Debug)]
 pub(crate) struct Param {
     pub(crate) name: Ident,
-    pub(crate) typ: Option<Spanned<Expr>>,
+    pub(crate) typ: Spanned<Expr>,
 }
 
 #[derive(Debug)]

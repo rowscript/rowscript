@@ -31,14 +31,7 @@ impl Checker {
                         .unwrap_or(Type::Builtin(BuiltinType::Unit));
                     let params = params
                         .iter_mut()
-                        .map(|p| {
-                            Ok(p.item
-                                .typ
-                                .as_mut()
-                                .map(|t| self.check_type(t.span, &mut t.item))
-                                .transpose()?
-                                .unwrap_or(Type::Builtin(BuiltinType::Unit)))
-                        })
+                        .map(|p| self.check_type(p.item.typ.span, &mut p.item.typ.item))
                         .collect::<Out<_>>()?;
                     let f = FuncType { params, ret };
                     let got = Type::Function(Box::new(f.clone()));

@@ -32,7 +32,7 @@ where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
     let param = id()
-        .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()).or_not())
+        .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()))
         .map(|(id, typ)| {
             id.map(|name| Param {
                 name: Ident::Id(name),

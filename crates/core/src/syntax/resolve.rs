@@ -73,6 +73,8 @@ impl Resolver {
                         .zip(bodies.iter_mut())
                         .try_for_each(|(sig, body)| {
                             let mut local = Block::local();
+                            let mut this = Ident::Id(Id::this());
+                            self.insert(&mut local, &mut this);
                             sig.item
                                 .sig
                                 .params
@@ -88,14 +90,9 @@ impl Resolver {
     }
 
     fn func_sig(&mut self, sig: &mut FuncSig) -> Out<()> {
-        sig.params.iter_mut().try_for_each(|p| {
-            p.item
-                .typ
-                .as_mut()
-                .map(|t| self.expr(t.span, &mut t.item))
-                .transpose()?;
-            Ok(())
-        })?;
+        sig.params
+            .iter_mut()
+            .try_for_each(|p| self.expr(p.item.typ.span, &mut p.item.typ.item))?;
         sig.ret
             .as_mut()
             .map(|t| self.expr(t.span, &mut t.item))

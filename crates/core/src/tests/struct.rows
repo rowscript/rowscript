@@ -4,7 +4,7 @@ struct A {
 }
 
 extends A {
-    foo(this) {
+    foo() {
         println(this.n)
     }
 }

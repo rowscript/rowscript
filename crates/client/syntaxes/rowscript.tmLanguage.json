@@ -26,7 +26,15 @@
       "patterns": [
         {
           "name": "keyword.control.rowscript",
-          "match": "\\b(function|let|if|while|for|return|new|static|struct)\\b"
+          "match": "\\b(if|while|for|return|new)\\b"
+        },
+        {
+          "name": "storage.type.rowscript",
+          "match": "\\b(function|let|static|struct|extends)\\b"
+        },
+        {
+          "name": "variable.language.this.rowscript",
+          "match": "\\bthis\\b"
         }
       ]
     },
