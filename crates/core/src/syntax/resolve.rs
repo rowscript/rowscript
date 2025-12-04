@@ -3,7 +3,7 @@ use std::str::FromStr;
 use ustr::{Ustr, UstrMap, UstrSet};
 
 use crate::semantics::builtin::Builtin;
-use crate::syntax::{Branch, Def, Expr, File, Id, Ident, Object, Sig, Stmt};
+use crate::syntax::{Branch, Def, Expr, File, FuncSig, Id, Ident, Object, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -16,53 +16,90 @@ pub(crate) struct Resolver {
 impl Resolver {
     pub(crate) fn file(&mut self, file: &mut File) -> Out<()> {
         file.decls.iter_mut().try_for_each(|decl| {
-            match &mut decl.item.sig {
-                Sig::Func { params, ret } => {
-                    ret.as_mut()
-                        .map(|t| self.expr(t.span, &mut t.item))
-                        .transpose()?;
-                    params.iter_mut().try_for_each(|p| {
-                        p.item
-                            .typ
-                            .as_mut()
-                            .map(|t| self.expr(t.span, &mut t.item))
-                            .transpose()?;
-                        Ok(())
-                    })?;
+            let name = match &mut decl.item.sig {
+                Sig::Func(sig) => {
+                    self.func_sig(sig)?;
+                    Some(sig.name.clone())
                 }
-                Sig::Static { typ } => self.expr(typ.span, &mut typ.item)?,
-                Sig::Struct { members } => {
+                Sig::Static { name, typ } => {
+                    self.expr(typ.span, &mut typ.item)?;
+                    Some(name.clone())
+                }
+                Sig::Struct { name, members } => {
                     let mut names = Names::default();
                     members.iter_mut().try_for_each(|m| {
                         names.ensure_unique(m.span, m.item.name, true)?;
                         self.expr(m.item.typ.span, &mut m.item.typ.item)
-                    })?
+                    })?;
+                    Some(name.clone())
                 }
+                Sig::Extends { target, methods } => {
+                    self.name(decl.span, target)?;
+                    let mut names = Names::default();
+                    methods.iter_mut().try_for_each(|m| {
+                        names.ensure_unique(m.span, m.item.sig.name.raw(), true)?;
+                        self.func_sig(&mut m.item.sig)
+                    })?;
+                    None
+                }
+            };
+            if let Some(name) = name {
+                self.names.ensure_unique(decl.span, name.raw(), false)?;
+                self.globals.insert(name.raw(), name);
             }
-            self.names
-                .ensure_unique(decl.span, decl.item.name.raw(), false)?;
-            self.globals
-                .insert(decl.item.name.raw(), decl.item.name.clone());
             Ok(())
         })?;
         file.decls
             .iter_mut()
             .try_for_each(|decl| match &mut decl.item.def {
                 Def::Func { body } => {
-                    let Sig::Func { params, .. } = &mut decl.item.sig else {
+                    let Sig::Func(sig) = &mut decl.item.sig else {
                         unreachable!()
                     };
                     let mut local = Block::local();
-                    params
+                    sig.params
                         .iter_mut()
                         .for_each(|p| self.insert(&mut local, &mut p.item.name));
                     self.block(local, body)
                 }
                 Def::Static { rhs } => self.expr(rhs.span, &mut rhs.item),
                 Def::Struct => Ok(()),
+                Def::Extends { bodies } => {
+                    let Sig::Extends { methods, .. } = &mut decl.item.sig else {
+                        unreachable!();
+                    };
+                    methods
+                        .iter_mut()
+                        .zip(bodies.iter_mut())
+                        .try_for_each(|(sig, body)| {
+                            let mut local = Block::local();
+                            sig.item
+                                .sig
+                                .params
+                                .iter_mut()
+                                .for_each(|p| self.insert(&mut local, &mut p.item.name));
+                            self.block(local, body)
+                        })
+                }
             })?;
         file.main = self.globals.get(&Ustr::from("main")).cloned();
         debug_assert!(self.locals.is_empty());
+        Ok(())
+    }
+
+    fn func_sig(&mut self, sig: &mut FuncSig) -> Out<()> {
+        sig.params.iter_mut().try_for_each(|p| {
+            p.item
+                .typ
+                .as_mut()
+                .map(|t| self.expr(t.span, &mut t.item))
+                .transpose()?;
+            Ok(())
+        })?;
+        sig.ret
+            .as_mut()
+            .map(|t| self.expr(t.span, &mut t.item))
+            .transpose()?;
         Ok(())
     }
 

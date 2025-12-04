@@ -29,6 +29,7 @@ pub(crate) enum Keyword {
     New,
     Static,
     Struct,
+    Extends,
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Display)]

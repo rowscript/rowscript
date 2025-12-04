@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::mem::take;
 
 use crate::semantics::{
-    BuiltinType, Float, Func, FunctionType, Globals, Integer, Static, Struct, Type,
+    BuiltinType, Float, Func, FuncType, Globals, Integer, Static, Struct, Type,
 };
 use crate::syntax::parse::Sym;
-use crate::syntax::{Access, Branch, Def, Expr, File, Id, Ident, Object, Sig, Stmt};
+use crate::syntax::{Access, Branch, Def, Expr, File, FuncSig, Id, Ident, Object, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -21,9 +21,8 @@ impl Checker {
         let mut statics = Vec::default();
 
         file.decls.iter_mut().try_for_each(|decl| {
-            let name = &decl.item.name;
-            let t = match &mut decl.item.sig {
-                Sig::Func { params, ret } => {
+            match &mut decl.item.sig {
+                Sig::Func(FuncSig { name, params, ret }) => {
                     let span = ret.as_ref().map(|s| s.span).unwrap_or(decl.span);
                     let ret = ret
                         .as_mut()
@@ -41,20 +40,20 @@ impl Checker {
                                 .unwrap_or(Type::Builtin(BuiltinType::Unit)))
                         })
                         .collect::<Out<_>>()?;
-                    let f = FunctionType { params, ret };
+                    let f = FuncType { params, ret };
                     let got = Type::Function(Box::new(f.clone()));
                     if file.main.as_ref() == Some(name) {
                         isa(span, &got, &Type::main())?;
                     }
-                    fns.push(f);
-                    Kind::ValueLevel(got)
+                    fns.push((name.clone(), f));
+                    self.globals.insert(name.clone(), Kind::ValueLevel(got));
                 }
-                Sig::Static { typ } => {
+                Sig::Static { name, typ } => {
                     let t = self.check_type(typ.span, &mut typ.item)?;
-                    statics.push(t.clone());
-                    Kind::ValueLevel(t)
+                    statics.push((name.clone(), t.clone()));
+                    self.globals.insert(name.clone(), Kind::ValueLevel(t));
                 }
-                Sig::Struct { members } => {
+                Sig::Struct { name, members } => {
                     let members = members
                         .iter_mut()
                         .enumerate()
@@ -64,10 +63,11 @@ impl Checker {
                         })
                         .collect::<Out<_>>()?;
                     self.gs.structs.insert(name.clone(), Struct { members });
-                    Kind::TypeLevel(Type::Struct(name.clone()))
+                    self.globals
+                        .insert(name.clone(), Kind::TypeLevel(Type::Struct(name.clone())));
                 }
+                Sig::Extends { .. } => todo!(),
             };
-            self.globals.insert(name.clone(), t);
             Ok(())
         })?;
 
@@ -78,7 +78,7 @@ impl Checker {
             .iter_mut()
             .try_for_each(|decl| match &mut decl.item.def {
                 Def::Func { body } => {
-                    let FunctionType { params, ret } = fns.next().unwrap();
+                    let (name, FuncType { params, ret }) = fns.next().unwrap();
                     let mut local = Block::func(ret.clone());
                     params.iter().enumerate().for_each(|(i, p)| {
                         self.insert(&mut local, i, p.clone());
@@ -86,11 +86,11 @@ impl Checker {
                     let got = self.block(local, body)?;
                     isa(decl.span, &got, &ret)?;
                     let old = self.gs.fns.insert(
-                        decl.item.name.clone(),
+                        name,
                         Spanned {
                             span: decl.span,
                             item: Func {
-                                typ: FunctionType { params, ret },
+                                typ: FuncType { params, ret },
                                 body: take(body),
                             },
                         },
@@ -99,10 +99,10 @@ impl Checker {
                     Ok(())
                 }
                 Def::Static { rhs } => {
-                    let typ = statics.next().unwrap();
+                    let (name, typ) = statics.next().unwrap();
                     self.check(rhs.span, &mut rhs.item, &typ)?;
                     self.gs.statics.insert(
-                        decl.item.name.clone(),
+                        name,
                         Spanned {
                             span: decl.span,
                             item: Static {
@@ -114,6 +114,7 @@ impl Checker {
                     Ok(())
                 }
                 Def::Struct => Ok(()),
+                Def::Extends { .. } => todo!(),
             })?;
         debug_assert!(self.locals.is_empty());
         Ok(self.gs)
@@ -325,7 +326,7 @@ impl Checker {
             },
             Expr::New(t) => {
                 let typ = self.check_type(t.span, &mut t.item)?;
-                Type::Function(Box::new(FunctionType {
+                Type::Function(Box::new(FuncType {
                     params: Box::new([typ.clone()]), // TODO: accurate arity
                     ret: Type::Ref(Box::new(typ)),
                 }))

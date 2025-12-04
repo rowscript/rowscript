@@ -191,23 +191,39 @@ pub(crate) struct File {
 pub(crate) struct Decl {
     #[allow(dead_code)]
     pub(crate) doc: Box<[String]>,
-    pub(crate) name: Id,
     pub(crate) sig: Sig,
     pub(crate) def: Def,
 }
 
 #[derive(Debug)]
 pub(crate) enum Sig {
-    Func {
-        params: Box<[Spanned<Param>]>,
-        ret: Option<Spanned<Expr>>,
-    },
+    Func(FuncSig),
     Static {
+        name: Id,
         typ: Spanned<Expr>,
     },
     Struct {
+        name: Id,
         members: Box<[Spanned<Member>]>,
     },
+    Extends {
+        target: Ident,
+        methods: Box<[Spanned<MethodSig>]>,
+    },
+}
+
+#[derive(Debug)]
+pub(crate) struct FuncSig {
+    pub(crate) name: Id,
+    pub(crate) params: Box<[Spanned<Param>]>,
+    pub(crate) ret: Option<Spanned<Expr>>,
+}
+
+#[derive(Debug)]
+pub(crate) struct MethodSig {
+    #[allow(dead_code)]
+    pub(crate) doc: Box<[String]>,
+    sig: FuncSig,
 }
 
 #[derive(Debug)]
@@ -215,6 +231,7 @@ pub(crate) enum Def {
     Func { body: Box<[Spanned<Stmt>]> },
     Static { rhs: Spanned<Expr> },
     Struct,
+    Extends { bodies: Box<[Box<[Spanned<Stmt>]>]> },
 }
 
 #[derive(Debug)]

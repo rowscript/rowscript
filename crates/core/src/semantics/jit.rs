@@ -33,7 +33,7 @@ use object::{
 use wasmtime_internal_jit_debug::gdb_jit_int::GdbJitImageRegistration;
 
 use crate::semantics::builtin::import;
-use crate::semantics::{BuiltinType, Float, Func, FunctionType, Globals, Integer, Type};
+use crate::semantics::{BuiltinType, Float, Func, FuncType, Globals, Integer, Type};
 use crate::syntax::parse::Sym;
 use crate::syntax::{Branch, Expr, Id, Ident, Stmt};
 use crate::{Error, LineCol, Out, Span, Spanned};
@@ -655,7 +655,7 @@ impl From<BuiltinType> for JitType {
     }
 }
 
-impl FunctionType {
+impl FuncType {
     fn to_signature(&self, sig: &mut Signature) {
         sig.params = self
             .params

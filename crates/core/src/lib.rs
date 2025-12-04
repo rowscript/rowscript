@@ -23,7 +23,7 @@ use crate::syntax::parse::Tokens;
 use crate::syntax::parse::file::file;
 use crate::syntax::parse::lex::lex;
 use crate::syntax::resolve::Resolver;
-use crate::syntax::{Expr, File, Ident, Stmt};
+use crate::syntax::{Expr, File, Ident, Sig, Stmt};
 
 pub type Span = SimpleSpan;
 
@@ -248,10 +248,11 @@ impl State {
     }
 
     pub fn eval_nth(&self, n: usize, arg: Expr) -> Expr {
+        let Sig::Func(sig) = &self.file.decls[n].item.sig else {
+            unreachable!()
+        };
         let stmts = &[Spanned::stdin(Stmt::Expr(Expr::Call(
-            Box::new(Spanned::stdin(Expr::Ident(Ident::Id(
-                self.file.decls[n].item.name.clone(),
-            )))),
+            Box::new(Spanned::stdin(Expr::Ident(Ident::Id(sig.name.clone())))),
             Box::new([Spanned::stdin(arg)]),
         )))];
         Vm::new(&self.gs).func(stmts, Default::default())

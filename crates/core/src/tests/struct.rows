@@ -3,16 +3,14 @@ struct A {
     m: i64
 }
 
-// TODO
-//extends A {
-//    foo(this) {
-//        println(this.n)
-//    }
-//}
+extends A {
+    foo(this) {
+        println(this.n)
+    }
+}
 
 function main() {
     let a = A{n: 42, m: 69}
     println(a.n)
-    // TODO
-    //a.foo()
+    a.foo()
 }

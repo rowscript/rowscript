@@ -39,7 +39,7 @@ pub enum Type {
     #[strum(transparent)]
     Builtin(BuiltinType),
     #[strum(transparent)]
-    Function(Box<FunctionType>),
+    Function(Box<FuncType>),
     #[strum(to_string = "&{0}")]
     Ref(Box<Self>),
     #[strum(to_string = "struct {0}")]
@@ -48,7 +48,7 @@ pub enum Type {
 
 impl Type {
     fn main() -> Self {
-        Self::Function(Box::new(FunctionType {
+        Self::Function(Box::new(FuncType {
             params: Default::default(),
             ret: Self::Builtin(BuiltinType::Unit),
         }))
@@ -152,12 +152,12 @@ pub enum Float {
 }
 
 #[derive(Debug, Clone)]
-pub struct FunctionType {
+pub struct FuncType {
     params: Box<[Type]>,
     ret: Type,
 }
 
-impl Display for FunctionType {
+impl Display for FuncType {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write_delimited!(f, "(", self.params, ", ", ")");
         write!(f, " -> {}", self.ret)
@@ -166,7 +166,7 @@ impl Display for FunctionType {
 
 #[derive(Debug)]
 pub(crate) struct Func {
-    pub(crate) typ: FunctionType,
+    pub(crate) typ: FuncType,
     pub(crate) body: Box<[Spanned<Stmt>]>,
 }
 

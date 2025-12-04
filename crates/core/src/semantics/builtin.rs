@@ -5,7 +5,7 @@ use cranelift_module::{FuncId, Linkage, Module};
 use strum::{Display, EnumString};
 
 use crate::Error;
-use crate::semantics::{BuiltinType, FunctionType, Integer, Type};
+use crate::semantics::{BuiltinType, FuncType, Integer, Type};
 use crate::syntax::Expr;
 
 #[derive(Debug, Copy, Clone, Display, EnumString)]
@@ -51,7 +51,7 @@ struct Proto {
 
 const PRINTLN: Proto = Proto {
     typ: || {
-        Type::Function(Box::new(FunctionType {
+        Type::Function(Box::new(FuncType {
             params: Box::new([Type::Builtin(BuiltinType::U32)]),
             ret: Default::default(),
         }))

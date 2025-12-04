@@ -6,7 +6,7 @@ use chumsky::primitive::select;
 use crate::syntax::parse::expr::expr;
 use crate::syntax::parse::stmt::stmt;
 use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, id, name};
-use crate::syntax::{Decl, Def, Expr, File, Id, Ident, Member, Param, Sig, Stmt};
+use crate::syntax::{Decl, Def, File, FuncSig, Id, Ident, Member, MethodSig, Param, Sig, Stmt};
 use crate::{Span, Spanned};
 
 fn docstring<'t, I>() -> impl Parser<'t, I, Vec<String>, SyntaxErr<'t, Token>> + Clone
@@ -23,9 +23,7 @@ where
 }
 
 struct Method {
-    name: Id,
-    params: Box<[Spanned<Param>]>,
-    ret: Option<Spanned<Expr>>,
+    sig: FuncSig,
     body: Box<[Spanned<Stmt>]>,
 }
 
@@ -55,11 +53,39 @@ where
         )
         .map(|(((id, params), ret), body)| {
             id.map(|name| Method {
-                name,
-                params: params.into(),
-                ret,
+                sig: FuncSig {
+                    name,
+                    params: params.into(),
+                    ret,
+                },
                 body: body.into(),
             })
+        })
+}
+
+struct Braced<T> {
+    doc: Box<[String]>,
+    id: Spanned<Id>,
+    items: Box<[T]>,
+}
+
+fn braced<'t, I, O, P>(kw: Keyword, item: P) -> impl Parser<'t, I, Braced<O>, SyntaxErr<'t, Token>>
+where
+    I: ValueInput<'t, Token = Token, Span = Span>,
+    P: Parser<'t, I, O, SyntaxErr<'t, Token>>,
+{
+    docstring()
+        .then_ignore(just(Token::Keyword(kw)))
+        .then(id())
+        .then(
+            item.repeated()
+                .collect::<Vec<_>>()
+                .delimited_by(just(Token::Sym(Sym::LBrace)), just(Token::Sym(Sym::RBrace))),
+        )
+        .map(|((doc, name), items)| Braced {
+            doc: doc.into(),
+            id: name,
+            items: items.into(),
         })
 }
 
@@ -73,11 +99,7 @@ where
         .map(|(doc, method)| {
             method.map(|m| Decl {
                 doc: doc.into(),
-                name: m.name,
-                sig: Sig::Func {
-                    params: m.params,
-                    ret: m.ret,
-                },
+                sig: Sig::Func(m.sig),
                 def: Def::Func { body: m.body },
             })
         })
@@ -97,8 +119,7 @@ where
         .map(|(((doc, id), typ), rhs)| {
             id.map(|name| Decl {
                 doc: doc.into(),
-                name,
-                sig: Sig::Static { typ },
+                sig: Sig::Static { name, typ },
                 def: Def::Static { rhs },
             })
         })
@@ -114,26 +135,55 @@ where
         .map(|(name, typ)| name.map(|name| Member { name, typ }))
         .labelled("member");
 
-    docstring()
-        .then_ignore(just(Token::Keyword(Keyword::Struct)))
-        .then(id())
-        .then(
-            member
-                .repeated()
-                .collect::<Vec<_>>()
-                .delimited_by(just(Token::Sym(Sym::LBrace)), just(Token::Sym(Sym::RBrace))),
-        )
-        .map(|((doc, id), members)| {
+    braced(Keyword::Struct, member)
+        .map(|Braced { doc, id, items }| {
             id.map(|name| Decl {
-                doc: doc.into(),
-                name,
+                doc,
                 sig: Sig::Struct {
-                    members: members.into(),
+                    name,
+                    members: items,
                 },
                 def: Def::Struct,
             })
         })
         .labelled("struct definition")
+}
+
+fn extends<'t, I>() -> impl Parser<'t, I, Spanned<Decl>, SyntaxErr<'t, Token>>
+where
+    I: ValueInput<'t, Token = Token, Span = Span>,
+{
+    let method = docstring().then(method()).labelled("method definition");
+
+    braced(Keyword::Extends, method)
+        .map(|Braced { doc, id, items }| {
+            let (methods, bodies) = items
+                .into_iter()
+                .map(|(doc, m)| {
+                    (
+                        Spanned {
+                            span: m.span,
+                            item: MethodSig {
+                                doc: doc.into(),
+                                sig: m.item.sig,
+                            },
+                        },
+                        m.item.body,
+                    )
+                })
+                .collect::<(Vec<_>, Vec<_>)>();
+            id.map(|target| Decl {
+                doc,
+                sig: Sig::Extends {
+                    target: Ident::Id(target),
+                    methods: methods.into_boxed_slice(),
+                },
+                def: Def::Extends {
+                    bodies: bodies.into_boxed_slice(),
+                },
+            })
+        })
+        .labelled("extends definition")
 }
 
 pub(crate) fn file<'t, I>() -> impl Parser<'t, I, File, SyntaxErr<'t, Token>>
@@ -143,6 +193,7 @@ where
     func()
         .or(r#static())
         .or(r#struct())
+        .or(extends())
         .repeated()
         .collect::<Vec<_>>()
         .map(|decls| File {
