@@ -3,7 +3,7 @@ use std::str::FromStr;
 use ustr::{Ustr, UstrMap, UstrSet};
 
 use crate::semantics::builtin::Builtin;
-use crate::syntax::{Branch, Def, Expr, File, FuncSig, Id, Ident, Object, Sig, Stmt};
+use crate::syntax::{Branch, Def, Expr, File, FuncSig, Id, Ident, Object, Param, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -73,8 +73,19 @@ impl Resolver {
                         .zip(bodies.iter_mut())
                         .try_for_each(|(sig, body)| {
                             let mut local = Block::local();
-                            let mut this = Ident::Id(Id::this());
-                            self.insert(&mut local, &mut this);
+                            sig.item.sig.params.insert(
+                                0,
+                                Spanned {
+                                    span: sig.span,
+                                    item: Param {
+                                        name: Ident::Id(Id::this()),
+                                        typ: Spanned {
+                                            span: sig.span,
+                                            item: Expr::ThisType,
+                                        },
+                                    },
+                                },
+                            );
                             sig.item
                                 .sig
                                 .params
