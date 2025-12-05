@@ -106,7 +106,12 @@ pub enum Expr {
     New(Box<Spanned<Self>>),
     Object(Box<Spanned<Self>>, Object),
     Access(Box<Spanned<Self>>, Access),
-    Method(Box<Spanned<Self>>, Spanned<Ustr>, Vec<Spanned<Self>>),
+    Method {
+        callee: Box<Spanned<Self>>,
+        target: Option<Id>,
+        method: Spanned<Ustr>,
+        args: Vec<Spanned<Self>>,
+    },
 
     // Resolving-specific constructs.
     ThisType(Box<Self>),

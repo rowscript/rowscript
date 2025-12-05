@@ -93,7 +93,12 @@ where
                     Chainer::Args(args) => Expr::Call(Box::new(a), args),
                     Chainer::Object(xs) => Expr::Object(Box::new(a), Object::Unordered(xs)),
                     Chainer::Access(m) => Expr::Access(Box::new(a), Access::Named(m)),
-                    Chainer::Method(id, args) => Expr::Method(Box::new(a), id, args),
+                    Chainer::Method(method, args) => Expr::Method {
+                        callee: Box::new(a),
+                        target: None,
+                        method,
+                        args,
+                    },
                 },
             })
             .labelled("call expression");

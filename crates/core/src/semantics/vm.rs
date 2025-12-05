@@ -207,7 +207,27 @@ impl<'a> Vm<'a> {
                 };
                 s.to_vec().remove(*i)
             }
-            Expr::Method(..) => todo!("method"),
+            Expr::Method {
+                callee,
+                target,
+                method,
+                args,
+            } => {
+                let mut args = args
+                    .iter()
+                    .map(|arg| self.expr(frame, &arg.item))
+                    .collect::<Vec<_>>();
+                args.insert(0, self.expr(frame, &callee.item));
+                let m = self
+                    .gs
+                    .structs
+                    .get(target.as_ref().unwrap())
+                    .unwrap()
+                    .extends
+                    .get(&method.item)
+                    .unwrap();
+                self.func(&m.body, args)
+            }
             Expr::Ref(e) => self.expr(frame, e),
             Expr::Struct(xs) => Expr::Struct(xs.iter().map(|x| self.expr(frame, x)).collect()),
 

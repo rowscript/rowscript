@@ -12,6 +12,5 @@ extends A {
 function main() {
     let a = A{n: 42, m: 69}
     println(a.n)
-    // TODO
-    //a.foo(69)
+    a.foo(69)
 }

@@ -562,7 +562,7 @@ impl Expr {
             Expr::UnaryOp(..) => todo!(),
             Expr::Object(..) => todo!("initializer"),
             Expr::Access(..) => todo!("access"),
-            Expr::Method(..) => todo!("method"),
+            Expr::Method { .. } => todo!("method"),
             Expr::ThisType(..)
             | Expr::New(..)
             | Expr::StructType(..)

@@ -169,7 +169,7 @@ impl Resolver {
             Expr::Ident(id) => self.name(span, id),
 
             Expr::RefType(e) => self.expr(e.span, &mut e.item),
-            Expr::Call(callee, args) | Expr::Method(callee, .., args) => {
+            Expr::Call(callee, args) | Expr::Method { callee, args, .. } => {
                 self.expr(callee.span, &mut callee.item)?;
                 args.iter_mut()
                     .try_for_each(|a| self.expr(a.span, &mut a.item))

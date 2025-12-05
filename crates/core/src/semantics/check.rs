@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::iter::once;
 use std::mem::take;
 
 use crate::semantics::{
@@ -300,19 +301,7 @@ impl Checker {
                         want: "function".to_string(),
                     });
                 };
-                {
-                    let got = args.len();
-                    let want = typ.params.len();
-                    if got != want {
-                        return Err(Error::ArityMismatch { span, got, want });
-                    }
-                }
-                args.iter_mut()
-                    .zip(typ.params.iter())
-                    .try_for_each(|(got, want)| {
-                        self.check(got.span, &mut got.item, want)?;
-                        Ok(())
-                    })?;
+                self.check_args(span, args.len(), args.iter_mut(), &typ.params)?;
                 typ.ret
             }
             Expr::BinaryOp(lhs, op, typ, rhs) => match op {
@@ -412,14 +401,7 @@ impl Checker {
                 got
             }
             Expr::Access(a, acc) => {
-                let got = self.infer(a.span, &mut a.item)?.value_level();
-                let Type::Struct(s) = got else {
-                    return Err(Error::TypeMismatch {
-                        span: a.span,
-                        got: got.to_string(),
-                        want: "struct".to_string(),
-                    });
-                };
+                let s = self.infer_struct(a.span, &mut a.item)?;
                 let Access::Named(name) = acc else {
                     unreachable!()
                 };
@@ -434,10 +416,59 @@ impl Checker {
                 *acc = Access::Indexed(*i);
                 typ.clone()
             }
-            Expr::Method(..) => todo!("method"),
+            Expr::Method {
+                callee,
+                target,
+                method,
+                args,
+            } => {
+                let s = self.infer_struct(callee.span, &mut callee.item)?;
+                let Some(f) = self.gs.structs.get(&s).unwrap().extends.get(&method.item) else {
+                    return Err(Error::UndefName {
+                        span: method.span,
+                        name: method.item,
+                        is_member: true,
+                    });
+                };
+                let got = 1 + args.len();
+                let args = once(callee.as_mut()).chain(args.iter_mut());
+                let typ = f.typ.clone();
+                self.check_args(span, got, args, &typ.params)?;
+                *target = Some(s);
+                typ.ret
+            }
             Expr::ThisType(t) => return self.infer(span, t),
             Expr::StructType(..) | Expr::Ref(..) | Expr::Struct(..) => unreachable!(),
         }))
+    }
+
+    fn infer_struct(&mut self, span: Span, expr: &mut Expr) -> Out<Id> {
+        let got = self.infer(span, expr)?.value_level();
+        let Type::Struct(s) = got else {
+            return Err(Error::TypeMismatch {
+                span,
+                got: got.to_string(),
+                want: "struct".to_string(),
+            });
+        };
+        Ok(s)
+    }
+
+    fn check_args<'a, I: Iterator<Item = &'a mut Spanned<Expr>>>(
+        &mut self,
+        span: Span,
+        got: usize,
+        args: I,
+        params: &[Type],
+    ) -> Out<()> {
+        let want = params.len();
+        if got != want {
+            return Err(Error::ArityMismatch { span, got, want });
+        }
+        args.zip(params.iter()).try_for_each(|(got, want)| {
+            self.check(got.span, &mut got.item, want)?;
+            Ok(())
+        })
     }
 
     fn ident(&self, ident: &Ident) -> Out<Kind> {

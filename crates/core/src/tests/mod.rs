@@ -53,7 +53,7 @@ fn it_parses_expr() {
         ("a()", |e| matches!(e, Expr::Call(..))),
         ("a()()", |e| matches!(e, Expr::Call(..))),
         ("a.b", |e| matches!(e, Expr::Access(..))),
-        ("a.b()", |e| matches!(e, Expr::Method(..))),
+        ("a.b()", |e| matches!(e, Expr::Method { .. })),
         ("a.b()()", |e| matches!(e, Expr::Call(..))),
         ("a.b()().c.d()()()", |e| matches!(e, Expr::Call(..))),
     ];
