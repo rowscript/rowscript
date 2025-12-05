@@ -109,7 +109,7 @@ pub enum Expr {
     Method(Box<Spanned<Self>>, Spanned<Ustr>, Vec<Spanned<Self>>),
 
     // Resolving-specific constructs.
-    ThisType,
+    ThisType(Box<Self>),
 
     // Typechecking-specific constructs, especially those are "readback" (a.k.a. "reified").
     StructType(Id),

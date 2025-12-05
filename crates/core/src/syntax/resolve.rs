@@ -65,7 +65,7 @@ impl Resolver {
                 Def::Static { rhs } => self.expr(rhs.span, &mut rhs.item),
                 Def::Struct => Ok(()),
                 Def::Extends { bodies } => {
-                    let Sig::Extends { methods, .. } = &mut decl.item.sig else {
+                    let Sig::Extends { target, methods } = &mut decl.item.sig else {
                         unreachable!();
                     };
                     methods
@@ -81,7 +81,9 @@ impl Resolver {
                                         name: Ident::Id(Id::this()),
                                         typ: Spanned {
                                             span: sig.span,
-                                            item: Expr::ThisType,
+                                            item: Expr::ThisType(Box::new(Expr::Ident(
+                                                target.clone(),
+                                            ))),
                                         },
                                     },
                                 },
@@ -198,7 +200,7 @@ impl Resolver {
             | Expr::String(..)
             | Expr::Boolean(..) => Ok(()),
 
-            Expr::ThisType | Expr::StructType(..) | Expr::Ref(..) | Expr::Struct(..) => {
+            Expr::ThisType(..) | Expr::StructType(..) | Expr::Ref(..) | Expr::Struct(..) => {
                 unreachable!()
             }
         }

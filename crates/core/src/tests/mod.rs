@@ -173,8 +173,7 @@ fn it_runs_static_main() {
 
 #[test]
 fn it_runs_struct_main() {
-    // TODO
-    //eval(include_str!("struct.rows"));
+    eval(include_str!("struct.rows"));
 }
 
 fn run_compiled<T, R>(path: &Path, text: &str, input: T) -> R {

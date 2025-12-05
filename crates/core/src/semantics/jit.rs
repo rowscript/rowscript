@@ -563,7 +563,7 @@ impl Expr {
             Expr::Object(..) => todo!("initializer"),
             Expr::Access(..) => todo!("access"),
             Expr::Method(..) => todo!("method"),
-            Expr::ThisType
+            Expr::ThisType(..)
             | Expr::New(..)
             | Expr::StructType(..)
             | Expr::Ref(..)

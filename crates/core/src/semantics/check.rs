@@ -435,7 +435,7 @@ impl Checker {
                 typ.clone()
             }
             Expr::Method(..) => todo!("method"),
-            Expr::ThisType => todo!("this type"),
+            Expr::ThisType(t) => return self.infer(span, t),
             Expr::StructType(..) | Expr::Ref(..) | Expr::Struct(..) => unreachable!(),
         }))
     }
