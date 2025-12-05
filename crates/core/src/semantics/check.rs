@@ -374,7 +374,7 @@ impl Checker {
             Expr::New(t) => {
                 let typ = self.check_type(t.span, &mut t.item)?;
                 Type::Function(Box::new(FuncType {
-                    params: Box::new([typ.clone()]), // TODO: accurate arity
+                    params: vec![typ.clone()], // TODO: accurate arity
                     ret: Type::Ref(Box::new(typ)),
                 }))
             }
@@ -408,7 +408,7 @@ impl Checker {
                         members.keys().cloned().collect(),
                     ));
                 }
-                *unordered = Object::Ordered(ordered.into());
+                *unordered = Object::Ordered(ordered);
                 got
             }
             Expr::Access(a, acc) => {

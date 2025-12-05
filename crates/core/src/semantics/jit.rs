@@ -440,7 +440,7 @@ impl Spanned<Stmt> {
     fn r#if(
         then: &Branch,
         elif: &[Branch],
-        els: &Option<(Span, Box<[Self]>)>,
+        els: &Option<(Span, Vec<Self>)>,
         jit: &mut Jit,
         builder: &mut FunctionBuilder,
         lines: &mut Vec<LineCol>,
@@ -524,7 +524,7 @@ impl Expr {
                 let args = args
                     .iter()
                     .map(|a| a.item.compile(jit, builder))
-                    .collect::<Box<_>>();
+                    .collect::<Vec<_>>();
 
                 let mut sig = jit.m.make_signature();
                 let Expr::Ident(ident) = &f.item else {

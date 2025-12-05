@@ -90,10 +90,10 @@ where
             .foldl_with(chainer.repeated(), |a, c, e| Spanned {
                 span: e.span(),
                 item: match c {
-                    Chainer::Args(args) => Expr::Call(Box::new(a), args.into()),
-                    Chainer::Object(xs) => Expr::Object(Box::new(a), Object::Unordered(xs.into())),
+                    Chainer::Args(args) => Expr::Call(Box::new(a), args),
+                    Chainer::Object(xs) => Expr::Object(Box::new(a), Object::Unordered(xs)),
                     Chainer::Access(m) => Expr::Access(Box::new(a), Access::Named(m)),
-                    Chainer::Method(id, args) => Expr::Method(Box::new(a), id, args.into()),
+                    Chainer::Method(id, args) => Expr::Method(Box::new(a), id, args),
                 },
             })
             .labelled("call expression");

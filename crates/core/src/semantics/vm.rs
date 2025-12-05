@@ -196,7 +196,7 @@ impl<'a> Vm<'a> {
                 let Object::Ordered(args) = args else {
                     unreachable!()
                 };
-                Expr::Struct(args.into_iter().map(|x| self.expr(frame, x)).collect())
+                Expr::Struct(args.iter().map(|x| self.expr(frame, x)).collect())
             }
             Expr::Access(s, acc) => {
                 let Expr::Struct(s) = self.expr(frame, &s.item) else {
@@ -209,7 +209,7 @@ impl<'a> Vm<'a> {
             }
             Expr::Method(..) => todo!("method"),
             Expr::Ref(e) => self.expr(frame, e),
-            Expr::Struct(xs) => Expr::Struct(xs.into_iter().map(|x| self.expr(frame, x)).collect()),
+            Expr::Struct(xs) => Expr::Struct(xs.iter().map(|x| self.expr(frame, x)).collect()),
 
             Expr::BuiltinType(..)
             | Expr::RefType(..)

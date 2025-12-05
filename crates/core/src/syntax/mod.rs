@@ -100,13 +100,13 @@ pub enum Expr {
     Boolean(bool),
 
     // Values.
-    Call(Box<Spanned<Self>>, Box<[Spanned<Self>]>),
+    Call(Box<Spanned<Self>>, Vec<Spanned<Self>>),
     BinaryOp(Box<Spanned<Self>>, Sym, Option<Type>, Box<Spanned<Self>>),
     UnaryOp(Box<Spanned<Self>>, Sym, Option<Type>),
     New(Box<Spanned<Self>>),
     Object(Box<Spanned<Self>>, Object),
     Access(Box<Spanned<Self>>, Access),
-    Method(Box<Spanned<Self>>, Spanned<Ustr>, Box<[Spanned<Self>]>),
+    Method(Box<Spanned<Self>>, Spanned<Ustr>, Vec<Spanned<Self>>),
 
     // Resolving-specific constructs.
     ThisType,
@@ -116,7 +116,7 @@ pub enum Expr {
 
     // VM-specific constructs.
     Ref(Rc<Self>),
-    Struct(Box<[Self]>),
+    Struct(Vec<Self>),
 }
 
 impl Expr {
@@ -150,8 +150,8 @@ impl Expr {
 
 #[derive(Debug, Clone)]
 pub enum Object {
-    Unordered(Box<[(Spanned<Ustr>, Spanned<Expr>)]>),
-    Ordered(Box<[Expr]>),
+    Unordered(Vec<(Spanned<Ustr>, Spanned<Expr>)>),
+    Ordered(Vec<Expr>),
 }
 
 #[derive(Debug, Clone)]
@@ -180,8 +180,8 @@ pub(crate) enum Stmt {
     Return(Option<Spanned<Expr>>),
     If {
         then: Branch,
-        elif: Box<[Branch]>,
-        els: Option<(Span, Box<[Spanned<Self>]>)>,
+        elif: Vec<Branch>,
+        els: Option<(Span, Vec<Spanned<Self>>)>,
     },
     While(Branch),
 }
@@ -190,19 +190,19 @@ pub(crate) enum Stmt {
 pub(crate) struct Branch {
     pub(crate) span: Span,
     pub(crate) cond: Spanned<Expr>,
-    pub(crate) body: Box<[Spanned<Stmt>]>,
+    pub(crate) body: Vec<Spanned<Stmt>>,
 }
 
 #[derive(Default, Debug)]
 pub(crate) struct File {
-    pub(crate) decls: Box<[Spanned<Decl>]>,
+    pub(crate) decls: Vec<Spanned<Decl>>,
     pub(crate) main: Option<Id>,
 }
 
 #[derive(Debug)]
 pub(crate) struct Decl {
     #[allow(dead_code)]
-    pub(crate) doc: Box<[String]>,
+    pub(crate) doc: Vec<String>,
     pub(crate) sig: Sig,
     pub(crate) def: Def,
 }
@@ -216,34 +216,34 @@ pub(crate) enum Sig {
     },
     Struct {
         name: Id,
-        members: Box<[Spanned<Member>]>,
+        members: Vec<Spanned<Member>>,
     },
     Extends {
         target: Ident,
-        methods: Box<[Spanned<MethodSig>]>,
+        methods: Vec<Spanned<MethodSig>>,
     },
 }
 
 #[derive(Debug)]
 pub(crate) struct FuncSig {
     pub(crate) name: Id,
-    pub(crate) params: Box<[Spanned<Param>]>,
+    pub(crate) params: Vec<Spanned<Param>>,
     pub(crate) ret: Option<Spanned<Expr>>,
 }
 
 #[derive(Debug)]
 pub(crate) struct MethodSig {
     #[allow(dead_code)]
-    pub(crate) doc: Box<[String]>,
+    pub(crate) doc: Vec<String>,
     pub(crate) sig: FuncSig,
 }
 
 #[derive(Debug)]
 pub(crate) enum Def {
-    Func { body: Box<[Spanned<Stmt>]> },
+    Func { body: Vec<Spanned<Stmt>> },
     Static { rhs: Spanned<Expr> },
     Struct,
-    Extends { bodies: Box<[Box<[Spanned<Stmt>]>]> },
+    Extends { bodies: Vec<Vec<Spanned<Stmt>>> },
 }
 
 #[derive(Debug)]

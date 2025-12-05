@@ -153,7 +153,7 @@ pub enum Float {
 
 #[derive(Debug, Clone)]
 pub struct FuncType {
-    params: Box<[Type]>,
+    params: Vec<Type>,
     ret: Type,
 }
 
@@ -167,7 +167,7 @@ impl Display for FuncType {
 #[derive(Debug)]
 pub(crate) struct Func {
     pub(crate) typ: FuncType,
-    pub(crate) body: Box<[Spanned<Stmt>]>,
+    pub(crate) body: Vec<Spanned<Stmt>>,
 }
 
 #[derive(Debug)]

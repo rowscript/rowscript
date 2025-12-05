@@ -52,7 +52,7 @@ struct Proto {
 const PRINTLN: Proto = Proto {
     typ: || {
         Type::Function(Box::new(FuncType {
-            params: Box::new([Type::Builtin(BuiltinType::U32)]),
+            params: vec![Type::Builtin(BuiltinType::U32)],
             ret: Default::default(),
         }))
     },

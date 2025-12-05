@@ -59,11 +59,7 @@ where
                     .clone()
                     .delimited_by(just(Token::Sym(Sym::LBrace)), just(Token::Sym(Sym::RBrace))),
             )
-            .map(|((span, cond), body)| Branch {
-                span,
-                cond,
-                body: body.into(),
-            })
+            .map(|((span, cond), body)| Branch { span, cond, body })
             .labelled("if branch");
 
         let r#if =
@@ -84,11 +80,7 @@ where
                         ))
                         .or_not(),
                 )
-                .map(|((then, elif), els)| Stmt::If {
-                    then,
-                    elif: elif.into(),
-                    els: els.map(|(span, stmts)| (span, stmts.into())),
-                })
+                .map(|((then, elif), els)| Stmt::If { then, elif, els })
                 .map_with(Spanned::from_map_extra)
                 .labelled("if statement");
 
@@ -98,13 +90,7 @@ where
                     .clone()
                     .delimited_by(just(Token::Sym(Sym::LBrace)), just(Token::Sym(Sym::RBrace))),
             )
-            .map(|((span, cond), body)| {
-                Stmt::While(Branch {
-                    span,
-                    cond,
-                    body: body.into(),
-                })
-            })
+            .map(|((span, cond), body)| Stmt::While(Branch { span, cond, body }))
             .map_with(Spanned::from_map_extra)
             .labelled("while statement");
 

@@ -24,7 +24,7 @@ where
 
 struct Method {
     sig: FuncSig,
-    body: Box<[Spanned<Stmt>]>,
+    body: Vec<Spanned<Stmt>>,
 }
 
 fn method<'t, I>() -> impl Parser<'t, I, Spanned<Method>, SyntaxErr<'t, Token>>
@@ -53,20 +53,16 @@ where
         )
         .map(|(((id, params), ret), body)| {
             id.map(|name| Method {
-                sig: FuncSig {
-                    name,
-                    params: params.into(),
-                    ret,
-                },
-                body: body.into(),
+                sig: FuncSig { name, params, ret },
+                body,
             })
         })
 }
 
 struct Braced<T> {
-    doc: Box<[String]>,
+    doc: Vec<String>,
     id: Spanned<Id>,
-    items: Box<[T]>,
+    items: Vec<T>,
 }
 
 fn braced<'t, I, O, P>(kw: Keyword, item: P) -> impl Parser<'t, I, Braced<O>, SyntaxErr<'t, Token>>
@@ -82,11 +78,7 @@ where
                 .collect::<Vec<_>>()
                 .delimited_by(just(Token::Sym(Sym::LBrace)), just(Token::Sym(Sym::RBrace))),
         )
-        .map(|((doc, name), items)| Braced {
-            doc: doc.into(),
-            id: name,
-            items: items.into(),
-        })
+        .map(|((doc, id), items)| Braced { doc, id, items })
 }
 
 fn func<'t, I>() -> impl Parser<'t, I, Spanned<Decl>, SyntaxErr<'t, Token>>
@@ -98,7 +90,7 @@ where
         .then(method())
         .map(|(doc, method)| {
             method.map(|m| Decl {
-                doc: doc.into(),
+                doc,
                 sig: Sig::Func(m.sig),
                 def: Def::Func { body: m.body },
             })
@@ -118,7 +110,7 @@ where
         .then(expr())
         .map(|(((doc, id), typ), rhs)| {
             id.map(|name| Decl {
-                doc: doc.into(),
+                doc,
                 sig: Sig::Static { name, typ },
                 def: Def::Static { rhs },
             })
@@ -164,7 +156,7 @@ where
                         Spanned {
                             span: m.span,
                             item: MethodSig {
-                                doc: doc.into(),
+                                doc,
                                 sig: m.item.sig,
                             },
                         },
@@ -176,11 +168,9 @@ where
                 doc,
                 sig: Sig::Extends {
                     target: Ident::Id(target),
-                    methods: methods.into_boxed_slice(),
+                    methods,
                 },
-                def: Def::Extends {
-                    bodies: bodies.into_boxed_slice(),
-                },
+                def: Def::Extends { bodies },
             })
         })
         .labelled("extends definition")
@@ -196,9 +186,6 @@ where
         .or(extends())
         .repeated()
         .collect::<Vec<_>>()
-        .map(|decls| File {
-            decls: decls.into(),
-            main: None,
-        })
+        .map(|decls| File { decls, main: None })
         .labelled("file")
 }

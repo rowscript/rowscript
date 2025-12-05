@@ -65,8 +65,8 @@ impl<T> Spanned<T> {
 
 #[derive(Debug)]
 pub enum Error {
-    Lexing(Box<[(LineCol, String)]>),
-    Parsing(Box<[(Span, String)]>),
+    Lexing(Vec<(LineCol, String)>),
+    Parsing(Vec<(Span, String)>),
 
     UndefName {
         span: Span,
@@ -89,7 +89,7 @@ pub enum Error {
         got: usize,
         want: usize,
     },
-    MissingMembers(Span, Box<[Ustr]>),
+    MissingMembers(Span, Vec<Ustr>),
 
     ExpectedMain,
 
@@ -115,7 +115,7 @@ pub struct LineCol {
 
 #[derive(Default, Debug)]
 pub struct State {
-    lines: Box<[LineCol]>,
+    lines: Vec<LineCol>,
     file: File,
     gs: Globals,
 }
@@ -253,7 +253,7 @@ impl State {
         };
         let stmts = &[Spanned::stdin(Stmt::Expr(Expr::Call(
             Box::new(Spanned::stdin(Expr::Ident(Ident::Id(sig.name.clone())))),
-            Box::new([Spanned::stdin(arg)]),
+            vec![Spanned::stdin(arg)],
         )))];
         Vm::new(&self.gs).func(stmts, Default::default())
     }
