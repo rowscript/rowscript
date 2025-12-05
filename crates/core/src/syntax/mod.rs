@@ -67,6 +67,11 @@ pub enum Ident {
 }
 
 impl Ident {
+    pub(crate) fn as_id(&self) -> &Id {
+        let Self::Id(id) = self else { unreachable!() };
+        id
+    }
+
     pub(crate) fn as_id_mut(&mut self) -> &mut Id {
         let Self::Id(id) = self else { unreachable!() };
         id
@@ -102,6 +107,9 @@ pub enum Expr {
     Object(Box<Spanned<Self>>, Object),
     Access(Box<Spanned<Self>>, Access),
     Method(Box<Spanned<Self>>, Spanned<Ustr>, Box<[Spanned<Self>]>),
+
+    // Resolving-specific constructs.
+    ThisType,
 
     // Typechecking-specific constructs, especially those are "readback" (a.k.a. "reified").
     StructType(Id),
@@ -227,7 +235,7 @@ pub(crate) struct FuncSig {
 pub(crate) struct MethodSig {
     #[allow(dead_code)]
     pub(crate) doc: Box<[String]>,
-    sig: FuncSig,
+    pub(crate) sig: FuncSig,
 }
 
 #[derive(Debug)]

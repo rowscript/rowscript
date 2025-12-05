@@ -187,7 +187,9 @@ impl Resolver {
             | Expr::String(..)
             | Expr::Boolean(..) => Ok(()),
 
-            Expr::StructType(..) | Expr::Ref(..) | Expr::Struct(..) => unreachable!(),
+            Expr::ThisType | Expr::StructType(..) | Expr::Ref(..) | Expr::Struct(..) => {
+                unreachable!()
+            }
         }
     }
 

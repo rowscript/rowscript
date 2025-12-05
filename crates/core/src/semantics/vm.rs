@@ -220,7 +220,7 @@ impl<'a> Vm<'a> {
             | Expr::Boolean(..)
             | Expr::New(..) => expr.clone(),
 
-            Expr::StructType(..) => unreachable!(),
+            Expr::ThisType | Expr::StructType(..) => unreachable!(),
         }
     }
 }

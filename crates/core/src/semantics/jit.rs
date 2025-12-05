@@ -563,9 +563,11 @@ impl Expr {
             Expr::Object(..) => todo!("initializer"),
             Expr::Access(..) => todo!("access"),
             Expr::Method(..) => todo!("method"),
-            Expr::New(..) | Expr::StructType(..) | Expr::Ref(..) | Expr::Struct(..) => {
-                unreachable!()
-            }
+            Expr::ThisType
+            | Expr::New(..)
+            | Expr::StructType(..)
+            | Expr::Ref(..)
+            | Expr::Struct(..) => unreachable!(),
         }
     }
 }

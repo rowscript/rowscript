@@ -180,6 +180,7 @@ pub(crate) struct Static {
 #[derive(Debug)]
 pub(crate) struct Struct {
     pub(crate) members: UstrMap<(usize, Type)>,
+    pub(crate) extends: UstrMap<Func>,
 }
 
 #[derive(Default, Debug)]
