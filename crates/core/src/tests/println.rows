@@ -1,20 +1,8 @@
-enum ReflectedKind {
-    Builtin
-    Struct
-    Enum
-}
-
-struct FieldAt {}
-
-struct Reflected {
-    kind: ReflectedKind
-    fieldAt: FieldAt[]
-}
-
-declare inline function reflect<T>(a: T): Reflected
-
-inline function print<...Args: Display>(fmt: str, ...args: Args) {
-    // TODO
+inline function print<...Args: Display>(inline fmt: str, ...args: Args) {
+    inline for (inline let i: usize = 0; i < args.len(); i += 1) {
+        // TODO: Parse the `fmt` and write the strings.
+        puts(args[i].toString())
+    }
 }
 
 function main() {

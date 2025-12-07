@@ -3,10 +3,9 @@ pub(crate) mod check;
 pub(crate) mod jit;
 pub(crate) mod vm;
 
+use rowscript_derive::Ops;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result as FmtResult};
-
-use rowscript_derive::Ops;
 use strum::{Display, EnumString};
 use ustr::UstrMap;
 
@@ -88,6 +87,7 @@ pub enum BuiltinType {
     U16,
     U32,
     U64,
+    USize,
     F32,
     F64,
     Str,
@@ -103,6 +103,7 @@ impl BuiltinType {
             BuiltinType::U8 => u8::try_from(n).ok().map(Integer::U8),
             BuiltinType::U16 => u16::try_from(n).ok().map(Integer::U16),
             BuiltinType::U32 => u32::try_from(n).ok().map(Integer::U32),
+            BuiltinType::USize => usize::try_from(n).ok().map(Integer::USize),
             BuiltinType::U64 => u64::try_from(n).ok().map(Integer::U64),
             _ => unreachable!(),
         }
@@ -142,6 +143,7 @@ pub enum Integer {
     U8(u8),
     U16(u16),
     U32(u32),
+    USize(usize),
     U64(u64),
 }
 

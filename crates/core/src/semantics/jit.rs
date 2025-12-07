@@ -76,6 +76,7 @@ pub(crate) struct Jit<'a> {
     main: Option<Id>,
     isa: OwnedTargetIsa,
     m: JITModule,
+    ptr_type: JitType,
     locs: HashMap<Id, (Vec<LineCol>, Vec<RelSourceLoc>)>,
     dbg: Vec<GdbJitImageRegistration>,
 }
@@ -96,13 +97,16 @@ impl<'a> Jit<'a> {
         let isa = native_builder().unwrap().finish(Flags::new(flags)).unwrap();
         let mut builder = JITBuilder::with_isa(isa.clone(), default_libcall_names());
         import(&mut builder);
+        let m = JITModule::new(builder);
+        let ptr_type = m.target_config().pointer_type();
         Self {
             path,
             lines,
             gs,
             main,
             isa,
-            m: JITModule::new(builder),
+            m,
+            ptr_type,
             locs: Default::default(),
             dbg: Default::default(),
         }
@@ -512,6 +516,7 @@ impl Expr {
                 Integer::U8(n) => builder.ins().iconst(I8, *n as i64),
                 Integer::U16(n) => builder.ins().iconst(I16, *n as i64),
                 Integer::U32(n) => builder.ins().iconst(I32, *n as i64),
+                Integer::USize(n) => builder.ins().iconst(jit.ptr_type, *n as i64),
                 Integer::U64(n) => builder.ins().iconst(I64, *n as i64),
             },
             Expr::Float(n) => match n {
