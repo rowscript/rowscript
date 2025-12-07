@@ -218,15 +218,16 @@ impl<'a> Vm<'a> {
                     .map(|arg| self.expr(frame, &arg.item))
                     .collect::<Vec<_>>();
                 args.insert(0, self.expr(frame, &callee.item));
-                let m = self
+                let Ident::Idx(i) = method.item else {
+                    unreachable!()
+                };
+                let body = &self
                     .gs
                     .structs
                     .get(target.as_ref().unwrap())
                     .unwrap()
-                    .extends
-                    .get(&method.item)
-                    .unwrap();
-                self.func(&m.body, args)
+                    .bodies[i];
+                self.func(body, args)
             }
             Expr::Ref(e) => self.expr(frame, e),
             Expr::Struct(xs) => Expr::Struct(xs.iter().map(|x| self.expr(frame, x)).collect()),

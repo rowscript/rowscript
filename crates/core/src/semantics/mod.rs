@@ -177,10 +177,11 @@ pub(crate) struct Static {
     pub(crate) expr: Spanned<Expr>,
 }
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub(crate) struct Struct {
     pub(crate) members: UstrMap<(usize, Type)>,
-    pub(crate) extends: UstrMap<Func>,
+    pub(crate) extends: UstrMap<(usize, FuncType)>,
+    pub(crate) bodies: Vec<Vec<Spanned<Stmt>>>,
 }
 
 #[derive(Default, Debug)]

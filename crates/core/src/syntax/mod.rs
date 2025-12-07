@@ -109,7 +109,7 @@ pub enum Expr {
     Method {
         callee: Box<Spanned<Self>>,
         target: Option<Id>,
-        method: Spanned<Ustr>,
+        method: Spanned<Ident>,
         args: Vec<Spanned<Self>>,
     },
 

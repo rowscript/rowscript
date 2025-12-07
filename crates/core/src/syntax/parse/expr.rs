@@ -7,7 +7,7 @@ use serde_json::from_str;
 use ustr::Ustr;
 
 use crate::semantics::{Float, Integer};
-use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, name};
+use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, id, name};
 use crate::syntax::{Access, Expr, Id, Ident, Object};
 use crate::{Span, Spanned};
 
@@ -15,7 +15,7 @@ enum Chainer {
     Args(Vec<Spanned<Expr>>),
     Object(Vec<(Spanned<Ustr>, Spanned<Expr>)>),
     Access(Spanned<Ustr>),
-    Method(Spanned<Ustr>, Vec<Spanned<Expr>>),
+    Method(Spanned<Id>, Vec<Spanned<Expr>>),
 }
 
 pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, SyntaxErr<'t, Token>> + Clone
@@ -67,7 +67,7 @@ where
         .map(Chainer::Object)
         .labelled("object expression");
         let method = just(Token::Sym(Sym::Dot))
-            .ignore_then(name())
+            .ignore_then(id())
             .then(args)
             .map(|(id, args)| Chainer::Method(id, args))
             .labelled("method expression");
@@ -93,10 +93,10 @@ where
                     Chainer::Args(args) => Expr::Call(Box::new(a), args),
                     Chainer::Object(xs) => Expr::Object(Box::new(a), Object::Unordered(xs)),
                     Chainer::Access(m) => Expr::Access(Box::new(a), Access::Named(m)),
-                    Chainer::Method(method, args) => Expr::Method {
+                    Chainer::Method(m, args) => Expr::Method {
                         callee: Box::new(a),
                         target: None,
-                        method,
+                        method: m.map(Ident::Id),
                         args,
                     },
                 },

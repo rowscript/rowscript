@@ -1,13 +1,13 @@
-use std::collections::HashMap;
-use std::iter::once;
-use std::mem::take;
-
 use crate::semantics::{
     BuiltinType, Float, Func, FuncType, Globals, Integer, Static, Struct, Type,
 };
 use crate::syntax::parse::Sym;
 use crate::syntax::{Access, Branch, Def, Expr, File, FuncSig, Id, Ident, Object, Sig, Stmt};
 use crate::{Error, Out, Span, Spanned};
+use std::collections::HashMap;
+use std::iter::once;
+use std::mem::take;
+use ustr::UstrMap;
 
 #[derive(Default)]
 pub(crate) struct Checker {
@@ -52,7 +52,7 @@ impl Checker {
                         name.clone(),
                         Struct {
                             members,
-                            extends: Default::default(),
+                            ..Default::default()
                         },
                     );
                     self.globals
@@ -121,11 +121,14 @@ impl Checker {
                     let Sig::Extends { target, methods } = &decl.item.sig else {
                         unreachable!()
                     };
-                    let extends = methods
+                    let mut checked_extends = UstrMap::default();
+                    let mut checked_bodies = Vec::default();
+                    methods
                         .iter()
                         .zip(extends.next().unwrap().into_iter())
                         .zip(bodies.iter_mut())
-                        .map(|((sig, typ), body)| {
+                        .enumerate()
+                        .try_for_each(|(i, ((sig, typ), body))| {
                             let mut local = Block::func(typ.ret.clone());
                             typ.params
                                 .clone()
@@ -136,16 +139,13 @@ impl Checker {
                                 });
                             let got = self.block(local, body)?;
                             isa(decl.span, &got, &typ.ret)?;
-                            Ok((
-                                sig.item.sig.name.raw(),
-                                Func {
-                                    typ,
-                                    body: take(body),
-                                },
-                            ))
-                        })
-                        .collect::<Out<_>>()?;
-                    self.gs.structs.get_mut(target.as_id()).unwrap().extends = extends;
+                            checked_extends.insert(sig.item.sig.name.raw(), (i, typ));
+                            checked_bodies.push(take(body));
+                            Ok(())
+                        })?;
+                    let s = self.gs.structs.get_mut(target.as_id()).unwrap();
+                    s.extends = checked_extends;
+                    s.bodies = checked_bodies;
                     Ok(())
                 }
             })?;
@@ -423,18 +423,23 @@ impl Checker {
                 args,
             } => {
                 let s = self.infer_struct(callee.span, &mut callee.item)?;
-                let Some(f) = self.gs.structs.get(&s).unwrap().extends.get(&method.item) else {
+                let Ident::Id(m) = &method.item else {
+                    unreachable!()
+                };
+                let name = m.raw();
+                let Some((i, f)) = self.gs.structs.get(&s).unwrap().extends.get(&name) else {
                     return Err(Error::UndefName {
                         span: method.span,
-                        name: method.item,
+                        name,
                         is_member: true,
                     });
                 };
                 let got = 1 + args.len();
                 let args = once(callee.as_mut()).chain(args.iter_mut());
-                let typ = f.typ.clone();
-                self.check_args(span, got, args, &typ.params)?;
                 *target = Some(s);
+                method.item = Ident::Idx(*i);
+                let typ = f.clone();
+                self.check_args(span, got, args, &typ.params)?;
                 typ.ret
             }
             Expr::ThisType(t) => return self.infer(span, t),
