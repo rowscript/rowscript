@@ -1,0 +1,26 @@
+enum ReflectedKind {
+    Builtin
+    Struct
+    Enum
+}
+
+struct FieldAt {}
+
+struct Reflected {
+    kind: ReflectedKind
+    fieldAt: FieldAt[]
+}
+
+declare inline function reflect<T>(a: T): Reflected
+
+inline function print<...Args: Display>(fmt: str, ...args: Args) {
+    // TODO
+}
+
+function main() {
+    let name = "RowScript"
+    let year = 2025
+    print("Hello, {0} in {1}!", name, year)
+    print("Hello, {} in {}!", name, year)
+    print("Hello, {name} in {year}!")
+}
