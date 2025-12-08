@@ -21,6 +21,13 @@ RowScript
 
 ## Status
 
+Update 2025-12-08:
+
+* Struct definitions and their related functionalities.
+* Example code can be run in **interpretation** mode. Not available on JIT mode yet.
+
+![struct](struct.png)
+
 Update 2025-11-11:
 
 * Language features and **an IDE** will be developed at the same time, development experience will now be prioritized
