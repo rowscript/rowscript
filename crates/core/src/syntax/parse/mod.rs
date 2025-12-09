@@ -131,3 +131,18 @@ where
         .collect()
         .delimited_by(just(Token::Sym(lhs)), just(Token::Sym(rhs)))
 }
+
+fn groups_with<'t, I, O, P>(
+    lhs: Sym,
+    parser: P,
+    rhs: Sym,
+) -> impl Parser<'t, I, Vec<O>, SyntaxErr<'t, Token>>
+where
+    I: ValueInput<'t, Token = Token, Span = Span>,
+    P: Parser<'t, I, O, SyntaxErr<'t, Token>>,
+{
+    parser
+        .repeated()
+        .collect()
+        .delimited_by(just(Token::Sym(lhs)), just(Token::Sym(rhs)))
+}

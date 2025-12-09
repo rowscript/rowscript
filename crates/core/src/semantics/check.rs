@@ -58,12 +58,20 @@ impl Checker {
                     self.globals
                         .insert(name.clone(), Kind::TypeLevel(Type::Struct(name.clone())));
                 }
-                Sig::Extends { methods, .. } => {
+                Sig::Extends { target, methods } => {
+                    let got = self.check_type(target.span, &mut target.item)?;
+                    let Type::Struct(id) = got else {
+                        return Err(Error::TypeMismatch {
+                            span: target.span,
+                            got: got.to_string(),
+                            want: "struct".to_string(),
+                        });
+                    };
                     let methods = methods
                         .iter_mut()
                         .map(|m| self.func_sig(&mut m.item.sig))
                         .collect::<Out<Vec<_>>>()?;
-                    extends.push(methods);
+                    extends.push((id, methods));
                 }
             };
             Ok(())
@@ -118,14 +126,15 @@ impl Checker {
                 }
                 Def::Struct => Ok(()),
                 Def::Extends { bodies } => {
-                    let Sig::Extends { target, methods } = &decl.item.sig else {
+                    let Sig::Extends { methods, .. } = &decl.item.sig else {
                         unreachable!()
                     };
+                    let (target, types) = extends.next().unwrap();
                     let mut checked_extends = UstrMap::default();
                     let mut checked_bodies = Vec::default();
                     methods
                         .iter()
-                        .zip(extends.next().unwrap().into_iter())
+                        .zip(types.into_iter())
                         .zip(bodies.iter_mut())
                         .enumerate()
                         .try_for_each(|(i, ((sig, typ), body))| {
@@ -143,7 +152,7 @@ impl Checker {
                             checked_bodies.push(take(body));
                             Ok(())
                         })?;
-                    let s = self.gs.structs.get_mut(target.as_id()).unwrap();
+                    let s = self.gs.structs.get_mut(&target).unwrap();
                     s.extends = checked_extends;
                     s.bodies = checked_bodies;
                     Ok(())

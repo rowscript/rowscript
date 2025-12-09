@@ -67,11 +67,6 @@ pub enum Ident {
 }
 
 impl Ident {
-    pub(crate) fn as_id(&self) -> &Id {
-        let Self::Id(id) = self else { unreachable!() };
-        id
-    }
-
     pub(crate) fn as_id_mut(&mut self) -> &mut Id {
         let Self::Id(id) = self else { unreachable!() };
         id
@@ -224,7 +219,7 @@ pub(crate) enum Sig {
         members: Vec<Spanned<Member>>,
     },
     Extends {
-        target: Ident,
+        target: Spanned<Expr>,
         methods: Vec<Spanned<MethodSig>>,
     },
 }

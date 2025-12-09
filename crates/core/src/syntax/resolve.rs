@@ -34,7 +34,7 @@ impl Resolver {
                     Some(name.clone())
                 }
                 Sig::Extends { target, methods } => {
-                    self.name(decl.span, target)?;
+                    self.expr(target.span, &mut target.item)?;
                     let mut names = Names::default();
                     methods.iter_mut().try_for_each(|m| {
                         names.ensure_unique(m.span, m.item.sig.name.raw(), true)?;
@@ -81,9 +81,7 @@ impl Resolver {
                                         name: Ident::Id(Id::this()),
                                         typ: Spanned {
                                             span: sig.span,
-                                            item: Expr::ThisType(Box::new(Expr::Ident(
-                                                target.clone(),
-                                            ))),
+                                            item: Expr::ThisType(Box::new(target.item.clone())),
                                         },
                                     },
                                 },

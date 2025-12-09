@@ -5,8 +5,8 @@ use chumsky::primitive::select;
 
 use crate::syntax::parse::expr::expr;
 use crate::syntax::parse::stmt::stmt;
-use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, id, name};
-use crate::syntax::{Decl, Def, File, FuncSig, Id, Ident, Member, MethodSig, Param, Sig, Stmt};
+use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, groups_with, id, name};
+use crate::syntax::{Decl, Def, File, FuncSig, Ident, Member, MethodSig, Param, Sig, Stmt};
 use crate::{Span, Spanned};
 
 fn docstring<'t, I>() -> impl Parser<'t, I, Vec<String>, SyntaxErr<'t, Token>> + Clone
@@ -59,28 +59,6 @@ where
         })
 }
 
-struct Braced<T> {
-    doc: Vec<String>,
-    id: Spanned<Id>,
-    items: Vec<T>,
-}
-
-fn braced<'t, I, O, P>(kw: Keyword, item: P) -> impl Parser<'t, I, Braced<O>, SyntaxErr<'t, Token>>
-where
-    I: ValueInput<'t, Token = Token, Span = Span>,
-    P: Parser<'t, I, O, SyntaxErr<'t, Token>>,
-{
-    docstring()
-        .then_ignore(just(Token::Keyword(kw)))
-        .then(id())
-        .then(
-            item.repeated()
-                .collect::<Vec<_>>()
-                .delimited_by(just(Token::Sym(Sym::LBrace)), just(Token::Sym(Sym::RBrace))),
-        )
-        .map(|((doc, id), items)| Braced { doc, id, items })
-}
-
 fn func<'t, I>() -> impl Parser<'t, I, Spanned<Decl>, SyntaxErr<'t, Token>>
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
@@ -127,8 +105,11 @@ where
         .map(|(name, typ)| name.map(|name| Member { name, typ }))
         .labelled("member");
 
-    braced(Keyword::Struct, member)
-        .map(|Braced { doc, id, items }| {
+    docstring()
+        .then_ignore(just(Token::Keyword(Keyword::Struct)))
+        .then(id())
+        .then(groups_with(Sym::LBrace, member, Sym::RBrace))
+        .map(|((doc, id), items)| {
             id.map(|name| Decl {
                 doc,
                 sig: Sig::Struct {
@@ -147,8 +128,11 @@ where
 {
     let method = docstring().then(method()).labelled("method definition");
 
-    braced(Keyword::Extends, method)
-        .map(|Braced { doc, id, items }| {
+    docstring()
+        .then_ignore(just(Token::Keyword(Keyword::Extends)))
+        .then(expr())
+        .then(groups_with(Sym::LBrace, method, Sym::RBrace))
+        .map(|((doc, target), items)| {
             let (methods, bodies) = items
                 .into_iter()
                 .map(|(doc, m)| {
@@ -164,15 +148,13 @@ where
                     )
                 })
                 .collect::<(Vec<_>, Vec<_>)>();
-            id.map(|target| Decl {
+            Decl {
                 doc,
-                sig: Sig::Extends {
-                    target: Ident::Id(target),
-                    methods,
-                },
+                sig: Sig::Extends { target, methods },
                 def: Def::Extends { bodies },
-            })
+            }
         })
+        .map_with(Spanned::from_map_extra)
         .labelled("extends definition")
 }
 
