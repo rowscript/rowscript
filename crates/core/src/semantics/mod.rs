@@ -41,14 +41,16 @@ pub enum Type {
     Function(Box<FuncType>),
     #[strum(to_string = "&{0}")]
     Ref(Box<Self>),
-    #[strum(to_string = "struct {0}")]
-    Struct(Id),
+    #[strum(to_string = "struct {name}")]
+    Struct { name: Id, members: Vec<Self> },
     #[strum(to_string = "<{name}: {typ}> => {body}")]
     Generic {
-        name: Ident,
+        name: Id,
         typ: Box<Self>,
         body: Box<Self>,
     },
+    #[strum(transparent)]
+    Id(Id),
 }
 
 impl Type {
@@ -66,7 +68,8 @@ impl Type {
                 span,
                 item: t.to_expr(span),
             })),
-            Type::Struct(id) => Expr::StructType(id.clone()),
+            Type::Struct { name, .. } => Expr::StructType(name.clone()),
+            Type::Id(id) => Expr::Ident(Ident::Type(id.clone())),
             _ => unreachable!(),
         }
     }

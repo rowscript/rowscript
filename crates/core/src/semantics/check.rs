@@ -35,7 +35,7 @@ impl Checker {
                     let got = type_params.clone().into_iter().rfold(
                         Type::Function(Box::new(f.clone())),
                         |body, (name, typ)| Type::Generic {
-                            name,
+                            name: name.into_id(),
                             typ: Box::new(typ),
                             body: Box::new(body),
                         },
@@ -59,20 +59,27 @@ impl Checker {
                     let t = self.infer_with_type_params(type_params, |s| {
                         let members = members
                             .iter_mut()
-                            .enumerate()
-                            .map(|(i, m)| {
+                            .map(|m| {
                                 let t = s.check_type(m.span, &mut m.item.typ.item)?;
-                                Ok((m.item.name, (i, t)))
+                                Ok((m.item.name, t))
                             })
-                            .collect::<Out<_>>()?;
+                            .collect::<Out<Vec<_>>>()?;
+                        let t = Type::Struct {
+                            name: name.clone(),
+                            members: members.iter().map(|(.., typ)| typ.clone()).collect(),
+                        };
                         s.gs.structs.insert(
                             name.clone(),
                             Struct {
-                                members,
+                                members: members
+                                    .into_iter()
+                                    .enumerate()
+                                    .map(|(i, (name, typ))| (name, (i, typ)))
+                                    .collect(),
                                 ..Default::default()
                             },
                         );
-                        Ok(Type::Struct(name.clone()))
+                        Ok(t)
                     })?;
                     self.globals.insert(name.clone(), Kind::TypeLevel(t));
                 }
@@ -84,7 +91,7 @@ impl Checker {
                     let type_params = self.type_params(type_params)?;
                     self.with_type_params(&type_params, |s| {
                         let got = s.check_type(target.span, &mut target.item)?;
-                        let Type::Struct(id) = got else {
+                        let Type::Struct { name, .. } = got else {
                             return Err(Error::TypeMismatch {
                                 span: target.span,
                                 got: got.to_string(),
@@ -95,7 +102,7 @@ impl Checker {
                             .iter_mut()
                             .map(|m| s.func_sig(&mut m.item.sig))
                             .collect::<Out<Vec<_>>>()?;
-                        extends.push((id, methods));
+                        extends.push((name, methods));
                         Ok(())
                     })?;
                 }
@@ -324,7 +331,32 @@ impl Checker {
                 let t = self.check_type(t.span, &mut t.item)?;
                 return Ok(Kind::TypeLevel(Type::Ref(Box::new(t))));
             }
-            Expr::Apply(..) => todo!("type application"),
+            Expr::Apply(t, args) => {
+                match self.infer(t.span, &mut t.item)? {
+                    Kind::ValueLevel(got) => {
+                        return Err(Error::TypeMismatch {
+                            span: t.span,
+                            got: got.to_string(),
+                            want: "type".to_string(),
+                        });
+                    }
+                    Kind::TypeLevel(got) => {
+                        let Type::Generic { name, typ, body } = got else {
+                            return Err(Error::TypeMismatch {
+                                span: t.span,
+                                got: got.to_string(),
+                                want: "generic".to_string(),
+                            });
+                        };
+                        // TODO
+                        _ = args;
+                        _ = name;
+                        _ = typ;
+                        _ = body;
+                    }
+                };
+                todo!()
+            }
             Expr::Unit => Type::Builtin(BuiltinType::Unit),
             Expr::Integer(n) => {
                 debug_assert!(matches!(n, Integer::I64(..)));
@@ -413,14 +445,14 @@ impl Checker {
             }
             Expr::Object(t, unordered) => {
                 let got = self.check_type(t.span, &mut t.item)?;
-                let Type::Struct(s) = &got else {
+                let Type::Struct { name, .. } = &got else {
                     return Err(Error::TypeMismatch {
                         span: t.span,
                         got: got.to_string(),
                         want: "struct".to_string(),
                     });
                 };
-                let mut members = self.gs.structs.get(s).unwrap().members.clone();
+                let mut members = self.gs.structs.get(name).unwrap().members.clone();
                 let Object::Unordered(args) = unordered else {
                     unreachable!()
                 };
@@ -493,14 +525,14 @@ impl Checker {
 
     fn infer_struct(&mut self, span: Span, expr: &mut Expr) -> Out<Id> {
         let got = self.infer(span, expr)?.value_level();
-        let Type::Struct(s) = got else {
+        let Type::Struct { name, .. } = got else {
             return Err(Error::TypeMismatch {
                 span,
                 got: got.to_string(),
                 want: "struct".to_string(),
             });
         };
-        Ok(s)
+        Ok(name)
     }
 
     fn check_args<'a, I: Iterator<Item = &'a mut Spanned<Expr>>>(
@@ -528,8 +560,7 @@ impl Checker {
             Ident::Type(n) => self
                 .type_locals
                 .get(n)
-                .cloned()
-                .map(Kind::TypeLevel)
+                .map(|_| Kind::TypeLevel(Type::Id(n.clone())))
                 .unwrap(),
         })
     }
@@ -576,7 +607,7 @@ impl Checker {
         Ok(ps
             .into_iter()
             .rfold(init, |body, (name, typ)| Type::Generic {
-                name,
+                name: name.into_id(),
                 typ: Box::new(typ),
                 body: Box::new(body),
             }))
@@ -636,12 +667,26 @@ fn isa(span: Span, got: &Type, want: &Type) -> Out<()> {
             isa(span, &a.ret, &b.ret)
         }
         (Type::Ref(a), Type::Ref(b)) => isa(span, a, b),
-        (Type::Struct(a), Type::Struct(b)) if a == b => Ok(()),
+        (Type::Struct { name: a, .. }, Type::Struct { name: b, .. }) if a == b => Ok(()),
         (Type::Generic { .. }, Type::Generic { .. }) => todo!(),
         _ => {
             let got = got.to_string();
             let want = want.to_string();
             Err(Error::TypeMismatch { span, got, want })
         }
+    }
+}
+
+#[allow(dead_code)]
+#[derive(Default)]
+struct Applier {
+    m: HashMap<Id, Type>,
+}
+
+#[allow(dead_code)]
+impl Applier {
+    fn apply(&mut self, t: Type) -> Type {
+        _ = t;
+        todo!()
     }
 }

@@ -75,6 +75,11 @@ pub enum Ident {
 }
 
 impl Ident {
+    pub(crate) fn into_id(self) -> Id {
+        let Self::Id(id) = self else { unreachable!() };
+        id
+    }
+
     pub(crate) fn as_id(&self) -> &Id {
         let Self::Id(id) = self else { unreachable!() };
         id
