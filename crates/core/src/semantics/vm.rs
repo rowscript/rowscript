@@ -129,6 +129,7 @@ impl<'a> Vm<'a> {
                     .unwrap_or_else(|| Expr::Ident(Ident::Id(id.clone()))),
                 Ident::Idx(idx) => frame.get(*idx).unwrap().clone(),
                 Ident::Builtin(b) => Expr::Ident(Ident::Builtin(*b)),
+                Ident::Type(..) => unreachable!(),
             },
             Expr::Call(f, args) => {
                 let args = args.iter().map(|arg| self.expr(frame, &arg.item)).collect();
@@ -139,7 +140,7 @@ impl<'a> Vm<'a> {
                             self.func(&f.item.body, args)
                         }
                         Ident::Builtin(b) => b.eval(args),
-                        Ident::Idx(..) => unreachable!(),
+                        Ident::Idx(..) | Ident::Type(..) => unreachable!(),
                     },
                     Expr::New(..) => {
                         // TODO: Other arity and other types.

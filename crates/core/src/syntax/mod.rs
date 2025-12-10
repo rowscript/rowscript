@@ -68,6 +68,10 @@ pub enum Ident {
     Idx(usize),
     #[strum(transparent)]
     Builtin(Builtin),
+
+    // Resolving-specific constructs.
+    #[strum(transparent)]
+    Type(Id),
 }
 
 impl Ident {

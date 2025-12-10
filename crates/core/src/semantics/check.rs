@@ -522,15 +522,15 @@ impl Checker {
 
     fn ident(&self, ident: &Ident) -> Out<Kind> {
         Ok(match ident {
-            Ident::Id(n) => self
+            Ident::Id(n) => self.globals.get(n).cloned().unwrap(),
+            Ident::Idx(i) => Kind::ValueLevel(self.locals.get(*i).unwrap().clone()),
+            Ident::Builtin(b) => Kind::ValueLevel(b.r#type()),
+            Ident::Type(n) => self
                 .type_locals
                 .get(n)
                 .cloned()
                 .map(Kind::TypeLevel)
-                .or_else(|| self.globals.get(n).cloned())
                 .unwrap(),
-            Ident::Idx(i) => Kind::ValueLevel(self.locals.get(*i).unwrap().clone()),
-            Ident::Builtin(b) => Kind::ValueLevel(b.r#type()),
         })
     }
 

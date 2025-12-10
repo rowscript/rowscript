@@ -244,25 +244,20 @@ impl Resolver {
         let name = id.raw();
         if let Some(found) = self.locals.iter().rposition(|each| name == **each) {
             *ident = Ident::Idx(found);
-            return Ok(());
-        }
-        if let Some(found) = self.type_locals.get(&name) {
+        } else if let Some(found) = self.type_locals.get(&name) {
+            *ident = Ident::Type(found.clone());
+        } else if let Some(found) = self.globals.get(&name) {
             *id = found.clone();
-            return Ok(());
-        }
-        if let Some(found) = self.globals.get(&name) {
-            *id = found.clone();
-            return Ok(());
-        }
-        if let Ok(builtin) = Builtin::from_str(&name) {
+        } else if let Ok(builtin) = Builtin::from_str(&name) {
             *ident = Ident::Builtin(builtin);
-            return Ok(());
+        } else {
+            return Err(Error::UndefName {
+                span,
+                name,
+                is_member: false,
+            });
         }
-        Err(Error::UndefName {
-            span,
-            name,
-            is_member: false,
-        })
+        Ok(())
     }
 
     fn insert(&mut self, block: &mut Block, ident: &mut Ident) {

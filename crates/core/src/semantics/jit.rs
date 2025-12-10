@@ -544,6 +544,7 @@ impl Expr {
                     }
                     Ident::Builtin(b) => b.declare(&mut jit.m),
                     Ident::Idx(..) => todo!("local function"),
+                    Ident::Type(..) => unreachable!(),
                 };
                 let local_callee = jit.m.declare_func_in_func(callee, builder.func);
                 let call = builder.ins().call(local_callee, &args);
