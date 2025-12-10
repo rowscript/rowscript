@@ -164,8 +164,7 @@ fn it_runs_file_main() {
         include_str!("ref.rows"),
         include_str!("static.rows"),
         include_str!("struct.rows"),
-        // TODO
-        //include_str!("generics.rows"),
+        include_str!("generics.rows"),
     ];
     for text in TEXTS {
         eval(text);

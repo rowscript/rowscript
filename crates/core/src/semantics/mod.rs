@@ -41,8 +41,8 @@ pub enum Type {
     Function(Box<FuncType>),
     #[strum(to_string = "&{0}")]
     Ref(Box<Self>),
-    #[strum(to_string = "struct {name}")]
-    Struct { name: Id, members: Vec<Self> },
+    #[strum(transparent)]
+    Struct(StructType),
     #[strum(to_string = "<{name}: {typ}> => {body}")]
     Generic {
         name: Id,
@@ -68,7 +68,7 @@ impl Type {
                 span,
                 item: t.to_expr(span),
             })),
-            Type::Struct { name, .. } => Expr::StructType(name.clone()),
+            Type::Struct(StructType { name, .. }) => Expr::StructType(name.clone()),
             Type::Id(id) => Expr::Ident(Ident::Type(id.clone())),
             _ => unreachable!(),
         }
@@ -175,6 +175,18 @@ impl Display for FuncType {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct StructType {
+    name: Id,
+    members: Vec<Type>,
+}
+
+impl Display for StructType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "struct {}", self.name)
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct Func {
     pub(crate) typ: FuncType,
@@ -190,7 +202,7 @@ pub(crate) struct Static {
 
 #[derive(Default, Debug)]
 pub(crate) struct Struct {
-    pub(crate) members: UstrMap<(usize, Type)>,
+    pub(crate) members: UstrMap<usize>,
     pub(crate) extends: UstrMap<(usize, FuncType)>,
     pub(crate) bodies: Vec<Vec<Spanned<Stmt>>>,
 }

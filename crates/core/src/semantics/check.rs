@@ -5,7 +5,7 @@ use std::mem::take;
 use ustr::UstrMap;
 
 use crate::semantics::{
-    BuiltinType, Float, Func, FuncType, Globals, Integer, Static, Struct, Type,
+    BuiltinType, Float, Func, FuncType, Globals, Integer, Static, Struct, StructType, Type,
 };
 use crate::syntax::parse::Sym;
 use crate::syntax::{
@@ -64,17 +64,17 @@ impl Checker {
                                 Ok((m.item.name, t))
                             })
                             .collect::<Out<Vec<_>>>()?;
-                        let t = Type::Struct {
+                        let t = Type::Struct(StructType {
                             name: name.clone(),
                             members: members.iter().map(|(.., typ)| typ.clone()).collect(),
-                        };
+                        });
                         s.gs.structs.insert(
                             name.clone(),
                             Struct {
                                 members: members
                                     .into_iter()
                                     .enumerate()
-                                    .map(|(i, (name, typ))| (name, (i, typ)))
+                                    .map(|(i, (name, ..))| (name, i))
                                     .collect(),
                                 ..Default::default()
                             },
@@ -91,7 +91,7 @@ impl Checker {
                     let type_params = self.type_params(type_params)?;
                     self.with_type_params(&type_params, |s| {
                         let got = s.check_type(target.span, &mut target.item)?;
-                        let Type::Struct { name, .. } = got else {
+                        let Type::Struct(StructType { name, .. }) = got else {
                             return Err(Error::TypeMismatch {
                                 span: target.span,
                                 got: got.to_string(),
@@ -109,6 +109,8 @@ impl Checker {
             };
             Ok(())
         })?;
+
+        debug_assert!(self.type_locals.is_empty());
 
         let mut fns = fns.into_iter();
         let mut statics = statics.into_iter();
@@ -332,30 +334,27 @@ impl Checker {
                 return Ok(Kind::TypeLevel(Type::Ref(Box::new(t))));
             }
             Expr::Apply(t, args) => {
-                match self.infer(t.span, &mut t.item)? {
-                    Kind::ValueLevel(got) => {
-                        return Err(Error::TypeMismatch {
-                            span: t.span,
-                            got: got.to_string(),
-                            want: "type".to_string(),
-                        });
-                    }
+                return match self.infer(t.span, &mut t.item)? {
+                    Kind::ValueLevel(got) => Err(Error::TypeMismatch {
+                        span: t.span,
+                        got: got.to_string(),
+                        want: "type".to_string(),
+                    }),
                     Kind::TypeLevel(got) => {
-                        let Type::Generic { name, typ, body } = got else {
-                            return Err(Error::TypeMismatch {
-                                span: t.span,
-                                got: got.to_string(),
-                                want: "generic".to_string(),
-                            });
-                        };
-                        // TODO
-                        _ = args;
-                        _ = name;
-                        _ = typ;
-                        _ = body;
+                        let t = args.iter_mut().try_fold(got, |f, arg| {
+                            let Type::Generic { name, typ, body } = f else {
+                                return Err(Error::TypeMismatch {
+                                    span: t.span,
+                                    got: f.to_string(),
+                                    want: "generic".to_string(),
+                                });
+                            };
+                            let arg = self.check(arg.span, &mut arg.item, &typ)?.type_level();
+                            Ok(apply(*body, (name, arg)))
+                        })?;
+                        Ok(Kind::TypeLevel(t))
                     }
                 };
-                todo!()
             }
             Expr::Unit => Type::Builtin(BuiltinType::Unit),
             Expr::Integer(n) => {
@@ -445,52 +444,52 @@ impl Checker {
             }
             Expr::Object(t, unordered) => {
                 let got = self.check_type(t.span, &mut t.item)?;
-                let Type::Struct { name, .. } = &got else {
+                let Type::Struct(StructType { name, members }) = &got else {
                     return Err(Error::TypeMismatch {
                         span: t.span,
                         got: got.to_string(),
                         want: "struct".to_string(),
                     });
                 };
-                let mut members = self.gs.structs.get(name).unwrap().members.clone();
+                let mut indexes = self.gs.structs.get(name).unwrap().members.clone();
                 let Object::Unordered(args) = unordered else {
                     unreachable!()
                 };
-                let mut ordered = Vec::with_capacity(members.len());
+                let mut ordered = Vec::with_capacity(indexes.len());
                 take(args).into_iter().try_for_each(|(name, mut arg)| {
-                    let (i, typ) = members.remove(&name.item).ok_or(Error::UndefName {
+                    let i = indexes.remove(&name.item).ok_or(Error::UndefName {
                         span: name.span,
                         name: name.item,
                         is_member: true,
                     })?;
-                    self.check(arg.span, &mut arg.item, &typ)?;
+                    let want = &members[i];
+                    self.check(arg.span, &mut arg.item, want)?;
                     ordered.insert(i, arg.item);
                     Ok(())
                 })?;
-                if !members.is_empty() {
+                if !indexes.is_empty() {
                     return Err(Error::MissingMembers(
                         span,
-                        members.keys().cloned().collect(),
+                        indexes.keys().cloned().collect(),
                     ));
                 }
                 *unordered = Object::Ordered(ordered);
                 got
             }
             Expr::Access(a, acc) => {
-                let s = self.infer_struct(a.span, &mut a.item)?;
-                let Access::Named(name) = acc else {
+                let StructType { name, members } = self.infer_struct(a.span, &mut a.item)?;
+                let Access::Named(m) = acc else {
                     unreachable!()
                 };
-                let Some((i, typ)) = self.gs.structs.get(&s).unwrap().members.get(&name.item)
-                else {
+                let Some(i) = self.gs.structs.get(&name).unwrap().members.get(&m.item) else {
                     return Err(Error::UndefName {
-                        span: name.span,
-                        name: name.item,
+                        span: m.span,
+                        name: m.item,
                         is_member: true,
                     });
                 };
                 *acc = Access::Indexed(*i);
-                typ.clone()
+                members[*i].clone()
             }
             Expr::Method {
                 callee,
@@ -498,21 +497,20 @@ impl Checker {
                 method,
                 args,
             } => {
-                let s = self.infer_struct(callee.span, &mut callee.item)?;
+                let StructType { name, .. } = self.infer_struct(callee.span, &mut callee.item)?;
                 let Ident::Id(m) = &method.item else {
                     unreachable!()
                 };
-                let name = m.raw();
-                let Some((i, f)) = self.gs.structs.get(&s).unwrap().extends.get(&name) else {
+                let Some((i, f)) = self.gs.structs.get(&name).unwrap().extends.get(&m.raw()) else {
                     return Err(Error::UndefName {
                         span: method.span,
-                        name,
+                        name: m.raw(),
                         is_member: true,
                     });
                 };
                 let got = 1 + args.len();
                 let args = once(callee.as_mut()).chain(args.iter_mut());
-                *target = Some(s);
+                *target = Some(name);
                 method.item = Ident::Idx(*i);
                 let typ = f.clone();
                 self.check_args(span, got, args, &typ.params)?;
@@ -523,16 +521,16 @@ impl Checker {
         }))
     }
 
-    fn infer_struct(&mut self, span: Span, expr: &mut Expr) -> Out<Id> {
+    fn infer_struct(&mut self, span: Span, expr: &mut Expr) -> Out<StructType> {
         let got = self.infer(span, expr)?.value_level();
-        let Type::Struct { name, .. } = got else {
+        let Type::Struct(t) = got else {
             return Err(Error::TypeMismatch {
                 span,
                 got: got.to_string(),
                 want: "struct".to_string(),
             });
         };
-        Ok(name)
+        Ok(t)
     }
 
     fn check_args<'a, I: Iterator<Item = &'a mut Spanned<Expr>>>(
@@ -593,7 +591,6 @@ impl Checker {
         for (name, ..) in type_params {
             self.type_locals.remove(name.as_id());
         }
-        debug_assert!(self.type_locals.is_empty());
         ret
     }
 
@@ -667,8 +664,9 @@ fn isa(span: Span, got: &Type, want: &Type) -> Out<()> {
             isa(span, &a.ret, &b.ret)
         }
         (Type::Ref(a), Type::Ref(b)) => isa(span, a, b),
-        (Type::Struct { name: a, .. }, Type::Struct { name: b, .. }) if a == b => Ok(()),
+        (Type::Struct(a), Type::Struct(b)) if a.name == b.name => Ok(()),
         (Type::Generic { .. }, Type::Generic { .. }) => todo!(),
+        (Type::Id(a), Type::Id(b)) if a == b => Ok(()),
         _ => {
             let got = got.to_string();
             let want = want.to_string();
@@ -677,13 +675,9 @@ fn isa(span: Span, got: &Type, want: &Type) -> Out<()> {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Default)]
-struct Applier {
-    m: HashMap<Id, Type>,
-}
+struct Applier(HashMap<Id, Type>);
 
-#[allow(dead_code)]
 impl Applier {
     fn apply(&mut self, t: Type) -> Type {
         match t {
@@ -694,16 +688,20 @@ impl Applier {
                 Type::Function(Box::new(FuncType { params, ret }))
             }
             Type::Ref(x) => Type::Ref(Box::new(self.apply(*x))),
-            Type::Struct { name, members } => Type::Struct {
+            Type::Struct(StructType { name, members }) => Type::Struct(StructType {
                 name,
                 members: members.into_iter().map(|x| self.apply(x)).collect(),
-            },
+            }),
             Type::Generic { name, typ, body } => Type::Generic {
                 name,
                 typ: Box::new(self.apply(*typ)),
                 body: Box::new(self.apply(*body)),
             },
-            Type::Id(id) => self.m.get(&id).cloned().unwrap(),
+            Type::Id(id) => self.0.get(&id).cloned().unwrap(),
         }
     }
+}
+
+fn apply(t: Type, with: (Id, Type)) -> Type {
+    Applier(HashMap::from([with])).apply(t)
 }

@@ -12,6 +12,6 @@ extends<T> A<T> {
 }
 
 function main() {
-    let a = A<u32>{a: 42}
-    println(a.n)
+    let x = A<u32>{a: 42}
+    println(x.a)
 }
