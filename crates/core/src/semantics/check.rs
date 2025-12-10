@@ -1,18 +1,23 @@
+use std::collections::HashMap;
+use std::iter::once;
+use std::mem::take;
+
+use ustr::UstrMap;
+
 use crate::semantics::{
     BuiltinType, Float, Func, FuncType, Globals, Integer, Static, Struct, Type,
 };
 use crate::syntax::parse::Sym;
-use crate::syntax::{Access, Branch, Def, Expr, File, FuncSig, Id, Ident, Object, Sig, Stmt};
+use crate::syntax::{
+    Access, Branch, Def, Expr, File, FuncSig, Id, Ident, Object, Param, Sig, Stmt,
+};
 use crate::{Error, Out, Span, Spanned};
-use std::collections::HashMap;
-use std::iter::once;
-use std::mem::take;
-use ustr::UstrMap;
 
 #[derive(Default)]
 pub(crate) struct Checker {
     globals: HashMap<Id, Kind>,
     locals: Vec<Type>,
+    type_locals: HashMap<Id, Type>,
     gs: Globals,
 }
 
@@ -26,12 +31,19 @@ impl Checker {
             match &mut decl.item.sig {
                 Sig::Func(sig) => {
                     let span = sig.ret.as_ref().map(|s| s.span).unwrap_or(decl.span);
-                    let f = self.func_sig(sig)?;
-                    let got = Type::Function(Box::new(f.clone()));
+                    let (type_params, f) = self.func_sig(sig)?;
+                    let got = type_params.clone().into_iter().rfold(
+                        Type::Function(Box::new(f.clone())),
+                        |body, (name, typ)| Type::Generic {
+                            name,
+                            typ: Box::new(typ),
+                            body: Box::new(body),
+                        },
+                    );
                     if file.main.as_ref() == Some(&sig.name) {
                         isa(span, &got, &Type::main())?;
                     }
-                    fns.push((sig.name.clone(), f));
+                    fns.push((sig.name.clone(), type_params, f));
                     self.globals.insert(sig.name.clone(), Kind::ValueLevel(got));
                 }
                 Sig::Static { name, typ } => {
@@ -44,46 +56,48 @@ impl Checker {
                     type_params,
                     members,
                 } => {
-                    // TODO: Type parameters.
-                    _ = type_params;
-                    let members = members
-                        .iter_mut()
-                        .enumerate()
-                        .map(|(i, m)| {
-                            let t = self.check_type(m.span, &mut m.item.typ.item)?;
-                            Ok((m.item.name, (i, t)))
-                        })
-                        .collect::<Out<_>>()?;
-                    self.gs.structs.insert(
-                        name.clone(),
-                        Struct {
-                            members,
-                            ..Default::default()
-                        },
-                    );
-                    self.globals
-                        .insert(name.clone(), Kind::TypeLevel(Type::Struct(name.clone())));
+                    let t = self.infer_with_type_params(type_params, |s| {
+                        let members = members
+                            .iter_mut()
+                            .enumerate()
+                            .map(|(i, m)| {
+                                let t = s.check_type(m.span, &mut m.item.typ.item)?;
+                                Ok((m.item.name, (i, t)))
+                            })
+                            .collect::<Out<_>>()?;
+                        s.gs.structs.insert(
+                            name.clone(),
+                            Struct {
+                                members,
+                                ..Default::default()
+                            },
+                        );
+                        Ok(Type::Struct(name.clone()))
+                    })?;
+                    self.globals.insert(name.clone(), Kind::TypeLevel(t));
                 }
                 Sig::Extends {
                     type_params,
                     target,
                     methods,
                 } => {
-                    // TODO: Type parameters.
-                    _ = type_params;
-                    let got = self.check_type(target.span, &mut target.item)?;
-                    let Type::Struct(id) = got else {
-                        return Err(Error::TypeMismatch {
-                            span: target.span,
-                            got: got.to_string(),
-                            want: "struct".to_string(),
-                        });
-                    };
-                    let methods = methods
-                        .iter_mut()
-                        .map(|m| self.func_sig(&mut m.item.sig))
-                        .collect::<Out<Vec<_>>>()?;
-                    extends.push((id, methods));
+                    let type_params = self.type_params(type_params)?;
+                    self.with_type_params(&type_params, |s| {
+                        let got = s.check_type(target.span, &mut target.item)?;
+                        let Type::Struct(id) = got else {
+                            return Err(Error::TypeMismatch {
+                                span: target.span,
+                                got: got.to_string(),
+                                want: "struct".to_string(),
+                            });
+                        };
+                        let methods = methods
+                            .iter_mut()
+                            .map(|m| s.func_sig(&mut m.item.sig))
+                            .collect::<Out<Vec<_>>>()?;
+                        extends.push((id, methods));
+                        Ok(())
+                    })?;
                 }
             };
             Ok(())
@@ -97,29 +111,31 @@ impl Checker {
             .iter_mut()
             .try_for_each(|decl| match &mut decl.item.def {
                 Def::Func { body } => {
-                    let (name, typ) = fns.next().unwrap();
-                    let mut local = Block::func(typ.ret.clone());
-                    typ.params
-                        .clone()
-                        .into_iter()
-                        .enumerate()
-                        .for_each(|(i, p)| {
-                            self.insert(&mut local, i, p);
-                        });
-                    let got = self.block(local, body)?;
-                    isa(decl.span, &got, &typ.ret)?;
-                    let old = self.gs.fns.insert(
-                        name,
-                        Spanned {
-                            span: decl.span,
-                            item: Func {
-                                typ,
-                                body: take(body),
+                    let (name, type_params, typ) = fns.next().unwrap();
+                    self.with_type_params(&type_params, |s| {
+                        let mut local = Block::func(typ.ret.clone());
+                        typ.params
+                            .clone()
+                            .into_iter()
+                            .enumerate()
+                            .for_each(|(i, p)| {
+                                s.insert(&mut local, i, p);
+                            });
+                        let got = s.block(local, body)?;
+                        isa(decl.span, &got, &typ.ret)?;
+                        let old = s.gs.fns.insert(
+                            name,
+                            Spanned {
+                                span: decl.span,
+                                item: Func {
+                                    typ,
+                                    body: take(body),
+                                },
                             },
-                        },
-                    );
-                    debug_assert!(old.is_none());
-                    Ok(())
+                        );
+                        debug_assert!(old.is_none());
+                        Ok(())
+                    })
                 }
                 Def::Static { rhs } => {
                     let (name, typ) = statics.next().unwrap();
@@ -149,20 +165,22 @@ impl Checker {
                         .zip(types.into_iter())
                         .zip(bodies.iter_mut())
                         .enumerate()
-                        .try_for_each(|(i, ((sig, typ), body))| {
-                            let mut local = Block::func(typ.ret.clone());
-                            typ.params
-                                .clone()
-                                .into_iter()
-                                .enumerate()
-                                .for_each(|(i, p)| {
-                                    self.insert(&mut local, i, p);
-                                });
-                            let got = self.block(local, body)?;
-                            isa(decl.span, &got, &typ.ret)?;
-                            checked_extends.insert(sig.item.sig.name.raw(), (i, typ));
-                            checked_bodies.push(take(body));
-                            Ok(())
+                        .try_for_each(|(i, ((sig, (type_params, typ)), body))| {
+                            self.with_type_params(&type_params, |s| {
+                                let mut local = Block::func(typ.ret.clone());
+                                typ.params
+                                    .clone()
+                                    .into_iter()
+                                    .enumerate()
+                                    .for_each(|(i, p)| {
+                                        s.insert(&mut local, i, p);
+                                    });
+                                let got = s.block(local, body)?;
+                                isa(decl.span, &got, &typ.ret)?;
+                                checked_extends.insert(sig.item.sig.name.raw(), (i, typ));
+                                checked_bodies.push(take(body));
+                                Ok(())
+                            })
                         })?;
                     let s = self.gs.structs.get_mut(&target).unwrap();
                     s.extends = checked_extends;
@@ -174,21 +192,23 @@ impl Checker {
         Ok(self.gs)
     }
 
-    fn func_sig(&mut self, sig: &mut FuncSig) -> Out<FuncType> {
-        // TODO: Type parameters.
-        _ = sig.type_params;
-        let ret = sig
-            .ret
-            .as_mut()
-            .map(|t| self.check_type(t.span, &mut t.item))
-            .transpose()?
-            .unwrap_or(Type::Builtin(BuiltinType::Unit));
-        let params = sig
-            .params
-            .iter_mut()
-            .map(|p| self.check_type(p.item.typ.span, &mut p.item.typ.item))
-            .collect::<Out<_>>()?;
-        Ok(FuncType { params, ret })
+    fn func_sig(&mut self, sig: &mut FuncSig) -> Out<(Vec<(Ident, Type)>, FuncType)> {
+        let type_params = self.type_params(&mut sig.type_params)?;
+        let f = self.with_type_params(&type_params, |s| {
+            let ret = sig
+                .ret
+                .as_mut()
+                .map(|t| s.check_type(t.span, &mut t.item))
+                .transpose()?
+                .unwrap_or(Type::Builtin(BuiltinType::Unit));
+            let params = sig
+                .params
+                .iter_mut()
+                .map(|p| s.check_type(p.item.typ.span, &mut p.item.typ.item))
+                .collect::<Out<_>>()?;
+            Ok(FuncType { params, ret })
+        })?;
+        Ok((type_params, f))
     }
 
     fn stmt(&mut self, block: &mut Block, stmt: &mut Spanned<Stmt>) -> Out<Type> {
@@ -502,7 +522,13 @@ impl Checker {
 
     fn ident(&self, ident: &Ident) -> Out<Kind> {
         Ok(match ident {
-            Ident::Id(n) => self.globals.get(n).unwrap().clone(),
+            Ident::Id(n) => self
+                .type_locals
+                .get(n)
+                .cloned()
+                .map(Kind::TypeLevel)
+                .or_else(|| self.globals.get(n).cloned())
+                .unwrap(),
             Ident::Idx(i) => Kind::ValueLevel(self.locals.get(*i).unwrap().clone()),
             Ident::Builtin(b) => Kind::ValueLevel(b.r#type()),
         })
@@ -511,6 +537,49 @@ impl Checker {
     fn insert(&mut self, block: &mut Block, idx: usize, typ: Type) {
         self.locals.insert(idx, typ);
         block.locals += 1;
+    }
+
+    fn type_params(&mut self, type_params: &mut [Spanned<Param>]) -> Out<Vec<(Ident, Type)>> {
+        type_params
+            .iter_mut()
+            .map(|p| {
+                self.check_type(p.item.typ.span, &mut p.item.typ.item)
+                    .map(|t| (p.item.name.clone(), t))
+            })
+            .collect()
+    }
+
+    fn with_type_params<R, F: FnOnce(&mut Self) -> R>(
+        &mut self,
+        type_params: &[(Ident, Type)],
+        f: F,
+    ) -> R {
+        for (name, typ) in type_params {
+            let old = self.type_locals.insert(name.as_id().clone(), typ.clone());
+            debug_assert!(old.is_none());
+        }
+        let ret = f(self);
+        for (name, ..) in type_params {
+            self.type_locals.remove(name.as_id());
+        }
+        debug_assert!(self.type_locals.is_empty());
+        ret
+    }
+
+    fn infer_with_type_params<F: FnOnce(&mut Self) -> Out<Type>>(
+        &mut self,
+        type_params: &mut [Spanned<Param>],
+        f: F,
+    ) -> Out<Type> {
+        let ps = self.type_params(type_params)?;
+        let init = self.with_type_params(&ps, f)?;
+        Ok(ps
+            .into_iter()
+            .rfold(init, |body, (name, typ)| Type::Generic {
+                name,
+                typ: Box::new(typ),
+                body: Box::new(body),
+            }))
     }
 }
 
@@ -568,6 +637,7 @@ fn isa(span: Span, got: &Type, want: &Type) -> Out<()> {
         }
         (Type::Ref(a), Type::Ref(b)) => isa(span, a, b),
         (Type::Struct(a), Type::Struct(b)) if a == b => Ok(()),
+        (Type::Generic { .. }, Type::Generic { .. }) => todo!(),
         _ => {
             let got = got.to_string();
             let want = want.to_string();

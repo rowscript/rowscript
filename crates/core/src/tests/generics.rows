@@ -10,3 +10,8 @@ extends<T> A<T> {
     foo<U>(a: T, b: U) {
     }
 }
+
+function main() {
+    let a = A<u32>{a: 42}
+    println(a.n)
+}

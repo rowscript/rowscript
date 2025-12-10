@@ -9,7 +9,7 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 use strum::{Display, EnumString};
 use ustr::UstrMap;
 
-use crate::syntax::{Expr, Id, Stmt};
+use crate::syntax::{Expr, Id, Ident, Stmt};
 use crate::{Span, Spanned};
 
 macro_rules! write_separated {
@@ -43,6 +43,12 @@ pub enum Type {
     Ref(Box<Self>),
     #[strum(to_string = "struct {0}")]
     Struct(Id),
+    #[strum(to_string = "<{name}: {typ}> => {body}")]
+    Generic {
+        name: Ident,
+        typ: Box<Self>,
+        body: Box<Self>,
+    },
 }
 
 impl Type {

@@ -7,6 +7,7 @@ use std::rc::Rc;
 
 use chumsky::extra::ParserExtra;
 use chumsky::input::{Input, MapExtra};
+use strum::Display;
 use ustr::Ustr;
 
 use crate::semantics::builtin::Builtin;
@@ -59,10 +60,13 @@ impl Hash for Id {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Display)]
 pub enum Ident {
+    #[strum(transparent)]
     Id(Id),
+    #[strum(to_string = "_{0}")]
     Idx(usize),
+    #[strum(transparent)]
     Builtin(Builtin),
 }
 
