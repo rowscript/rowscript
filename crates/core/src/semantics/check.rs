@@ -304,6 +304,7 @@ impl Checker {
                 let t = self.check_type(t.span, &mut t.item)?;
                 return Ok(Kind::TypeLevel(Type::Ref(Box::new(t))));
             }
+            Expr::Apply(..) => todo!("type application"),
             Expr::Unit => Type::Builtin(BuiltinType::Unit),
             Expr::Integer(n) => {
                 debug_assert!(matches!(n, Integer::I64(..)));

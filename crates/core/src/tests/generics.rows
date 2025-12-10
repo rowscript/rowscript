@@ -6,8 +6,7 @@ struct A<T> {
     a: T
 }
 
-// TODO: A<T>
-extends<T> A {
+extends<T> A<T> {
     foo<U>(a: T, b: U) {
     }
 }

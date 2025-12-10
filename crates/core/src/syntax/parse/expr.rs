@@ -16,6 +16,7 @@ enum Chainer {
     Object(Vec<(Spanned<Ustr>, Spanned<Expr>)>),
     Access(Spanned<Ustr>),
     Method(Spanned<Id>, Vec<Spanned<Expr>>),
+    TypeArgs(Vec<Spanned<Expr>>),
 }
 
 pub(crate) fn expr<'t, I>() -> impl Parser<'t, I, Spanned<Expr>, SyntaxErr<'t, Token>> + Clone
@@ -60,7 +61,9 @@ where
             .labelled("arguments expression");
         let obj = grouped_by(
             Sym::LBrace,
-            name().then_ignore(just(Token::Sym(Sym::Colon))).then(expr),
+            name()
+                .then_ignore(just(Token::Sym(Sym::Colon)))
+                .then(expr.clone()),
             Sym::Comma,
             Sym::RBrace,
         )
@@ -75,7 +78,10 @@ where
             .ignore_then(name())
             .map(Chainer::Access)
             .labelled("access expression");
-        let chainer = arguments.or(obj).or(method).or(access);
+        let type_args = grouped_by(Sym::Lt, expr, Sym::Comma, Sym::Gt)
+            .map(Chainer::TypeArgs)
+            .labelled("type arguments");
+        let chainer = arguments.or(obj).or(method).or(access).or(type_args);
 
         let call = just(Token::Keyword(Keyword::New))
             .or_not()
@@ -99,6 +105,7 @@ where
                         method: m.map(Ident::Id),
                         args,
                     },
+                    Chainer::TypeArgs(args) => Expr::Apply(Box::new(a), args),
                 },
             })
             .labelled("call expression");

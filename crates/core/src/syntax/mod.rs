@@ -91,6 +91,7 @@ pub enum Expr {
     // Types.
     BuiltinType(BuiltinType),
     RefType(Box<Spanned<Self>>),
+    Apply(Box<Spanned<Self>>, Vec<Spanned<Self>>),
 
     // Constants.
     Unit,

@@ -506,7 +506,6 @@ impl Expr {
                 let Ident::Idx(idx) = ident else { todo!() };
                 builder.use_var(Variable::from_u32(*idx as _))
             }
-            Expr::BuiltinType(..) | Expr::RefType(..) => unreachable!(),
             Expr::Unit => builder.ins().iconst(I8, 0),
             Expr::Integer(n) => match n {
                 Integer::I8(n) => builder.ins().iconst(I8, *n as i64),
@@ -568,7 +567,10 @@ impl Expr {
             Expr::Object(..) => todo!("initializer"),
             Expr::Access(..) => todo!("access"),
             Expr::Method { .. } => todo!("method"),
-            Expr::ThisType(..)
+            Expr::BuiltinType(..)
+            | Expr::RefType(..)
+            | Expr::Apply(..)
+            | Expr::ThisType(..)
             | Expr::New(..)
             | Expr::StructType(..)
             | Expr::Ref(..)
