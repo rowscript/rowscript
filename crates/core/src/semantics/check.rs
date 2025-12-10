@@ -686,7 +686,24 @@ struct Applier {
 #[allow(dead_code)]
 impl Applier {
     fn apply(&mut self, t: Type) -> Type {
-        _ = t;
-        todo!()
+        match t {
+            Type::Builtin(..) => t,
+            Type::Function(f) => {
+                let params = f.params.into_iter().map(|p| self.apply(p)).collect();
+                let ret = self.apply(f.ret);
+                Type::Function(Box::new(FuncType { params, ret }))
+            }
+            Type::Ref(x) => Type::Ref(Box::new(self.apply(*x))),
+            Type::Struct { name, members } => Type::Struct {
+                name,
+                members: members.into_iter().map(|x| self.apply(x)).collect(),
+            },
+            Type::Generic { name, typ, body } => Type::Generic {
+                name,
+                typ: Box::new(self.apply(*typ)),
+                body: Box::new(self.apply(*body)),
+            },
+            Type::Id(id) => self.m.get(&id).cloned().unwrap(),
+        }
     }
 }
