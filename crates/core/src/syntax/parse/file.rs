@@ -3,10 +3,11 @@ use chumsky::input::ValueInput;
 use chumsky::prelude::{IterParser, just};
 use chumsky::primitive::select;
 
+use crate::semantics::BuiltinType;
 use crate::syntax::parse::expr::expr;
 use crate::syntax::parse::stmt::stmt;
 use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, groups_with, id, name};
-use crate::syntax::{Decl, Def, File, FuncSig, Ident, Member, MethodSig, Param, Sig, Stmt};
+use crate::syntax::{Decl, Def, Expr, File, FuncSig, Ident, Member, MethodSig, Param, Sig, Stmt};
 use crate::{Span, Spanned};
 
 fn docstring<'t, I>() -> impl Parser<'t, I, Vec<String>, SyntaxErr<'t, Token>> + Clone
@@ -20,6 +21,29 @@ where
     .repeated()
     .collect::<Vec<_>>()
     .labelled("docstring")
+}
+
+fn type_params<'t, I>() -> impl Parser<'t, I, Vec<Spanned<Param>>, SyntaxErr<'t, Token>>
+where
+    I: ValueInput<'t, Token = Token, Span = Span>,
+{
+    let param = id()
+        .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()).or_not())
+        .map(|(id, typ)| Spanned {
+            span: id.span,
+            item: Param {
+                name: Ident::Id(id.item),
+                typ: typ.unwrap_or(Spanned {
+                    span: id.span,
+                    item: Expr::BuiltinType(BuiltinType::Type),
+                }),
+            },
+        })
+        .labelled("type parameter");
+    grouped_by(Sym::Lt, param, Sym::Comma, Sym::Gt)
+        .or_not()
+        .map(Option::unwrap_or_default)
+        .labelled("type parameters")
 }
 
 struct Method {
@@ -43,7 +67,8 @@ where
 
     let params = grouped_by(Sym::LParen, param, Sym::Comma, Sym::RParen).labelled("parameters");
 
-    id().then(params)
+    id().then(type_params())
+        .then(params)
         .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()).or_not())
         .then(
             stmt()
@@ -51,9 +76,14 @@ where
                 .collect::<Vec<_>>()
                 .delimited_by(just(Token::Sym(Sym::LBrace)), just(Token::Sym(Sym::RBrace))),
         )
-        .map(|(((id, params), ret), body)| {
+        .map(|((((id, type_params), params), ret), body)| {
             id.map(|name| Method {
-                sig: FuncSig { name, params, ret },
+                sig: FuncSig {
+                    name,
+                    type_params,
+                    params,
+                    ret,
+                },
                 body,
             })
         })
@@ -108,12 +138,14 @@ where
     docstring()
         .then_ignore(just(Token::Keyword(Keyword::Struct)))
         .then(id())
+        .then(type_params())
         .then(groups_with(Sym::LBrace, member, Sym::RBrace))
-        .map(|((doc, id), items)| {
+        .map(|(((doc, id), type_params), items)| {
             id.map(|name| Decl {
                 doc,
                 sig: Sig::Struct {
                     name,
+                    type_params,
                     members: items,
                 },
                 def: Def::Struct,
@@ -130,9 +162,10 @@ where
 
     docstring()
         .then_ignore(just(Token::Keyword(Keyword::Extends)))
+        .then(type_params())
         .then(expr())
         .then(groups_with(Sym::LBrace, method, Sym::RBrace))
-        .map(|((doc, target), items)| {
+        .map(|(((doc, type_params), target), items)| {
             let (methods, bodies) = items
                 .into_iter()
                 .map(|(doc, m)| {
@@ -150,7 +183,11 @@ where
                 .collect::<(Vec<_>, Vec<_>)>();
             Decl {
                 doc,
-                sig: Sig::Extends { target, methods },
+                sig: Sig::Extends {
+                    type_params,
+                    target,
+                    methods,
+                },
                 def: Def::Extends { bodies },
             }
         })

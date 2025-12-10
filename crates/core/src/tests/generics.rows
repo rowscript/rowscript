@@ -1,0 +1,13 @@
+function id<T>(a: T): T {
+    return a
+}
+
+struct A<T> {
+    a: T
+}
+
+// TODO: A<T>
+extends<T> A {
+    foo<U>(a: T, b: U) {
+    }
+}

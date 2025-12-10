@@ -39,7 +39,13 @@ impl Checker {
                     statics.push((name.clone(), t.clone()));
                     self.globals.insert(name.clone(), Kind::ValueLevel(t));
                 }
-                Sig::Struct { name, members } => {
+                Sig::Struct {
+                    name,
+                    type_params,
+                    members,
+                } => {
+                    // TODO: Type parameters.
+                    _ = type_params;
                     let members = members
                         .iter_mut()
                         .enumerate()
@@ -58,7 +64,13 @@ impl Checker {
                     self.globals
                         .insert(name.clone(), Kind::TypeLevel(Type::Struct(name.clone())));
                 }
-                Sig::Extends { target, methods } => {
+                Sig::Extends {
+                    type_params,
+                    target,
+                    methods,
+                } => {
+                    // TODO: Type parameters.
+                    _ = type_params;
                     let got = self.check_type(target.span, &mut target.item)?;
                     let Type::Struct(id) = got else {
                         return Err(Error::TypeMismatch {
@@ -163,6 +175,8 @@ impl Checker {
     }
 
     fn func_sig(&mut self, sig: &mut FuncSig) -> Out<FuncType> {
+        // TODO: Type parameters.
+        _ = sig.type_params;
         let ret = sig
             .ret
             .as_mut()

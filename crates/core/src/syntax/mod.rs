@@ -67,6 +67,11 @@ pub enum Ident {
 }
 
 impl Ident {
+    pub(crate) fn as_id(&self) -> &Id {
+        let Self::Id(id) = self else { unreachable!() };
+        id
+    }
+
     pub(crate) fn as_id_mut(&mut self) -> &mut Id {
         let Self::Id(id) = self else { unreachable!() };
         id
@@ -216,9 +221,11 @@ pub(crate) enum Sig {
     },
     Struct {
         name: Id,
+        type_params: Vec<Spanned<Param>>,
         members: Vec<Spanned<Member>>,
     },
     Extends {
+        type_params: Vec<Spanned<Param>>,
         target: Spanned<Expr>,
         methods: Vec<Spanned<MethodSig>>,
     },
@@ -227,6 +234,7 @@ pub(crate) enum Sig {
 #[derive(Debug)]
 pub(crate) struct FuncSig {
     pub(crate) name: Id,
+    pub(crate) type_params: Vec<Spanned<Param>>,
     pub(crate) params: Vec<Spanned<Param>>,
     pub(crate) ret: Option<Spanned<Expr>>,
 }

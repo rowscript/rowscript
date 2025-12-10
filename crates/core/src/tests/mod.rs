@@ -70,6 +70,7 @@ fn it_resolves_file() {
         include_str!("ref.rows"),
         include_str!("static.rows"),
         include_str!("struct.rows"),
+        include_str!("generics.rows"),
     ];
     for text in TEXTS {
         let mut s = State::default();

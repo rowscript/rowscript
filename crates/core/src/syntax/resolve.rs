@@ -10,6 +10,7 @@ use crate::{Error, Out, Span, Spanned};
 pub(crate) struct Resolver {
     globals: UstrMap<Id>,
     locals: Vec<Ustr>,
+    type_locals: UstrMap<Id>,
     names: Names,
 }
 
@@ -25,20 +26,34 @@ impl Resolver {
                     self.expr(typ.span, &mut typ.item)?;
                     Some(name.clone())
                 }
-                Sig::Struct { name, members } => {
+                Sig::Struct {
+                    name,
+                    type_params,
+                    members,
+                } => {
                     let mut names = Names::default();
-                    members.iter_mut().try_for_each(|m| {
-                        names.ensure_unique(m.span, m.item.name, true)?;
-                        self.expr(m.item.typ.span, &mut m.item.typ.item)
+                    self.type_params(type_params)?;
+                    self.with_type_params(type_params, |s| {
+                        members.iter_mut().try_for_each(|m| {
+                            names.ensure_unique(m.span, m.item.name, true)?;
+                            s.expr(m.item.typ.span, &mut m.item.typ.item)
+                        })
                     })?;
                     Some(name.clone())
                 }
-                Sig::Extends { target, methods } => {
-                    self.expr(target.span, &mut target.item)?;
-                    let mut names = Names::default();
-                    methods.iter_mut().try_for_each(|m| {
-                        names.ensure_unique(m.span, m.item.sig.name.raw(), true)?;
-                        self.func_sig(&mut m.item.sig)
+                Sig::Extends {
+                    type_params,
+                    target,
+                    methods,
+                } => {
+                    self.type_params(type_params)?;
+                    self.with_type_params(type_params, |s| {
+                        s.expr(target.span, &mut target.item)?;
+                        let mut names = Names::default();
+                        methods.iter_mut().try_for_each(|m| {
+                            names.ensure_unique(m.span, m.item.sig.name.raw(), true)?;
+                            s.func_sig(&mut m.item.sig)
+                        })
                     })?;
                     None
                 }
@@ -56,90 +71,108 @@ impl Resolver {
                     let Sig::Func(sig) = &mut decl.item.sig else {
                         unreachable!()
                     };
-                    let mut local = Block::local();
-                    sig.params
-                        .iter_mut()
-                        .for_each(|p| self.insert(&mut local, &mut p.item.name));
-                    self.block(local, body)
+                    self.with_type_params(&sig.type_params, |s| {
+                        let mut local = Block::local();
+                        sig.params
+                            .iter_mut()
+                            .for_each(|p| s.insert(&mut local, &mut p.item.name));
+                        s.block(local, body)
+                    })
                 }
                 Def::Static { rhs } => self.expr(rhs.span, &mut rhs.item),
                 Def::Struct => Ok(()),
                 Def::Extends { bodies } => {
-                    let Sig::Extends { target, methods } = &mut decl.item.sig else {
+                    let Sig::Extends {
+                        type_params,
+                        target,
+                        methods,
+                    } = &mut decl.item.sig
+                    else {
                         unreachable!();
                     };
-                    methods
-                        .iter_mut()
-                        .zip(bodies.iter_mut())
-                        .try_for_each(|(sig, body)| {
-                            let mut local = Block::local();
-                            sig.item.sig.params.insert(
-                                0,
-                                Spanned {
-                                    span: sig.span,
-                                    item: Param {
-                                        name: Ident::Id(Id::this()),
-                                        typ: Spanned {
+                    self.with_type_params(type_params, |s| {
+                        methods
+                            .iter_mut()
+                            .zip(bodies.iter_mut())
+                            .try_for_each(|(sig, body)| {
+                                s.with_type_params(&sig.item.sig.type_params, |s| {
+                                    let mut local = Block::local();
+                                    sig.item.sig.params.insert(
+                                        0,
+                                        Spanned {
                                             span: sig.span,
-                                            item: Expr::ThisType(Box::new(target.item.clone())),
+                                            item: Param {
+                                                name: Ident::Id(Id::this()),
+                                                typ: Spanned {
+                                                    span: sig.span,
+                                                    item: Expr::ThisType(Box::new(
+                                                        target.item.clone(),
+                                                    )),
+                                                },
+                                            },
                                         },
-                                    },
-                                },
-                            );
-                            sig.item
-                                .sig
-                                .params
-                                .iter_mut()
-                                .for_each(|p| self.insert(&mut local, &mut p.item.name));
-                            self.block(local, body)
-                        })
+                                    );
+                                    sig.item
+                                        .sig
+                                        .params
+                                        .iter_mut()
+                                        .for_each(|p| s.insert(&mut local, &mut p.item.name));
+                                    s.block(local, body)
+                                })
+                            })
+                    })
                 }
             })?;
         file.main = self.globals.get(&Ustr::from("main")).cloned();
         debug_assert!(self.locals.is_empty());
+        debug_assert!(self.type_locals.is_empty());
         Ok(())
     }
 
     fn func_sig(&mut self, sig: &mut FuncSig) -> Out<()> {
-        sig.params
-            .iter_mut()
-            .try_for_each(|p| self.expr(p.item.typ.span, &mut p.item.typ.item))?;
-        sig.ret
-            .as_mut()
-            .map(|t| self.expr(t.span, &mut t.item))
-            .transpose()?;
-        Ok(())
+        self.type_params(&mut sig.type_params)?;
+        self.with_type_params(&sig.type_params, |s| {
+            sig.params
+                .iter_mut()
+                .try_for_each(|p| s.expr(p.item.typ.span, &mut p.item.typ.item))?;
+            sig.ret
+                .as_mut()
+                .map(|t| s.expr(t.span, &mut t.item))
+                .transpose()
+                .map(Option::unwrap_or_default)
+        })
     }
 
     fn stmt(&mut self, block: &mut Block, stmt: &mut Spanned<Stmt>) -> Out<()> {
         match &mut stmt.item {
-            Stmt::Expr(e) => self.expr(stmt.span, e)?,
+            Stmt::Expr(e) => self.expr(stmt.span, e),
             Stmt::Assign { name, typ, rhs, .. } => {
                 typ.as_mut()
                     .map(|t| self.expr(t.span, &mut t.item))
                     .transpose()?;
                 self.expr(rhs.span, &mut rhs.item)?;
                 self.insert(block, &mut name.item);
+                Ok(())
             }
             Stmt::Update { name, rhs } => {
                 self.name(name.span, &mut name.item)?;
-                self.expr(rhs.span, &mut rhs.item)?;
+                self.expr(rhs.span, &mut rhs.item)
             }
-            Stmt::Return(e) => {
-                e.as_mut()
-                    .map(|e| self.expr(e.span, &mut e.item))
-                    .transpose()?;
-            }
+            Stmt::Return(e) => e
+                .as_mut()
+                .map(|e| self.expr(e.span, &mut e.item))
+                .transpose()
+                .map(Option::unwrap_or_default),
             Stmt::If { then, elif, els } => {
                 self.branch(then)?;
                 elif.iter_mut().try_for_each(|b| self.branch(b))?;
                 els.as_mut()
                     .map(|(.., stmts)| self.block(Block::local(), stmts))
-                    .transpose()?;
+                    .transpose()
+                    .map(Option::unwrap_or_default)
             }
-            Stmt::While(branch) => self.branch(branch)?,
+            Stmt::While(branch) => self.branch(branch),
         }
-        Ok(())
     }
 
     fn block(&mut self, mut block: Block, stmts: &mut [Spanned<Stmt>]) -> Out<()> {
@@ -211,6 +244,10 @@ impl Resolver {
             *ident = Ident::Idx(found);
             return Ok(());
         }
+        if let Some(found) = self.type_locals.get(&name) {
+            *id = found.clone();
+            return Ok(());
+        }
         if let Some(found) = self.globals.get(&name) {
             *id = found.clone();
             return Ok(());
@@ -235,6 +272,34 @@ impl Resolver {
             return;
         }
         self.globals.insert(id.raw(), id.clone());
+    }
+
+    fn type_params(&mut self, type_params: &mut [Spanned<Param>]) -> Out<()> {
+        type_params
+            .iter_mut()
+            .try_for_each(|p| self.expr(p.item.typ.span, &mut p.item.typ.item))
+    }
+
+    fn with_type_params<R, F: FnOnce(&mut Self) -> R>(
+        &mut self,
+        type_params: &[Spanned<Param>],
+        f: F,
+    ) -> R {
+        let olds = type_params
+            .iter()
+            .map(|p| {
+                let id = p.item.name.as_id();
+                self.type_locals.insert(id.raw(), id.clone())
+            })
+            .collect::<Vec<_>>();
+        let ret = f(self);
+        type_params.iter().zip(olds).for_each(|(p, old)| {
+            match old {
+                None => self.type_locals.remove(&p.item.name.as_id().raw()),
+                Some(old) => self.type_locals.insert(old.raw(), old),
+            };
+        });
+        ret
     }
 }
 
