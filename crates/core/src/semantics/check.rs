@@ -5,11 +5,12 @@ use std::mem::take;
 use ustr::UstrMap;
 
 use crate::semantics::{
-    BuiltinType, Float, Func, FuncType, Globals, Integer, Static, Struct, StructType, Type,
+    BuiltinType, Float, Func, FuncType, GenericParam, Globals, Integer, Static, Struct, StructType,
+    Type,
 };
 use crate::syntax::parse::Sym;
 use crate::syntax::{
-    Access, Branch, Def, Expr, File, FuncSig, Id, Ident, Object, Param, Sig, Stmt,
+    Access, Branch, Def, Expr, File, FuncSig, Id, Ident, Object, Sig, Stmt, TypeParam,
 };
 use crate::{Error, Out, Span, Spanned};
 
@@ -34,9 +35,8 @@ impl Checker {
                     let (type_params, f) = self.func_sig(sig)?;
                     let got = type_params.clone().into_iter().rfold(
                         Type::Function(Box::new(f.clone())),
-                        |body, (name, typ)| Type::Generic {
-                            name: name.into_id(),
-                            typ: Box::new(typ),
+                        |body, param| Type::Generic {
+                            param: Box::new(param),
                             body: Box::new(body),
                         },
                     );
@@ -201,7 +201,7 @@ impl Checker {
         Ok(self.gs)
     }
 
-    fn func_sig(&mut self, sig: &mut FuncSig) -> Out<(Vec<(Ident, Type)>, FuncType)> {
+    fn func_sig(&mut self, sig: &mut FuncSig) -> Out<(Vec<GenericParam>, FuncType)> {
         let type_params = self.type_params(&mut sig.type_params)?;
         let f = self.with_type_params(&type_params, |s| {
             let ret = sig
@@ -342,15 +342,17 @@ impl Checker {
                     }),
                     Kind::TypeLevel(got) => {
                         let t = args.iter_mut().try_fold(got, |f, arg| {
-                            let Type::Generic { name, typ, body } = f else {
+                            let Type::Generic { param, body } = f else {
                                 return Err(Error::TypeMismatch {
                                     span: t.span,
                                     got: f.to_string(),
                                     want: "generic".to_string(),
                                 });
                             };
-                            let arg = self.check(arg.span, &mut arg.item, &typ)?.type_level();
-                            Ok(apply(*body, (name, arg)))
+                            let arg = self
+                                .check(arg.span, &mut arg.item, &param.constraint)?
+                                .type_level();
+                            Ok(apply(*body, (param.typ, arg)))
                         })?;
                         Ok(Kind::TypeLevel(t))
                     }
@@ -568,46 +570,47 @@ impl Checker {
         block.locals += 1;
     }
 
-    fn type_params(&mut self, type_params: &mut [Spanned<Param>]) -> Out<Vec<(Ident, Type)>> {
+    fn type_params(&mut self, type_params: &mut [Spanned<TypeParam>]) -> Out<Vec<GenericParam>> {
         type_params
             .iter_mut()
             .map(|p| {
-                self.check_type(p.item.typ.span, &mut p.item.typ.item)
-                    .map(|t| (p.item.name.clone(), t))
+                self.check_type(p.item.constraint.span, &mut p.item.constraint.item)
+                    .map(|constraint| GenericParam {
+                        variadic: p.item.variadic,
+                        typ: p.item.typ.as_id().clone(),
+                        constraint,
+                    })
             })
             .collect()
     }
 
     fn with_type_params<R, F: FnOnce(&mut Self) -> R>(
         &mut self,
-        type_params: &[(Ident, Type)],
+        type_params: &[GenericParam],
         f: F,
     ) -> R {
-        for (name, typ) in type_params {
-            let old = self.type_locals.insert(name.as_id().clone(), typ.clone());
+        for p in type_params {
+            let old = self.type_locals.insert(p.typ.clone(), p.constraint.clone());
             debug_assert!(old.is_none());
         }
         let ret = f(self);
-        for (name, ..) in type_params {
-            self.type_locals.remove(name.as_id());
+        for p in type_params {
+            self.type_locals.remove(&p.typ);
         }
         ret
     }
 
     fn infer_with_type_params<F: FnOnce(&mut Self) -> Out<Type>>(
         &mut self,
-        type_params: &mut [Spanned<Param>],
+        type_params: &mut [Spanned<TypeParam>],
         f: F,
     ) -> Out<Type> {
         let ps = self.type_params(type_params)?;
         let init = self.with_type_params(&ps, f)?;
-        Ok(ps
-            .into_iter()
-            .rfold(init, |body, (name, typ)| Type::Generic {
-                name: name.into_id(),
-                typ: Box::new(typ),
-                body: Box::new(body),
-            }))
+        Ok(ps.into_iter().rfold(init, |body, param| Type::Generic {
+            param: Box::new(param),
+            body: Box::new(body),
+        }))
     }
 }
 
@@ -692,9 +695,12 @@ impl Applier {
                 name,
                 members: members.into_iter().map(|x| self.apply(x)).collect(),
             }),
-            Type::Generic { name, typ, body } => Type::Generic {
-                name,
-                typ: Box::new(self.apply(*typ)),
+            Type::Generic { param, body } => Type::Generic {
+                param: Box::new(GenericParam {
+                    variadic: param.variadic,
+                    typ: param.typ,
+                    constraint: self.apply(param.constraint),
+                }),
                 body: Box::new(self.apply(*body)),
             },
             Type::Id(id) => self.0.get(&id).cloned().unwrap(),

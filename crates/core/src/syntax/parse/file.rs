@@ -7,7 +7,9 @@ use crate::semantics::BuiltinType;
 use crate::syntax::parse::expr::expr;
 use crate::syntax::parse::stmt::stmt;
 use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, grouped_by, groups_with, id, name};
-use crate::syntax::{Decl, Def, Expr, File, FuncSig, Ident, Member, MethodSig, Param, Sig, Stmt};
+use crate::syntax::{
+    Decl, Def, Expr, File, FuncSig, Ident, Member, MethodSig, Param, Sig, Stmt, TypeParam,
+};
 use crate::{Span, Spanned};
 
 fn docstring<'t, I>() -> impl Parser<'t, I, Vec<String>, SyntaxErr<'t, Token>> + Clone
@@ -23,17 +25,21 @@ where
     .labelled("docstring")
 }
 
-fn type_params<'t, I>() -> impl Parser<'t, I, Vec<Spanned<Param>>, SyntaxErr<'t, Token>>
+fn type_params<'t, I>() -> impl Parser<'t, I, Vec<Spanned<TypeParam>>, SyntaxErr<'t, Token>>
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
-    let param = id()
+    let param = just(Token::Sym(Sym::Ellipsis))
+        .or_not()
+        .map(|t| t.is_some())
+        .then(id())
         .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()).or_not())
-        .map(|(id, typ)| Spanned {
+        .map(|((variadic, id), constraint)| Spanned {
             span: id.span,
-            item: Param {
-                name: Ident::Id(id.item),
-                typ: typ.unwrap_or(Spanned {
+            item: TypeParam {
+                variadic,
+                typ: Ident::Id(id.item),
+                constraint: constraint.unwrap_or(Spanned {
                     span: id.span,
                     item: Expr::BuiltinType(BuiltinType::Type),
                 }),

@@ -75,11 +75,6 @@ pub enum Ident {
 }
 
 impl Ident {
-    pub(crate) fn into_id(self) -> Id {
-        let Self::Id(id) = self else { unreachable!() };
-        id
-    }
-
     pub(crate) fn as_id(&self) -> &Id {
         let Self::Id(id) = self else { unreachable!() };
         id
@@ -235,20 +230,27 @@ pub(crate) enum Sig {
     },
     Struct {
         name: Id,
-        type_params: Vec<Spanned<Param>>,
+        type_params: Vec<Spanned<TypeParam>>,
         members: Vec<Spanned<Member>>,
     },
     Extends {
-        type_params: Vec<Spanned<Param>>,
+        type_params: Vec<Spanned<TypeParam>>,
         target: Spanned<Expr>,
         methods: Vec<Spanned<MethodSig>>,
     },
 }
 
 #[derive(Debug)]
+pub(crate) struct TypeParam {
+    pub(crate) variadic: bool,
+    pub(crate) typ: Ident,
+    pub(crate) constraint: Spanned<Expr>,
+}
+
+#[derive(Debug)]
 pub(crate) struct FuncSig {
     pub(crate) name: Id,
-    pub(crate) type_params: Vec<Spanned<Param>>,
+    pub(crate) type_params: Vec<Spanned<TypeParam>>,
     pub(crate) params: Vec<Spanned<Param>>,
     pub(crate) ret: Option<Spanned<Expr>>,
 }

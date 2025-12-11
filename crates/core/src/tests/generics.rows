@@ -15,3 +15,5 @@ function main() {
     let x = A<u32>{a: 42}
     println(x.a)
 }
+
+function f<...Args>() {}

@@ -38,6 +38,7 @@ pub enum Sym {
     EqEq,
     Le,
     Ge,
+    Ellipsis,
 
     // Short.
     LParen,

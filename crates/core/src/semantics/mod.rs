@@ -43,10 +43,9 @@ pub enum Type {
     Ref(Box<Self>),
     #[strum(transparent)]
     Struct(StructType),
-    #[strum(to_string = "<{name}: {typ}> => {body}")]
+    #[strum(to_string = "{param} => {body}")]
     Generic {
-        name: Id,
-        typ: Box<Self>,
+        param: Box<GenericParam>,
         body: Box<Self>,
     },
     #[strum(transparent)]
@@ -184,6 +183,25 @@ pub struct StructType {
 impl Display for StructType {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write!(f, "struct {}", self.name)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GenericParam {
+    variadic: bool,
+    typ: Id,
+    constraint: Type,
+}
+
+impl Display for GenericParam {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(
+            f,
+            "<{}{}: {}>",
+            if self.variadic { "..." } else { "" },
+            self.typ,
+            self.constraint
+        )
     }
 }
 

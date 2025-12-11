@@ -3,7 +3,9 @@ use std::str::FromStr;
 use ustr::{Ustr, UstrMap, UstrSet};
 
 use crate::semantics::builtin::Builtin;
-use crate::syntax::{Branch, Def, Expr, File, FuncSig, Id, Ident, Object, Param, Sig, Stmt};
+use crate::syntax::{
+    Branch, Def, Expr, File, FuncSig, Id, Ident, Object, Param, Sig, Stmt, TypeParam,
+};
 use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
@@ -271,28 +273,28 @@ impl Resolver {
         self.globals.insert(id.raw(), id.clone());
     }
 
-    fn type_params(&mut self, type_params: &mut [Spanned<Param>]) -> Out<()> {
+    fn type_params(&mut self, type_params: &mut [Spanned<TypeParam>]) -> Out<()> {
         type_params
             .iter_mut()
-            .try_for_each(|p| self.expr(p.item.typ.span, &mut p.item.typ.item))
+            .try_for_each(|p| self.expr(p.item.constraint.span, &mut p.item.constraint.item))
     }
 
     fn with_type_params<R, F: FnOnce(&mut Self) -> R>(
         &mut self,
-        type_params: &[Spanned<Param>],
+        type_params: &[Spanned<TypeParam>],
         f: F,
     ) -> R {
         let olds = type_params
             .iter()
             .map(|p| {
-                let id = p.item.name.as_id();
+                let id = p.item.typ.as_id();
                 self.type_locals.insert(id.raw(), id.clone())
             })
             .collect::<Vec<_>>();
         let ret = f(self);
         type_params.iter().zip(olds).for_each(|(p, old)| {
             match old {
-                None => self.type_locals.remove(&p.item.name.as_id().raw()),
+                None => self.type_locals.remove(&p.item.typ.as_id().raw()),
                 Some(old) => self.type_locals.insert(old.raw(), old),
             };
         });
