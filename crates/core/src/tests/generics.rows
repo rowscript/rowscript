@@ -11,9 +11,20 @@ extends<T> A<T> {
     }
 }
 
+function get1<T>(x: A<T>): T {
+    return x.a
+}
+
+function get2<T>(a: T): A<T> {
+    return A<T>{a: a}
+}
+
 function main() {
     let x = A<u32>{a: 42}
     println(x.a)
+    // TODO
+    //println(get1<u32>(x))
+    //println(get2<u32>(x.a).a)
 }
 
 function f<...Args>() {}
