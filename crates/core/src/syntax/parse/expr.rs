@@ -85,10 +85,11 @@ where
 
         let call = just(Token::Keyword(Keyword::New))
             .or_not()
+            .map(|t| t.is_some())
             .then(constant.or(ident).or(paren))
             .map_with(|(new, callee), e| match new {
-                None => callee,
-                Some(..) => Spanned {
+                false => callee,
+                true => Spanned {
                     span: e.span(),
                     item: Expr::New(Box::new(callee)),
                 },
