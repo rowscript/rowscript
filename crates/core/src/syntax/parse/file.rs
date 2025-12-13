@@ -34,12 +34,12 @@ where
         .map(|t| t.is_some())
         .then(id())
         .then(just(Token::Sym(Sym::Colon)).ignore_then(expr()).or_not())
-        .map(|((variadic, id), constraint)| Spanned {
+        .map(|((variadic, id), constr)| Spanned {
             span: id.span,
             item: TypeParam {
                 variadic,
                 typ: Ident::Id(id.item),
-                constraint: constraint.unwrap_or(Spanned {
+                constr: constr.unwrap_or(Spanned {
                     span: id.span,
                     item: Expr::BuiltinType(BuiltinType::Type),
                 }),

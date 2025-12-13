@@ -244,7 +244,7 @@ pub(crate) enum Sig {
 pub(crate) struct TypeParam {
     pub(crate) variadic: bool,
     pub(crate) typ: Ident,
-    pub(crate) constraint: Spanned<Expr>,
+    pub(crate) constr: Spanned<Expr>,
 }
 
 #[derive(Debug)]

@@ -43,10 +43,10 @@ pub enum Type {
     Ref(Box<Self>),
     #[strum(transparent)]
     Struct(StructType),
-    #[strum(to_string = "{param} => {body}")]
+    #[strum(to_string = "{param} => {ret}")]
     Generic {
         param: Box<GenericParam>,
-        body: Box<Self>,
+        ret: Box<Self>,
     },
     #[strum(transparent)]
     Id(Id),
@@ -170,7 +170,7 @@ pub struct FuncType {
 impl Display for FuncType {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         write_delimited!(f, "(", self.params, ", ", ")");
-        write!(f, " -> {}", self.ret)
+        write!(f, " => {}", self.ret)
     }
 }
 
@@ -190,7 +190,7 @@ impl Display for StructType {
 pub struct GenericParam {
     variadic: bool,
     typ: Id,
-    constraint: Type,
+    constr: Type,
 }
 
 impl Display for GenericParam {
@@ -200,7 +200,7 @@ impl Display for GenericParam {
             "<{}{}: {}>",
             if self.variadic { "..." } else { "" },
             self.typ,
-            self.constraint
+            self.constr
         )
     }
 }

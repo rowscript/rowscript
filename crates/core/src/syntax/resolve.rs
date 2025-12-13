@@ -276,7 +276,7 @@ impl Resolver {
     fn type_params(&mut self, type_params: &mut [Spanned<TypeParam>]) -> Out<()> {
         type_params
             .iter_mut()
-            .try_for_each(|p| self.expr(p.item.constraint.span, &mut p.item.constraint.item))
+            .try_for_each(|p| self.expr(p.item.constr.span, &mut p.item.constr.item))
     }
 
     fn with_type_params<R, F: FnOnce(&mut Self) -> R>(

@@ -16,7 +16,7 @@ use crate::{Error, Out, Span, Spanned};
 
 #[derive(Default)]
 pub(crate) struct Checker {
-    globals: HashMap<Id, Kind>,
+    globals: HashMap<Id, Inferred>,
     locals: Vec<Type>,
     type_locals: HashMap<Id, Type>,
     gs: Globals,
@@ -33,30 +33,38 @@ impl Checker {
                 Sig::Func(sig) => {
                     let span = sig.ret.as_ref().map(|s| s.span).unwrap_or(decl.span);
                     let (type_params, f) = self.func_sig(sig)?;
-                    let got = type_params.clone().into_iter().rfold(
-                        Type::Function(Box::new(f.clone())),
-                        |body, param| Type::Generic {
+                    let body = Type::Function(Box::new(f.clone()));
+                    let got = type_params
+                        .clone()
+                        .into_iter()
+                        .rfold(body.clone(), |ret, param| Type::Generic {
                             param: Box::new(param),
-                            body: Box::new(body),
-                        },
-                    );
+                            ret: Box::new(ret),
+                        });
                     if file.main.as_ref() == Some(&sig.name) {
                         isa(span, &got, &Type::main())?;
                     }
                     fns.push((sig.name.clone(), type_params, f));
-                    self.globals.insert(sig.name.clone(), Kind::from(got));
+                    self.globals.insert(
+                        sig.name.clone(),
+                        Inferred {
+                            applicable: Some(body),
+                            typ: got,
+                        },
+                    );
                 }
                 Sig::Static { name, typ } => {
                     let t = self.check_type(typ.span, &mut typ.item)?;
                     statics.push((name.clone(), t.clone()));
-                    self.globals.insert(name.clone(), Kind::ValueLevel(t));
+                    self.globals
+                        .insert(name.clone(), Inferred::non_applicable(t));
                 }
                 Sig::Struct {
                     name,
                     type_params,
                     members,
                 } => {
-                    let t = self.infer_with_type_params(type_params, |s| {
+                    let i = self.infer_with_type_params(type_params, |s| {
                         let members = members
                             .iter_mut()
                             .map(|m| {
@@ -81,7 +89,7 @@ impl Checker {
                         );
                         Ok(t)
                     })?;
-                    self.globals.insert(name.clone(), Kind::TypeLevel(t));
+                    self.globals.insert(name.clone(), i);
                 }
                 Sig::Extends {
                     type_params,
@@ -222,7 +230,7 @@ impl Checker {
 
     fn stmt(&mut self, block: &mut Block, stmt: &mut Spanned<Stmt>) -> Out<Type> {
         Ok(match &mut stmt.item {
-            Stmt::Expr(e) => self.infer(stmt.span, e)?.value_level(),
+            Stmt::Expr(e) => self.infer(stmt.span, e)?.typ,
             Stmt::Assign { name, typ, rhs, .. } => {
                 let rhs_type = typ
                     .as_mut()
@@ -231,7 +239,7 @@ impl Checker {
                         self.check(rhs.span, &mut rhs.item, &want)?;
                         Ok(want)
                     })
-                    .unwrap_or_else(|| Ok(self.infer(rhs.span, &mut rhs.item)?.value_level()))?;
+                    .unwrap_or_else(|| Ok(self.infer(rhs.span, &mut rhs.item)?.typ))?;
                 self.insert(block, name.item.as_idx(), rhs_type.clone());
                 *typ = Some(Spanned {
                     span: typ.as_ref().map(|t| t.span).unwrap_or(name.span),
@@ -240,9 +248,9 @@ impl Checker {
                 rhs_type
             }
             Stmt::Update { name, rhs } => {
-                let t = self.ident(&name.item)?.value_level();
-                self.check(rhs.span, &mut rhs.item, &t)?;
-                t
+                let want = self.ident(&name.item)?.typ;
+                self.check(rhs.span, &mut rhs.item, &want)?;
+                want
             }
             Stmt::Return(e) => e
                 .as_mut()
@@ -293,14 +301,14 @@ impl Checker {
         self.block(block.local(), &mut branch.body)
     }
 
-    fn check(&mut self, span: Span, expr: &mut Expr, want: &Type) -> Out<Kind> {
+    fn check(&mut self, span: Span, expr: &mut Expr, want: &Type) -> Out<Option<Type>> {
         if let Expr::Integer(Integer::I64(n)) = expr
             && let Type::Builtin(t) = want
             && t.is_integer()
             && let Some(n) = t.narrow_integer(*n)
         {
             *expr = Expr::Integer(n);
-            return Ok(Kind::ValueLevel(want.clone()));
+            return Ok(None);
         }
 
         if let Expr::Float(Float::F64(n)) = expr
@@ -308,55 +316,47 @@ impl Checker {
             && t.is_float()
         {
             *expr = Expr::Float(t.narrow_float(*n));
-            return Ok(Kind::ValueLevel(want.clone()));
+            return Ok(None);
         }
 
-        let inferred = self.infer(span, expr)?;
-        let got = match &inferred {
-            Kind::ValueLevel(got) => got,
-            Kind::TypeLevel(..) => &Type::Builtin(BuiltinType::Type),
-        };
-        isa(span, got, want)?;
-        Ok(inferred)
+        let got = self.infer(span, expr)?;
+        isa(span, &got.typ, want)?;
+        Ok(got.applicable)
     }
 
     fn check_type(&mut self, span: Span, expr: &mut Expr) -> Out<Type> {
         self.check(span, expr, &Type::Builtin(BuiltinType::Type))
-            .map(Kind::type_level)
+            .map(Option::unwrap)
     }
 
-    fn infer(&mut self, span: Span, expr: &mut Expr) -> Out<Kind> {
-        Ok(Kind::ValueLevel(match expr {
+    fn infer(&mut self, span: Span, expr: &mut Expr) -> Out<Inferred> {
+        Ok(Inferred::non_applicable(match expr {
             Expr::Ident(ident) => return self.ident(ident),
-            Expr::BuiltinType(t) => return Ok(Kind::TypeLevel(Type::Builtin(*t))),
+            Expr::BuiltinType(t) => return Ok(Inferred::from(Type::Builtin(*t))),
             Expr::RefType(t) => {
                 let t = self.check_type(t.span, &mut t.item)?;
-                return Ok(Kind::TypeLevel(Type::Ref(Box::new(t))));
+                return Ok(Inferred::from(Type::Ref(Box::new(t))));
             }
             Expr::Apply(t, args) => {
-                return match self.infer(t.span, &mut t.item)? {
-                    Kind::ValueLevel(got) => Err(Error::TypeMismatch {
+                let Inferred { applicable, typ } = self.infer(t.span, &mut t.item)?;
+                let Type::Generic { param, mut ret } = typ else {
+                    return Err(Error::TypeMismatch {
                         span: t.span,
-                        got: got.to_string(),
-                        want: "type".to_string(),
-                    }),
-                    Kind::TypeLevel(got) => {
-                        let t = args.iter_mut().try_fold(got, |f, arg| {
-                            let Type::Generic { param, body } = f else {
-                                return Err(Error::TypeMismatch {
-                                    span: t.span,
-                                    got: f.to_string(),
-                                    want: "generic".to_string(),
-                                });
-                            };
-                            let arg = self
-                                .check(arg.span, &mut arg.item, &param.constraint)?
-                                .type_level();
-                            Ok(apply(*body, (param.typ, arg)))
-                        })?;
-                        Ok(Kind::from(t))
-                    }
+                        got: typ.to_string(),
+                        want: "generic".to_string(),
+                    });
                 };
+                let mut body = applicable.unwrap();
+                args.iter_mut().try_for_each(|arg| {
+                    let arg = self.check(arg.span, &mut arg.item, &param.constr)?.unwrap();
+                    body.apply(param.typ.clone(), arg.clone());
+                    ret.apply(param.typ.clone(), arg);
+                    Ok(())
+                })?;
+                return Ok(Inferred {
+                    applicable: Some(body),
+                    typ: *ret,
+                });
             }
             Expr::Unit => Type::Builtin(BuiltinType::Unit),
             Expr::Integer(n) => {
@@ -370,11 +370,11 @@ impl Checker {
             Expr::String(..) => Type::Builtin(BuiltinType::Str),
             Expr::Boolean(..) => Type::Builtin(BuiltinType::Bool),
             Expr::Call(f, args) => {
-                let typ = self.infer(f.span, &mut f.item)?.value_level();
-                let Type::Function(typ) = typ else {
+                let got = self.infer(f.span, &mut f.item)?.typ;
+                let Type::Function(typ) = got else {
                     return Err(Error::TypeMismatch {
                         span,
-                        got: typ.to_string(),
+                        got: got.to_string(),
                         want: "function".to_string(),
                     });
                 };
@@ -383,13 +383,13 @@ impl Checker {
             }
             Expr::BinaryOp(lhs, op, typ, rhs) => match op {
                 Sym::EqEq => {
-                    let got = self.infer(lhs.span, &mut lhs.item)?.value_level();
+                    let got = self.infer(lhs.span, &mut lhs.item)?.typ;
                     self.check(rhs.span, &mut rhs.item, &got)?;
                     *typ = Some(got);
                     Type::Builtin(BuiltinType::Bool)
                 }
                 Sym::Lt | Sym::Gt | Sym::Le | Sym::Ge => {
-                    let got = self.infer(lhs.span, &mut lhs.item)?.value_level();
+                    let got = self.infer(lhs.span, &mut lhs.item)?.typ;
                     if let Type::Builtin(t) = got
                         && (t.is_integer() || t.is_float())
                     {
@@ -405,7 +405,7 @@ impl Checker {
                     }
                 }
                 Sym::Plus | Sym::Minus | Sym::Mul => {
-                    let got = self.infer(lhs.span, &mut lhs.item)?.value_level();
+                    let got = self.infer(lhs.span, &mut lhs.item)?.typ;
                     if let Type::Builtin(t) = got
                         && (t.is_integer() || t.is_float())
                     {
@@ -424,7 +424,7 @@ impl Checker {
             },
             Expr::UnaryOp(x, op, typ) => match op {
                 Sym::Mul => {
-                    let got = self.infer(x.span, &mut x.item)?.value_level();
+                    let got = self.infer(x.span, &mut x.item)?.typ;
                     let Type::Ref(got) = got else {
                         return Err(Error::TypeMismatch {
                             span,
@@ -524,7 +524,7 @@ impl Checker {
     }
 
     fn infer_struct(&mut self, span: Span, expr: &mut Expr) -> Out<StructType> {
-        let got = self.infer(span, expr)?.value_level();
+        let got = self.infer(span, expr)?.typ;
         let Type::Struct(t) = got else {
             return Err(Error::TypeMismatch {
                 span,
@@ -552,15 +552,19 @@ impl Checker {
         })
     }
 
-    fn ident(&self, ident: &Ident) -> Out<Kind> {
+    fn ident(&self, ident: &Ident) -> Out<Inferred> {
         Ok(match ident {
             Ident::Id(n) => self.globals.get(n).cloned().unwrap(),
-            Ident::Idx(i) => Kind::ValueLevel(self.locals.get(*i).unwrap().clone()),
-            Ident::Builtin(b) => Kind::ValueLevel(b.r#type()),
+            Ident::Idx(i) => Inferred::non_applicable(self.locals.get(*i).unwrap().clone()),
+            Ident::Builtin(b) => Inferred::non_applicable(b.r#type()),
             Ident::Type(n) => self
                 .type_locals
                 .get(n)
-                .map(|_| Kind::TypeLevel(Type::Id(n.clone())))
+                .cloned()
+                .map(|typ| Inferred {
+                    applicable: Some(Type::Id(n.clone())),
+                    typ,
+                })
                 .unwrap(),
         })
     }
@@ -574,11 +578,11 @@ impl Checker {
         type_params
             .iter_mut()
             .map(|p| {
-                self.check_type(p.item.constraint.span, &mut p.item.constraint.item)
-                    .map(|constraint| GenericParam {
+                self.check_type(p.item.constr.span, &mut p.item.constr.item)
+                    .map(|constr| GenericParam {
                         variadic: p.item.variadic,
                         typ: p.item.typ.as_id().clone(),
-                        constraint,
+                        constr,
                     })
             })
             .collect()
@@ -590,7 +594,7 @@ impl Checker {
         f: F,
     ) -> R {
         for p in type_params {
-            let old = self.type_locals.insert(p.typ.clone(), p.constraint.clone());
+            let old = self.type_locals.insert(p.typ.clone(), p.constr.clone());
             debug_assert!(old.is_none());
         }
         let ret = f(self);
@@ -604,13 +608,42 @@ impl Checker {
         &mut self,
         type_params: &mut [Spanned<TypeParam>],
         f: F,
-    ) -> Out<Type> {
+    ) -> Out<Inferred> {
         let ps = self.type_params(type_params)?;
-        let init = self.with_type_params(&ps, f)?;
-        Ok(ps.into_iter().rfold(init, |body, param| Type::Generic {
-            param: Box::new(param),
-            body: Box::new(body),
-        }))
+        let applicable = Some(self.with_type_params(&ps, f)?);
+        let typ = ps
+            .into_iter()
+            .rfold(Type::Builtin(BuiltinType::Type), |ret, param| {
+                Type::Generic {
+                    param: Box::new(param),
+                    ret: Box::new(ret),
+                }
+            });
+        Ok(Inferred { applicable, typ })
+    }
+}
+
+#[derive(Debug, Clone)]
+struct Inferred {
+    applicable: Option<Type>,
+    typ: Type,
+}
+
+impl Inferred {
+    fn non_applicable(typ: Type) -> Self {
+        Self {
+            applicable: None,
+            typ,
+        }
+    }
+}
+
+impl From<Type> for Inferred {
+    fn from(applicable: Type) -> Self {
+        Self {
+            applicable: Some(applicable),
+            typ: Type::Builtin(BuiltinType::Type),
+        }
     }
 }
 
@@ -632,39 +665,6 @@ impl Block {
     }
 }
 
-#[derive(Clone)]
-enum Kind {
-    /// The expression is value-level, e.g. for `⊢ x : T`, the [`Type`] here represents `T`.
-    ValueLevel(Type),
-    /// The expression is type-level, e.g. for `⊢ T type`, the [`Type`] here represents `T`.
-    TypeLevel(Type),
-}
-
-impl Kind {
-    fn value_level(self) -> Type {
-        if let Self::ValueLevel(typ) = self {
-            return typ;
-        }
-        unreachable!()
-    }
-
-    fn type_level(self) -> Type {
-        if let Self::TypeLevel(typ) = self {
-            return typ;
-        }
-        unreachable!()
-    }
-}
-
-impl From<Type> for Kind {
-    fn from(t: Type) -> Self {
-        match &t {
-            Type::Builtin(..) | Type::Function(..) | Type::Ref(..) => Self::ValueLevel(t),
-            Type::Struct(..) | Type::Generic { .. } | Type::Id(..) => Self::TypeLevel(t),
-        }
-    }
-}
-
 fn isa(span: Span, got: &Type, want: &Type) -> Out<()> {
     match (got, want) {
         (Type::Builtin(a), Type::Builtin(b)) if a == b => Ok(()),
@@ -677,7 +677,6 @@ fn isa(span: Span, got: &Type, want: &Type) -> Out<()> {
         }
         (Type::Ref(a), Type::Ref(b)) => isa(span, a, b),
         (Type::Struct(a), Type::Struct(b)) if a.name == b.name => Ok(()),
-        (Type::Generic { .. }, Type::Generic { .. }) => todo!(),
         (Type::Id(a), Type::Id(b)) if a == b => Ok(()),
         _ => {
             let got = got.to_string();
@@ -691,32 +690,28 @@ fn isa(span: Span, got: &Type, want: &Type) -> Out<()> {
 struct Applier(HashMap<Id, Type>);
 
 impl Applier {
-    fn apply(&mut self, t: Type) -> Type {
+    fn apply(&mut self, t: &mut Type) {
         match t {
-            Type::Builtin(..) => t,
+            Type::Builtin(..) => (),
             Type::Function(f) => {
-                let params = f.params.into_iter().map(|p| self.apply(p)).collect();
-                let ret = self.apply(f.ret);
-                Type::Function(Box::new(FuncType { params, ret }))
+                f.params.iter_mut().for_each(|p| self.apply(p));
+                self.apply(&mut f.ret);
             }
-            Type::Ref(x) => Type::Ref(Box::new(self.apply(*x))),
-            Type::Struct(StructType { name, members }) => Type::Struct(StructType {
-                name,
-                members: members.into_iter().map(|x| self.apply(x)).collect(),
-            }),
-            Type::Generic { param, body } => Type::Generic {
-                param: Box::new(GenericParam {
-                    variadic: param.variadic,
-                    typ: param.typ,
-                    constraint: self.apply(param.constraint),
-                }),
-                body: Box::new(self.apply(*body)),
-            },
-            Type::Id(id) => self.0.get(&id).cloned().unwrap(),
+            Type::Ref(x) => self.apply(x),
+            Type::Struct(StructType { members, .. }) => {
+                members.iter_mut().for_each(|x| self.apply(x))
+            }
+            Type::Generic { param, ret } => {
+                self.apply(&mut param.constr);
+                self.apply(ret);
+            }
+            Type::Id(id) => *t = self.0.get(id).cloned().unwrap(),
         }
     }
 }
 
-fn apply(t: Type, with: (Id, Type)) -> Type {
-    Applier(HashMap::from([with])).apply(t)
+impl Type {
+    fn apply(&mut self, id: Id, typ: Self) {
+        Applier(HashMap::from([(id, typ)])).apply(self)
+    }
 }
