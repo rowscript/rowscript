@@ -1,6 +1,6 @@
 use chumsky::Parser;
 use chumsky::input::ValueInput;
-use chumsky::prelude::{IterParser, just};
+use chumsky::prelude::{IterParser, choice, just};
 use chumsky::primitive::select;
 
 use crate::semantics::BuiltinType;
@@ -205,10 +205,7 @@ pub(crate) fn file<'t, I>() -> impl Parser<'t, I, File, SyntaxErr<'t, Token>>
 where
     I: ValueInput<'t, Token = Token, Span = Span>,
 {
-    func()
-        .or(r#static())
-        .or(r#struct())
-        .or(extends())
+    choice((func(), r#static(), r#struct(), extends()))
         .repeated()
         .collect::<Vec<_>>()
         .map(|decls| File { decls, main: None })

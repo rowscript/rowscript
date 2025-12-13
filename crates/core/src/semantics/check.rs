@@ -44,7 +44,7 @@ impl Checker {
                         isa(span, &got, &Type::main())?;
                     }
                     fns.push((sig.name.clone(), type_params, f));
-                    self.globals.insert(sig.name.clone(), Kind::ValueLevel(got));
+                    self.globals.insert(sig.name.clone(), Kind::from(got));
                 }
                 Sig::Static { name, typ } => {
                     let t = self.check_type(typ.span, &mut typ.item)?;
@@ -354,7 +354,7 @@ impl Checker {
                                 .type_level();
                             Ok(apply(*body, (param.typ, arg)))
                         })?;
-                        Ok(Kind::TypeLevel(t))
+                        Ok(Kind::from(t))
                     }
                 };
             }
@@ -653,6 +653,15 @@ impl Kind {
             return typ;
         }
         unreachable!()
+    }
+}
+
+impl From<Type> for Kind {
+    fn from(t: Type) -> Self {
+        match &t {
+            Type::Builtin(..) | Type::Function(..) | Type::Ref(..) => Self::ValueLevel(t),
+            Type::Struct(..) | Type::Generic { .. } | Type::Id(..) => Self::TypeLevel(t),
+        }
     }
 }
 

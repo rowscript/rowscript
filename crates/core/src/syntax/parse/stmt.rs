@@ -1,6 +1,6 @@
 use chumsky::Parser;
 use chumsky::input::ValueInput;
-use chumsky::prelude::{IterParser, just, recursive};
+use chumsky::prelude::{IterParser, choice, just, recursive};
 
 use crate::syntax::parse::expr::expr;
 use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, id};
@@ -94,11 +94,6 @@ where
             .map_with(Spanned::from_map_extra)
             .labelled("while statement");
 
-        r#if.or(r#while)
-            .or(assign)
-            .or(update)
-            .or(r#return)
-            .or(exp)
-            .labelled("statement")
+        choice((r#if, r#while, assign, update, r#return, exp)).labelled("statement")
     })
 }

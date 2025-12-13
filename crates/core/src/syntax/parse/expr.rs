@@ -1,7 +1,7 @@
 use chumsky::Parser;
 use chumsky::input::ValueInput;
 use chumsky::pratt::{infix, left, prefix};
-use chumsky::prelude::{just, recursive};
+use chumsky::prelude::{choice, just, recursive};
 use chumsky::primitive::select;
 use serde_json::from_str;
 use ustr::Ustr;
@@ -48,11 +48,6 @@ where
     .labelled("identifier expression");
 
     recursive(|expr| {
-        let paren = expr
-            .clone()
-            .delimited_by(just(Token::Sym(Sym::LParen)), just(Token::Sym(Sym::RParen)))
-            .labelled("parenthesized expression");
-
         let args =
             grouped_by(Sym::LParen, expr.clone(), Sym::Comma, Sym::RParen).labelled("arguments");
         let arguments = args
@@ -81,12 +76,12 @@ where
         let type_args = grouped_by(Sym::Lt, expr, Sym::Comma, Sym::Gt)
             .map(Chainer::TypeArgs)
             .labelled("type arguments");
-        let chainer = arguments.or(obj).or(method).or(access).or(type_args);
+        let chainer = choice((arguments, obj, method, access, type_args));
 
         let call = just(Token::Keyword(Keyword::New))
             .or_not()
             .map(|t| t.is_some())
-            .then(constant.or(ident).or(paren))
+            .then(choice((constant, ident)))
             .map_with(|(new, callee), e| match new {
                 false => callee,
                 true => Spanned {

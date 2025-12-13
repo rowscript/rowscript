@@ -18,8 +18,7 @@ use crate::syntax::parse::{Keyword, Sym, SyntaxErr, Token, Tokens};
 pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, Tokens, SyntaxErr<'s, char>> {
     let dec = digits(10).to_slice();
     let frac = just('.').then(dec);
-    let exp = just('e')
-        .or(just('E'))
+    let exp = choice((just('e'), just('E')))
         .then(one_of("+-").or_not())
         .then(dec);
     let number = just('-')
@@ -50,9 +49,7 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, Tokens, SyntaxErr<'s, char>>
             )),
         )))
         .ignored();
-    let string = none_of("\\\"")
-        .ignored()
-        .or(escape)
+    let string = choice((none_of("\\\"").ignored(), escape))
         .repeated()
         .to_slice()
         .map(|s: &str| Token::String(s.into()))
@@ -96,7 +93,7 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, Tokens, SyntaxErr<'s, char>>
         .ignore_then(any().and_is(just('\n').not()).repeated().to_slice())
         .map(|s: &str| Token::Doc(s.into()));
 
-    let token = number.or(string).or(ident).or(symbol).or(doc);
+    let token = choice((number, string, ident, symbol, doc));
 
     let line_comment = just("//")
         .then_ignore(any().and_is(just('/')).not())
@@ -106,7 +103,7 @@ pub(crate) fn lex<'s>() -> impl Parser<'s, &'s str, Tokens, SyntaxErr<'s, char>>
         .then_ignore(any().and_is(just("*/").not()).repeated())
         .then_ignore(just("*/"))
         .padded();
-    let comment = line_comment.or(block_comment);
+    let comment = choice((line_comment, block_comment));
 
     token
         .map_with(Spanned::from_map_extra)

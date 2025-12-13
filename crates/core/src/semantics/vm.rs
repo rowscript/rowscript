@@ -131,6 +131,7 @@ impl<'a> Vm<'a> {
                 Ident::Builtin(b) => Expr::Ident(Ident::Builtin(*b)),
                 Ident::Type(..) => unreachable!(),
             },
+            Expr::Apply(a, ..) => a.item.clone(),
             Expr::Call(f, args) => {
                 let args = args.iter().map(|arg| self.expr(frame, &arg.item)).collect();
                 match self.expr(frame, &f.item) {
@@ -242,7 +243,7 @@ impl<'a> Vm<'a> {
             | Expr::Boolean(..)
             | Expr::New(..) => expr.clone(),
 
-            Expr::Apply(..) | Expr::ThisType(..) | Expr::StructType(..) => unreachable!(),
+            Expr::ThisType(..) | Expr::StructType(..) => unreachable!(),
         }
     }
 }
