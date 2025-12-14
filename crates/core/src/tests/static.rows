@@ -6,5 +6,5 @@ function f(): u32 {
 
 function main() {
     a = 2
-    println(a)
+    assert(a == 2)
 }

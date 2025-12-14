@@ -13,6 +13,7 @@ use crate::syntax::Expr;
 #[strum(serialize_all = "snake_case")]
 pub enum Builtin {
     Println,
+    Assert,
 }
 
 impl Builtin {
@@ -32,24 +33,32 @@ impl Builtin {
             .unwrap()
     }
 
-    fn get(&self) -> &Proto {
+    fn get(&self) -> &Prototype {
         match self {
             Builtin::Println => &PRINTLN,
+            Builtin::Assert => &ASSERT,
         }
     }
 }
 
+const PROTOTYPES: &[&Prototype] = &[&PRINTLN, &ASSERT];
+
 pub(crate) fn import(builder: &mut JITBuilder) {
-    builder.symbols([(Builtin::Println.to_string(), println as _)]);
+    for p in PROTOTYPES {
+        builder.symbols([(p.id.to_string(), p.f)]);
+    }
 }
 
-struct Proto {
+struct Prototype {
+    id: Builtin,
     typ: fn() -> Type,
     eval: fn(Vec<Expr>) -> Expr,
     declare: fn(&mut Signature),
+    f: *const u8,
 }
 
-const PRINTLN: Proto = Proto {
+const PRINTLN: Prototype = Prototype {
+    id: Builtin::Println,
     typ: || {
         Type::Function(Box::new(FuncType {
             params: vec![Type::Builtin(BuiltinType::U32)],
@@ -69,9 +78,39 @@ const PRINTLN: Proto = Proto {
         sig.params.push(AbiParam::new(I32)); // FIXME: correct type
         sig.returns.push(AbiParam::new(I8));
     },
+    f: println as _,
 };
 
 fn println(v: u32) -> u8 {
     println!("{v}");
+    Default::default()
+}
+
+const ASSERT: Prototype = Prototype {
+    id: Builtin::Assert,
+    typ: || {
+        Type::Function(Box::new(FuncType {
+            params: vec![Type::Builtin(BuiltinType::Bool)],
+            ret: Default::default(),
+        }))
+    },
+    eval: |args| {
+        if let [v] = &args[..]
+            && let Expr::Boolean(p) = v
+        {
+            assert!(*p);
+            return Expr::Unit;
+        }
+        unreachable!();
+    },
+    declare: |sig| {
+        sig.params.push(AbiParam::new(I8));
+        sig.returns.push(AbiParam::new(I8));
+    },
+    f: assert as _,
+};
+
+fn assert(p: u8) -> u8 {
+    assert_ne!(p, 0);
     Default::default()
 }

@@ -8,5 +8,5 @@ function factorial(n: u32): u32 {
 }
 
 function main() {
-    println(factorial(10))
+    assert(factorial(10) == 3628800)
 }

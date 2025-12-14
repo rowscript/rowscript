@@ -8,5 +8,5 @@ function fib(n: u32): u32 {
 }
 
 function main() {
-    println(fib(10))
+    assert(fib(10) == 89)
 }

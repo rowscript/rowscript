@@ -21,9 +21,9 @@ function get2<T>(a: T): A<T> {
 
 function main() {
     let x = A<u32>{a: 42}
-    println(x.a)
-    println(get1<u32>(x))
-    println(get2<u32>(x.a).a)
+    assert(x.a == 42)
+    assert(get1<u32>(x) == 42)
+    assert(get2<u32>(x.a).a == 42)
 }
 
 function f<...Args>() {}

@@ -5,5 +5,5 @@ function f(): &u32 {
 function main() {
     // Doing this will panic on Rc::try_unwrap.
     //let a = f()
-    println(*f())
+    assert(*f() == 42)
 }

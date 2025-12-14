@@ -4,13 +4,13 @@ struct A {
 }
 
 extends A {
-    foo(i: u32) {
-        println(this.n + i)
+    foo(i: u32): u32 {
+        return this.n + i
     }
 }
 
 function main() {
     let a = A{n: 42, m: 69}
-    println(a.n)
-    a.foo(69)
+    assert(a.n == 42)
+    assert(a.foo(69) == 111)
 }
