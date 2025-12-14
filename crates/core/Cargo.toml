@@ -18,7 +18,7 @@ target-lexicon = "0.13.3"
 wasmtime-internal-jit-debug = { version = "39.0.1", features = ["std", "gdb_jit_int"] }
 
 [dev-dependencies]
-criterion = "0.7.0"
+criterion = "0.8.1"
 
 [[bench]]
 name = "eval"
