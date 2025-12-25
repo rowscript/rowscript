@@ -7,15 +7,15 @@ edition = "2024"
 rowscript-derive = { path = "../derive" }
 strum = { version = "0.27.2", features = ["derive"] }
 ustr = "1.1.0"
-serde_json = "1.0.145"
+serde_json = "1.0.147"
 chumsky = { version = "1.0.0-alpha.8", features = ["pratt"] }
-cranelift = "0.126.1"
-cranelift-native = "0.126.1"
-cranelift-module = "0.126.1"
-cranelift-jit = "0.126.1"
+cranelift = "0.127.0"
+cranelift-native = "0.127.0"
+cranelift-module = "0.127.0"
+cranelift-jit = "0.127.0"
 object = { version = "0.38.0", features = ["write", "read"] }
-target-lexicon = "0.13.3"
-wasmtime-internal-jit-debug = { version = "39.0.1", features = ["std", "gdb_jit_int"] }
+target-lexicon = "0.13.4"
+wasmtime-internal-jit-debug = { version = "40.0.0", features = ["std", "gdb_jit_int"] }
 
 [dev-dependencies]
 criterion = "0.8.1"
