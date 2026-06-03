@@ -179,7 +179,7 @@ impl Checker {
                     let mut checked_bodies = Vec::default();
                     methods
                         .iter()
-                        .zip(types.into_iter())
+                        .zip(types)
                         .zip(bodies.iter_mut())
                         .enumerate()
                         .try_for_each(|(i, ((sig, (type_params, typ)), body))| {
