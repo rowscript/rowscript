@@ -18,7 +18,7 @@ jobs:
             suffix: ""
     runs-on: ${{ matrix.os.name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Setup Rust
         run: |
           rustup toolchain install stable --profile minimal
@@ -26,7 +26,7 @@ jobs:
       - name: Build
         run: cargo build --verbose --release
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.os.name }}
           path: "target/release/rowscript${{ matrix.os.suffix }}"
@@ -35,13 +35,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: server
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: latest
           cache: npm
           cache-dependency-path: crates/client
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: crates/client
       - name: Build
@@ -52,7 +52,7 @@ jobs:
           npm run build
           npm run package
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: client
           path: crates/client/*.vsix
